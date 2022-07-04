@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.1.0
+-- @version 0.1.1
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -9,6 +9,12 @@
 -- @about
 --   # Stem Manager
 --   Advanced stem rendering automator.
+--   Stem Manager was designed with the goal of simplifying the process of stem creation with REAPER.
+--   While REAPER's flexibility is unmatched, it is still quite cumbersome to create and render sets of tracks independently of signal flow, with emphasis on easy cross-project portability (do it once, then use it everywhere!).
+--
+--   This is where Stem Manager comes in.
+-- @changelog
+--   Updated about
 
 reaper.ClearConsole()
 local STATES             = {
