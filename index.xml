@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Oded's Scripts" commit="ce475d928126248ae80e921eeeb9cb9c17398e81">
+<index version="1" name="Odedd ReaScripts" commit="ce475d928126248ae80e921eeeb9cb9c17398e81">
   <category name="Rendering/Stem Manager">
     <reapack name="Odedd_Stem Manager.lua" type="script" desc="Stem Manager">
       <metadata>
