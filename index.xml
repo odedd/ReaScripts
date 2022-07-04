@@ -1,2 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Oded's Scripts"/>
+<index version="1" name="Oded's Scripts" commit="ce475d928126248ae80e921eeeb9cb9c17398e81">
+  <category name="Rendering/Stem Manager">
+    <reapack name="Odedd_Stem Manager.lua" type="script" desc="Stem Manager">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Stem Manager\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Advanced stem rendering automator.\par}
+}
+]]></description>
+        <link rel="donation" href="https://paypal.me/odedda">:</link>
+      </metadata>
+      <version name="0.1.0" author="Oded Davidov" time="2022-07-04T19:50:00Z">
+        <source main="main">https://github.com/odedd/ReaScripts/raw/ce475d928126248ae80e921eeeb9cb9c17398e81/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
+        <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/ce475d928126248ae80e921eeeb9cb9c17398e81/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/ce475d928126248ae80e921eeeb9cb9c17398e81/Resources/Fonts/Cousine-Regular.ttf</source>
+      </version>
+    </reapack>
+  </category>
+</index>
