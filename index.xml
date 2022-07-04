@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="ce475d928126248ae80e921eeeb9cb9c17398e81">
+<index version="1" name="Odedd ReaScripts" commit="c2930ee5653059defce489a79697238a4e18b07f">
   <category name="Rendering/Stem Manager">
     <reapack name="Odedd_Stem Manager.lua" type="script" desc="Stem Manager">
       <metadata>
@@ -8,7 +8,8 @@
 \widowctrl\hyphauto
 
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Stem Manager\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 Advanced stem rendering automator.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Advanced stem rendering automator. Stem Manager was designed with the goal of simplifying the process of stem creation with REAPER. While REAPER's flexibility is unmatched, it is still quite cumbersome to create and render sets of tracks independently of signal flow, with emphasis on easy cross-project portability (do it once, then use it everywhere!).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 This is where Stem Manager comes in.\par}
 }
 ]]></description>
         <link rel="donation" href="https://paypal.me/odedda">:</link>
@@ -17,6 +18,12 @@
         <source main="main">https://github.com/odedd/ReaScripts/raw/ce475d928126248ae80e921eeeb9cb9c17398e81/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
         <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/ce475d928126248ae80e921eeeb9cb9c17398e81/Resources/Fonts/Cousine-90deg.otf</source>
         <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/ce475d928126248ae80e921eeeb9cb9c17398e81/Resources/Fonts/Cousine-Regular.ttf</source>
+      </version>
+      <version name="0.1.1" author="Oded Davidov" time="2022-07-04T20:03:56Z">
+        <changelog><![CDATA[Updated about]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/c2930ee5653059defce489a79697238a4e18b07f/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
+        <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/c2930ee5653059defce489a79697238a4e18b07f/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/c2930ee5653059defce489a79697238a4e18b07f/Resources/Fonts/Cousine-Regular.ttf</source>
       </version>
     </reapack>
   </category>
