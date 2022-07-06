@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.2
+-- @version 0.2.1
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,9 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Added reflecting current solo/mute states when adding stems as a settings
---   Document more features in the help section
---   Prevent clicks when switching mirroring between stems
+--   Small textual change in settings window
 
 reaper.ClearConsole()
 local STATES             = {
@@ -62,7 +60,7 @@ local POSTACTION_RUN_RENDER_QUEUE  = 2
 
 local POSTACTION_DESCRIPTIONS = { 
   [POSTACTION_NOTHING]           = 'do nothing',
-  [POSTACTION_OPEN_RENDER_QUEUE] = 'open render queue window',
+  [POSTACTION_OPEN_RENDER_QUEUE] = 'open render queue',
   [POSTACTION_RUN_RENDER_QUEUE]  = 'run render queue'}
 
 local SYNCMODE_OFF    = -1
@@ -70,15 +68,15 @@ local SYNCMODE_MIRROR = 0
 local SYNCMODE_SOLO   = 1
 
 local SYNCMODE_DESCRIPTIONS = {
-  [SYNCMODE_MIRROR] = "affects mirrored stem",
-  [SYNCMODE_SOLO]   = "does not affect mirrored stem"}
+  [SYNCMODE_MIRROR] = "affects stem",
+  [SYNCMODE_SOLO]   = "does not affect stem"}
 
 local REFLECT_ON_ADD_TRUE = 0
 local REFLECT_ON_ADD_FALSE = 1
 
 local REFLECT_ON_ADD_DESCRIPTIONS = { 
-  [REFLECT_ON_ADD_TRUE]           = 'with current solo/mute states',
-  [REFLECT_ON_ADD_FALSE]          = 'without solo/mute states'}
+  [REFLECT_ON_ADD_TRUE]           = 'with current solos/mutes',
+  [REFLECT_ON_ADD_FALSE]          = 'without solos/mutes'}
 
 
 local SETTINGS_SOURCE_MASK  = 0x10EB
@@ -2068,7 +2066,7 @@ end]]):gsub('$(%w+)', {
       r.ImGui_AlignTextToFramePadding(ctx)
       r.ImGui_Text(ctx,'New stems will be added')
       r.ImGui_SameLine(ctx)
-      rv, gui.stWnd.tmpStngs.reflect_on_add = r.ImGui_Combo(ctx,'##reflect_on_add',gui.stWnd.tmpStngs.reflect_on_add,reflect_on_add_list)
+      rv, gui.stWnd.tmpStngs.reflect_on_add = reaper.ImGui_Combo(ctx,'##reflect_on_add',gui.stWnd.tmpStngs.reflect_on_add,reflect_on_add_list)
       r.ImGui_EndGroup(ctx)
       app.setHoveredHint('settings',"What solo states will newly added stems have?")
       
