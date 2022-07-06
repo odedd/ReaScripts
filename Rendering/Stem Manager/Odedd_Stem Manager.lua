@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.2.3
+-- @version 0.2.4
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,7 +14,8 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Stop before rendering
+--   0.2.4 Added a clearer message when no render preset exist
+--   0.2.3 Fix windows compatibility
 
 reaper.ClearConsole()
 local STATES             = {
@@ -1597,10 +1598,15 @@ end]]):gsub('$(%w+)', {
       r.ImGui_SetNextWindowSizeConstraints(ctx, 0, 100, 1000, 250)
       if r.ImGui_BeginPopup(ctx, title) then
         gui.popups.title = title
+        local presetCount = 0
         for i, preset in pairs(db.renderPresets) do
+          presetCount = presetCount+1
           if r.ImGui_Selectable(ctx, preset.name, false) then
             selectedPreset = preset.name
           end
+        end
+        if presetCount == 0 then
+          reaper.ImGui_Text(ctx, "No render presets found.\nPlease create and add presets using\nREAPER's render window preset button.")
         end
         r.ImGui_EndPopup(ctx)
       end
