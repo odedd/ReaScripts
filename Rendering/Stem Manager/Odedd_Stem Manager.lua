@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.2.1
+-- @version 0.2.2
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -2438,8 +2438,8 @@ end]]):gsub('$(%w+)', {
           updateActionStatuses(gui.caWnd.actionList)
         end
         
-        r.ImGui_TextWrapped(ctx,"Custom actions allow triggering the stem manager directly from REAPER's action list.")
-        r.ImGui_TextWrapped(ctx,"After clicking 'Create', a new custom action will be added to the action list triggering the relevant action.")
+        r.ImGui_TextWrapped(ctx,"Custom actions allow triggering the stem manager directly from within REAPER's action list.")
+        r.ImGui_TextWrapped(ctx,"After clicking 'Create', a new custom action for triggering the relevant action will be added to the action list.")
 
         local childHeight = select(2, r.ImGui_GetContentRegionAvail(ctx)) - r.ImGui_GetFrameHeightWithSpacing(ctx)-paddingY
         if r.ImGui_BeginChild(ctx, '##ActionList',0,childHeight) then
