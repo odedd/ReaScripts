@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="a4989f095ed9cb5f6f90645cbf47804ce8c3194a">
+<index version="1" name="Odedd ReaScripts" commit="6a857d729a673add07fcee77ab03beb69a02d016">
   <category name="Rendering/Stem Manager">
     <reapack name="Odedd_Stem Manager.lua" type="script" desc="Stem Manager">
       <metadata>
@@ -75,6 +75,13 @@ Prevent clicks when switching mirroring between stems]]></changelog>
         <source main="main">https://github.com/odedd/ReaScripts/raw/a4989f095ed9cb5f6f90645cbf47804ce8c3194a/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
         <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/a4989f095ed9cb5f6f90645cbf47804ce8c3194a/Resources/Fonts/Cousine-90deg.otf</source>
         <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/a4989f095ed9cb5f6f90645cbf47804ce8c3194a/Resources/Fonts/Cousine-Regular.ttf</source>
+      </version>
+      <version name="0.3.2" author="Oded Davidov" time="2022-07-06T15:48:09Z">
+        <changelog><![CDATA[Improve settings window performance when region or marker selection is needed
+Code housekeeping]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/6a857d729a673add07fcee77ab03beb69a02d016/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
+        <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/6a857d729a673add07fcee77ab03beb69a02d016/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/6a857d729a673add07fcee77ab03beb69a02d016/Resources/Fonts/Cousine-Regular.ttf</source>
       </version>
     </reapack>
   </category>
