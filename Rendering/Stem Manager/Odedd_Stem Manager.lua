@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.2.4
+-- @version 0.2.5
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,8 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   0.2.4 Added a clearer message when no render preset exist
---   0.2.3 Fix windows compatibility
+--   Added a clearer message when ReaImGui has been updated/installed but reaper wasn't restarted.
 
 reaper.ClearConsole()
 local STATES             = {
@@ -163,8 +162,8 @@ local function prereqCheck ()
     local status, err = pcall(verCheck(),reaimgui_version)
     if not status then 
       table.insert(errors, ('ReaImgui version must be %s or above.\nPlease update via ReaPack.'):format(reaimgui_version)) 
-    elseif not r.ImGui_CreateContext then
-      table.insert(errors, 'ReaImGui error. Please reinstall it via ReaPack.')
+    elseif not r.ImGui_ColorConvertU32ToDouble4 then
+      table.insert(errors, "ReaImGui error.\nPlease reinstall it via ReaPack.\n\nIf you already installed it, remember to restart reaper.")
     end
   else
     table.insert(errors, 'This script requires ReaImgui.\nPlease install it via ReaPack.')
