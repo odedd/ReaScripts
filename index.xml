@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="14634ef8767bdaf62f3eaf5c5f4bf22ee70eb07f">
+<index version="1" name="Odedd ReaScripts" commit="093455ef783004aeec90dc709a1e059f77562a38">
   <category name="Rendering/Stem Manager">
     <reapack name="Odedd_Stem Manager.lua" type="script" desc="Stem Manager">
       <metadata>
@@ -94,6 +94,13 @@ Code housekeeping]]></changelog>
         <source main="main">https://github.com/odedd/ReaScripts/raw/14634ef8767bdaf62f3eaf5c5f4bf22ee70eb07f/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
         <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/14634ef8767bdaf62f3eaf5c5f4bf22ee70eb07f/Resources/Fonts/Cousine-90deg.otf</source>
         <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/14634ef8767bdaf62f3eaf5c5f4bf22ee70eb07f/Resources/Fonts/Cousine-Regular.ttf</source>
+      </version>
+      <version name="0.4" author="Oded Davidov" time="2022-07-06T21:47:43Z">
+        <changelog><![CDATA[Performance improvements
+Fix saving large data sets within project]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/093455ef783004aeec90dc709a1e059f77562a38/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
+        <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/093455ef783004aeec90dc709a1e059f77562a38/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/093455ef783004aeec90dc709a1e059f77562a38/Resources/Fonts/Cousine-Regular.ttf</source>
       </version>
     </reapack>
   </category>
