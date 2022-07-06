@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="260d301855ccad892a155f32ea7da2f2b3dbc6c8">
+<index version="1" name="Odedd ReaScripts" commit="15b8d98ef4ddb5750f508a9f796febac82e5f7fc">
   <category name="Rendering/Stem Manager">
     <reapack name="Odedd_Stem Manager.lua" type="script" desc="Stem Manager">
       <metadata>
@@ -50,6 +50,13 @@ Prevent clicks when switching mirroring between stems]]></changelog>
         <source main="main">https://github.com/odedd/ReaScripts/raw/260d301855ccad892a155f32ea7da2f2b3dbc6c8/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
         <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/260d301855ccad892a155f32ea7da2f2b3dbc6c8/Resources/Fonts/Cousine-90deg.otf</source>
         <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/260d301855ccad892a155f32ea7da2f2b3dbc6c8/Resources/Fonts/Cousine-Regular.ttf</source>
+      </version>
+      <version name="0.2.4" author="Oded Davidov" time="2022-07-06T09:48:23Z">
+        <changelog><![CDATA[0.2.4 Added a clearer message when no render preset exist
+0.2.3 Fix windows compatibility]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/15b8d98ef4ddb5750f508a9f796febac82e5f7fc/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
+        <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/15b8d98ef4ddb5750f508a9f796febac82e5f7fc/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/15b8d98ef4ddb5750f508a9f796febac82e5f7fc/Resources/Fonts/Cousine-Regular.ttf</source>
       </version>
     </reapack>
   </category>
