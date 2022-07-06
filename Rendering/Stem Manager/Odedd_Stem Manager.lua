@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.2.2
+-- @version 0.2.3
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
