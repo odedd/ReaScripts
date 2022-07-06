@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="dbee686d4144ed87d7b96ea9034131b7095f4359">
+<index version="1" name="Odedd ReaScripts" commit="16c6380c560ef3eea8a760a6f22de4766eb9ebb6">
   <category name="Rendering/Stem Manager">
     <reapack name="Odedd_Stem Manager.lua" type="script" desc="Stem Manager">
       <metadata>
@@ -32,6 +32,12 @@ Prevent clicks when switching mirroring between stems]]></changelog>
         <source main="main">https://github.com/odedd/ReaScripts/raw/dbee686d4144ed87d7b96ea9034131b7095f4359/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
         <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/dbee686d4144ed87d7b96ea9034131b7095f4359/Resources/Fonts/Cousine-90deg.otf</source>
         <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/dbee686d4144ed87d7b96ea9034131b7095f4359/Resources/Fonts/Cousine-Regular.ttf</source>
+      </version>
+      <version name="0.2.1" author="Oded Davidov" time="2022-07-06T04:12:07Z">
+        <changelog><![CDATA[Small textual change in settings window]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/16c6380c560ef3eea8a760a6f22de4766eb9ebb6/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
+        <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/16c6380c560ef3eea8a760a6f22de4766eb9ebb6/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/16c6380c560ef3eea8a760a6f22de4766eb9ebb6/Resources/Fonts/Cousine-Regular.ttf</source>
       </version>
     </reapack>
   </category>
