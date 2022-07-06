@@ -2,7 +2,7 @@
 -- @author Oded Davidov
 -- @version 0.3
 -- @donation: https://paypal.me/odedda
--- @license GNU GPL v3
+-- @license GNU GPL v3.1
 -- @provides
 --   [nomain]../../Resources/Fonts/Cousine-90deg.otf
 --   [nomain]../../Resources/Fonts/Cousine-Regular.ttf
@@ -14,7 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Added ability to directly render stem instead of using the render queue.
+--   Rewording
 
 reaper.ClearConsole()
 local STATES             = {
@@ -2063,11 +2063,11 @@ end]]):gsub('$(%w+)', {
       
       r.ImGui_BeginGroup(ctx)
       r.ImGui_AlignTextToFramePadding(ctx)
-      r.ImGui_Text(ctx,'Render behavior')
+      r.ImGui_Text(ctx,'Render action')
       r.ImGui_SameLine(ctx)
       rv, gui.stWnd.tmpStngs.renderaction = r.ImGui_Combo(ctx,'##renderaction',gui.stWnd.tmpStngs.renderaction,renderaction_list)
       r.ImGui_EndGroup(ctx)
-      app.setHoveredHint('settings',("Can replace REAPER's render queue to avoid reloading projects."):format(scr.name))
+      app.setHoveredHint('settings',("What should the default rendering mode be."):format(scr.name))
       
       if gui.stWnd.tmpStngs.renderaction == RENDERACTION_RENDER then
         r.ImGui_BeginGroup(ctx)
