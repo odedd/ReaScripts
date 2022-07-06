@@ -14,7 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Small textual change in settings window
+--   Stop before rendering
 
 reaper.ClearConsole()
 local STATES             = {
@@ -1305,7 +1305,7 @@ end]]):gsub('$(%w+)', {
       markeregion_selection = GetSelectedRegionsOrMarkers()
       r.Main_OnCommand(40326, 0)
     end
-    
+    if reaper.GetAllProjectPlayStates(0)&1 then reaper.OnStopButton() end
     for stemName, stem in pairsByOrder(stemsToRender) do
       idx = idx + 1
       
@@ -2833,7 +2833,8 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
       r.ImGui_DestroyContext(gui.ctx)
     end
   end
-   loadSettings()
+  loadSettings()
+   
   r.defer(app.loop)
 end
 
