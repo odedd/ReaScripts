@@ -85,6 +85,7 @@ local REFLECT_ON_ADD_DESCRIPTIONS = {
 
 
 local SETTINGS_SOURCE_MASK  = 0x10EB
+local PROJ_EXTSTATE_SPLIT = 3500
 
 local RB_CUSTOM_TIME = 0
 local RB_ENTIRE_PROJECT = 1
@@ -638,7 +639,7 @@ if next(errors) == nil then
           r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. scr.context_name .. '_STEM_MATRIX', '', true)
         end
       end
-      r.SetProjExtState(0, scr.context_name, 'STEMS', pickle(self.stems or {}))
+      saveLongProjExtState('STEMS', pickle(self.stems or {}))
       for k, v in pairs(self.savedSoloStates) do
         r.SetProjExtState(0, scr.context_name .. '_SAVED_SOLO_STATES', k, pickle(v))
       end
@@ -648,15 +649,15 @@ if next(errors) == nil then
       if app.debug then tim = os.clock() end
       self.cycles = self.cycles or 0
       if self.cycles == 0 then full = true end        -- if first cycle, force full sync
-      self.current_project = r.EnumProjects(-1)  -- if project changed, force full sync
+      self.current_project = r.GetProjectStateChangeCount(0)  -- if project changed, force full sync
       if self.current_project ~= self.previous_project then
         self.previous_project = self.current_project
         full = true
       end
-      
+     
       if full then
         if app.debug then r.ShowConsoleMsg('FULL SYNC\n') end
-        self.stems           = loadProjExtKey('STEMS') or {}
+        self.stems           = loadLongProjExtKey('STEMS') or {}
         self.prefSoloIP      = select(2, r.get_config_var_string('soloip')) == '1'
       end
       
@@ -686,27 +687,13 @@ if next(errors) == nil then
           self.syncMode = stem.sync
         end
       end
-      -- prepare a string of track Namess+depths and only if they are changed from the 
-      -- last time (=track list changed), perform a full track sync
-      -- trackTempoInfo is used to store that information temporarily, so that if a full scan
-      -- is required, no further API calls would be required
-      local current_tracking_state = ''
-      local trackTempoInfo = {}
-      for trackIdx = 0, r.CountTracks(0) - 1 do
-        local rTrack           = r.GetTrack(0, trackIdx)
-        local _, name = r.GetSetMediaTrackInfo_String(rTrack, "P_NAME", "", false)
-        local folderDepth      = r.GetMediaTrackInfo_Value(rTrack, "I_FOLDERDEPTH", "", false)
-        current_tracking_state = current_tracking_state..name..tostring(folderDepth)
-        table.insert(trackTempoInfo,{rTrack = rTrack, name = name, folderDepth = folderDepth})
-      end
-      if names ~= self.trackChangeTracking then
+      
+      if full then
         self.tracks          = {}
-        self.trackChangeTracking = current_tracking_state
         for trackIdx = 0, r.CountTracks(0) - 1 do
-          local thisTrackTempInfo = trackTempoInfo[trackIdx+1]
-          local rTrack           = thisTrackTempInfo.rTrack --r.GetTrack(0, trackIdx)
-          local name              = thisTrackTempInfo.name  --r.GetSetMediaTrackInfo_String(rTrack, "P_NAME", "", false)
-          local folderDepth      = thisTrackTempInfo.folderDepth --r.GetMediaTrackInfo_Value(rTrack, "I_FOLDERDEPTH", "", false)
+          local rTrack           = r.GetTrack(0, trackIdx)
+          local _, name = r.GetSetMediaTrackInfo_String(rTrack, "P_NAME", "", false)
+          local folderDepth      = r.GetMediaTrackInfo_Value(rTrack, "I_FOLDERDEPTH", "", false)
           local color            = r.GetTrackColor(rTrack)
           local _, rawStemMatrix = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. scr.context_name .. '_STEM_MATRIX', "", false)
           local stemMatrix       = unpickle(rawStemMatrix)
@@ -754,6 +741,31 @@ if next(errors) == nil then
               }
     }
   
+  function deleteLongerProjExtState(key)
+    local n = '*'
+    while reaper.GetProjExtState(0,scr.context_name, key..n) == 1 do 
+      reaper.SetProjExtState(0,scr.context_name, key..n, '')
+      n = n..'*' 
+    end
+  end
+  
+  function saveLongProjExtState(key, value)
+    deleteLongerProjExtState(key)
+    r.SetProjExtState(0, scr.context_name, key, value:sub(1,PROJ_EXTSTATE_SPLIT))
+    if #value > PROJ_EXTSTATE_SPLIT then saveLongProjExtState(key..'*', value:sub(PROJ_EXTSTATE_SPLIT+1, #value)) end
+  end
+  
+  function loadLongProjExtKey(key, should_unpickle)
+    if should_unpickle == nil then should_unpickle = true end
+    local val = loadProjExtKey(key, false) or ''
+    if #val==PROJ_EXTSTATE_SPLIT then val = val..(loadLongProjExtKey(key..'*', false) or '') end
+    if should_unpickle then
+      return (val ~= '' and val ~= nil) and unpickle(val) or nil
+    else
+      return val
+    end
+  end
+  
   function loadProjExtKey(key, shouldUnpickle)
     if shouldUnpickle == nil then
       shouldUnpickle = true
@@ -771,7 +783,6 @@ if next(errors) == nil then
       i              = i + 1
       retval, k, val = r.EnumProjExtState(0, scr.context_name, i)
     end
-    r.get_action_context('retuning nothing')
   end
   
   local settings        = {}
@@ -832,7 +843,7 @@ if next(errors) == nil then
   local function loadSettings()
     settings = getDefaultSettings()
     -- take merged updated default settings and merge project specific settings into them
-    local loaded_project_settings = loadProjExtKey('PROJECT SETTINGS')
+    local loaded_project_settings = loadLongProjExtKey('PROJECT SETTINGS')
     settings.project = deepcopy(settings.default)
     for k, v in pairs(loaded_project_settings or {}) do 
       if not (k == 'render_setting_groups') then
@@ -849,7 +860,7 @@ if next(errors) == nil then
   
   local function saveSettings()
     r.SetExtState(scr.context_name, 'DEFAULT SETTINGS', pickle(settings.default), true)
-    r.SetProjExtState(0, scr.context_name, 'PROJECT SETTINGS', pickle(settings.project))
+    saveLongProjExtState('PROJECT SETTINGS',pickle(settings.project))
     r.MarkProjectDirty(0)
   end
   
@@ -896,7 +907,6 @@ end]]):gsub('$(%w+)', {
         scriptname = scr.basename,
         cmd = cmd})
     code = ('-- This file was created by %s on %s\n\n'):format(scr.name, os.date('%c'))..code
-    --r.ShowConsoleMsg(code)
     local file = assert(io.open(outputFn, 'w'))
     file:write(code)
     file:close()
@@ -1409,7 +1419,6 @@ end]]):gsub('$(%w+)', {
               while not app.render_cancelled and (os.clock() - t < settings.project.wait_time) and idx < (app.perform.fullRender and db.stemCount or 1) do
                 local wait_left = math.ceil(settings.project.wait_time - (os.clock() - t))
                 if app.drawPopup(gui.ctx, 'msg',scr.name..'##wait',{closeKey = r.ImGui_Key_Escape(),okButtonLabel = "Stop rendering", msg = ('Waiting for %d more second%s...'):format(wait_left, wait_left > 1 and 's' or '')}) then
-                  r.ShowConsoleMsg('cancel')
                   app.render_cancelled = true
                 end
                 coroutine.yield('Waiting...', idx, app.perform.fullRender and db.stemCount or 1)
@@ -1881,7 +1890,7 @@ end]]):gsub('$(%w+)', {
         r.ImGui_TableNextRow(ctx, r.ImGui_TableRowFlags_Headers(), cellSize)
         if r.ImGui_TableNextColumn(ctx) then
           r.ImGui_AlignTextToFramePadding(ctx)
-          r.ImGui_SetCursorPosX(ctx,  defPadding*2)
+          r.ImGui_SetCursorPosX(ctx, reaper.ImGui_GetCursorPosX(ctx)+ defPadding*2)
           r.ImGui_Text(ctx, 'Render Setting Groups')
         end
   -- COL: STEM RENDER GROUP
@@ -1897,7 +1906,7 @@ end]]):gsub('$(%w+)', {
           trackListX, trackListY = select(1,r.ImGui_GetCursorScreenPos(ctx)),select(2,r.ImGui_GetCursorScreenPos(ctx))+cellSize+1
           trackListHeight = r.ImGui_GetCursorPosY(ctx) + select(2,r.ImGui_GetContentRegionAvail(ctx)) - cellSize - headerRowHeight - 2
           r.ImGui_AlignTextToFramePadding(ctx)
-          r.ImGui_SetCursorPosX(ctx,  defPadding*2)
+          r.ImGui_SetCursorPosX(ctx, reaper.ImGui_GetCursorPosX(ctx)+ defPadding*2)
           r.ImGui_Text(ctx, 'Mirror stem')
         end
   -- COLS: STEM SYNC BUTTONS
@@ -2099,7 +2108,6 @@ end]]):gsub('$(%w+)', {
       if r.ImGui_BeginTabBar(ctx,'Render Group Settings') then
         for stGrp=1,RENDER_SETTING_GROUPS_SLOTS do
           if gui.stWnd.activeRSG == stGrp then 
-            --r.ShowConsoleMsg(stGrp)
             r.ImGui_SetNextItemWidth(ctx,halfWidth*3/RENDER_SETTING_GROUPS_SLOTS) 
           end
           if r.ImGui_BeginTabItem(ctx,stGrp..'##settingGroup'..stGrp) then
@@ -2171,7 +2179,7 @@ end]]):gsub('$(%w+)', {
                 else
                   -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames 
                   app.stFrameCount=(app.stFrameCount or 0)+1
-                  if app.stFrameCount / 10 == 1 then
+                  if app.stFrameCount / 30 == 1 then
                     app.stFrameCount = 0
                     app.rm_window_open = GetRegionManagerWindow() ~= nil
                   end
@@ -2439,7 +2447,7 @@ end]]):gsub('$(%w+)', {
         if r.ImGui_IsWindowAppearing(ctx) then
           gui.caWnd.actionList = {}
           gui.caWnd.actionList['General Actions']       = {order = 1, actions={}}
-          gui.caWnd.actionList['Renger Group Actions']  = {order = 2, actions={}}
+          gui.caWnd.actionList['Render Group Actions']  = {order = 2, actions={}}
           gui.caWnd.actionList['Stem Actions']          = {order = 3, actions={}} 
           gui.caWnd.actionList['General Actions'].actions = {{title = 'Add all stems to render queue', command = 'add_all'}}
           for k, v in pairsByOrder(db.stems) do
@@ -2452,10 +2460,10 @@ end]]):gsub('$(%w+)', {
             table.insert(gui.caWnd.actionList['Stem Actions'].actions,{title = ("Render '%s' now"):format(k), command = ("render %s"):format(k)})
           end
           for i=1, RENDER_SETTING_GROUPS_SLOTS do
-            table.insert(gui.caWnd.actionList['Renger Group Actions'].actions,{title = ("Add render group %d to render queue"):format(i), command = ("add_rg %d"):format(i)})
+            table.insert(gui.caWnd.actionList['Render Group Actions'].actions,{title = ("Add render group %d to render queue"):format(i), command = ("add_rg %d"):format(i)})
           end
           for i=1, RENDER_SETTING_GROUPS_SLOTS do
-            table.insert(gui.caWnd.actionList['Renger Group Actions'].actions,{title = ("Render group %d now"):format(i), command = ("render_rg %d"):format(i)})
+            table.insert(gui.caWnd.actionList['Render Group Actions'].actions,{title = ("Render group %d now"):format(i), command = ("render_rg %d"):format(i)})
           end
           updateActionStatuses(gui.caWnd.actionList)
         end
@@ -2864,7 +2872,6 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
     end
   end
   loadSettings()
-   
   r.defer(app.loop)
 end
 
