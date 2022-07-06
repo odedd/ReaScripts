@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.3.1
+-- @version 0.3.2
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,7 +14,8 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Rewording
+--   Improve settings window performance when region or marker selection is needed
+--   Code housekeeping
 
 reaper.ClearConsole()
 local STATES             = {
@@ -1312,7 +1313,7 @@ end]]):gsub('$(%w+)', {
       markeregion_selection = GetSelectedRegionsOrMarkers()
       r.Main_OnCommand(40326, 0)
     end
-    if reaper.GetAllProjectPlayStates(0)&1 then reaper.OnStopButton() end
+    if r.GetAllProjectPlayStates(0)&1 then r.OnStopButton() end
     for stemName, stem in pairsByOrder(stemsToRender) do
       if not app.render_cancelled then
         idx = idx + 1
@@ -1402,18 +1403,18 @@ end]]):gsub('$(%w+)', {
               coroutine.yield('rendering', idx, app.perform.fullRender and db.stemCount or 1)
               r.Main_OnCommand(42230, 0) --render now
               r.Main_OnCommand(40043,0) -- go to end of project
-              reaper.OnPlayButtonEx(0)
+              r.OnPlayButtonEx(0)
               local t = os.clock()
-              reaper.ImGui_OpenPopup(gui.ctx,scr.name..'##wait')
+              r.ImGui_OpenPopup(gui.ctx,scr.name..'##wait')
               while not app.render_cancelled and (os.clock() - t < settings.project.wait_time) and idx < (app.perform.fullRender and db.stemCount or 1) do
                 local wait_left = math.ceil(settings.project.wait_time - (os.clock() - t))
-                if app.drawPopup(gui.ctx, 'msg',scr.name..'##wait',{closeKey = reaper.ImGui_Key_Escape(),okButtonLabel = "Stop rendering", msg = ('Waiting for %d more second%s...'):format(wait_left, wait_left > 1 and 's' or '')}) then
-                  reaper.ShowConsoleMsg('cancel')
+                if app.drawPopup(gui.ctx, 'msg',scr.name..'##wait',{closeKey = r.ImGui_Key_Escape(),okButtonLabel = "Stop rendering", msg = ('Waiting for %d more second%s...'):format(wait_left, wait_left > 1 and 's' or '')}) then
+                  r.ShowConsoleMsg('cancel')
                   app.render_cancelled = true
                 end
                 coroutine.yield('Waiting...', idx, app.perform.fullRender and db.stemCount or 1)
               end
-              reaper.OnStopButtonEx(0)
+              r.OnStopButtonEx(0)
             else
               r.Main_OnCommand(41823, 0) --add to render queue
             end
@@ -1523,7 +1524,7 @@ end]]):gsub('$(%w+)', {
       local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, msg)
       local okButtonLabel         = data.okButtonLabel or 'OK'
       local bottom_lines          = 1
-      local closeKey = data.closeKey or reaper.ImGui_Key_Enter()
+      local closeKey = data.closeKey or r.ImGui_Key_Enter()
   
       r.ImGui_SetNextWindowSize(ctx, math.max(220,textWidth) + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4, textHeight + 90)
       r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
@@ -1574,7 +1575,7 @@ end]]):gsub('$(%w+)', {
         if r.ImGui_Selectable(ctx, 'Delete', false) then db:removeStem(data.stemName) end
         r.ImGui_PopStyleColor(ctx)
         app.setHoveredHint('main', 'Delete stem')
-        if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Escape()) then reaper.ImGui_CloseCurrentPopup(ctx) end
+        if r.ImGui_IsKeyPressed(ctx, r.ImGui_Key_Escape()) then r.ImGui_CloseCurrentPopup(ctx) end
         r.ImGui_EndPopup(ctx)
       end
     elseif popupType == 'renderPresetSelector' then
@@ -1591,7 +1592,7 @@ end]]):gsub('$(%w+)', {
           end
         end
         if presetCount == 0 then
-          reaper.ImGui_Text(ctx, "No render presets found.\nPlease create and add presets using\nREAPER's render window preset button.")
+          r.ImGui_Text(ctx, "No render presets found.\nPlease create and add presets using\nREAPER's render window preset button.")
         end
         r.ImGui_EndPopup(ctx)
       end
@@ -2021,6 +2022,7 @@ end]]):gsub('$(%w+)', {
     local halfWidth = 230
     local itemWidth = halfWidth*2
     local renderaction_list = ''
+    local stFrameCount = 0 -- local frameCount for only querying the state of the region manager window every x frames
     for i=0, #RENDERACTION_DESCRIPTIONS do
       renderaction_list = renderaction_list..RENDERACTION_DESCRIPTIONS[i]..'\0'
     end
@@ -2046,6 +2048,7 @@ end]]):gsub('$(%w+)', {
         if r.APIExists('JS_Localize') then
           local manager = GetRegionManagerWindow()
           if manager then r.Main_OnCommand(40326, 0) end
+          app.rm_window_open = false
         end
       end
       
@@ -2057,7 +2060,7 @@ end]]):gsub('$(%w+)', {
       r.ImGui_AlignTextToFramePadding(ctx)
       r.ImGui_Text(ctx,'New stems will be added')
       r.ImGui_SameLine(ctx)
-      rv, gui.stWnd.tmpStngs.reflect_on_add = reaper.ImGui_Combo(ctx,'##reflect_on_add',gui.stWnd.tmpStngs.reflect_on_add,reflect_on_add_list)
+      rv, gui.stWnd.tmpStngs.reflect_on_add = r.ImGui_Combo(ctx,'##reflect_on_add',gui.stWnd.tmpStngs.reflect_on_add,reflect_on_add_list)
       r.ImGui_EndGroup(ctx)
       app.setHoveredHint('settings',"What solo states will newly added stems have?")
       
@@ -2074,7 +2077,7 @@ end]]):gsub('$(%w+)', {
         r.ImGui_AlignTextToFramePadding(ctx)
         r.ImGui_Text(ctx,'Wait time between renders')
         r.ImGui_SameLine(ctx)
-        rv, gui.stWnd.tmpStngs.wait_time = reaper.ImGui_DragInt(ctx, '##waitTime',gui.stWnd.tmpStngs.wait_time,0.1, WAITTIME_MIN,WAITTIME_MAX) 
+        rv, gui.stWnd.tmpStngs.wait_time = r.ImGui_DragInt(ctx, '##waitTime',gui.stWnd.tmpStngs.wait_time,0.1, WAITTIME_MIN,WAITTIME_MAX) 
         r.ImGui_EndGroup(ctx)
         app.setHoveredHint('settings',"Time to wait between renders to allow canceling and to let FX tails die down.")
       end
@@ -2166,7 +2169,13 @@ end]]):gsub('$(%w+)', {
                 if not r.APIExists('JS_Localize') then
                   r.ImGui_TextColored(ctx,gui.st.col.error,'js_ReaScriptAPI extension is required for selecting regions.')
                 else
-                  if not GetRegionManagerWindow() then
+                  -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames 
+                  app.stFrameCount=(app.stFrameCount or 0)+1
+                  if app.stFrameCount / 6 == 1 then
+                    app.stFrameCount = 0
+                    app.rm_window_open = GetRegionManagerWindow() ~= nil
+                  end
+                  if not app.rm_window_open then
                     local title = ('%s selected'):format((#rsg.selected_regions > 0) and ((#rsg.selected_regions > 1) and #rsg.selected_regions..' regions' or '1 region') or "No region")
                     if r.ImGui_Button(ctx,title, itemWidth) then
                       if  #rsg.selected_regions > 0 and gui.modKeys=="a" then
@@ -2186,7 +2195,7 @@ end]]):gsub('$(%w+)', {
                         r.ImGui_Separator(ctx)
                         r.ImGui_Text(ctx,region_names)
                       r.ImGui_EndTooltip(ctx)
-                      else
+                    else
                       app.setHoveredHint('settings',"Click to select regions.")
                     end
                   else
@@ -2205,7 +2214,13 @@ end]]):gsub('$(%w+)', {
                 if not r.APIExists('JS_Localize') then
                   r.ImGui_TextColored(ctx,gui.st.col.error,'js_ReaScriptAPI extension is required for selecting markers.')
                 else
-                  if not GetRegionManagerWindow() then
+                  -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames 
+                  app.stFrameCount=(app.stFrameCount or 0)+1
+                  if app.stFrameCount / 6 == 1 then
+                    app.stFrameCount = 0
+                    app.rm_window_open = GetRegionManagerWindow() ~= nil
+                  end
+                  if not app.rm_window_open then
                     local title = ('%s selected'):format((#rsg.selected_markers > 0) and ((#rsg.selected_markers > 1) and #rsg.selected_markers..' markers' or '1 marker') or "No marker")
                     if r.ImGui_Button(ctx,title, itemWidth) then
                       if  #rsg.selected_markers > 0 and gui.modKeys=="a" then
@@ -2302,10 +2317,10 @@ end]]):gsub('$(%w+)', {
             for i,check in ipairs(checks) do
               if not check.passed and check.severity == 'warning' then warnings = true end
             end
-            reaper.ImGui_AlignTextToFramePadding(ctx)
+            r.ImGui_AlignTextToFramePadding(ctx)
             r.ImGui_Text(ctx,'Checklist:')
             if warnings then
-              reaper.ImGui_SameLine(ctx)
+              r.ImGui_SameLine(ctx)
               rv, rsg.ignore_warnings = r.ImGui_Checkbox(ctx,"Don't show non critical (orange) errors before rendering", rsg.ignore_warnings)    
               app.setHoveredHint('settings',"This means you're aware of the warnings and are OK with them :)")
             end
@@ -2651,26 +2666,26 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
       if r.ImGui_BeginChild(ctx, '##ActionList',0,childHeight) then
       local i = 0
         for title, section in help:gmatch('|([^\r\n]+)([^|]+)') do
-          if  reaper.ImGui_CollapsingHeader(ctx, title,false, (i==0 and reaper.ImGui_TreeNodeFlags_DefaultOpen() or reaper.ImGui_TreeNodeFlags_None()) | reaper.ImGui_Cond_Appearing()) then
+          if  r.ImGui_CollapsingHeader(ctx, title,false, (i==0 and r.ImGui_TreeNodeFlags_DefaultOpen() or r.ImGui_TreeNodeFlags_None()) | r.ImGui_Cond_Appearing()) then
             for text, bold in section:gmatch('([^#]*)#?([^#]+)#?\n?\r?') do
               if text then r.ImGui_TextWrapped(ctx, text) end
               if bold then 
-                reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Text(),0xff8844ff) 
+                r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(),0xff8844ff) 
                 r.ImGui_TextWrapped(ctx, bold)
-                reaper.ImGui_PopStyleColor(ctx)
+                r.ImGui_PopStyleColor(ctx)
               end
             end
           end
           i = i+1
         end
-        reaper.ImGui_EndChild(ctx)
+        r.ImGui_EndChild(ctx)
       end
-      reaper.ImGui_Separator(ctx)
+      r.ImGui_Separator(ctx)
       r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines)-paddingY)
-      reaper.ImGui_Text(ctx,'While this script is free,')
-      reaper.ImGui_SameLine(ctx)
+      r.ImGui_Text(ctx,'While this script is free,')
+      r.ImGui_SameLine(ctx)
       gui:pushColors(gui.st.col.render_setting_groups[3])
-      if reaper.ImGui_SmallButton(ctx,'donations') then
+      if r.ImGui_SmallButton(ctx,'donations') then
         if r.APIExists('CF_ShellExecute') then
           r.CF_ShellExecute(scr.donation)
         else
@@ -2680,14 +2695,14 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
           elseif os_is.lin then command = 'xdg-open "%s"'
           end
           if command then 
-            reaper.ShowConsoleMsg(command:format(scr.donation))
+            r.ShowConsoleMsg(command:format(scr.donation))
             os.execute(command:format(scr.donation))
           end
         end
       end
       gui:popColors(gui.st.col.render_setting_groups[1])
-      reaper.ImGui_SameLine(ctx)
-      reaper.ImGui_Text(ctx,'will be very much appreciated ;-)')
+      r.ImGui_SameLine(ctx)
+      r.ImGui_Text(ctx,'will be very much appreciated ;-)')
       if r.ImGui_Button(ctx, "Close") or r.ImGui_IsKeyPressed(ctx,r.ImGui_Key_Escape()) then 
         app.show_help = false
       end
@@ -2753,7 +2768,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
         app.coPerform = coroutine.create(doPerform)
       end
     else 
-      reaper.ImGui_ProgressBar(ctx, (app.perform.pos or 1) / (app.perform.total  or 1),r.ImGui_GetContentRegionAvail(ctx))
+      r.ImGui_ProgressBar(ctx, (app.perform.pos or 1) / (app.perform.total  or 1),r.ImGui_GetContentRegionAvail(ctx))
     end
   end
   
