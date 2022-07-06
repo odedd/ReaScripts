@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.3.2
+-- @version 0.3.3
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,8 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Improve settings window performance when region or marker selection is needed
---   Code housekeeping
+--   Mark project dirty when saving settings, enabling re-saving it to make the changes persist.
 
 reaper.ClearConsole()
 local STATES             = {
@@ -851,6 +850,7 @@ if next(errors) == nil then
   local function saveSettings()
     r.SetExtState(scr.context_name, 'DEFAULT SETTINGS', pickle(settings.default), true)
     r.SetProjExtState(0, scr.context_name, 'PROJECT SETTINGS', pickle(settings.project))
+    r.MarkProjectDirty(0)
   end
   
   
