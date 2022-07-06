@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.3.4
+-- @version 0.4
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,7 +14,8 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Performance bump for 
+--   Performance improvements
+--   Fix saving large data sets within project
 
 reaper.ClearConsole()
 local STATES             = {
