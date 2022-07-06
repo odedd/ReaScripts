@@ -128,7 +128,7 @@ end
 
 scr.path, scr.secID, scr.cmdID = select(2, r.get_action_context())
 scr.dir = scr.path:match(".+[\\/]")
-scr.basename = scr.path:match("^.+/(.+)$")
+scr.basename = scr.path:match("^.+[\\/](.+)$")
 scr.no_ext = scr.basename:match("(.+)%.")
 findContentKey(getContent(scr.path), "", true)
 scr.namespace   = "Odedd"
