@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.3.3
+-- @version 0.3.4
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,7 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Mark project dirty when saving settings, enabling re-saving it to make the changes persist.
+--   Performance bump for 
 
 reaper.ClearConsole()
 local STATES             = {
@@ -2171,7 +2171,7 @@ end]]):gsub('$(%w+)', {
                 else
                   -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames 
                   app.stFrameCount=(app.stFrameCount or 0)+1
-                  if app.stFrameCount / 6 == 1 then
+                  if app.stFrameCount / 10 == 1 then
                     app.stFrameCount = 0
                     app.rm_window_open = GetRegionManagerWindow() ~= nil
                   end
@@ -2216,7 +2216,7 @@ end]]):gsub('$(%w+)', {
                 else
                   -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames 
                   app.stFrameCount=(app.stFrameCount or 0)+1
-                  if app.stFrameCount / 6 == 1 then
+                  if app.stFrameCount / 10 == 1 then
                     app.stFrameCount = 0
                     app.rm_window_open = GetRegionManagerWindow() ~= nil
                   end
