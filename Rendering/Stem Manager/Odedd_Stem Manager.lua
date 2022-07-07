@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.4.1
+-- @version 0.4.2
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,7 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Fix - dragging media item to a new track crashes Stem Manager
+--   Under the hood
 
 reaper.ClearConsole()
 local STATES             = {
@@ -657,7 +657,7 @@ if next(errors) == nil then
      
       if full then
         if app.debug then r.ShowConsoleMsg('FULL SYNC\n') end
-        self.stems           = loadLongProjExtKey('STEMS') or {}
+        self.stems           = unpickle(loadLongProjExtKey('STEMS')) or {}
         self.prefSoloIP      = select(2, r.get_config_var_string('soloip')) == '1'
       end
       
@@ -752,39 +752,22 @@ if next(errors) == nil then
     end
   end
   
-  function saveLongProjExtState(key, value)
+  function saveLongProjExtState(key, val)
     deleteLongerProjExtState(key)
-    r.SetProjExtState(0, scr.context_name, key, value:sub(1,PROJ_EXTSTATE_SPLIT))
-    if #value > PROJ_EXTSTATE_SPLIT then saveLongProjExtState(key..'*', value:sub(PROJ_EXTSTATE_SPLIT+1, #value)) end
+    r.SetProjExtState(0, scr.context_name, key, val:sub(1,PROJ_EXTSTATE_SPLIT))
+    if #val > PROJ_EXTSTATE_SPLIT then saveLongProjExtState(key..'*', val:sub(PROJ_EXTSTATE_SPLIT+1, #val)) end
   end
   
-  function loadLongProjExtKey(key, should_unpickle)
-    if should_unpickle == nil then should_unpickle = true end
-    local val = loadProjExtKey(key, false) or ''
-    if #val==PROJ_EXTSTATE_SPLIT then val = val..(loadLongProjExtKey(key..'*', false) or '') end
-    if should_unpickle then
-      return (val ~= '' and val ~= nil) and unpickle(val) or nil
-    else
-      return val
-    end
-  end
-  
-  function loadProjExtKey(key, shouldUnpickle)
-    if shouldUnpickle == nil then
-      shouldUnpickle = true
-    end
-    local i              = 0
-    local retval, k, val = r.EnumProjExtState(0, scr.context_name, i)
-  
-    while retval do
-      if (k == key) and not shouldUnpickle then
+  function loadLongProjExtKey(key)
+    local i = 0
+    while true do
+      retval, k, val = r.EnumProjExtState(0, scr.context_name, i)
+      if not retval then break end
+      if (k == key) then
+        if #val==PROJ_EXTSTATE_SPLIT then val = val..(loadLongProjExtKey(key..'*') or '') end
         return val
       end
-      if (k == key) and shouldUnpickle then
-        return unpickle(val)
-      end
-      i              = i + 1
-      retval, k, val = r.EnumProjExtState(0, scr.context_name, i)
+      i = i + 1
     end
   end
   
@@ -846,7 +829,7 @@ if next(errors) == nil then
   local function loadSettings()
     settings = getDefaultSettings()
     -- take merged updated default settings and merge project specific settings into them
-    local loaded_project_settings = loadLongProjExtKey('PROJECT SETTINGS')
+    local loaded_project_settings = unpickle(loadLongProjExtKey('PROJECT SETTINGS'))
     settings.project = deepcopy(settings.default)
     for k, v in pairs(loaded_project_settings or {}) do 
       if not (k == 'render_setting_groups') then
