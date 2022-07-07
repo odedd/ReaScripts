@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.4
+-- @version 0.4.1
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,8 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Performance improvements
---   Fix saving large data sets within project
+--   Fix - dragging media item to a new track crashes Stem Manager
 
 reaper.ClearConsole()
 local STATES             = {
@@ -688,10 +687,13 @@ if next(errors) == nil then
           self.syncMode = stem.sync
         end
       end
+      local trackCount = r.CountTracks(0) 
+      self.lastTrackCount = self.lastTrackCount or trackCount
       
-      if full then
+      if full or self.lastTrackCount ~= trackCount then
+        self.lastTrackCount =  trackCount
         self.tracks          = {}
-        for trackIdx = 0, r.CountTracks(0) - 1 do
+        for trackIdx = 0, trackCount - 1 do
           local rTrack           = r.GetTrack(0, trackIdx)
           local _, name = r.GetSetMediaTrackInfo_String(rTrack, "P_NAME", "", false)
           local folderDepth      = r.GetMediaTrackInfo_Value(rTrack, "I_FOLDERDEPTH", "", false)
@@ -2873,6 +2875,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
     end
   end
   loadSettings()
+  --app.debug = true
   r.defer(app.loop)
 end
 
