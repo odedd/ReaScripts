@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.4.2
+-- @version 0.4.3
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -85,7 +85,6 @@ local REFLECT_ON_ADD_DESCRIPTIONS = {
 
 
 local SETTINGS_SOURCE_MASK  = 0x10EB
-local PROJ_EXTSTATE_SPLIT = 3500
 
 local RB_CUSTOM_TIME = 0
 local RB_ENTIRE_PROJECT = 1
@@ -753,18 +752,20 @@ if next(errors) == nil then
   end
   
   function saveLongProjExtState(key, val)
+    local maxLength = 2^12-#key-2
     deleteLongerProjExtState(key)
-    r.SetProjExtState(0, scr.context_name, key, val:sub(1,PROJ_EXTSTATE_SPLIT))
-    if #val > PROJ_EXTSTATE_SPLIT then saveLongProjExtState(key..'*', val:sub(PROJ_EXTSTATE_SPLIT+1, #val)) end
+    r.SetProjExtState(0, scr.context_name, key, val:sub(1,maxLength))
+    if #val > maxLength then saveLongProjExtState(key..'*', val:sub(maxLength+1, #val)) end
   end
   
   function loadLongProjExtKey(key)
     local i = 0
+    local maxLength = 2^12-#key-2
     while true do
       retval, k, val = r.EnumProjExtState(0, scr.context_name, i)
       if not retval then break end
       if (k == key) then
-        if #val==PROJ_EXTSTATE_SPLIT then val = val..(loadLongProjExtKey(key..'*') or '') end
+        if #val==maxLength then val = val..(loadLongProjExtKey(key..'*') or '') end
         return val
       end
       i = i + 1
@@ -784,6 +785,7 @@ if next(errors) == nil then
         render_setting_groups = {}
       }
     }
+    
     local default_render_settings = {
       description = '',
       render_preset = nil, 
@@ -2858,7 +2860,5 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
     end
   end
   loadSettings()
-  --app.debug = true
   r.defer(app.loop)
 end
-
