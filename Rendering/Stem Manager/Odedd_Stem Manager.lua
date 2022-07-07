@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.4.3
+-- @version 0.4.4
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -1202,7 +1202,9 @@ end]]):gsub('$(%w+)', {
     local checks = {}
     local ok = true
     presetName = rsg.render_preset
-    
+    -- TODO: 
+    -- if render bounds are "selected regions" and a region which has no region matrix assignments is selected
+    -- reaper ignores it and renders region(s?) that do have. I think this should be a critical error
     if presetName and not db.renderPresets[presetName] then
       table.insert(checks, {passed = false, 
                             status="Preset does not exist",
@@ -1402,6 +1404,11 @@ end]]):gsub('$(%w+)', {
             end
             --local _v, msg = r.GetSetProjectInfo_String(0, "RENDER_PATTERN", '', false)
             if app.current_renderaction == RENDERACTION_RENDER then
+              -- TODO: 
+              -- if settings.overwrite_without_asking (or something) then
+              -- get render target list (r.GetSetProjectInfo_String(0,'RENDER_TARGETS','',false)
+              -- check if files exist
+              -- delete them
               coroutine.yield('rendering', idx, app.perform.fullRender and db.stemCount or 1)
               r.Main_OnCommand(42230, 0) --render now
               r.Main_OnCommand(40043,0) -- go to end of project
@@ -2194,14 +2201,14 @@ end]]):gsub('$(%w+)', {
                   r.ImGui_TextColored(ctx,gui.st.col.error,'js_ReaScriptAPI extension is required for selecting regions.')
                 else
                   -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames 
-                  if gui.stWnd[curProj].frameCount == 30 then
+                  if gui.stWnd[curProj].frameCount % 30 == 1 then
                     gui.stWnd[curProj].frameCount = 0
                     app.rm_window_open = GetRegionManagerWindow() ~= nil
                   end
                   if not app.rm_window_open then
                     local title = ('%s selected'):format((#rsg.selected_regions > 0) and ((#rsg.selected_regions > 1) and #rsg.selected_regions..' regions' or '1 region') or "No region")
                     if r.ImGui_Button(ctx,title, itemWidth) then
-                      if  #rsg.selected_regions > 0 and gui.modKeys=="a" then
+                      if #rsg.selected_regions > 0 and gui.modKeys=="a" then
                         rsg.selected_regions = {}
                       else
                         r.Main_OnCommand(40326, 0)
@@ -2226,7 +2233,6 @@ end]]):gsub('$(%w+)', {
                       rsg.selected_regions = GetSelectedRegions()
                     end
                     app.setHint('settings',"Select regions in the region/marker manager and click button to capture the selection.")
-                    
                   end
                 end
               end
@@ -2238,7 +2244,7 @@ end]]):gsub('$(%w+)', {
                   r.ImGui_TextColored(ctx,gui.st.col.error,'js_ReaScriptAPI extension is required for selecting markers.')
                 else
                   -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames 
-                  if gui.stWnd[curProj].frameCount == 30 then
+                  if gui.stWnd[curProj].frameCount % 30 == 1 then
                     gui.stWnd[curProj].frameCount = 0
                     app.rm_window_open = GetRegionManagerWindow() ~= nil
                   end
