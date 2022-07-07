@@ -638,7 +638,7 @@ if next(errors) == nil then
           r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. scr.context_name .. '_STEM_MATRIX', '', true)
         end
       end
-      saveLongProjExtState('STEMS', pickle(self.stems or {}))
+      saveLongProjExtState(scr.context_name, 'STEMS', pickle(self.stems or {}))
       for k, v in pairs(self.savedSoloStates) do
         r.SetProjExtState(0, scr.context_name .. '_SAVED_SOLO_STATES', k, pickle(v))
       end
@@ -656,7 +656,7 @@ if next(errors) == nil then
      
       if full then
         if app.debug then r.ShowConsoleMsg('FULL SYNC\n') end
-        self.stems           = unpickle(loadLongProjExtKey('STEMS')) or {}
+        self.stems           = unpickle(loadLongProjExtKey(scr.context_name, 'STEMS')) or {}
         self.prefSoloIP      = select(2, r.get_config_var_string('soloip')) == '1'
       end
       
@@ -743,29 +743,29 @@ if next(errors) == nil then
               }
     }
   
-  function deleteLongerProjExtState(key)
+  function deleteLongerProjExtState(section, key)
     local n = '*'
-    while reaper.GetProjExtState(0,scr.context_name, key..n) == 1 do 
-      reaper.SetProjExtState(0,scr.context_name, key..n, '')
+    while reaper.GetProjExtState(0,section, key..n) == 1 do 
+      reaper.SetProjExtState(0,section, key..n, '')
       n = n..'*' 
     end
   end
   
-  function saveLongProjExtState(key, val)
+  function saveLongProjExtState(section, key, val)
     local maxLength = 2^12-#key-2
-    deleteLongerProjExtState(key)
-    r.SetProjExtState(0, scr.context_name, key, val:sub(1,maxLength))
-    if #val > maxLength then saveLongProjExtState(key..'*', val:sub(maxLength+1, #val)) end
+    deleteLongerProjExtState(section, key)
+    r.SetProjExtState(0, section, key, val:sub(1,maxLength))
+    if #val > maxLength then saveLongProjExtState(section, key..'*', val:sub(maxLength+1, #val)) end
   end
   
-  function loadLongProjExtKey(key)
+  function loadLongProjExtKey(section, key)
     local i = 0
     local maxLength = 2^12-#key-2
     while true do
-      retval, k, val = r.EnumProjExtState(0, scr.context_name, i)
+      retval, k, val = r.EnumProjExtState(0, section, i)
       if not retval then break end
       if (k == key) then
-        if #val==maxLength then val = val..(loadLongProjExtKey(key..'*') or '') end
+        if #val==maxLength then val = val..(loadLongProjExtKey(section, key..'*') or '') end
         return val
       end
       i = i + 1
@@ -831,7 +831,7 @@ if next(errors) == nil then
   local function loadSettings()
     settings = getDefaultSettings()
     -- take merged updated default settings and merge project specific settings into them
-    local loaded_project_settings = unpickle(loadLongProjExtKey('PROJECT SETTINGS'))
+    local loaded_project_settings = unpickle(loadLongProjExtKey(scr.context_name, 'PROJECT SETTINGS'))
     settings.project = deepcopy(settings.default)
     for k, v in pairs(loaded_project_settings or {}) do 
       if not (k == 'render_setting_groups') then
@@ -848,7 +848,7 @@ if next(errors) == nil then
   
   local function saveSettings()
     r.SetExtState(scr.context_name, 'DEFAULT SETTINGS', pickle(settings.default), true)
-    saveLongProjExtState('PROJECT SETTINGS',pickle(settings.project))
+    saveLongProjExtState(scr.context_name,'PROJECT SETTINGS',pickle(settings.project))
     r.MarkProjectDirty(0)
   end
   
@@ -2691,7 +2691,6 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
           elseif os_is.lin then command = 'xdg-open "%s"'
           end
           if command then 
-            r.ShowConsoleMsg(command:format(scr.donation))
             os.execute(command:format(scr.donation))
           end
         end
