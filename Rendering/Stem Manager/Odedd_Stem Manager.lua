@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.4.4
+-- @version 0.4.5
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,9 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Added post render actions
---   Added apply button to settings window & changed from Save to OK
---   Settings new update when changing projects when the settings window is active
+--   fix performance issue
 
 reaper.ClearConsole()
 local STATES             = {
@@ -2201,7 +2199,7 @@ end]]):gsub('$(%w+)', {
                   r.ImGui_TextColored(ctx,gui.st.col.error,'js_ReaScriptAPI extension is required for selecting regions.')
                 else
                   -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames 
-                  if gui.stWnd[curProj].frameCount % 30 == 1 then
+                  if gui.stWnd[curProj].frameCount % 10 == 0 then
                     gui.stWnd[curProj].frameCount = 0
                     app.rm_window_open = GetRegionManagerWindow() ~= nil
                   end
@@ -2244,7 +2242,7 @@ end]]):gsub('$(%w+)', {
                   r.ImGui_TextColored(ctx,gui.st.col.error,'js_ReaScriptAPI extension is required for selecting markers.')
                 else
                   -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames 
-                  if gui.stWnd[curProj].frameCount % 30 == 1 then
+                  if gui.stWnd[curProj].frameCount % 10 == 0 then
                     gui.stWnd[curProj].frameCount = 0
                     app.rm_window_open = GetRegionManagerWindow() ~= nil
                   end
