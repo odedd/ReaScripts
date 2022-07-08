@@ -2088,60 +2088,131 @@ end]]):gsub('$(%w+)', {
       r.ImGui_Text(ctx, 'Global Settings')
       r.ImGui_Separator(ctx)
       
-      r.ImGui_PushItemWidth(ctx, itemWidth)
-      
-      local function setting(text, hint, stType, val, data)
+      local function setting(stType, text, hint, val, data, sameline)
         local data = data or {}
-        local retval_a, retval_b
-        r.ImGui_BeginGroup(ctx)
-        r.ImGui_AlignTextToFramePadding(ctx)
-        reaper.ImGui_PushTextWrapPos(ctx,halfWidth)
-        r.ImGui_Text(ctx,text)
-        reaper.ImGui_PopTextWrapPos(ctx)
-        r.ImGui_SameLine(ctx)
-        r.ImGui_SetCursorPosX(ctx, halfWidth)
-        if stType == 'combo' then
-          _, retval_a = r.ImGui_Combo(ctx,'##'..text,val,data.list)
-        elseif stType == 'checkbox' then
-          _, retval_a = r.ImGui_Checkbox(ctx,'##'..text,val)
-        elseif stType == 'dragint' then
-          _, retval_a = r.ImGui_DragInt(ctx,'##'..text,val, data.step, data.min, data.max)
-        elseif stType == 'button' then
-          retval_a = r.ImGui_Button(ctx, data.label, itemWidth)
-        elseif stType == 'text' then
-          _, retval_a = reaper.ImGui_InputText(ctx, '##'..text,val, itemWidth)
-        elseif stType == 'time_sel' then
-          retval_a, retval_b = val[1], val[2]
-          if setting('','', 'button',nil, data) then
-            retval_a, retval_b = r.GetSet_LoopTimeRange(0,0,0,0,0)--, boolean isLoop, number start, number end, boolean allowautoseek)
-          end
-          r.ImGui_SetCursorPosX(ctx, halfWidth)
-          if r.ImGui_BeginChildFrame(ctx,'##timeselstart',halfWidth,r.ImGui_GetFrameHeight(ctx)) then
-            r.ImGui_Text(ctx, r.format_timestr_pos(retval_a,'',5)) 
-            r.ImGui_EndChildFrame(ctx)
-          end 
-          app.setHoveredHint('settings',"Time seleciton start.")
+        local retval
+        local widgetWidth 
+        if not sameline then
+          r.ImGui_BeginGroup(ctx)
+          r.ImGui_AlignTextToFramePadding(ctx)
+          reaper.ImGui_PushTextWrapPos(ctx,halfWidth)
+          r.ImGui_Text(ctx,text)
+          reaper.ImGui_PopTextWrapPos(ctx)
           r.ImGui_SameLine(ctx)
-          r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx)-r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing()))
-          if r.ImGui_BeginChildFrame(ctx,'##timeselend',r.ImGui_GetContentRegionAvail(ctx),r.ImGui_GetFrameHeight(ctx)) then
-            r.ImGui_Text(ctx,  r.format_timestr_pos(retval_b,'',5))
-            r.ImGui_EndChildFrame(ctx)
-          end
-          app.setHoveredHint('settings',"Time seleciton end.")
+          r.ImGui_SetCursorPosX(ctx, halfWidth)
+          widgetWidth = itemWidth
+          
+        else
+          reaper.ImGui_SameLine(ctx)
+          r.ImGui_SetCursorPosX(ctx, reaper.ImGui_GetCursorPosX(ctx)-r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing()))
+          widgetWidth = itemWidth - gui.TEXT_BASE_WIDTH*2-reaper.ImGui_GetStyleVar(ctx, reaper.ImGui_StyleVar_FramePadding())*2
         end
-        r.ImGui_EndGroup(ctx)
+        r.ImGui_PushItemWidth(ctx, widgetWidth)
+        
+        if stType == 'combo' then
+          _, retval = r.ImGui_Combo(ctx,'##'..text,val,data.list)
+        elseif stType == 'checkbox' then
+          _, retval = r.ImGui_Checkbox(ctx,'##'..text,val)
+        elseif stType == 'dragint' then
+          _, retval = r.ImGui_DragInt(ctx,'##'..text,val, data.step, data.min, data.max)
+        elseif stType == 'button' then
+          retval = r.ImGui_Button(ctx, data.label, widgetWidth)
+        elseif stType == 'text' then
+          _, retval = reaper.ImGui_InputText(ctx, '##'..text,val)
+        elseif stType == 'text_with_hint' then
+          _, retval = reaper.ImGui_InputTextWithHint(ctx, '##'..text,data.hint,val)
+        end
+        if not sameline then r.ImGui_EndGroup(ctx) end
         app.setHoveredHint('settings',hint)
-        return retval_a, retval_b
+        return retval, retval_b
+      end
+      
+      local function setting_special(text, main_hint, stType, valA, valB, valC)
+        local retChecked, retval_a, retval_b = valA, valB, valC
+        retChecked = setting('checkbox', text,main_hint,retChecked)
+        if retChecked then
+          reaper.ImGui_SameLine(ctx)
+          r.ImGui_SetCursorPosX(ctx, reaper.ImGui_GetCursorPosX(ctx)-r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing()))
+          if (stType == 'region' or stType == 'marker') and not r.APIExists('JS_Localize') then
+              r.ImGui_TextColored(ctx,gui.st.col.error,('js_ReaScriptAPI needed for selecting %ss.'):format(stType))
+          else
+            local buttonWidth = itemWidth - gui.TEXT_BASE_WIDTH*2-reaper.ImGui_GetStyleVar(ctx, reaper.ImGui_StyleVar_FramePadding())*2
+                      
+            if stType == 'time_sel' then
+              local clicked = r.ImGui_Button(ctx, 'Capture time selection',buttonWidth)
+              app.setHoveredHint('settings','Make a time selection and click to capture its start and end positions.')
+                        
+              if clicked then
+                retval_a, retval_b = r.GetSet_LoopTimeRange(0,0,0,0,0)--, boolean isLoop, number start, number end, boolean allowautoseek)
+              end
+              r.ImGui_SetCursorPosX(ctx, halfWidth)
+              if r.ImGui_BeginChildFrame(ctx,'##timeselstart',halfWidth,r.ImGui_GetFrameHeight(ctx)) then
+                r.ImGui_Text(ctx, r.format_timestr_pos(retval_a,'',5)) 
+                r.ImGui_EndChildFrame(ctx)
+              end 
+              app.setHoveredHint('settings',"Time seleciton start.")
+              r.ImGui_SameLine(ctx)
+              r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx)-r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing()))
+              if r.ImGui_BeginChildFrame(ctx,'##timeselend',r.ImGui_GetContentRegionAvail(ctx),r.ImGui_GetFrameHeight(ctx)) then
+                r.ImGui_Text(ctx,  r.format_timestr_pos(retval_b,'',5))
+                r.ImGui_EndChildFrame(ctx)
+              end
+              app.setHoveredHint('settings',"Time seleciton end.")
+            elseif stType == 'region' or stType == 'marker' then
+              if not r.APIExists('JS_Localize') then
+                r.ImGui_TextColored(ctx,gui.st.col.error,('js_ReaScriptAPI extension is required for selecting %ss.'):format(stType))
+              else
+                -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames 
+                if gui.stWnd[cP].frameCount % 10 == 0 then
+                  gui.stWnd[cP].frameCount = 0
+                  app.rm_window_open = GetRegionManagerWindow() ~= nil
+                end
+                if not app.rm_window_open then
+                  local title = (('%s selected'):format((#retval_a > 0) and ((#retval_a > 1) and #retval_a..' %ss' or '1 %s') or "No %s"):format(stType))
+                  local clicked = r.ImGui_Button(ctx, title,buttonWidth)
+                  if clicked then
+                    if #retval_a > 0 and gui.modKeys=="a" then
+                      retval_a = {}
+                    else
+                      r.Main_OnCommand(40326, 0)
+                    end
+                  end
+                  if r.ImGui_IsItemHovered(ctx) and #retval_a > 0 then
+                    app.setHoveredHint('settings',("Click to update selection. %s+click to clear."):format(gui.descModAlt:gsub("^%l", string.upper)))
+                    local markeregion_names = ''
+                    for i, markeregion in ipairs(retval_a) do
+                      markeregion_names = markeregion_names..markeregion.id:gsub(stType:sub(1,1):upper(),'')..': '..markeregion.name..'\n'
+                    end
+                    r.ImGui_BeginTooltip(ctx)
+                      r.ImGui_Text(ctx,('Selected %ss:'):format(stType))
+                      r.ImGui_Separator(ctx)
+                      r.ImGui_Text(ctx,markeregion_names)
+                    r.ImGui_EndTooltip(ctx)
+                  else
+                    app.setHoveredHint('settings',("Click to select %ss."):format(stType))
+                  end
+                else
+                  if r.ImGui_Button(ctx,('Capture selected %ss'):format(stType), buttonWidth) then
+                    retval_a = GetSelectedRegionsOrMarkers(stType:sub(1,1):upper())
+                  end
+                  app.setHint('settings',("Select %s(s) in the %s manager and click button to capture the selection."):format(stType,stType))
+                end
+              end
+            end
+          end
+          --
+        end
+        return retChecked, retval_a, retval_b
       end
 
-      gui.stWnd[cP].tS.renderaction              = setting('Render Action', ("What should the default rendering mode be."):format(scr.name), 'combo', gui.stWnd[cP].tS.renderaction, {list=renderaction_list})
+      gui.stWnd[cP].tS.renderaction              = setting('combo', 'Render Action', ("What should the default rendering mode be."):format(scr.name), gui.stWnd[cP].tS.renderaction, {list=renderaction_list})
       if gui.stWnd[cP].tS.renderaction == RENDERACTION_RENDER then
-        gui.stWnd[cP].tS.overwrite_without_asking  = setting('Always overwrite', "Suppress REAPER's dialog asking whether files should be overwritten.", 'checkbox',gui.stWnd[cP].tS.overwrite_without_asking)
-        gui.stWnd[cP].tS.wait_time  = setting('Wait time between renders', "Time to wait between renders to allow canceling and to let FX tails die down.", 'dragint',gui.stWnd[cP].tS.wait_time, {step = 0.1,min=WAITTIME_MIN, max=WAITTIME_MAX})
+        gui.stWnd[cP].tS.overwrite_without_asking  = setting('checkbox','Always overwrite', "Suppress REAPER's dialog asking whether files should be overwritten.",gui.stWnd[cP].tS.overwrite_without_asking)
+        gui.stWnd[cP].tS.wait_time  = setting('dragint', 'Wait time between renders', "Time to wait between renders to allow canceling and to let FX tails die down.",gui.stWnd[cP].tS.wait_time, {step = 0.1,min=WAITTIME_MIN, max=WAITTIME_MAX})
       end
 
-      gui.stWnd[cP].tS.reflect_on_add = setting('New stems created', 'What solo states will newly added stems have?','combo',gui.stWnd[cP].tS.reflect_on_add, {list=reflect_on_add_list} )
-      gui.stWnd[cP].tS.syncmode = setting('Soloing or muting in REAPER while in mirror mode',("Mirror mode. %s-click the mirror button to trigger other behavior."):format(gui.descModAlt:gsub("^%l", string.upper)), 'combo',gui.stWnd[cP].tS.syncmode,{list=syncmode_list})
+      gui.stWnd[cP].tS.reflect_on_add = setting('combo','New stems created', 'What solo states will newly added stems have?',gui.stWnd[cP].tS.reflect_on_add, {list=reflect_on_add_list} )
+      gui.stWnd[cP].tS.syncmode = setting('combo','Soloing or muting in REAPER while in mirror mode',("Mirror mode. %s-click the mirror button to trigger other behavior."):format(gui.descModAlt:gsub("^%l", string.upper)),gui.stWnd[cP].tS.syncmode,{list=syncmode_list})
       
       r.ImGui_Spacing(ctx)
       r.ImGui_Text(ctx, 'Render Groups')
@@ -2167,12 +2238,11 @@ end]]):gsub('$(%w+)', {
             app.setHoveredHint('settings',("Settings for render group %d."):format(stGrp))
             local rsg = gui.stWnd[cP].tS.render_setting_groups[stGrp]
             
-            rsg.description = setting('Description',"Used as a reference for yourself. E.g., stems, submixes, mix etc...",'text', rsg.description)
+            rsg.description = setting('text', 'Description',"Used as a reference for yourself. E.g., stems, submixes, mix etc...", rsg.description)
             if rsg.render_preset == '' then rsg.render_preset = nil end
             local preset = db.renderPresets[rsg.render_preset]
-            if setting('Render Preset', ("A render preset to use for this render group. %s+click to clear."):format(gui.descModAlt:gsub("^%l", string.upper)), 'button', nil, {label = rsg.render_preset or 'Select...'}) then
-              if gui.modKeys=='a' then
-                rsg.render_preset = nil
+            if setting('button','Render Preset',("A render preset to use for this render group. %s+click to clear."):format(gui.descModAlt:gsub("^%l", string.upper)), nil, {label = rsg.render_preset or 'Select...'}) then
+              if gui.modKeys=='a' then rsg.render_preset = nil
               else
                 db:getRenderPresets()
                 r.ImGui_OpenPopup(ctx, 'Stem Render Presets##stemRenderPresets')
@@ -2182,122 +2252,25 @@ end]]):gsub('$(%w+)', {
             if rv then rsg.render_preset = presetName end
             
             if preset and preset.boundsflag == RB_TIME_SELECTION then
-              
-              rsg.make_timeSel = setting('Make a time selection','Make a time selection before rendering.','checkbox',rsg.make_timeSel)
-              if rsg.make_timeSel then
-                rsg.timeSelStart, rsg.timeSelEnd = 
-                  setting('Capture time selection', 'Make a time selection and click to capture its start and end positions.', 
-                  'time_sel',{rsg.timeSelStart, rsg.timeSelEnd}, {label = 'Capture'})
-              end
+              rsg.make_timeSel,rsg.timeSelStart, rsg.timeSelEnd  = setting_special('Make time selection', 'Make a time selection before rendering.', 'time_sel', rsg.make_timeSel,rsg.timeSelStart, rsg.timeSelEnd)
             elseif preset and preset.boundsflag == RB_SELECTED_REGIONS then
-              rv, rsg.select_regions = r.ImGui_Checkbox(ctx,'Select regions before rendering',rsg.select_regions)
-              app.setHoveredHint('settings',"You may specify regions to select before rendering.")
-              if rsg.select_regions then
-                if not r.APIExists('JS_Localize') then
-                  r.ImGui_TextColored(ctx,gui.st.col.error,'js_ReaScriptAPI extension is required for selecting regions.')
-                else
-                  -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames 
-                  if gui.stWnd[cP].frameCount % 30 == 1 then
-                    gui.stWnd[cP].frameCount = 0
-                    app.rm_window_open = GetRegionManagerWindow() ~= nil
-                  end
-                  if not app.rm_window_open then
-                    local title = ('%s selected'):format((#rsg.selected_regions > 0) and ((#rsg.selected_regions > 1) and #rsg.selected_regions..' regions' or '1 region') or "No region")
-                    if r.ImGui_Button(ctx,title, itemWidth) then
-                      if #rsg.selected_regions > 0 and gui.modKeys=="a" then
-                        rsg.selected_regions = {}
-                      else
-                        r.Main_OnCommand(40326, 0)
-                      end
-                    end
-                    if r.ImGui_IsItemHovered(ctx) and #rsg.selected_regions > 0 then
-                      app.setHoveredHint('settings',("Click to update selection. %s+click to clear."):format(gui.descModAlt:gsub("^%l", string.upper)))
-                      local region_names = ''
-                      for i, region in ipairs(rsg.selected_regions) do
-                        region_names = region_names..region.id:gsub('R','')..': '..region.name..'\n'
-                      end
-                      r.ImGui_BeginTooltip(ctx)
-                        r.ImGui_Text(ctx,'Selected regions:')
-                        r.ImGui_Separator(ctx)
-                        r.ImGui_Text(ctx,region_names)
-                      r.ImGui_EndTooltip(ctx)
-                    else
-                      app.setHoveredHint('settings',"Click to select regions.")
-                    end
-                  else
-                    if r.ImGui_Button(ctx,'Capture selected regions', itemWidth) then
-                      rsg.selected_regions = GetSelectedRegions()
-                    end
-                    app.setHint('settings',"Select regions in the region/marker manager and click button to capture the selection.")
-                  end
-                end
-              end
+              rsg.select_regions,rsg.selected_regions  = setting_special('Select regions', 'You may specify regions to select before rendering.', 'region',rsg.select_regions,rsg.selected_regions)
             elseif preset and preset.boundsflag == RB_SELECTED_MARKERS then
-              rv, rsg.select_markers = r.ImGui_Checkbox(ctx,'Select markers before rendering',rsg.select_markers)
-              app.setHoveredHint('settings',"You may specify markers to select before rendering.")
-              if rsg.select_markers then
-                if not r.APIExists('JS_Localize') then
-                  r.ImGui_TextColored(ctx,gui.st.col.error,'js_ReaScriptAPI extension is required for selecting markers.')
-                else
-                  -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames 
-                  if gui.stWnd[cP].frameCount % 30 == 1 then
-                    gui.stWnd[cP].frameCount = 0
-                    app.rm_window_open = GetRegionManagerWindow() ~= nil
-                  end
-                  if not app.rm_window_open then
-                    local title = ('%s selected'):format((#rsg.selected_markers > 0) and ((#rsg.selected_markers > 1) and #rsg.selected_markers..' markers' or '1 marker') or "No marker")
-                    if r.ImGui_Button(ctx,title, itemWidth) then
-                      if  #rsg.selected_markers > 0 and gui.modKeys=="a" then
-                        rsg.selected_markers = {}
-                      else
-                        r.Main_OnCommand(40326, 0)
-                      end
-                    end
-                    if r.ImGui_IsItemHovered(ctx) and #rsg.selected_markers > 0 then
-                      app.setHoveredHint('settings',("Click to update selection. %s+click to clear."):format(gui.descModAlt:gsub("^%l", string.upper)))
-                      local marker_names = ''
-                      for i, marker in ipairs(rsg.selected_markers) do
-                        marker_names = marker_names..marker.id:gsub('M','')..': '..marker.name..'\n'
-                      end
-                      r.ImGui_BeginTooltip(ctx)
-                        r.ImGui_Text(ctx,'Selected markers:')
-                        r.ImGui_Separator(ctx)
-                        r.ImGui_Text(ctx,marker_names)
-                      r.ImGui_EndTooltip(ctx)
-                      else
-                      app.setHoveredHint('settings',"Click to select markers.")
-                    end
-                  else
-                    if r.ImGui_Button(ctx,'Capture selected markers', itemWidth) then
-                      rsg.selected_markers = GetSelectedMarkers()
-                    end
-                    app.setHint('settings',"Select markers in the region/marker manager and click button to save.")
-                  end
-                end
-              end
+              rsg.select_markers,rsg.selected_markers  = setting_special('Select markers', 'You may specify markers to select before rendering.', 'marker', rsg.select_markers,rsg.selected_markers)
             end
-            
-            
-            r.ImGui_BeginGroup(ctx)
-            rv, rsg.override_filename = r.ImGui_Checkbox(ctx,'Override filename',rsg.override_filename)
+            local hint = "Use a filename other than the preset. Use $stem for stem name. Wildcards are ok."
+            rsg.override_filename = setting('checkbox', 'Override filename',hint,rsg.override_filename)
             if rsg.override_filename then
-              rv, rsg.filename = r.ImGui_InputTextWithHint(ctx,"##Filename override",preset and preset.filepattern or '',rsg.filename)
+              rsg.filename = setting('text_with_hint', 'Filename override',hint, rsg.filename,{hint = (preset and preset.filepattern or '')},true)
             end       
-            r.ImGui_EndGroup(ctx)
-            app.setHoveredHint('settings',"Use a filename other than the preset. Use $stem for stem name. Wildcards are ok.")
                           
-            r.ImGui_BeginGroup(ctx)
-            rv, rsg.put_in_folder = r.ImGui_Checkbox(ctx,'Save stems in subfolder',rsg.put_in_folder)
-            app.setHoveredHint('settings',"Subfolder will be inside the folder specified in the render preset.")
-            if rsg.put_in_folder then             
-              rv, rsg.folder = r.ImGui_InputText(ctx,'##Subfolder',rsg.folder)
+            local hint = "Subfolder will be inside the folder specified in the render preset."
+            rsg.put_in_folder = setting('checkbox', 'Save stems in subfolder',hint,rsg.put_in_folder)
+            if rsg.put_in_folder then
+              rsg.folder = setting('text', 'Subfolder',hint, rsg.folder,{},true)
             end
-            r.ImGui_EndGroup(ctx)
-            app.setHoveredHint('settings',"Subfolder will be inside the folder specified in the render preset.")
             
-            rv, rsg.skip_empty_stems = r.ImGui_Checkbox(ctx,'Render stems without solo/mute states',not rsg.skip_empty_stems)    
-            rsg.skip_empty_stems = not rsg.skip_empty_stems
-            app.setHoveredHint('settings',"Stems without solos/mutes will render with the project's track states (the mix).")
+            rsg.skip_empty_stems = not setting('checkbox', 'Render "empty" stems',"Should stems with no defined solo/mute states be rendered?",not rsg.skip_empty_stems)
             
             rv, rsg.run_actions = r.ImGui_Checkbox(ctx,'Run action(s) before rendering', rsg.run_actions)
             app.setHoveredHint('settings',"You may specify one or more actions to run before rendering each stem.")
