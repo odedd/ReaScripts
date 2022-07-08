@@ -14,9 +14,9 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Added post render actions
---   Added apply button to settings window & changed from Save to OK
---   Settings new update when changing projects when the settings window is active
+--   Added "always overwrite" setting
+--   Redesigned settings
+--   Fixed - making a minimized "create action" visible when opening the script crashed
 
 reaper.ClearConsole()
 local STATES             = {
@@ -781,6 +781,7 @@ if next(errors) == nil then
     local settings = {
       default  = {
         renderaction = RENDERACTION_RENDER,
+        overwrite_without_asking = false,
         wait_time = 5,
         reflect_on_add = REFLECT_ON_ADD_TRUE,
         syncmode = SYNCMODE_MIRROR,
@@ -1406,9 +1407,13 @@ end]]):gsub('$(%w+)', {
             if app.current_renderaction == RENDERACTION_RENDER then
               -- TODO: 
               -- if settings.overwrite_without_asking (or something) then
-              -- get render target list (r.GetSetProjectInfo_String(0,'RENDER_TARGETS','',false)
+              -- get render target list - r.GetSetProjectInfo_String(0,'RENDER_TARGETS','',false)
               -- check if files exist
               -- delete them
+              if overwrite_without_asking and RENDERACTION_RENDER then
+                local target_list = r.GetSetProjectInfo_String(0,'RENDER_TARGETS','',false) 
+                reaper.ShowConsoleMsg(target_list)
+              end
               coroutine.yield('rendering', idx, app.perform.fullRender and db.stemCount or 1)
               r.Main_OnCommand(42230, 0) --render now
               r.Main_OnCommand(40043,0) -- go to end of project
@@ -1904,6 +1909,7 @@ end]]):gsub('$(%w+)', {
           end
         end
 -- TRACK NAME & SYNC BUTTONS
+  -- TODO: support hidden tracks
   -- COL: TRACK NAME
         r.ImGui_TableNextRow(ctx, r.ImGui_TableRowFlags_Headers(), cellSize)
         if r.ImGui_TableNextColumn(ctx) then
@@ -2035,14 +2041,14 @@ end]]):gsub('$(%w+)', {
     local halfWidth = 230
     local itemWidth = halfWidth*2
     local renderaction_list = ''
-    local curProj = reaper.EnumProjects(-1)
+    local cP = reaper.EnumProjects(-1)
     local projectChanged
-    if oldCurProj ~= curProj then
-      oldCurProj = curProj
+    if oldcP ~= cP then
+      oldcP = cP
       projectChanged = true
     end
-    gui.stWnd[curProj] = gui.stWnd[curProj] or {}
-    gui.stWnd[curProj].frameCount=(gui.stWnd[curProj].frameCount or 0)+1
+    gui.stWnd[cP] = gui.stWnd[cP] or {}
+    gui.stWnd[cP].frameCount=(gui.stWnd[cP].frameCount or 0)+1
     for i=0, #RENDERACTION_DESCRIPTIONS do
       renderaction_list = renderaction_list..RENDERACTION_DESCRIPTIONS[i]..'\0'
     end
@@ -2056,14 +2062,15 @@ end]]):gsub('$(%w+)', {
     for i=0, #SYNCMODE_DESCRIPTIONS do
       syncmode_list = syncmode_list..SYNCMODE_DESCRIPTIONS[i]..'\0'
     end
-    r.ImGui_SetNextWindowSize(ctx, halfWidth*3+r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemSpacing())*1.5+r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_WindowPadding()),0)
+--    r.ImGui_SetNextWindowSize(ctx, halfWidth*3+r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemSpacing())*1.5+r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_WindowPadding()),0)
+    r.ImGui_SetNextWindowSize(ctx, halfWidth*3+r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_WindowPadding()),0)
     r.ImGui_SetNextWindowPos(ctx, center[1], gui.mainWindow.pos[2]+100, r.ImGui_Cond_Appearing(), 0.5)
     if r.ImGui_BeginPopupModal(ctx, 'Settings', false, r.ImGui_WindowFlags_AlwaysAutoResize()) then
       r.ImGui_PushFont(ctx, gui.st.fonts.default)
       if r.ImGui_IsWindowAppearing(ctx) or projectChanged then
-        if gui.stWnd[curProj].tmpStngs == nil then
+        if gui.stWnd[cP].tS == nil then
           loadSettings()
-          gui.stWnd[curProj].tmpStngs = deepcopy(settings.project)
+          gui.stWnd[cP].tS = deepcopy(settings.project)
         end
         db:getRenderPresets()
         if r.APIExists('JS_Localize') then
@@ -2073,79 +2080,97 @@ end]]):gsub('$(%w+)', {
         end
         
         projectChanged = false
-        gui.stWnd[curProj].activeRSG = nil
-        gui.stWnd[curProj].action_target = nil
+        gui.stWnd[cP].activeRSG = nil
+        gui.stWnd[cP].action_target = nil
       end
       
       local buttonsX = itemWidth+r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_FramePadding())*2
       r.ImGui_Text(ctx, 'Global Settings')
       r.ImGui_Separator(ctx)
       
-      r.ImGui_BeginGroup(ctx)
-      r.ImGui_AlignTextToFramePadding(ctx)
-      r.ImGui_Text(ctx,'New stems will be added')
-      r.ImGui_SameLine(ctx)
-      rv, gui.stWnd[curProj].tmpStngs.reflect_on_add = r.ImGui_Combo(ctx,'##reflect_on_add',gui.stWnd[curProj].tmpStngs.reflect_on_add,reflect_on_add_list)
-      r.ImGui_EndGroup(ctx)
-      app.setHoveredHint('settings',"What solo states will newly added stems have?")
+      r.ImGui_PushItemWidth(ctx, itemWidth)
       
-      r.ImGui_BeginGroup(ctx)
-      r.ImGui_AlignTextToFramePadding(ctx)
-      r.ImGui_Text(ctx,'Render action')
-      r.ImGui_SameLine(ctx)
-      rv, gui.stWnd[curProj].tmpStngs.renderaction = r.ImGui_Combo(ctx,'##renderaction',gui.stWnd[curProj].tmpStngs.renderaction,renderaction_list)
-      r.ImGui_EndGroup(ctx)
-      app.setHoveredHint('settings',("What should the default rendering mode be."):format(scr.name))
-      
-      if gui.stWnd[curProj].tmpStngs.renderaction == RENDERACTION_RENDER then
+      local function setting(text, hint, stType, val, data)
+        local data = data or {}
+        local retval_a, retval_b
         r.ImGui_BeginGroup(ctx)
         r.ImGui_AlignTextToFramePadding(ctx)
-        r.ImGui_Text(ctx,'Wait time between renders')
+        reaper.ImGui_PushTextWrapPos(ctx,halfWidth)
+        r.ImGui_Text(ctx,text)
+        reaper.ImGui_PopTextWrapPos(ctx)
         r.ImGui_SameLine(ctx)
-        rv, gui.stWnd[curProj].tmpStngs.wait_time = r.ImGui_DragInt(ctx, '##waitTime',gui.stWnd[curProj].tmpStngs.wait_time,0.1, WAITTIME_MIN,WAITTIME_MAX) 
+        r.ImGui_SetCursorPosX(ctx, halfWidth)
+        if stType == 'combo' then
+          _, retval_a = r.ImGui_Combo(ctx,'##'..text,val,data.list)
+        elseif stType == 'checkbox' then
+          _, retval_a = r.ImGui_Checkbox(ctx,'##'..text,val)
+        elseif stType == 'dragint' then
+          _, retval_a = r.ImGui_DragInt(ctx,'##'..text,val, data.step, data.min, data.max)
+        elseif stType == 'button' then
+          retval_a = r.ImGui_Button(ctx, data.label, itemWidth)
+        elseif stType == 'text' then
+          _, retval_a = reaper.ImGui_InputText(ctx, '##'..text,val, itemWidth)
+        elseif stType == 'time_sel' then
+          retval_a, retval_b = val[1], val[2]
+          if setting('','', 'button',nil, data) then
+            retval_a, retval_b = r.GetSet_LoopTimeRange(0,0,0,0,0)--, boolean isLoop, number start, number end, boolean allowautoseek)
+          end
+          r.ImGui_SetCursorPosX(ctx, halfWidth)
+          if r.ImGui_BeginChildFrame(ctx,'##timeselstart',halfWidth,r.ImGui_GetFrameHeight(ctx)) then
+            r.ImGui_Text(ctx, r.format_timestr_pos(retval_a,'',5)) 
+            r.ImGui_EndChildFrame(ctx)
+          end 
+          app.setHoveredHint('settings',"Time seleciton start.")
+          r.ImGui_SameLine(ctx)
+          r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx)-r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing()))
+          if r.ImGui_BeginChildFrame(ctx,'##timeselend',r.ImGui_GetContentRegionAvail(ctx),r.ImGui_GetFrameHeight(ctx)) then
+            r.ImGui_Text(ctx,  r.format_timestr_pos(retval_b,'',5))
+            r.ImGui_EndChildFrame(ctx)
+          end
+          app.setHoveredHint('settings',"Time seleciton end.")
+        end
         r.ImGui_EndGroup(ctx)
-        app.setHoveredHint('settings',"Time to wait between renders to allow canceling and to let FX tails die down.")
+        app.setHoveredHint('settings',hint)
+        return retval_a, retval_b
       end
 
-      r.ImGui_BeginGroup(ctx)
-      r.ImGui_AlignTextToFramePadding(ctx)
-      r.ImGui_Text(ctx,'Soloing or muting in REAPER while in mirror mode')
-      r.ImGui_SameLine(ctx)
-      rv, gui.stWnd[curProj].tmpStngs.syncmode = r.ImGui_Combo(ctx,'##syncmode',gui.stWnd[curProj].tmpStngs.syncmode,syncmode_list)
-      r.ImGui_EndGroup(ctx)
-      app.setHoveredHint('settings',("Mirror mode. %s-click the mirror button to trigger other behavior."):format(gui.descModAlt:gsub("^%l", string.upper)))
+      gui.stWnd[cP].tS.renderaction              = setting('Render Action', ("What should the default rendering mode be."):format(scr.name), 'combo', gui.stWnd[cP].tS.renderaction, {list=renderaction_list})
+      if gui.stWnd[cP].tS.renderaction == RENDERACTION_RENDER then
+        gui.stWnd[cP].tS.overwrite_without_asking  = setting('Always overwrite', "Suppress REAPER's dialog asking whether files should be overwritten.", 'checkbox',gui.stWnd[cP].tS.overwrite_without_asking)
+        gui.stWnd[cP].tS.wait_time  = setting('Wait time between renders', "Time to wait between renders to allow canceling and to let FX tails die down.", 'dragint',gui.stWnd[cP].tS.wait_time, {step = 0.1,min=WAITTIME_MIN, max=WAITTIME_MAX})
+      end
+
+      gui.stWnd[cP].tS.reflect_on_add = setting('New stems created', 'What solo states will newly added stems have?','combo',gui.stWnd[cP].tS.reflect_on_add, {list=reflect_on_add_list} )
+      gui.stWnd[cP].tS.syncmode = setting('Soloing or muting in REAPER while in mirror mode',("Mirror mode. %s-click the mirror button to trigger other behavior."):format(gui.descModAlt:gsub("^%l", string.upper)), 'combo',gui.stWnd[cP].tS.syncmode,{list=syncmode_list})
+      
       r.ImGui_Spacing(ctx)
       r.ImGui_Text(ctx, 'Render Groups')
       app.setHoveredHint('settings',("Each stem is associated to one of %d render groups with its own set of settings."):format(RENDER_SETTING_GROUPS_SLOTS))
       r.ImGui_Separator(ctx)
-      r.ImGui_PushItemWidth(ctx, itemWidth)
+      
       local availwidth = r.ImGui_GetContentRegionAvail(ctx)
       if reaper.ImGui_BeginTabBar(ctx,'Render Group Settings') then
         for stGrp=1,RENDER_SETTING_GROUPS_SLOTS do
           
-          if gui.stWnd[curProj].activeRSG == stGrp then
+          if gui.stWnd[cP].activeRSG == stGrp then
             r.ImGui_SetNextItemWidth(ctx,halfWidth*3/RENDER_SETTING_GROUPS_SLOTS) 
           end
           
           if r.ImGui_BeginTabItem(ctx,stGrp..'##settingGroup'..stGrp, false) then
             -- if tab has changed or is loaded for the first time
-            if gui.stWnd[curProj].activeRSG ~= stGrp then
+            if gui.stWnd[cP].activeRSG ~= stGrp then
               r.PromptForAction(-1, 0,0)
-              gui.stWnd[curProj].action_target = nil
-              gui.stWnd[curProj].activeRSG = stGrp
+              gui.stWnd[cP].action_target = nil
+              gui.stWnd[cP].activeRSG = stGrp
             end
           
             app.setHoveredHint('settings',("Settings for render group %d."):format(stGrp))
-            local rsg = gui.stWnd[curProj].tmpStngs.render_setting_groups[stGrp]
+            local rsg = gui.stWnd[cP].tS.render_setting_groups[stGrp]
             
-          --description
-            rv, rsg.description = r.ImGui_InputText(ctx,"Description",rsg.description)
-            app.setHoveredHint('settings',"Used as a reference for yourself. E.g., stems, submixes, mix etc...")
-            
-          --render presets
-            r.ImGui_BeginGroup(ctx)
-            if rsg.render_preset == '' then rsg.render_preset = nil end        
-            if r.ImGui_Button(ctx, (rsg.render_preset or 'Select...')..'##stemsRenderPresetBtn',itemWidth) then
+            rsg.description = setting('Description',"Used as a reference for yourself. E.g., stems, submixes, mix etc...",'text', rsg.description)
+            if rsg.render_preset == '' then rsg.render_preset = nil end
+            local preset = db.renderPresets[rsg.render_preset]
+            if setting('Render Preset', ("A render preset to use for this render group. %s+click to clear."):format(gui.descModAlt:gsub("^%l", string.upper)), 'button', nil, {label = rsg.render_preset or 'Select...'}) then
               if gui.modKeys=='a' then
                 rsg.render_preset = nil
               else
@@ -2153,45 +2178,16 @@ end]]):gsub('$(%w+)', {
                 r.ImGui_OpenPopup(ctx, 'Stem Render Presets##stemRenderPresets')
               end
             end
-            r.ImGui_AlignTextToFramePadding(ctx)
-            r.ImGui_SameLine(ctx)
-            r.ImGui_SetCursorPosX(ctx,r.ImGui_GetCursorPosX(ctx)-r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_FramePadding()))
-            r.ImGui_Text(ctx, 'Render Preset')
             local rv, presetName = app.drawPopup(ctx, 'renderPresetSelector', 'Stem Render Presets##stemRenderPresets')
             if rv then rsg.render_preset = presetName end
-            local _, checks = checkRenderGroupSettings(rsg)
-            local preset = db.renderPresets[rsg.render_preset]
-            local col_ok    = gui.st.col.ok
-            local col_error =  gui.st.col.error
-            local col_warning =  gui.st.col.warning 
-            r.ImGui_EndGroup(ctx)
-            app.setHoveredHint('settings',("A render preset to use for this render group. %s+click to clear."):format(gui.descModAlt:gsub("^%l", string.upper)))
             
             if preset and preset.boundsflag == RB_TIME_SELECTION then
-              rv, rsg.make_timeSel = r.ImGui_Checkbox(ctx,'Make time selection before rendering',rsg.make_timeSel)
-              app.setHoveredHint('settings',"You may specify a range for a time selection to make before rendering.")
+              
+              rsg.make_timeSel = setting('Make a time selection','Make a time selection before rendering.','checkbox',rsg.make_timeSel)
               if rsg.make_timeSel then
-                
-                local halfWidth = halfWidth - r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing())
-                if r.ImGui_Button(ctx,'Capture time selection', itemWidth) then
-                  rsg.timeSelStart, rsg.timeSelEnd = r.GetSet_LoopTimeRange(0,0,0,0,0)--, boolean isLoop, number start, number end, boolean allowautoseek)
-                end
-                app.setHoveredHint('settings',"Make a time selection and click to capture its start and end positions.")
-                r.ImGui_SameLine(ctx)
-                r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx)-r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing()))
-                                
-                if r.ImGui_BeginChildFrame(ctx,'##timeselstart',halfWidth/2,r.ImGui_GetFrameHeight(ctx)) then
-                  r.ImGui_Text(ctx, r.format_timestr_pos(rsg.timeSelStart,'',5)) --
-                  r.ImGui_EndChildFrame(ctx)
-                end
-                app.setHoveredHint('settings',"Time seleciton start.")
-                r.ImGui_SameLine(ctx)
-                r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx)-r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing()))
-                if r.ImGui_BeginChildFrame(ctx,'##timeselend',r.ImGui_GetContentRegionAvail(ctx),r.ImGui_GetFrameHeight(ctx)) then
-                  r.ImGui_Text(ctx,  r.format_timestr_pos(rsg.timeSelEnd,'',5))
-                  r.ImGui_EndChildFrame(ctx)
-                end
-                app.setHoveredHint('settings',"Time seleciton end.")
+                rsg.timeSelStart, rsg.timeSelEnd = 
+                  setting('Capture time selection', 'Make a time selection and click to capture its start and end positions.', 
+                  'time_sel',{rsg.timeSelStart, rsg.timeSelEnd}, {label = 'Capture'})
               end
             elseif preset and preset.boundsflag == RB_SELECTED_REGIONS then
               rv, rsg.select_regions = r.ImGui_Checkbox(ctx,'Select regions before rendering',rsg.select_regions)
@@ -2201,8 +2197,8 @@ end]]):gsub('$(%w+)', {
                   r.ImGui_TextColored(ctx,gui.st.col.error,'js_ReaScriptAPI extension is required for selecting regions.')
                 else
                   -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames 
-                  if gui.stWnd[curProj].frameCount % 30 == 1 then
-                    gui.stWnd[curProj].frameCount = 0
+                  if gui.stWnd[cP].frameCount % 30 == 1 then
+                    gui.stWnd[cP].frameCount = 0
                     app.rm_window_open = GetRegionManagerWindow() ~= nil
                   end
                   if not app.rm_window_open then
@@ -2244,8 +2240,8 @@ end]]):gsub('$(%w+)', {
                   r.ImGui_TextColored(ctx,gui.st.col.error,'js_ReaScriptAPI extension is required for selecting markers.')
                 else
                   -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames 
-                  if gui.stWnd[curProj].frameCount % 30 == 1 then
-                    gui.stWnd[curProj].frameCount = 0
+                  if gui.stWnd[cP].frameCount % 30 == 1 then
+                    gui.stWnd[cP].frameCount = 0
                     app.rm_window_open = GetRegionManagerWindow() ~= nil
                   end
                   if not app.rm_window_open then
@@ -2310,8 +2306,8 @@ end]]):gsub('$(%w+)', {
               if r.ImGui_BeginListBox(ctx,'##beforeActions',0,r.ImGui_GetTextLineHeightWithSpacing(ctx)*4) then
                 for i,action in ipairs(rsg.actions_to_run) do
                   local rv, name = getReaperActionNameOrCommandId(action)
-                  if r.ImGui_Selectable(ctx,name..'##beforeAction'..i, gui.stWnd[curProj].curBeforeAction==i) then 
-                    if gui.stWnd[curProj].curBeforeAction == i then gui.stWnd[curProj].curBeforeAction = nil else gui.stWnd[curProj].curBeforeAction = i end
+                  if r.ImGui_Selectable(ctx,name..'##beforeAction'..i, gui.stWnd[cP].curBeforeAction==i) then 
+                    if gui.stWnd[cP].curBeforeAction == i then gui.stWnd[cP].curBeforeAction = nil else gui.stWnd[cP].curBeforeAction = i end
                   end
                   if not rv then 
                     app.setHoveredHint('settings','SWS not installed: showing Command ID instead of action names.')
@@ -2322,12 +2318,12 @@ end]]):gsub('$(%w+)', {
               r.ImGui_SameLine(ctx)
               r.ImGui_BeginGroup(ctx)
                 if r.ImGui_Button(ctx,'+##addBeforeAction', gui.TEXT_BASE_WIDTH*2) then
-                  gui.stWnd[curProj].action_target = 'before_actions'
+                  gui.stWnd[cP].action_target = 'before_actions'
                   r.PromptForAction(1, 0,0)
                 end
                 app.setHoveredHint('settings',"Add an action by highlighting it in REAPER's action window and clicking 'Select'.")
                                   
-                if gui.stWnd[curProj].action_target == 'before_actions' then
+                if gui.stWnd[cP].action_target == 'before_actions' then
                   local curBeforeAction = r.PromptForAction(0, 0,0)
                   if curBeforeAction ~= 0 then
                     if curBeforeAction ~= -1 then table.insert(rsg.actions_to_run, curBeforeAction)
@@ -2335,8 +2331,8 @@ end]]):gsub('$(%w+)', {
                   end
                 end
                 if r.ImGui_Button(ctx,'-##removeBeforeAction', gui.TEXT_BASE_WIDTH*2) then
-                  if gui.stWnd[curProj].curBeforeAction then
-                    table.remove(rsg.actions_to_run,gui.stWnd[curProj].curBeforeAction)
+                  if gui.stWnd[cP].curBeforeAction then
+                    table.remove(rsg.actions_to_run,gui.stWnd[cP].curBeforeAction)
                   end
                 end
                 app.setHoveredHint('settings',"Remove selected action.")
@@ -2350,8 +2346,8 @@ end]]):gsub('$(%w+)', {
               if r.ImGui_BeginListBox(ctx,'##afterActions',0,r.ImGui_GetTextLineHeightWithSpacing(ctx)*4) then
                 for i,action in ipairs(rsg.actions_to_run_after) do
                   local rv, name = getReaperActionNameOrCommandId(action)
-                  if r.ImGui_Selectable(ctx,name..'##afterAction'..i, gui.stWnd[curProj].curAfterAction==i) then 
-                    if gui.stWnd[curProj].curAfterAction == i then gui.stWnd[curProj].curAfterAction = nil else gui.stWnd[curProj].curAfterAction = i end
+                  if r.ImGui_Selectable(ctx,name..'##afterAction'..i, gui.stWnd[cP].curAfterAction==i) then 
+                    if gui.stWnd[cP].curAfterAction == i then gui.stWnd[cP].curAfterAction = nil else gui.stWnd[cP].curAfterAction = i end
                   end
                   if not rv then 
                     app.setHoveredHint('settings','SWS not installed: showing Command ID instead of action names.')
@@ -2362,11 +2358,11 @@ end]]):gsub('$(%w+)', {
               r.ImGui_SameLine(ctx)
               r.ImGui_BeginGroup(ctx)
                 if r.ImGui_Button(ctx,'+##addAfterAction', gui.TEXT_BASE_WIDTH*2) then
-                  gui.stWnd[curProj].action_target = 'after_actions'
+                  gui.stWnd[cP].action_target = 'after_actions'
                   r.PromptForAction(1, 0,0)
                 end
                 app.setHoveredHint('settings',"Add an action by highlighting it in REAPER's action window and clicking 'Select'.")
-                if gui.stWnd[curProj].action_target == 'after_actions' then
+                if gui.stWnd[cP].action_target == 'after_actions' then
                   local selAfterAction = r.PromptForAction(0, 0,0)
                   if selAfterAction ~= 0 then
                     if selAfterAction ~= -1 then table.insert(rsg.actions_to_run_after, selAfterAction)
@@ -2374,8 +2370,8 @@ end]]):gsub('$(%w+)', {
                   end
                 end
                 if r.ImGui_Button(ctx,'-##removeAfterAction', gui.TEXT_BASE_WIDTH*2) then
-                  if gui.stWnd[curProj].curAfterAction then
-                    table.remove(rsg.actions_to_run_after,gui.stWnd[curProj].curAfterAction)
+                  if gui.stWnd[cP].curAfterAction then
+                    table.remove(rsg.actions_to_run_after,gui.stWnd[cP].curAfterAction)
                   end
                 end
                 app.setHoveredHint('settings',"Remove selected action.")
@@ -2385,6 +2381,10 @@ end]]):gsub('$(%w+)', {
             r.ImGui_Spacing(ctx)
 
 --ignore_warnings
+            local _, checks = checkRenderGroupSettings(rsg)
+            local col_ok    = gui.st.col.ok
+            local col_error =  gui.st.col.error
+            local col_warning =  gui.st.col.warning 
             local warnings = false
             for i,check in ipairs(checks) do
               if not check.passed and check.severity == 'warning' then warnings = true end
@@ -2420,7 +2420,7 @@ end]]):gsub('$(%w+)', {
 
             r.ImGui_EndTabItem(ctx)
           end
-          if stGrp ~= gui.stWnd[curProj].activeRSG then
+          if stGrp ~= gui.stWnd[cP].activeRSG then
             app.setHoveredHint('settings',("Settings for render group %d."):format(stGrp))
           end
         end
@@ -2441,14 +2441,14 @@ end]]):gsub('$(%w+)', {
       if col then r.ImGui_PopStyleColor(ctx) end
       
       if r.ImGui_Button(ctx, "Load default settings") then
-        gui.stWnd[curProj].tmpStngs = deepcopy(getDefaultSettings(gui.modKeys=='a').default)
+        gui.stWnd[cP].tS = deepcopy(getDefaultSettings(gui.modKeys=='a').default)
       end
       app.setHoveredHint('settings', ('Revert to saved default settings. %s+click to load factory settings.'):format(gui.descModAlt:gsub("^%l", string.upper)))
 
       r.ImGui_SameLine(ctx)
       if r.ImGui_Button(ctx, "Save as default settings") then 
-        settings.project = deepcopy(gui.stWnd[curProj].tmpStngs)
-        settings.default = deepcopy(gui.stWnd[curProj].tmpStngs)
+        settings.project = deepcopy(gui.stWnd[cP].tS)
+        settings.default = deepcopy(gui.stWnd[cP].tS)
         saveSettings()
         r.PromptForAction(-1, 0,0)
         r.ImGui_CloseCurrentPopup(ctx)
@@ -2466,7 +2466,7 @@ end]]):gsub('$(%w+)', {
       r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_FramePadding())*6)
       
       if r.ImGui_Button(ctx, "OK") then 
-        settings.project = deepcopy(gui.stWnd[curProj].tmpStngs)
+        settings.project = deepcopy(gui.stWnd[cP].tS)
         saveSettings()
         r.PromptForAction(-1, 0,0)
         r.ImGui_CloseCurrentPopup(ctx)
@@ -2481,7 +2481,7 @@ end]]):gsub('$(%w+)', {
       r.ImGui_SameLine(ctx)
       
       if r.ImGui_Button(ctx, "Apply") then 
-        settings.project = deepcopy(gui.stWnd[curProj].tmpStngs)
+        settings.project = deepcopy(gui.stWnd[cP].tS)
         saveSettings()
       end
       app.setHoveredHint('settings', ('Save settings for the current project.'):format(gui.descModAlt:gsub("^%l", string.upper)))
@@ -2518,8 +2518,14 @@ end]]):gsub('$(%w+)', {
       r.ImGui_SetNextWindowSize(ctx, halfWidth*3,700,r.ImGui_Cond_Appearing())
       r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
       local visible, open = r.ImGui_Begin(ctx, 'Create Actions', true)
+      local appearing = false
+      if gui.caWnd.old_visible ~= visible then
+        appearing = visible
+        gui.caWnd.old_visible = visible
+      end
       if visible then
-        if r.ImGui_IsWindowAppearing(ctx) then
+        if r.ImGui_IsWindowAppearing(ctx) or appearing then
+          appearing = false
           gui.caWnd.actionList = {}
           gui.caWnd.actionList['General Actions']       = {order = 1, actions={}}
           gui.caWnd.actionList['Render Group Actions']  = {order = 2, actions={}}
@@ -2727,6 +2733,8 @@ Notice that the stem's render group settings are not saved in the track, but in 
 
 |Thank yous
 This project was made with the help of the community of REAPER's users and script developers.
+
+I'd like to personally thank X-Raym and thommazk for their great help and advice!
 
 It is dependent on cfillion's work both on the incredible ReaImgui library, and his script 'cfilion_Apply render preset'.
 ]]):gsub('$([%w_]+)', { 
