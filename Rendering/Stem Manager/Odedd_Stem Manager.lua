@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.4.7
+-- @version 0.4.8
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,8 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Fixed - regions/markers were not selected properly
---   Time selection now restores after render
+--   Fixed - Stem context menu won't show up after renders with one stem only
 
 reaper.ClearConsole()
 local STATES             = {
@@ -1432,8 +1431,9 @@ end]]):gsub('$(%w+)', {
               r.Main_OnCommand(40043,0) -- go to end of project
               r.OnPlayButtonEx(0)
               local t = os.clock()
-              r.ImGui_OpenPopup(gui.ctx,scr.name..'##wait')
-              while not app.render_cancelled and (os.clock() - t < settings.project.wait_time) and idx < (app.perform.fullRender and db.stemCount or 1) do
+              local moreStemsInLine = idx < (app.perform.fullRender and db.stemCount or 1)
+              if moreStemsInLine then r.ImGui_OpenPopup(gui.ctx,scr.name..'##wait') end
+              while not app.render_cancelled and (os.clock() - t < settings.project.wait_time) and moreStemsInLine do
                 local wait_left = math.ceil(settings.project.wait_time - (os.clock() - t))
                 if app.drawPopup(gui.ctx, 'msg',scr.name..'##wait',{closeKey = r.ImGui_Key_Escape(),okButtonLabel = "Stop rendering", msg = ('Waiting for %d more second%s...'):format(wait_left, wait_left > 1 and 's' or '')}) then
                   app.render_cancelled = true
@@ -1823,8 +1823,8 @@ end]]):gsub('$(%w+)', {
     r.ImGui_PushID(ctx, stemName)
     r.ImGui_SetCursorPos(ctx, r.ImGui_GetCursorPosX(ctx)+(r.ImGui_GetContentRegionAvail(ctx)-gui.VERTICAL_TEXT_BASE_WIDTH)/2, r.ImGui_GetCursorPosY(ctx) + headerRowHeight - defPadding)
     verticalText(ctx, stemName)
-    if r.ImGui_IsMouseHoveringRect(ctx, topLeftX, topLeftY, topLeftX + cellSize, topLeftY + headerRowHeight) 
-    and not r.ImGui_IsPopupOpen(ctx, '##stemActions', r.ImGui_PopupFlags_AnyPopup()) 
+    if r.ImGui_IsMouseHoveringRect(ctx, topLeftX, topLeftY, topLeftX + cellSize, topLeftY + headerRowHeight)
+    and not r.ImGui_IsPopupOpen(ctx, '', r.ImGui_PopupFlags_AnyPopup()) 
     or r.ImGui_IsPopupOpen(ctx, '##stemActions') then
       r.ImGui_SetCursorScreenPos(ctx, topLeftX, topLeftY + 1)
       gui:popStyles(gui.st.vars.mtrx.table)
