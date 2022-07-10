@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="f66349e20a1693777494a4ce2cffc35f1eda38b0">
+<index version="1" name="Odedd ReaScripts" commit="9c83bf8b6280c9b849c1b1ef077234bfecc37a7e">
   <category name="Rendering/Stem Manager">
     <reapack name="Odedd_Stem Manager.lua" type="script" desc="Stem Manager">
       <metadata>
@@ -148,6 +148,12 @@ Time selection now restores after render]]></changelog>
         <source main="main">https://github.com/odedd/ReaScripts/raw/f66349e20a1693777494a4ce2cffc35f1eda38b0/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
         <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/f66349e20a1693777494a4ce2cffc35f1eda38b0/Resources/Fonts/Cousine-90deg.otf</source>
         <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/f66349e20a1693777494a4ce2cffc35f1eda38b0/Resources/Fonts/Cousine-Regular.ttf</source>
+      </version>
+      <version name="0.4.8" author="Oded Davidov" time="2022-07-10T08:07:35Z">
+        <changelog><![CDATA[Fixed - Stem context menu won't show up after renders with one stem only]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/9c83bf8b6280c9b849c1b1ef077234bfecc37a7e/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
+        <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/9c83bf8b6280c9b849c1b1ef077234bfecc37a7e/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/9c83bf8b6280c9b849c1b1ef077234bfecc37a7e/Resources/Fonts/Cousine-Regular.ttf</source>
       </version>
     </reapack>
   </category>
