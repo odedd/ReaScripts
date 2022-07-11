@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.4.9
+-- @version 0.5.0
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,8 +14,12 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
+--   Tracks that are hidden in the TCP now hidden by default
+--   Added setting to always show hidden tracks
 --   Added setting to overwrite without asking
 --   Checks for regions that are not mapped in region matrix
+--   Checks for regions and markers that are selected but don't exist, or whose ID had changed
+--   Documentation updates to reflect changes
 
 reaper.ClearConsole()
 local STATES             = {
@@ -717,7 +721,8 @@ if next(errors) == nil then
         for trackIdx = 0, trackCount - 1 do
           local rTrack           = r.GetTrack(0, trackIdx)
           local _, name = r.GetSetMediaTrackInfo_String(rTrack, "P_NAME", "", false)
-          local folderDepth      = r.GetMediaTrackInfo_Value(rTrack, "I_FOLDERDEPTH", "", false)
+          local folderDepth      = r.GetMediaTrackInfo_Value(rTrack, "I_FOLDERDEPTH")
+          local hidden           = (r.GetMediaTrackInfo_Value(rTrack, "B_SHOWINTCP") == 0)
           local color            = r.GetTrackColor(rTrack)
           local _, rawStemMatrix = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. scr.context_name .. '_STEM_MATRIX', "", false)
           local stemMatrix       = unpickle(rawStemMatrix)
@@ -726,6 +731,7 @@ if next(errors) == nil then
             name        = name,
             folderDepth = folderDepth,
             color       = color,
+            hidden      = hidden,
             stemMatrix  = stemMatrix or {}}
           -- iterate tracks to create stems
           if trackInfo then table.insert(self.tracks, trackInfo) end
@@ -805,7 +811,8 @@ if next(errors) == nil then
         wait_time = 5,
         reflect_on_add = REFLECT_ON_ADD_TRUE,
         syncmode = SYNCMODE_MIRROR,
-        render_setting_groups = {}
+        render_setting_groups = {},
+        show_hidden_tracks = false
       }
     }
     
@@ -1277,6 +1284,28 @@ end]]):gsub('$(%w+)', {
                        severity='critical',
                        hint="Please select markers or uncheck 'Select markers before rendering'."})
           ok = false
+        elseif rsg.select_markers then
+          -- check for markers that don't exist
+          local failed_exist = false
+          for i, mar in ipairs(rsg.selected_markers) do
+            local mIdx = 0
+            local found = false
+            while not failed_exist do
+              retval, isrgn, _, _, _, markrgnindexnumber = reaper.EnumProjectMarkers2(0, mIdx)
+              if retval == 0 then break end
+              if (not isrgn) and mar.id == 'M'..markrgnindexnumber then found = true; break end
+              mIdx=mIdx+1
+            end
+            
+            if not found and not failed_exist then
+              table.insert(checks,{passed = false, 
+                           status="Selected marker(s) don't exist",
+                           severity='critical',
+                           hint="Marker(s) selected in the setting group do not exist, or their ID had changed."})
+              ok = false
+              failed_exist = true
+            end
+          end
         end
       end
       if preset.boundsflag == RB_SELECTED_REGIONS then
@@ -1288,24 +1317,40 @@ end]]):gsub('$(%w+)', {
           ok = false
         end
         if rsg.select_regions and #rsg.selected_regions == 0 then
-          table.inserst(checks,{passed = false, 
+          table.insert(checks,{passed = false, 
                        status="No regions selected",
                        severity='critical',
                        hint="Please select regions or uncheck 'Select regions before rendering'."})
           ok = false
         elseif rsg.select_regions then
-          
-          -- find regions that are not mapped in region matrix
-          local failed = false
+          -- check for regions that don't exist
+          -- check for regions that are not mapped in region matrix
+          local failed_regionMatrix = false
+          local failed_exist = false
           for i, reg in ipairs(rsg.selected_regions) do
             local tIdx = 0
-            if (not failed) and not reaper.EnumRegionRenderMatrix(0, tonumber(reg.id:sub(2, -1 )), 0)  then
+            local rIdx = 0
+            local found = false
+            while not failed_exist do
+              retval, isrgn, _, _, _, markrgnindexnumber = reaper.EnumProjectMarkers2(0, rIdx)
+              if retval == 0 then break end
+              if isrgn and reg.id == 'R'..markrgnindexnumber then found = true; break end
+              rIdx=rIdx+1
+            end
+            if not found and not failed_exist then
               table.insert(checks,{passed = false, 
-                           status="Regions are not mapped in region matrix",
+                           status="Selected region(s) don't exist",
+                           severity='critical',
+                           hint="Region(s) selected in the setting group do not exist, or their ID had changed."})
+              ok = false
+              failed_exist = true
+            elseif (not failed_regionMatrix) and not reaper.EnumRegionRenderMatrix(0, tonumber(reg.id:sub(2, -1 )), 0)  then
+              table.insert(checks,{passed = false, 
+                           status="Region(s) not mapped in region matrix",
                            severity='critical',
                            hint="Unmapped regions are skipped. Assign tracks in region matrix (eg 'Master mix')."})
               ok = false
-              failed = true
+              failed_regionMatrix = true
             end
           end
         end
@@ -1986,43 +2031,46 @@ end]]):gsub('$(%w+)', {
           local track       = db.tracks[i]
           local depth_delta = math.max(track.folderDepth, -depth) -- prevent depth + delta being < 0
           local is_folder   = depth_delta > 0
+          local hide        = (not settings.project.show_hidden_tracks) and track.hidden
+          
           if parent_open or depth <= open_depth then
-            last_open_track = track
-            arrow_drawn     = {}
-  --- ROW
-            for level = depth, open_depth - 1 do
-              r.ImGui_TreePop(ctx);
-              open_depth = depth
-            end -- close previously open deeper folders
-            r.ImGui_TableNextRow(ctx, nil, cellSize)
-            -- these lines two solve an issue where upon scrolling the top row gets above the header row (happens from rows 2 onward)
-            r.ImGui_DrawList_PushClipRect(gui.draw_list,trackListX,trackListY+(cellSize+1)*(i-1),trackListX+trackListWidth,trackListY+(cellSize+1)*(i-1)+cellSize,false) 
-  -- COL: TRACK COLOR + NAME
-            r.ImGui_TableNextColumn(ctx)
-            r.ImGui_SetCursorPosY(ctx, r.ImGui_GetCursorPosY(ctx)+1)
-            r.ImGui_ColorButton(ctx, 'color', r.ImGui_ColorConvertNative(track.color),
-                                              r.ImGui_ColorEditFlags_NoAlpha() |
-                                              r.ImGui_ColorEditFlags_NoBorder() |
-                                              r.ImGui_ColorEditFlags_NoTooltip(), cellSize, cellSize)
-            r.ImGui_SameLine(ctx)
-            local node_flags = is_folder and gui.treeflags.base or gui.treeflags.leaf
-            r.ImGui_PushID(ctx, i) -- Tracks might have the same name
-            parent_open      = r.ImGui_TreeNode(ctx, track.name .. '  ', node_flags)
-            r.ImGui_PopID(ctx)
-            for k, stem in pairsByOrder(db.stems) do
-              if r.ImGui_TableNextColumn(ctx) then
-  -- COL: STEM STATE
-                app.drawBtn('stemState',{track = track, stemName = k, state = track.stemMatrix[k] or ' '})
-              end
-            end
+            if not hide then
+              arrow_drawn     = {}
+    --- ROW
+              for level = depth, open_depth - 1 do
+                r.ImGui_TreePop(ctx);
+                open_depth = depth
+              end -- close previously open deeper folders
             
-            r.ImGui_DrawList_PopClipRect(gui.draw_list)
+              last_open_track = track
+              r.ImGui_TableNextRow(ctx, nil, cellSize)
+              -- these lines two solve an issue where upon scrolling the top row gets above the header row (happens from rows 2 onward)
+              r.ImGui_DrawList_PushClipRect(gui.draw_list,trackListX,trackListY+(cellSize+1)*(i-1),trackListX+trackListWidth,trackListY+(cellSize+1)*(i-1)+cellSize,false) 
+    -- COL: TRACK COLOR + NAME
+              r.ImGui_TableNextColumn(ctx)
+              r.ImGui_SetCursorPosY(ctx, r.ImGui_GetCursorPosY(ctx)+1)
+              r.ImGui_ColorButton(ctx, 'color', r.ImGui_ColorConvertNative(track.color),
+                                                r.ImGui_ColorEditFlags_NoAlpha() |
+                                                r.ImGui_ColorEditFlags_NoBorder() |
+                                                r.ImGui_ColorEditFlags_NoTooltip(), cellSize, cellSize)
+              r.ImGui_SameLine(ctx)
+              local node_flags = is_folder and gui.treeflags.base or gui.treeflags.leaf
+              r.ImGui_PushID(ctx, i) -- Tracks might have the same name
+              parent_open      = r.ImGui_TreeNode(ctx, track.name .. '  ', node_flags)
+              r.ImGui_PopID(ctx)
+              for k, stem in pairsByOrder(db.stems) do
+                if r.ImGui_TableNextColumn(ctx) then
+    -- COL: STEM STATE
+                  app.drawBtn('stemState',{track = track, stemName = k, state = track.stemMatrix[k] or ' '})
+                end
+              end
+              r.ImGui_DrawList_PopClipRect(gui.draw_list)
+            end
           elseif depth > open_depth then
   --- HIDDEN SOLO STATES
             local idx = 0
             for k, stem in pairsByOrder(db.stems) do
               idx = idx + 1
-  
               --local state = track.stemMatrix[k] or ' '
               if not arrow_drawn[k] then
                 local offsetX, offsetY = cellSize / 2, -1
@@ -2045,7 +2093,7 @@ end]]):gsub('$(%w+)', {
             end
           end
           depth = depth + depth_delta
-          if is_folder and parent_open then
+          if (not hide) and is_folder and parent_open then
             open_depth = depth
           end
         end
@@ -2293,7 +2341,7 @@ end]]):gsub('$(%w+)', {
       r.ImGui_Text(ctx, 'Global Settings')
       r.ImGui_Separator(ctx)
       
-      gui.stWnd[cP].tS.renderaction              = setting('combo', 'Render Action', ("What should the default rendering mode be."):format(scr.name), gui.stWnd[cP].tS.renderaction, {list=renderaction_list})
+      gui.stWnd[cP].tS.renderaction              = setting('combo', 'Render action', ("What should the default rendering mode be."):format(scr.name), gui.stWnd[cP].tS.renderaction, {list=renderaction_list})
       if gui.stWnd[cP].tS.renderaction == RENDERACTION_RENDER then
         gui.stWnd[cP].tS.overwrite_without_asking  = setting('checkbox','Always overwrite', "Suppress REAPER's dialog asking whether files should be overwritten.",gui.stWnd[cP].tS.overwrite_without_asking)
         gui.stWnd[cP].tS.wait_time  = setting('dragint', 'Wait time between renders', "Time to wait between renders to allow canceling and to let FX tails die down.",gui.stWnd[cP].tS.wait_time, {step = 0.1,min=WAITTIME_MIN, max=WAITTIME_MAX})
@@ -2301,6 +2349,7 @@ end]]):gsub('$(%w+)', {
 
       gui.stWnd[cP].tS.reflect_on_add = setting('combo','New stems created', 'What solo states will newly added stems have?',gui.stWnd[cP].tS.reflect_on_add, {list=reflect_on_add_list} )
       gui.stWnd[cP].tS.syncmode = setting('combo','Mirror mode',("Mirror mode. %s-click the mirror button to trigger other behavior."):format(gui.descModAlt:gsub("^%l", string.upper)),gui.stWnd[cP].tS.syncmode,{list=syncmode_list})
+      gui.stWnd[cP].tS.show_hidden_tracks  = setting('checkbox','Show hidden tracks', "Show tracks that are hidden in the TCP?",gui.stWnd[cP].tS.show_hidden_tracks)
       
       r.ImGui_Spacing(ctx)
       r.ImGui_Text(ctx, 'Render Groups')
@@ -2643,10 +2692,13 @@ The global section lets you select
 #New stem contents#
 Whether new stems take on the project's current solo/mute states, or start off without solo/mute states.
 
-#Render behavior#
+#Render action#
 $script can either render stems immediately when clicking 'Render' or add stems to the render queue.
 When running the render queue, reaper opens a snapshot of the project before each render, which causes the project to reload for each stem.
 Rendering directly means the project does not have to be reloaded for each stem.
+
+#Always overwrite#
+When checked, $script will automatically overwrite any existing file, suppressing REAPER's dialog asking whether the file should be overwritten or not. This is only available when the render action is set to "render immediately".
 
 #Wait time between renders#
 In case rendering immediately is selected, you can define an amount of time to wait between renders. This serves two purposes - 
@@ -2659,6 +2711,11 @@ When adding new stems they can either take on the current project's current solo
 #Stem mirror mode#
 The default stem mirroring mode (see the Mirroring section for more information).
 
+#Show hidden tracks#
+By default, $script will hide tracks that are hidden in the TCP. This setting allows you to show hidden tracks in $script.
+
+
+#Render Groups#
 The render group section lets you define $num_of_setting_groups different sets of rules for rendering stems. 
 
 The settings for each render group are:
