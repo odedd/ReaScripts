@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.4.6
+-- @version 0.4.8
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,9 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Redesigned settings
---   Fixed - making a minimized "create action" visible when opening the script crashed
---   New stems get the last stem's render group setting
+--   Fixed - Stem context menu won't show up after renders with one stem only
 
 reaper.ClearConsole()
 local STATES             = {
@@ -1129,6 +1127,7 @@ end]]):gsub('$(%w+)', {
   end
   
   local function OpenAndGetRegionManagerWindow()
+    local title = r.JS_Localize('Region/Marker Manager', 'common')
     local manager = GetRegionManagerWindow()
     if not manager then
       r.Main_OnCommand(40326, 0) -- View: Show region/marker manager window
@@ -1174,7 +1173,7 @@ end]]):gsub('$(%w+)', {
   
   local function SelectRegionsOrMarkers(selection, close)
     if close == nil then close = true end
-    local markeregions, lv = GetAllRegionsOrMarkers(false)
+    local markeregions, lv = GetAllRegionsOrMarkers(nil, false)
     r.JS_ListView_SetItemState(lv, -1, 0x0, 0x2)         -- unselect all items
     for _, markeregion_to_select in ipairs(selection) do
       for i, markeregion in ipairs(markeregions) do
@@ -1307,26 +1306,33 @@ end]]):gsub('$(%w+)', {
     coroutine.yield('Rendering stems', 0, 1)
     local idx          = 0
     local laststemName = nil
-    local markeregion_selection = {}
+    local saved_markeregion_selection = {}
+    local saved_time_selection = {}
     app.render_cancelled = false
     app.current_renderaction = app.forceRenderAction or settings.project.renderaction
     -- check if any stem requires markers or regions, and only save the region/marker
     -- selection if needed (because it requires opening the marker window)
     local save_marker_selection = false
+    local save_time_selection = false
     for stemName, stem in pairs(stemsToRender) do
       local stem = db.stems[stemName]
       local rsg = settings.project.render_setting_groups[stem.render_setting_group]
       if rsg.select_markers or rsg.select_regions then
         save_marker_selection = true
-        break
+      end
+      if rsg.make_timeSel then
+        save_time_selection = true
       end
     end
     -- save marker selection, so that it can be restored later
     if save_marker_selection and r.APIExists('JS_Localize') then
       OpenAndGetRegionManagerWindow()
       coroutine.yield('Saving marker/region selection', 0, 1)
-      markeregion_selection = GetSelectedRegionsOrMarkers()
-      r.Main_OnCommand(40326, 0)
+      saved_markeregion_selection = GetSelectedRegionsOrMarkers()
+      r.Main_OnCommand(40326, 0) -- close region/marker manager
+    end
+    if save_time_selection then
+      saved_time_selection = {r.GetSet_LoopTimeRange(0,0,0,0,0)}
     end
     if r.GetAllProjectPlayStates(0)&1 then r.OnStopButton() end
     for stemName, stem in pairsByOrder(stemsToRender) do
@@ -1381,7 +1387,6 @@ end]]):gsub('$(%w+)', {
             local render_preset = db.renderPresets[rsg.render_preset]
             ApplyPresetByName = render_preset.name
             applyPresetScript()
-            
             if render_preset.boundsflag == RB_SELECTED_MARKERS and rsg.select_markers then
               -- window must be given an opportunity to open (therefore yielded) for the selection to work
               OpenAndGetRegionManagerWindow()
@@ -1391,10 +1396,9 @@ end]]):gsub('$(%w+)', {
               -- window must be given an opportunity to open (therefore yielded) for the selection to work
               OpenAndGetRegionManagerWindow()
               coroutine.yield('Creating Stem ' .. stemName.. ' (selecting regions)', idx, app.perform.fullRender and db.stemCount or 1)
-              
               SelectRegions(rsg.selected_regions)
             elseif render_preset.boundsflag == RB_TIME_SELECTION and rsg.make_timeSel then
-             r.GetSet_LoopTimeRange2(0,true, false, rsg.timeSelStart,rsg.timeSelEnd,0)--, boolean isLoop, number start, number end, boolean allowautoseek)
+              r.GetSet_LoopTimeRange2(0,true, false, rsg.timeSelStart,rsg.timeSelEnd,0)--, boolean isLoop, number start, number end, boolean allowautoseek)
             end
             
             local folder = ''
@@ -1429,8 +1433,9 @@ end]]):gsub('$(%w+)', {
               r.Main_OnCommand(40043,0) -- go to end of project
               r.OnPlayButtonEx(0)
               local t = os.clock()
-              r.ImGui_OpenPopup(gui.ctx,scr.name..'##wait')
-              while not app.render_cancelled and (os.clock() - t < settings.project.wait_time) and idx < (app.perform.fullRender and db.stemCount or 1) do
+              local moreStemsInLine = idx < (app.perform.fullRender and db.stemCount or 1)
+              if moreStemsInLine then r.ImGui_OpenPopup(gui.ctx,scr.name..'##wait') end
+              while not app.render_cancelled and (os.clock() - t < settings.project.wait_time) and moreStemsInLine do
                 local wait_left = math.ceil(settings.project.wait_time - (os.clock() - t))
                 if app.drawPopup(gui.ctx, 'msg',scr.name..'##wait',{closeKey = r.ImGui_Key_Escape(),okButtonLabel = "Stop rendering", msg = ('Waiting for %d more second%s...'):format(wait_left, wait_left > 1 and 's' or '')}) then
                   app.render_cancelled = true
@@ -1457,7 +1462,10 @@ end]]):gsub('$(%w+)', {
     if save_marker_selection and r.APIExists('JS_Localize') then
       OpenAndGetRegionManagerWindow()
       coroutine.yield('Restoring marker/region selection', 1, 1)
-      SelectRegionsOrMarkers(markeregion_selection)
+      SelectRegionsOrMarkers(saved_markeregion_selection)
+    end
+    if save_time_selection then
+      r.GetSet_LoopTimeRange2(0,true, false, saved_time_selection[1],saved_time_selection[2],0)--, boolean isLoop, number start, number end, boolean allowautoseek)
     end
     coroutine.yield('Done', 1, 1)
     return
@@ -1817,8 +1825,8 @@ end]]):gsub('$(%w+)', {
     r.ImGui_PushID(ctx, stemName)
     r.ImGui_SetCursorPos(ctx, r.ImGui_GetCursorPosX(ctx)+(r.ImGui_GetContentRegionAvail(ctx)-gui.VERTICAL_TEXT_BASE_WIDTH)/2, r.ImGui_GetCursorPosY(ctx) + headerRowHeight - defPadding)
     verticalText(ctx, stemName)
-    if r.ImGui_IsMouseHoveringRect(ctx, topLeftX, topLeftY, topLeftX + cellSize, topLeftY + headerRowHeight) 
-    and not r.ImGui_IsPopupOpen(ctx, '##stemActions', r.ImGui_PopupFlags_AnyPopup()) 
+    if r.ImGui_IsMouseHoveringRect(ctx, topLeftX, topLeftY, topLeftX + cellSize, topLeftY + headerRowHeight)
+    and not r.ImGui_IsPopupOpen(ctx, '', r.ImGui_PopupFlags_AnyPopup()) 
     or r.ImGui_IsPopupOpen(ctx, '##stemActions') then
       -- TODO: Fix: After a render, if you try to mouse over a stem to see that three dots, you'd need to click on Reaper and then click on Stem Manager (not in the blue area, where the title window is, X marked).
       r.ImGui_SetCursorScreenPos(ctx, topLeftX, topLeftY + 1)
