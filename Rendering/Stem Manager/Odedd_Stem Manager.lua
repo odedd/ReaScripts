@@ -14,7 +14,8 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Visual cleanup in settings window
+--   Added setting to overwrite without asking
+--   Checks for regions that are not mapped in region matrix
 
 reaper.ClearConsole()
 local STATES             = {
