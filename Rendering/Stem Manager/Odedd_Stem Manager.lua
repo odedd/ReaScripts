@@ -98,7 +98,7 @@ local RB_REZOR_EDIT_AREAS = 6
 local RB_ALL_MARKERS = 7
 local RB_SELECTED_MARKERS = 8
 
-local RENDER_SETTING_GROUPS_SLOTS = 9
+local RENDER_SETTING_GROUPS_SLOTS = 9   -- TODO: make that user defineable
 
 local r                  = reaper
 local scr                = {}
@@ -1169,6 +1169,9 @@ end]]):gsub('$(%w+)', {
     return selected_markeregions
   end
 
+  -- TODO:
+  -- Fix some render selection bug discovered by Thommaz Kauffmann
+  
   local function SelectRegionsOrMarkers(selection, close)
     if close == nil then close = true end
     local markeregions, lv = GetAllRegionsOrMarkers(false)
@@ -1212,8 +1215,7 @@ end]]):gsub('$(%w+)', {
     local ok = true
     presetName = rsg.render_preset
     -- TODO: 
-    -- if render bounds are "selected regions" and a region which has no region matrix assignments is selected
-    -- reaper ignores it and renders region(s?) that do have. I think this should be a critical error
+    -- if render bounds are "selected regions" and a region which has no region matrix assignments is selected    -- reaper ignores it and renders region(s?) that do have. I think this should be a critical error
     if presetName and not db.renderPresets[presetName] then
       table.insert(checks, {passed = false, 
                             status="Preset does not exist",
@@ -1818,6 +1820,7 @@ end]]):gsub('$(%w+)', {
     if r.ImGui_IsMouseHoveringRect(ctx, topLeftX, topLeftY, topLeftX + cellSize, topLeftY + headerRowHeight) 
     and not r.ImGui_IsPopupOpen(ctx, '##stemActions', r.ImGui_PopupFlags_AnyPopup()) 
     or r.ImGui_IsPopupOpen(ctx, '##stemActions') then
+      -- TODO: Fix: After a render, if you try to mouse over a stem to see that three dots, you'd need to click on Reaper and then click on Stem Manager (not in the blue area, where the title window is, X marked).
       r.ImGui_SetCursorScreenPos(ctx, topLeftX, topLeftY + 1)
       gui:popStyles(gui.st.vars.mtrx.table)
       app.drawBtn('stemActions', {topLeftX=topLeftX, topLeftY=topLeftY})
