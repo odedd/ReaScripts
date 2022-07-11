@@ -1186,9 +1186,6 @@ end]]):gsub('$(%w+)', {
     return selected_markeregions
   end
 
-  -- TODO:
-  -- Fix some render selection bug discovered by Thommaz Kauffmann
-  
   local function SelectRegionsOrMarkers(selection, close)
     if close == nil then close = true end
     local markeregions, lv = GetAllRegionsOrMarkers(nil, false)
@@ -1231,8 +1228,6 @@ end]]):gsub('$(%w+)', {
     local checks = {}
     local ok = true
     presetName = rsg.render_preset
-    -- TODO: 
-    -- if render bounds are "selected regions" and a region which has no region matrix assignments is selected    -- reaper ignores it and renders region(s?) that do have. I think this should be a critical error
     if presetName and not db.renderPresets[presetName] then
       table.insert(checks, {passed = false, 
                             status="Preset does not exist",
