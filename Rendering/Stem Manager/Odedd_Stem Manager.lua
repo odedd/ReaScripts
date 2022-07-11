@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.4.8
+-- @version 0.4.9
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,7 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Fixed - Stem context menu won't show up after renders with one stem only
+--   Visual cleanup in settings window
 
 reaper.ClearConsole()
 local STATES             = {
@@ -141,6 +141,19 @@ scr.name        = scr.description
 scr.context_name       = scr.namespace:gsub(' ', '_') .. '_' .. scr.name:gsub(' ', '_')
 r.ver = tonumber(r.GetAppVersion():match("[%d%.]+"))
 
+
+-------------------
+-- basic helpers --
+-------------------
+
+string.split = function(s, delimiter)
+  result = {};
+  for match in (s..delimiter):gmatch("(.-)"..delimiter) do
+    table.insert(result, match);
+  end
+  return result;
+end
+ 
 function file_exists(name)
    local f=io.open(name,"r")
    if f~=nil then io.close(f) return true else return false end
@@ -829,6 +842,10 @@ if next(errors) == nil then
         else
           for rgIdx,val in ipairs(v) do
             for rgSetting, rgV in pairs(val or {}) do
+              
+              if not settings.default.render_setting_groups[rgIdx] then -- if more render were saved than there are by default, create them by loading default vaules first
+                settings.default.render_setting_groups[rgIdx] = deepcopy(default_render_settings)
+              end
               settings.default.render_setting_groups[rgIdx][rgSetting] = rgV
             end
           end
@@ -1273,11 +1290,26 @@ end]]):gsub('$(%w+)', {
           ok = false
         end
         if rsg.select_regions and #rsg.selected_regions == 0 then
-          table.insert(checks,{passed = false, 
+          table.inserst(checks,{passed = false, 
                        status="No regions selected",
                        severity='critical',
                        hint="Please select regions or uncheck 'Select regions before rendering'."})
           ok = false
+        elseif rsg.select_regions then
+          
+          -- find regions that are not mapped in region matrix
+          local failed = false
+          for i, reg in ipairs(rsg.selected_regions) do
+            local tIdx = 0
+            if (not failed) and not reaper.EnumRegionRenderMatrix(0, tonumber(reg.id:sub(2, -1 )), 0)  then
+              table.insert(checks,{passed = false, 
+                           status="Regions are not mapped in region matrix",
+                           severity='critical',
+                           hint="Unmapped regions are skipped. Assign tracks in region matrix (eg 'Master mix')."})
+              ok = false
+              failed = true
+            end
+          end
         end
       end
       
@@ -1415,17 +1447,18 @@ end]]):gsub('$(%w+)', {
                r.Main_OnCommand(action, 0)
              end
             end
-            --local _v, msg = r.GetSetProjectInfo_String(0, "RENDER_PATTERN", '', false)
             if app.current_renderaction == RENDERACTION_RENDER then
-              -- TODO: 
-              -- if settings.overwrite_without_asking (or something) then
-              -- get render target list - r.GetSetProjectInfo_String(0,'RENDER_TARGETS','',false)
-              -- check if files exist
-              -- delete them
-              --[[if overwrite_without_asking and RENDERACTION_RENDER then
-                local target_list = r.GetSetProjectInfo_String(0,'RENDER_TARGETS','',false) 
-                reaper.ShowConsoleMsg(target_list)
-              end--]]
+              if settings.project.overwrite_without_asking and RENDERACTION_RENDER then
+                local rv, target_list = r.GetSetProjectInfo_String(0,'RENDER_TARGETS','',false) 
+                if rv then
+                  local targets = (target_list):split(';')
+                  for i, target in ipairs(targets) do
+                    if file_exists(target) then
+                      os.remove(target)
+                    end
+                  end
+                end 
+              end
               coroutine.yield('rendering', idx, app.perform.fullRender and db.stemCount or 1)
               r.Main_OnCommand(42230, 0) --render now
               r.Main_OnCommand(40043,0) -- go to end of project
@@ -2123,7 +2156,8 @@ end]]):gsub('$(%w+)', {
       retChecked = setting('checkbox', text,main_hint,retChecked)
       if retChecked then
         reaper.ImGui_SameLine(ctx)
-        r.ImGui_SetCursorPosX(ctx, reaper.ImGui_GetCursorPosX(ctx)-r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing()))
+        local widgetX = reaper.ImGui_GetCursorPosX(ctx)-r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing())
+        r.ImGui_SetCursorPosX(ctx, widgetX)
         if (stType == 'region' or stType == 'marker') and not r.APIExists('JS_Localize') then
             r.ImGui_TextColored(ctx,gui.st.col.error,('js_ReaScriptAPI needed for selecting %ss.'):format(stType))
         else
@@ -2135,8 +2169,8 @@ end]]):gsub('$(%w+)', {
             if clicked then
               retval_a, retval_b = r.GetSet_LoopTimeRange(0,0,0,0,0)--, boolean isLoop, number start, number end, boolean allowautoseek)
             end
-            r.ImGui_SetCursorPosX(ctx, halfWidth)
-            if r.ImGui_BeginChildFrame(ctx,'##timeselstart',halfWidth,r.ImGui_GetFrameHeight(ctx)) then
+            r.ImGui_SetCursorPosX(ctx, widgetX)
+            if r.ImGui_BeginChildFrame(ctx,'##timeselstart',widgetWidth/2 -r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing())/2 ,r.ImGui_GetFrameHeight(ctx)) then
               r.ImGui_Text(ctx, r.format_timestr_pos(retval_a,'',5)) 
               r.ImGui_EndChildFrame(ctx)
             end 
@@ -2262,7 +2296,7 @@ end]]):gsub('$(%w+)', {
       
       gui.stWnd[cP].tS.renderaction              = setting('combo', 'Render Action', ("What should the default rendering mode be."):format(scr.name), gui.stWnd[cP].tS.renderaction, {list=renderaction_list})
       if gui.stWnd[cP].tS.renderaction == RENDERACTION_RENDER then
-        --gui.stWnd[cP].tS.overwrite_without_asking  = setting('checkbox','Always overwrite', "Suppress REAPER's dialog asking whether files should be overwritten.",gui.stWnd[cP].tS.overwrite_without_asking)
+        gui.stWnd[cP].tS.overwrite_without_asking  = setting('checkbox','Always overwrite', "Suppress REAPER's dialog asking whether files should be overwritten.",gui.stWnd[cP].tS.overwrite_without_asking)
         gui.stWnd[cP].tS.wait_time  = setting('dragint', 'Wait time between renders', "Time to wait between renders to allow canceling and to let FX tails die down.",gui.stWnd[cP].tS.wait_time, {step = 0.1,min=WAITTIME_MIN, max=WAITTIME_MAX})
       end
 
