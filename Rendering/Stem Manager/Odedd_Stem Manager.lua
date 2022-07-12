@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.5.1
+-- @version 0.5.2
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,7 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Clearer messages regarding marker and region selection
+--   Minor graphic tweaks
 
 reaper.ClearConsole()
 local STATES             = {
@@ -2349,7 +2349,7 @@ end]]):gsub('$(%w+)', {
       end
       
       local buttonsX = itemWidth+r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_FramePadding())*2
-      r.ImGui_Text(ctx, 'Global Settings')
+      r.ImGui_Text(ctx, 'Project global settings')
       r.ImGui_Separator(ctx)
       
       gui.stWnd[cP].tS.renderaction              = setting('combo', 'Render action', ("What should the default rendering mode be."):format(scr.name), gui.stWnd[cP].tS.renderaction, {list=renderaction_list})
@@ -2362,8 +2362,8 @@ end]]):gsub('$(%w+)', {
       gui.stWnd[cP].tS.syncmode = setting('combo','Mirror mode',("Mirror mode. %s-click the mirror button to trigger other behavior."):format(gui.descModAlt:gsub("^%l", string.upper)),gui.stWnd[cP].tS.syncmode,{list=syncmode_list})
       gui.stWnd[cP].tS.show_hidden_tracks  = setting('checkbox','Show hidden tracks', "Show tracks that are hidden in the TCP?",gui.stWnd[cP].tS.show_hidden_tracks)
       
-      r.ImGui_Spacing(ctx)
-      r.ImGui_Text(ctx, 'Render Groups')
+      reaper.ImGui_Text(ctx,'')
+      r.ImGui_Text(ctx, 'Project render groups')
       app.setHoveredHint('settings',("Each stem is associated to one of %d render groups with its own set of settings."):format(RENDER_SETTING_GROUPS_SLOTS))
       r.ImGui_Separator(ctx)
       
@@ -2497,13 +2497,13 @@ end]]):gsub('$(%w+)', {
       r.ImGui_SetCursorPosX(ctx,
       r.ImGui_GetCursorPosX(ctx)+
       r.ImGui_GetContentRegionAvail(ctx)-
-      r.ImGui_CalcTextSize(ctx,"OK")-
+      r.ImGui_CalcTextSize(ctx,"  OK  ")-
       r.ImGui_CalcTextSize(ctx,"Cancel")-
       r.ImGui_CalcTextSize(ctx,"Apply")-
       r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemSpacing())*2-
       r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_FramePadding())*6)
       
-      if r.ImGui_Button(ctx, "OK") then 
+      if r.ImGui_Button(ctx, "  OK  ") then 
         settings.project = deepcopy(gui.stWnd[cP].tS)
         saveSettings()
         r.PromptForAction(-1, 0,0)
@@ -2702,7 +2702,7 @@ If for some reason you wish to revert to the original default settings, you may 
 
 The settings window is divided into global and Render Group Settings.
 
-The global section lets you select
+The project global section lets you select
 
 #New stem contents#
 Whether new stems take on the project's current solo/mute states, or start off without solo/mute states.
