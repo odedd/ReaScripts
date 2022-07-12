@@ -14,12 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Tracks that are hidden in the TCP now hidden by default
---   Added setting to always show hidden tracks
---   Added setting to overwrite without asking
---   Checks for regions that are not mapped in region matrix
---   Checks for regions and markers that are selected but don't exist, or whose ID had changed
---   Documentation updates to reflect changes
+--   Clearer messages regarding marker and region selection
 
 reaper.ClearConsole()
 local STATES             = {
@@ -1287,24 +1282,33 @@ end]]):gsub('$(%w+)', {
         elseif rsg.select_markers then
           -- check for markers that don't exist
           local failed_exist = false
+          local failed_name = false
           for i, mar in ipairs(rsg.selected_markers) do
             local mIdx = 0
             local found = false
             while not failed_exist do
-              retval, isrgn, _, _, _, markrgnindexnumber = reaper.EnumProjectMarkers2(0, mIdx)
+              local retval, isrgn, _, _, name, markrgnindexnumber = reaper.EnumProjectMarkers2(0, mIdx)
               if retval == 0 then break end
-              if (not isrgn) and mar.id == 'M'..markrgnindexnumber then found = true; break end
+              if (not isrgn) and mar.id == 'M'..markrgnindexnumber then 
+                if mar.name ~= name then failed_name = true end
+                found = true
+              break end
               mIdx=mIdx+1
             end
-            
-            if not found and not failed_exist then
-              table.insert(checks,{passed = false, 
-                           status="Selected marker(s) don't exist",
-                           severity='critical',
-                           hint="Marker(s) selected in the setting group do not exist, or their ID had changed."})
-              ok = false
-              failed_exist = true
-            end
+            if found and failed_name then failed_name = true end
+            if not found and not failed_exist then failed_exist = true end
+          end
+          table.insert(checks,{passed = not failed_exist, 
+                                 status=("Selected marker(s) %sexist"):format(failed_exist and "don't " or ''),
+                                 severity=failed_exist and 'critical' or nil,
+                                 hint=failed_exist and "Marker(s) selected in the setting group do not exist, or their ID had changed." or "Selected markers exist in the project"})
+                    ok = ok and (not failed_exist)
+          if failed_name then
+            table.insert(checks,{passed = false, 
+                                 status="Marker names changed",
+                                 severity='critical',
+                                 hint="Please reselect markers."})
+            ok = false
           end
         end
       end
@@ -1327,35 +1331,43 @@ end]]):gsub('$(%w+)', {
           -- check for regions that are not mapped in region matrix
           local failed_regionMatrix = false
           local failed_exist = false
+          local failed_name = false
           for i, reg in ipairs(rsg.selected_regions) do
             local tIdx = 0
             local rIdx = 0
             local found = false
             while not failed_exist do
-              retval, isrgn, _, _, _, markrgnindexnumber = reaper.EnumProjectMarkers2(0, rIdx)
+              local retval, isrgn, _, _, name, markrgnindexnumber = reaper.EnumProjectMarkers2(0, rIdx)
               if retval == 0 then break end
-              if isrgn and reg.id == 'R'..markrgnindexnumber then found = true; break end
+              if isrgn and reg.id == 'R'..markrgnindexnumber then 
+                found = true
+                if reg.name ~= name then failed_name = true end
+                break 
+              end
               rIdx=rIdx+1
             end
-            if not found and not failed_exist then
-              table.insert(checks,{passed = false, 
-                           status="Selected region(s) don't exist",
-                           severity='critical',
-                           hint="Region(s) selected in the setting group do not exist, or their ID had changed."})
-              ok = false
-              failed_exist = true
-            elseif (not failed_regionMatrix) and not reaper.EnumRegionRenderMatrix(0, tonumber(reg.id:sub(2, -1 )), 0)  then
-              table.insert(checks,{passed = false, 
-                           status="Region(s) not mapped in region matrix",
-                           severity='critical',
-                           hint="Unmapped regions are skipped. Assign tracks in region matrix (eg 'Master mix')."})
-              ok = false
-              failed_regionMatrix = true
-            end
+            if found and failed_name then failed_name = true end
+            if not found and not failed_exist then failed_exist = true elseif (not failed_regionMatrix) and not reaper.EnumRegionRenderMatrix(0, tonumber(reg.id:sub(2, -1 )), 0) then failed_regionMatrix = true end
           end
+          table.insert(checks,{passed = not failed_exist, 
+                       status=("Selected region(s) %sexist"):format(failed_exist and "don't " or ''),
+                       severity=failed_exist and 'critical' or nil,
+                       hint=failed_exist and "Region(s) selected in the setting group do not exist, or their ID had changed." or "Selected regions exist in the project"})
+          ok = ok and (not failed_exist)
+          table.insert(checks,{passed = not failed_regionMatrix, 
+                               status=("Region(s) %smapped in region matrix"):format(failed_regionMatrix and "not " or ''),
+                               severity=failed_regionMatrix and 'critical' or nil,
+                               hint=failed_regionMatrix and "Unmapped regions are skipped. Assign tracks in region matrix (eg 'Master mix')." or "All regions have tracks assigned in the region matrix."})
+          ok = ok and (not failed_regionMatrix)
+          if failed_name then
+            table.insert(checks,{passed = false, 
+                               status="Region names changed",
+                               severity='critical',
+                               hint="Please reselect regions."})
+            ok = false
+          end              
         end
       end
-      
     end
     return ok, checks
   end
@@ -1448,6 +1460,7 @@ end]]):gsub('$(%w+)', {
             end
             if #errors > 0 or #criticalErrors > 0 then
               app.errors = app.errors or {}
+              -- TODO: change "added to the render queue" to reflect render operation
               table.insert(app.errors, ("Stem '%s' was %s:\n%s"):format(
                   stemName,
                   criticalErrorFound and 'not added to the render queue\nbecause of the following error(s)' 
@@ -1902,7 +1915,6 @@ end]]):gsub('$(%w+)', {
     if r.ImGui_IsMouseHoveringRect(ctx, topLeftX, topLeftY, topLeftX + cellSize, topLeftY + headerRowHeight)
     and not r.ImGui_IsPopupOpen(ctx, '', r.ImGui_PopupFlags_AnyPopup()) 
     or r.ImGui_IsPopupOpen(ctx, '##stemActions') then
-      -- TODO: Fix: After a render, if you try to mouse over a stem to see that three dots, you'd need to click on Reaper and then click on Stem Manager (not in the blue area, where the title window is, X marked).
       r.ImGui_SetCursorScreenPos(ctx, topLeftX, topLeftY + 1)
       gui:popStyles(gui.st.vars.mtrx.table)
       app.drawBtn('stemActions', {topLeftX=topLeftX, topLeftY=topLeftY})
@@ -2144,7 +2156,6 @@ end]]):gsub('$(%w+)', {
       projectChanged = true
     end
     gui.stWnd[cP] = gui.stWnd[cP] or {}
-    gui.stWnd[cP].frameCount=(gui.stWnd[cP].frameCount or 0)+1
     for i=0, #RENDERACTION_DESCRIPTIONS do
       renderaction_list = renderaction_list..RENDERACTION_DESCRIPTIONS[i]..'\0'
     end
@@ -2274,7 +2285,6 @@ end]]):gsub('$(%w+)', {
             else
               -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames 
               if gui.stWnd[cP].frameCount % 10 == 0 then
-                gui.stWnd[cP].frameCount = 0
                 app.rm_window_open = GetRegionManagerWindow() ~= nil
               end
               if not app.rm_window_open then
@@ -2321,6 +2331,7 @@ end]]):gsub('$(%w+)', {
     if r.ImGui_BeginPopupModal(ctx, 'Settings', false, r.ImGui_WindowFlags_AlwaysAutoResize()) then
       r.ImGui_PushFont(ctx, gui.st.fonts.default)
       if r.ImGui_IsWindowAppearing(ctx) or projectChanged then
+        gui.stWnd[cP].frameCount = 0
         if gui.stWnd[cP].tS == nil then
           loadSettings()
           gui.stWnd[cP].tS = deepcopy(settings.project)
@@ -2407,12 +2418,15 @@ end]]):gsub('$(%w+)', {
             r.ImGui_Spacing(ctx)
 
 --ignore_warnings
-            local _, checks = checkRenderGroupSettings(rsg)
+            --reaper.ShowConsoleMsg(gui.stWnd[cP].frameCount)
+            if gui.stWnd[cP].frameCount % 10 == 0 then
+              _, gui.stWnd[cP].checks = checkRenderGroupSettings(rsg)
+            end
             local col_ok    = gui.st.col.ok
             local col_error =  gui.st.col.error
             local col_warning =  gui.st.col.warning 
             local warnings = false
-            for i,check in ipairs(checks) do
+            for i,check in ipairs(gui.stWnd[cP].checks) do
               if not check.passed and check.severity == 'warning' then warnings = true end
             end
             r.ImGui_AlignTextToFramePadding(ctx)
@@ -2427,7 +2441,7 @@ end]]):gsub('$(%w+)', {
             r.ImGui_PushStyleVar(ctx,r.ImGui_StyleVar_DisabledAlpha(),1)
             r.ImGui_BeginDisabled(ctx)
             
-            for i,check in ipairs(checks) do
+            for i,check in ipairs(gui.stWnd[cP].checks) do
               if check.passed then r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), col_ok)
               elseif check.severity == 'critical' then 
                 r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), col_error) 
@@ -2509,7 +2523,8 @@ end]]):gsub('$(%w+)', {
         saveSettings()
       end
       app.setHoveredHint('settings', ('Save settings for the current project.'):format(gui.descModAlt:gsub("^%l", string.upper)))
-      
+      gui.stWnd[cP].frameCount=(gui.stWnd[cP].frameCount == 120) and 0 or (gui.stWnd[cP].frameCount+1)
+              
       r.ImGui_PopFont(ctx)
       r.ImGui_EndPopup(ctx)
     end
