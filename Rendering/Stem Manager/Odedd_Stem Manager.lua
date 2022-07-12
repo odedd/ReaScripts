@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.5.0
+-- @version 0.5.1
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -1460,7 +1460,8 @@ end]]):gsub('$(%w+)', {
             end
             if #errors > 0 or #criticalErrors > 0 then
               app.errors = app.errors or {}
-              -- TODO: change "added to the render queue" to reflect render operation
+              -- TODO: show all warnings and errors before render and let user decide what to do
+              -- also change "added to the render queue" to reflect render operation
               table.insert(app.errors, ("Stem '%s' was %s:\n%s"):format(
                   stemName,
                   criticalErrorFound and 'not added to the render queue\nbecause of the following error(s)' 
@@ -2014,7 +2015,6 @@ end]]):gsub('$(%w+)', {
           end
         end
 -- TRACK NAME & SYNC BUTTONS
-  -- TODO: support hidden tracks
   -- COL: TRACK NAME
         r.ImGui_TableNextRow(ctx, r.ImGui_TableRowFlags_Headers(), cellSize)
         if r.ImGui_TableNextColumn(ctx) then
