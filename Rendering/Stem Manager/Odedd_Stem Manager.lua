@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.5.2
+-- @version 0.5.3
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,7 +14,8 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Minor graphic tweaks
+--   Render errors now appear before the render operation with the ability to cancel
+--   Added external action - 'render all stems'
 
 reaper.ClearConsole()
 local STATES             = {
@@ -181,7 +182,7 @@ local function prereqCheck ()
     if not status then 
       table.insert(errors, ('ReaImgui version must be %s or above.\nPlease update via ReaPack.'):format(reaimgui_version)) 
     elseif not r.ImGui_ColorConvertU32ToDouble4 then
-      table.insert(errors, "ReaImGui error.\nPlease reinstall it via ReaPack.\n\nIf you already installed it, remember to restart reaper.")
+      table.insert(errors, "ReaImGui error.\nPlease reinstall it via ReaPack.\n\nIf you already installed it, remember to restart r.")
     end
   else
     table.insert(errors, 'This script requires ReaImgui.\nPlease install it via ReaPack.')
@@ -190,12 +191,12 @@ local function prereqCheck ()
   return errors
 end
 
-local errors = prereqCheck()
-if #errors > 0 then
-  r.MB(table.concat(errors,'\n------------\n'), scr.name,0)
+local prereqErrors = prereqCheck()
+if #prereqErrors > 0 then
+  r.MB(table.concat(prereqErrors,'\n------------\n'), scr.name,0)
 end
 
-if next(errors) == nil then
+if next(prereqErrors) == nil then
   
   local app               = {
     open      = true,
@@ -768,8 +769,8 @@ if next(errors) == nil then
   
   function deleteLongerProjExtState(section, key)
     local n = '*'
-    while reaper.GetProjExtState(0,section, key..n) == 1 do 
-      reaper.SetProjExtState(0,section, key..n, '')
+    while r.GetProjExtState(0,section, key..n) == 1 do 
+      r.SetProjExtState(0,section, key..n, '')
       n = n..'*' 
     end
   end
@@ -1287,7 +1288,7 @@ end]]):gsub('$(%w+)', {
             local mIdx = 0
             local found = false
             while not failed_exist do
-              local retval, isrgn, _, _, name, markrgnindexnumber = reaper.EnumProjectMarkers2(0, mIdx)
+              local retval, isrgn, _, _, name, markrgnindexnumber = r.EnumProjectMarkers2(0, mIdx)
               if retval == 0 then break end
               if (not isrgn) and mar.id == 'M'..markrgnindexnumber then 
                 if mar.name ~= name then failed_name = true end
@@ -1337,7 +1338,7 @@ end]]):gsub('$(%w+)', {
             local rIdx = 0
             local found = false
             while not failed_exist do
-              local retval, isrgn, _, _, name, markrgnindexnumber = reaper.EnumProjectMarkers2(0, rIdx)
+              local retval, isrgn, _, _, name, markrgnindexnumber = r.EnumProjectMarkers2(0, rIdx)
               if retval == 0 then break end
               if isrgn and reg.id == 'R'..markrgnindexnumber then 
                 found = true
@@ -1347,7 +1348,7 @@ end]]):gsub('$(%w+)', {
               rIdx=rIdx+1
             end
             if found and failed_name then failed_name = true end
-            if not found and not failed_exist then failed_exist = true elseif (not failed_regionMatrix) and not reaper.EnumRegionRenderMatrix(0, tonumber(reg.id:sub(2, -1 )), 0) then failed_regionMatrix = true end
+            if not found and not failed_exist then failed_exist = true elseif (not failed_regionMatrix) and not r.EnumRegionRenderMatrix(0, tonumber(reg.id:sub(2, -1 )), 0) then failed_regionMatrix = true end
           end
           table.insert(checks,{passed = not failed_exist, 
                        status=("Selected region(s) %sexist"):format(failed_exist and "don't " or ''),
@@ -1373,33 +1374,42 @@ end]]):gsub('$(%w+)', {
   end
   
   local function doPerform()
+    -- make sure we're up to date on everything
     db:sync()
-    app.perform.fullRender = (app.stemToRender == nil) --and app.renderGroupToRender == nil)
-    local stemsToRender
-    if app.stemToRender then
-      stemsToRender =  {[app.stemToRender] = db.stems[app.stemToRender]}
+    db:getRenderPresets()
+    local idx          = 0
+    local laststemName = nil
+    local save_marker_selection = false
+    local save_time_selection = false
+    local saved_markeregion_selection = {}
+    local saved_time_selection = {}
+    local stems_to_render
+    local foundAssignedTrack = {}
+    local criticalErrorFound = {}
+    app.render_cancelled = false
+    app.current_renderaction = app.forceRenderAction or settings.project.renderaction
+    app.perform.fullRender = (app.stem_to_render == nil) --and app.renderGroupToRender == nil)
+    -- determine stems to be rendered
+    if app.stem_to_render then
+      stems_to_render =  {[app.stem_to_render] = db.stems[app.stem_to_render]}
     elseif app.renderGroupToRender then
-      stemsToRender = {}
+      stems_to_render = {}
       for k,v in pairs(db.stems) do
         if v.render_setting_group == app.renderGroupToRender then
-          stemsToRender[k] = v
+          stems_to_render[k] = v
         end
       end
     else
-      stemsToRender = db.stems      
+      stems_to_render = deepcopy(db.stems)      
     end
     coroutine.yield('Rendering stems', 0, 1)
-    local idx          = 0
-    local laststemName = nil
-    local saved_markeregion_selection = {}
-    local saved_time_selection = {}
-    app.render_cancelled = false
-    app.current_renderaction = app.forceRenderAction or settings.project.renderaction
-    -- check if any stem requires markers or regions, and only save the region/marker
-    -- selection if needed (because it requires opening the marker window)
-    local save_marker_selection = false
-    local save_time_selection = false
-    for stemName, stem in pairs(stemsToRender) do
+    -- go over all stems to be rendered, in order to:
+    --  - determine whether bounds should be be pre-saved
+    --  - determine what stems should be skipped
+    --  - get error messages for the entire render operation
+    local included_render_groups = {}
+    local stem_names_to_skip = {} -- for message
+    for stemName, stem in pairs(stems_to_render) do
       local stem = db.stems[stemName]
       local rsg = settings.project.render_setting_groups[stem.render_setting_group]
       if rsg.select_markers or rsg.select_regions then
@@ -1408,81 +1418,145 @@ end]]):gsub('$(%w+)', {
       if rsg.make_timeSel then
         save_time_selection = true
       end
+      -- check if any track has a state in this stem
+      foundAssignedTrack[stemName] = false
+      for idx, track in ipairs(db.tracks) do
+        foundAssignedTrack[stemName] = foundAssignedTrack[stemName] or (track.stemMatrix[stemName] ~= ' ' and track.stemMatrix[stemName] ~= nil)
+      end
+      if app.perform.fullRender and rsg.skip_empty_stems and not foundAssignedTrack[stemName] then 
+        table.insert(stem_names_to_skip, stemName)
+        stems_to_render[stemName] = nil 
+      else
+        included_render_groups[stem.render_setting_group] = included_render_groups[stem.render_setting_group] or {}
+        table.insert(included_render_groups[stem.render_setting_group],stemName)
+      end
     end
-    -- save marker selection, so that it can be restored later
-    if save_marker_selection and r.APIExists('JS_Localize') then
-      OpenAndGetRegionManagerWindow()
-      coroutine.yield('Saving marker/region selection', 0, 1)
-      saved_markeregion_selection = GetSelectedRegionsOrMarkers()
-      r.Main_OnCommand(40326, 0) -- close region/marker manager
-    end
-    if save_time_selection then
-      saved_time_selection = {r.GetSet_LoopTimeRange(0,0,0,0,0)}
-    end
-    if r.GetAllProjectPlayStates(0)&1 then r.OnStopButton() end
-    for stemName, stem in pairsByOrder(stemsToRender) do
-      if not app.render_cancelled then
-        idx = idx + 1
-        
-        --TODO: CONSOLIDATE UNDO HISTORY?:
-        local stem = db.stems[stemName]
-        local rsg = settings.project.render_setting_groups[stem.render_setting_group]
-        
-        -- check if any track has a state in this stem
-        local foundAssignedTrack = false
-        for idx, track in ipairs(db.tracks) do
-          foundAssignedTrack = foundAssignedTrack or (track.stemMatrix[stemName] ~= ' ' and track.stemMatrix[stemName] ~= nil)
-        end
-        if not (rsg.skip_empty_stems and not foundAssignedTrack) or not app.perform.fullRender then
-          ---- if no track has a state in this stem, then untoggle the last stem so the project's default solo state will be restored
-          ---- Thie was removed in v0.2 since reflect_on_add is on by default, so empty stems are actually the mix by default, unless
-          ---- specifically decided not to be by the user. I'm leaving it here in case the request comes up.
-          ---- To resume this behavior, uncomment the following two lines and comment the next one.
-          -- if foundAssignedTrack then db:toggleStemSync(db.stems[stemName], SYNCMODE_SOLO)
-          -- elseif laststemName then db:toggleStemSync(db.stems[laststemName], SYNCMODE_OFF) end
-          db:toggleStemSync(db.stems[stemName], SYNCMODE_SOLO)
-          coroutine.yield('Creating Stem ' .. stemName, idx, app.perform.fullRender and db.stemCount or 1)
-          db:getRenderPresets()
-          local ok, checks = checkRenderGroupSettings(rsg)
-          local criticalErrorFound = false
-          if not ok then
-            local errors = {}
-            local criticalErrors = {}
-            for i, check in ipairs(checks) do
-              if not check.passed then
-                if check.severity =='critical' then
-                  criticalErrorFound = true 
-                  table.insert(criticalErrors,' - '..check.status)
-                elseif not rsg.ignore_warnings then
-                  table.insert(errors,' - '..check.status)
-               end
-              end
-            end
-            if #errors > 0 or #criticalErrors > 0 then
-              app.errors = app.errors or {}
-              -- TODO: show all warnings and errors before render and let user decide what to do
-              -- also change "added to the render queue" to reflect render operation
-              table.insert(app.errors, ("Stem '%s' was %s:\n%s"):format(
-                  stemName,
-                  criticalErrorFound and 'not added to the render queue\nbecause of the following error(s)' 
-                                      or 'added to the render queue\nbut the following warning(s) were found',  
-                  criticalErrorFound and table.concat(criticalErrors,'\n')
-                                      or table.concat(errors,'\n')))
+    
+    local errors = {}
+    local criticalErrors = {}
+    for rsgIdx, v in pairs(included_render_groups) do
+      local rsg = settings.project.render_setting_groups[rsgIdx]
+      local ok, checks = checkRenderGroupSettings(rsg)
+      criticalErrorFound[rsgIdx] = false
+      criticalErrors[rsgIdx] = {}
+      errors[rsgIdx] = {}
+      if not ok then
+        for i, check in ipairs(checks) do
+          if not check.passed then
+            if check.severity =='critical' then
+              criticalErrorFound[rsgIdx] = true 
+              table.insert(criticalErrors[rsgIdx],check.status)
+            elseif not rsg.ignore_warnings then
+              table.insert(errors[rsgIdx], check.status)
             end
           end
-          if not criticalErrorFound then
+        end
+      end
+    end
+    
+    app.render_count = 0
+    for stemName, stem in pairs(stems_to_render) do
+      if not criticalErrorFound[stem.render_setting_group] then
+        app.render_count = app.render_count+1
+      end
+    end
+    -- assemble combined error message
+   
+    local skpMsg
+    if #stem_names_to_skip > 0 then
+      skpMsg = ('The following stems do not have any tracks with solo/mute states\nin them, so they will be skipped:\n - %s\n(This can be changed in the settings window - render "empty" stems):'):format(table.concat(stem_names_to_skip,', '))
+    end
+    
+    local ceMsg
+    for rsgIdx, statuses in pairs(criticalErrors) do
+      if #statuses > 0 then
+        local stems_in_rsg = {}
+        for stemName, stem in pairsByOrder(stems_to_render) do
+          if stem.render_setting_group == rsgIdx then
+            table.insert(stems_in_rsg, stemName)
+          end
+        end
+        local stemNames = table.concat(stems_in_rsg, ', ')
+        ceMsg = (ceMsg or '\n - ')..stemNames..':\n'
+        for i,status in ipairs(statuses) do
+          ceMsg = ceMsg..'   * '..status..'\n'
+        end
+      end
+    end
+    if ceMsg then
+      ceMsg = 'The following stems cannot be rendered:'..ceMsg
+    end
+    
+    local eMsg
+    for rsgIdx, statuses in pairs(errors) do
+      if #statuses > 0 then
+        local stems_in_rsg = {}
+        for stemName, stem in pairsByOrder(stems_to_render) do
+          if stem.render_setting_group == rsgIdx then
+            table.insert(stems_in_rsg, stemName)
+          end
+        end
+        local stemNames = table.concat(stems_in_rsg, ', ')
+        eMsg = (eMsg or '\n - ')..stemNames..':\n'
+        for i,status in ipairs(statuses) do
+          eMsg = eMsg..'   * '..status..'\n'
+        end
+      end
+    end
+    if eMsg then
+      eMsg = 'The following stems will be rendered, but please see the following warnings:'..eMsg
+    end
+    if skpMsg or ceMsg or eMsg then
+    local msg = (ceMsg and ceMsg or '')..
+                (eMsg and (ceMsg and '\n\n' or '')..eMsg or '')..
+                (skpMsg and ((ceMsg or eMsg) and '\n\n' or '')..skpMsg or '')
+      local error_message_closed = false
+      r.ImGui_OpenPopup(gui.ctx,scr.name..'##error')
+      while not error_message_closed do
+        local ok = app.drawPopup(gui.ctx, 'msg',scr.name..'##error',{msg = msg, showCancelButton = true})
+        if ok then
+          error_message_closed = true
+        elseif ok == false then
+          error_message_closed = true
+          app.render_count = 0
+        end
+        coroutine.yield('Errors found...', idx, app.perform.fullRender and db.stemCount or 1)
+      end
+    end
+    
+    if app.render_count > 0 then
+      -- save marker selection, so that it can be restored later
+      if save_marker_selection and r.APIExists('JS_Localize') then
+        OpenAndGetRegionManagerWindow()
+        coroutine.yield('Saving marker/region selection', 0, 1)
+        saved_markeregion_selection = GetSelectedRegionsOrMarkers()
+        r.Main_OnCommand(40326, 0) -- close region/marker manager
+      end
+      if save_time_selection then
+        saved_time_selection = {r.GetSet_LoopTimeRange(0,0,0,0,0)}
+      end
+      if r.GetAllProjectPlayStates(0)&1 then r.OnStopButton() end
+      for stemName, stem in pairsByOrder(stems_to_render) do
+        if not app.render_cancelled then
+          idx = idx + 1
+          --TODO: CONSOLIDATE UNDO HISTORY?:
+          local stem = db.stems[stemName]
+          local rsg = settings.project.render_setting_groups[stem.render_setting_group]
+          if not criticalErrorFound[stem.render_setting_group] then
+            db:toggleStemSync(db.stems[stemName], SYNCMODE_SOLO)
+            coroutine.yield('Creating stem ' .. stemName, idx, app.render_count)
             local render_preset = db.renderPresets[rsg.render_preset]
             ApplyPresetByName = render_preset.name
             applyPresetScript()
             if render_preset.boundsflag == RB_SELECTED_MARKERS and rsg.select_markers then
               -- window must be given an opportunity to open (therefore yielded) for the selection to work
               OpenAndGetRegionManagerWindow()
-              coroutine.yield('Creating Stem ' .. stemName.. ' (selecting markers)', idx, app.perform.fullRender and db.stemCount or 1)
+              coroutine.yield('Creating stem ' .. stemName.. ' (selecting markers)', idx, app.render_count)
               SelectMarkers(rsg.selected_markers)
             elseif render_preset.boundsflag == RB_SELECTED_REGIONS and rsg.select_regions then
               -- window must be given an opportunity to open (therefore yielded) for the selection to work
               OpenAndGetRegionManagerWindow()
-              coroutine.yield('Creating Stem ' .. stemName.. ' (selecting regions)', idx, app.perform.fullRender and db.stemCount or 1)
+              coroutine.yield('Creating stem ' .. stemName.. ' (selecting regions)', idx, app.render_count)
               SelectRegions(rsg.selected_regions)
             elseif render_preset.boundsflag == RB_TIME_SELECTION and rsg.make_timeSel then
               r.GetSet_LoopTimeRange2(0,true, false, rsg.timeSelStart,rsg.timeSelEnd,0)--, boolean isLoop, number start, number end, boolean allowautoseek)
@@ -1516,19 +1590,20 @@ end]]):gsub('$(%w+)', {
                   end
                 end 
               end
-              coroutine.yield('rendering', idx, app.perform.fullRender and db.stemCount or 1)
+              coroutine.yield('Rendering stem ' .. stemName, idx, app.render_count)
+              
               r.Main_OnCommand(42230, 0) --render now
               r.Main_OnCommand(40043,0) -- go to end of project
               r.OnPlayButtonEx(0)
               local t = os.clock()
-              local moreStemsInLine = idx < (app.perform.fullRender and db.stemCount or 1)
+              local moreStemsInLine = idx < app.render_count
               if moreStemsInLine then r.ImGui_OpenPopup(gui.ctx,scr.name..'##wait') end
               while not app.render_cancelled and (os.clock() - t < settings.project.wait_time) and moreStemsInLine do
                 local wait_left = math.ceil(settings.project.wait_time - (os.clock() - t))
                 if app.drawPopup(gui.ctx, 'msg',scr.name..'##wait',{closeKey = r.ImGui_Key_Escape(),okButtonLabel = "Stop rendering", msg = ('Waiting for %d more second%s...'):format(wait_left, wait_left > 1 and 's' or '')}) then
                   app.render_cancelled = true
                 end
-                coroutine.yield('Waiting...', idx, app.perform.fullRender and db.stemCount or 1)
+                coroutine.yield('Waiting...', idx, app.render_count)
               end
               r.OnStopButtonEx(0)
             else
@@ -1540,22 +1615,24 @@ end]]):gsub('$(%w+)', {
              end
             end
           end
+          laststemName = stemName
         end
-        laststemName = stemName
       end
+      app.render_cancelled = false
+      db:toggleStemSync(db.stems[laststemName], SYNCMODE_OFF)
+      -- restore marker/region selection if it was saved
+      if save_marker_selection and r.APIExists('JS_Localize') then
+        OpenAndGetRegionManagerWindow()
+        coroutine.yield('Restoring marker/region selection', 1, 1)
+        SelectRegionsOrMarkers(saved_markeregion_selection)
+      end
+      if save_time_selection then
+        r.GetSet_LoopTimeRange2(0,true, false, saved_time_selection[1],saved_time_selection[2],0)--, boolean isLoop, number start, number end, boolean allowautoseek)
+      end
+      coroutine.yield('Done', 1, 1)
+    else
+      coroutine.yield('Done', 0, 1)
     end
-    app.render_cancelled = false
-    db:toggleStemSync(db.stems[laststemName], SYNCMODE_OFF)
-    -- restore marker/region selection if it was saved
-    if save_marker_selection and r.APIExists('JS_Localize') then
-      OpenAndGetRegionManagerWindow()
-      coroutine.yield('Restoring marker/region selection', 1, 1)
-      SelectRegionsOrMarkers(saved_markeregion_selection)
-    end
-    if save_time_selection then
-      r.GetSet_LoopTimeRange2(0,true, false, saved_time_selection[1],saved_time_selection[2],0)--, boolean isLoop, number start, number end, boolean allowautoseek)
-    end
-    coroutine.yield('Done', 1, 1)
     return
   end
   
@@ -1576,7 +1653,7 @@ end]]):gsub('$(%w+)', {
         if stemName then
           if db.stems[stemName] then 
           app.forceRenderAction = (cmd == 'add') and RENDERACTION_RENDERQUEUE_OPEN or RENDERACTION_RENDER
-          app.stemToRender = stemName
+          app.stem_to_render = stemName
           app.coPerform = coroutine.create(doPerform) 
         end
         end
@@ -1587,8 +1664,12 @@ end]]):gsub('$(%w+)', {
           app.renderGroupToRender = renderGroup
           app.coPerform = coroutine.create(doPerform) 
         end
-      elseif cmd == 'add_all' then 
-        app.coPerform = coroutine.create(doPerform) 
+      elseif cmd == 'add_all' then
+        app.forceRenderAction = RENDERACTION_RENDERQUEUE_OPEN
+        app.coPerform = coroutine.create(doPerform)
+      elseif cmd == 'render_all' then
+        app.forceRenderAction = RENDERACTION_RENDER
+        app.coPerform = coroutine.create(doPerform)
       end
     end
   end
@@ -1645,11 +1726,14 @@ end]]):gsub('$(%w+)', {
     elseif popupType == 'msg' then
       local okPressed             = nil
       local msg                   = data.msg or ''
+      local showCancelButton      = data.showCancelButton or false
       local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, msg)
       local okButtonLabel         = data.okButtonLabel or 'OK'
+      local cancelButtonLabel     = data.cancelButtonLabel or 'Cancel'
       local bottom_lines          = 1
       local closeKey = data.closeKey or r.ImGui_Key_Enter()
-  
+      local cancelKey = data.cancelKey or r.ImGui_Key_Escape()
+    
       r.ImGui_SetNextWindowSize(ctx, math.max(220,textWidth) + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4, textHeight + 90)
       r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
    
@@ -1665,15 +1749,28 @@ end]]):gsub('$(%w+)', {
         r.ImGui_TextWrapped(ctx, msg)
         r.ImGui_SetCursorPosY(ctx,
                               r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) - r.ImGui_GetStyleVar(ctx,
-                                                                                                                                r.ImGui_StyleVar_WindowPadding()))
-        local buttonTextWidth = r.ImGui_CalcTextSize(ctx, okButtonLabel) + r.ImGui_GetStyleVar(ctx,
-                                                                                               r.ImGui_StyleVar_FramePadding()) * 2;
+                                                                                                         r.ImGui_StyleVar_WindowPadding()))
+        
+        local buttonTextWidth = r.ImGui_CalcTextSize(ctx, okButtonLabel) + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
+        
+        if showCancelButton then
+          buttonTextWidth = buttonTextWidth + reaper.ImGui_GetStyleVar(ctx, reaper.ImGui_StyleVar_ItemSpacing()) + r.ImGui_CalcTextSize(ctx, cancelButtonLabel) + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
+        end
         r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
   
         if r.ImGui_Button(ctx, okButtonLabel) or r.ImGui_IsKeyPressed(ctx, closeKey) then
           okPressed = true
           r.ImGui_CloseCurrentPopup(ctx)
         end
+        
+        if showCancelButton then
+          reaper.ImGui_SameLine(ctx)
+          if r.ImGui_Button(ctx, cancelButtonLabel) or r.ImGui_IsKeyPressed(ctx, cancelKey) then
+            okPressed = false
+            r.ImGui_CloseCurrentPopup(ctx)
+          end
+        end
+        
         r.ImGui_EndPopup(ctx)
       end
       return okPressed
@@ -1684,9 +1781,9 @@ end]]):gsub('$(%w+)', {
         if retval == true then db:renameStem(data.stemName, newval) end
         if retval ~= nil then gui.popups.object = nil; r.ImGui_CloseCurrentPopup(ctx) end --could be true (ok) or false (cancel)
         app.setHoveredHint('main', 'Rename stem')
-        if r.ImGui_Selectable(ctx, 'Add to render queue', false) then app.stemToRender = data.stemName; app.forceRenderAction = RENDERACTION_RENDERQUEUE_OPEN; app.coPerform = coroutine.create(doPerform) end
+        if r.ImGui_Selectable(ctx, 'Add to render queue', false) then app.stem_to_render = data.stemName; app.forceRenderAction = RENDERACTION_RENDERQUEUE_OPEN; app.coPerform = coroutine.create(doPerform) end
         app.setHoveredHint('main', "Add this stem only to the render queue") 
-        if r.ImGui_Selectable(ctx, 'Render now', false) then app.stemToRender = data.stemName; app.forceRenderAction = RENDERACTION_RENDER; app.coPerform = coroutine.create(doPerform) end
+        if r.ImGui_Selectable(ctx, 'Render now', false) then app.stem_to_render = data.stemName; app.forceRenderAction = RENDERACTION_RENDER; app.coPerform = coroutine.create(doPerform) end
         app.setHoveredHint('main', "Render this stem only") 
         if r.ImGui_Selectable(ctx, 'Get states from tracks', false) then db:reflectAllTracksOnStem(data.stemName)end
         app.setHoveredHint('main', "Get current solo/mute states from the project's tracks.")
@@ -2005,7 +2102,7 @@ end]]):gsub('$(%w+)', {
         r.ImGui_TableNextRow(ctx, r.ImGui_TableRowFlags_Headers(), cellSize)
         if r.ImGui_TableNextColumn(ctx) then
           r.ImGui_AlignTextToFramePadding(ctx)
-          r.ImGui_SetCursorPosX(ctx, reaper.ImGui_GetCursorPosX(ctx)+ defPadding*2)
+          r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx)+ defPadding*2)
           r.ImGui_Text(ctx, 'Render Setting Groups')
         end
   -- COL: STEM RENDER GROUP
@@ -2021,7 +2118,7 @@ end]]):gsub('$(%w+)', {
           trackListX, trackListY = select(1,r.ImGui_GetCursorScreenPos(ctx)),select(2,r.ImGui_GetCursorScreenPos(ctx))+cellSize+1
           trackListHeight = r.ImGui_GetCursorPosY(ctx) + select(2,r.ImGui_GetContentRegionAvail(ctx)) - cellSize - headerRowHeight - 2
           r.ImGui_AlignTextToFramePadding(ctx)
-          r.ImGui_SetCursorPosX(ctx, reaper.ImGui_GetCursorPosX(ctx)+ defPadding*2)
+          r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx)+ defPadding*2)
           r.ImGui_Text(ctx, 'Mirror stem')
         end
   -- COLS: STEM SYNC BUTTONS
@@ -2149,7 +2246,7 @@ end]]):gsub('$(%w+)', {
     local halfWidth = 230
     local itemWidth = halfWidth*2
     local renderaction_list = ''
-    local cP = reaper.EnumProjects(-1)
+    local cP = r.EnumProjects(-1)
     local projectChanged
     if oldcP ~= cP then
       oldcP = cP
@@ -2177,17 +2274,17 @@ end]]):gsub('$(%w+)', {
       if not sameline then
         r.ImGui_BeginGroup(ctx)
         r.ImGui_AlignTextToFramePadding(ctx)
-        reaper.ImGui_PushTextWrapPos(ctx,halfWidth)
+        r.ImGui_PushTextWrapPos(ctx,halfWidth)
         r.ImGui_Text(ctx,text)
-        reaper.ImGui_PopTextWrapPos(ctx)
+        r.ImGui_PopTextWrapPos(ctx)
         r.ImGui_SameLine(ctx)
         r.ImGui_SetCursorPosX(ctx, halfWidth)
         widgetWidth = itemWidth
         
       else
-        reaper.ImGui_SameLine(ctx)
-        r.ImGui_SetCursorPosX(ctx, reaper.ImGui_GetCursorPosX(ctx)-r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing()))
-        widgetWidth = itemWidth - gui.TEXT_BASE_WIDTH*2-reaper.ImGui_GetStyleVar(ctx, reaper.ImGui_StyleVar_FramePadding())*2
+        r.ImGui_SameLine(ctx)
+        r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx)-r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing()))
+        widgetWidth = itemWidth - gui.TEXT_BASE_WIDTH*2-r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding())*2
       end
       r.ImGui_PushItemWidth(ctx, widgetWidth)
       
@@ -2200,9 +2297,9 @@ end]]):gsub('$(%w+)', {
       elseif stType == 'button' then
         retval = r.ImGui_Button(ctx, data.label, widgetWidth)
       elseif stType == 'text' then
-        _, retval = reaper.ImGui_InputText(ctx, '##'..text,val)
+        _, retval = r.ImGui_InputText(ctx, '##'..text,val)
       elseif stType == 'text_with_hint' then
-        _, retval = reaper.ImGui_InputTextWithHint(ctx, '##'..text,data.hint,val)
+        _, retval = r.ImGui_InputTextWithHint(ctx, '##'..text,data.hint,val)
       end
       if not sameline then r.ImGui_EndGroup(ctx) end
       app.setHoveredHint('settings',hint)
@@ -2213,13 +2310,13 @@ end]]):gsub('$(%w+)', {
       local retChecked, retval_a, retval_b = valA, valB, valC
       retChecked = setting('checkbox', text,main_hint,retChecked)
       if retChecked then
-        reaper.ImGui_SameLine(ctx)
-        local widgetX = reaper.ImGui_GetCursorPosX(ctx)-r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing())
+        r.ImGui_SameLine(ctx)
+        local widgetX = r.ImGui_GetCursorPosX(ctx)-r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing())
         r.ImGui_SetCursorPosX(ctx, widgetX)
         if (stType == 'region' or stType == 'marker') and not r.APIExists('JS_Localize') then
             r.ImGui_TextColored(ctx,gui.st.col.error,('js_ReaScriptAPI needed for selecting %ss.'):format(stType))
         else
-          local widgetWidth = itemWidth - gui.TEXT_BASE_WIDTH*2-reaper.ImGui_GetStyleVar(ctx, reaper.ImGui_StyleVar_FramePadding())*2
+          local widgetWidth = itemWidth - gui.TEXT_BASE_WIDTH*2-r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding())*2
           if stType == 'time_sel' then
             local clicked = r.ImGui_Button(ctx, 'Capture time selection',widgetWidth)
             app.setHoveredHint('settings','Make a time selection and click to capture its start and end positions.')
@@ -2242,7 +2339,7 @@ end]]):gsub('$(%w+)', {
             app.setHoveredHint('settings',"Time seleciton end.")
           elseif stType == 'actions' then
             retval_a = retval_a or {}
-            reaper.ImGui_SetNextItemWidth(ctx, widgetWidth)
+            r.ImGui_SetNextItemWidth(ctx, widgetWidth)
             if r.ImGui_BeginListBox(ctx,'##'..text,0,r.ImGui_GetTextLineHeightWithSpacing(ctx)*4) then
               for i,action in ipairs(retval_a) do
                 local rv, name = getReaperActionNameOrCommandId(action)
@@ -2256,8 +2353,8 @@ end]]):gsub('$(%w+)', {
               r.ImGui_EndListBox(ctx)
             end
             r.ImGui_SameLine(ctx)
-            local framePaddingX, framePaddingY = reaper.ImGui_GetStyleVar(ctx,reaper.ImGui_StyleVar_FramePadding())
-            reaper.ImGui_SetCursorPos(ctx, halfWidth, reaper.ImGui_GetCursorPosY(ctx) + reaper.ImGui_GetTextLineHeightWithSpacing(ctx) + framePaddingY*2)
+            local framePaddingX, framePaddingY = r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_FramePadding())
+            r.ImGui_SetCursorPos(ctx, halfWidth, r.ImGui_GetCursorPosY(ctx) + r.ImGui_GetTextLineHeightWithSpacing(ctx) + framePaddingY*2)
             if r.ImGui_Button(ctx,'+##add'..text, gui.TEXT_BASE_WIDTH*2+framePaddingX) then
               gui.stWnd[cP].action_target = text
               r.PromptForAction(1, 0,0)
@@ -2270,8 +2367,8 @@ end]]):gsub('$(%w+)', {
                 else r.PromptForAction(-1, 0,0) end
               end
             end
-            reaper.ImGui_SameLine(ctx)
-            reaper.ImGui_SetCursorPos(ctx, halfWidth, reaper.ImGui_GetCursorPosY(ctx) + reaper.ImGui_GetTextLineHeightWithSpacing(ctx)*2+ framePaddingY*4)
+            r.ImGui_SameLine(ctx)
+            r.ImGui_SetCursorPos(ctx, halfWidth, r.ImGui_GetCursorPosY(ctx) + r.ImGui_GetTextLineHeightWithSpacing(ctx)*2+ framePaddingY*4)
             if r.ImGui_Button(ctx,'-##remove'..text, gui.TEXT_BASE_WIDTH*2+framePaddingX) then
               if gui.stWnd[cP][text] then
                 table.remove(retval_a,gui.stWnd[cP][text])
@@ -2362,13 +2459,13 @@ end]]):gsub('$(%w+)', {
       gui.stWnd[cP].tS.syncmode = setting('combo','Mirror mode',("Mirror mode. %s-click the mirror button to trigger other behavior."):format(gui.descModAlt:gsub("^%l", string.upper)),gui.stWnd[cP].tS.syncmode,{list=syncmode_list})
       gui.stWnd[cP].tS.show_hidden_tracks  = setting('checkbox','Show hidden tracks', "Show tracks that are hidden in the TCP?",gui.stWnd[cP].tS.show_hidden_tracks)
       
-      reaper.ImGui_Text(ctx,'')
+      r.ImGui_Text(ctx,'')
       r.ImGui_Text(ctx, 'Project render groups')
       app.setHoveredHint('settings',("Each stem is associated to one of %d render groups with its own set of settings."):format(RENDER_SETTING_GROUPS_SLOTS))
       r.ImGui_Separator(ctx)
       
       local availwidth = r.ImGui_GetContentRegionAvail(ctx)
-      if reaper.ImGui_BeginTabBar(ctx,'Render Group Settings') then
+      if r.ImGui_BeginTabBar(ctx,'Render Group Settings') then
         for stGrp=1,RENDER_SETTING_GROUPS_SLOTS do
           if gui.stWnd[cP].activeRSG == stGrp then
             r.ImGui_SetNextItemWidth(ctx,halfWidth*3/RENDER_SETTING_GROUPS_SLOTS) 
@@ -2418,7 +2515,7 @@ end]]):gsub('$(%w+)', {
             r.ImGui_Spacing(ctx)
 
 --ignore_warnings
-            --reaper.ShowConsoleMsg(gui.stWnd[cP].frameCount)
+            --r.ShowConsoleMsg(gui.stWnd[cP].frameCount)
             if gui.stWnd[cP].frameCount % 10 == 0 then
               _, gui.stWnd[cP].checks = checkRenderGroupSettings(rsg)
             end
@@ -2568,22 +2665,26 @@ end]]):gsub('$(%w+)', {
           gui.caWnd.actionList = {}
           gui.caWnd.actionList['General Actions']       = {order = 1, actions={}}
           gui.caWnd.actionList['Render Group Actions']  = {order = 2, actions={}}
-          gui.caWnd.actionList['Stem Actions']          = {order = 3, actions={}} 
-          gui.caWnd.actionList['General Actions'].actions = {{title = 'Add all stems to render queue', command = 'add_all'}}
+          gui.caWnd.actionList['Stem Render Actions']   = {order = 3, actions={}} 
+          gui.caWnd.actionList['Stem Toggle Actions']   = {order = 4, actions={}} 
+          gui.caWnd.actionList['General Actions'].actions = {
+            {title = 'Render all stems now', command = 'render_all'},
+            {title = 'Add all stems to render queue', command = 'add_all'}
+            }
           for k, v in pairsByOrder(db.stems) do
-            table.insert(gui.caWnd.actionList['Stem Actions'].actions,{title = ("Toggle '%s' mirroring"):format(k), command = ("sync %s"):format(k)})
+            table.insert(gui.caWnd.actionList['Stem Toggle Actions'].actions,{title = ("Toggle '%s' mirroring"):format(k), command = ("sync %s"):format(k)})
           end
           for k, v in pairsByOrder(db.stems) do
-            table.insert(gui.caWnd.actionList['Stem Actions'].actions,{title = ("Add '%s' to render queue"):format(k), command = ("add %s"):format(k)})
+            table.insert(gui.caWnd.actionList['Stem Render Actions'].actions,{title = ("Render '%s' now"):format(k), command = ("render %s"):format(k)})
           end
           for k, v in pairsByOrder(db.stems) do
-            table.insert(gui.caWnd.actionList['Stem Actions'].actions,{title = ("Render '%s' now"):format(k), command = ("render %s"):format(k)})
-          end
-          for i=1, RENDER_SETTING_GROUPS_SLOTS do
-            table.insert(gui.caWnd.actionList['Render Group Actions'].actions,{title = ("Add render group %d to render queue"):format(i), command = ("add_rg %d"):format(i)})
+            table.insert(gui.caWnd.actionList['Stem Render Actions'].actions,{title = ("Add '%s' to render queue"):format(k), command = ("add %s"):format(k)})
           end
           for i=1, RENDER_SETTING_GROUPS_SLOTS do
             table.insert(gui.caWnd.actionList['Render Group Actions'].actions,{title = ("Render group %d now"):format(i), command = ("render_rg %d"):format(i)})
+          end
+          for i=1, RENDER_SETTING_GROUPS_SLOTS do
+            table.insert(gui.caWnd.actionList['Render Group Actions'].actions,{title = ("Add render group %d to render queue"):format(i), command = ("add_rg %d"):format(i)})
           end
           updateActionStatuses(gui.caWnd.actionList)
         end
@@ -2910,7 +3011,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
         app.coPerform = coroutine.create(doPerform)
       end
     else 
-      r.ImGui_ProgressBar(ctx, (app.perform.pos or 1) / (app.perform.total  or 1),r.ImGui_GetContentRegionAvail(ctx))
+      r.ImGui_ProgressBar(ctx, (app.perform.pos or 0) / (app.perform.total or 1),r.ImGui_GetContentRegionAvail(ctx))
     end
   end
   
@@ -2952,51 +3053,36 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
       app.drawBottom(ctx, bottom_lines)
       r.ImGui_End(ctx)
     end
-    -- this is a workaround to allow for the messagebox to be closed (visually) before running post actions
-    if app.message_closed == 1 or app.do_post_perform_action then 
-      if app.current_renderaction == RENDERACTION_RENDERQUEUE_OPEN then r.Main_OnCommand(40929, 0)
-      elseif  (app.current_renderaction == RENDERACTION_RENDERQUEUE_RUN) and (app.perform.fullRender) then r.Main_OnCommand(41207, 0) 
-      end
-      app.current_renderaction = nil
-      app.do_post_perform_action = false
-      app.message_closed = nil 
-    end
-    if app.message_closed == 0 then app.message_closed = 1 end
-    if app.summary_msg and not app.do_post_perform_action then
-      local ok =  msg(app.summary_msg, 'Errors')
-      if ok then app.summary_msg = nil ; app.message_closed = 0 end
-    end
     return open
   end
   
   function checkPerform() 
     if app.coPerform then
       if coroutine.status(app.coPerform) == "suspended" then
-        retval, app.perform.status, app.perform.pos, app.perform.total = coroutine.resume(app.coPerform, app.stemToRender)
-        
+        retval, app.perform.status, app.perform.pos, app.perform.total = coroutine.resume(app.coPerform, app.stem_to_render)
         if not retval then
           r.ShowConsoleMsg(app.perform.status)
         end
       elseif coroutine.status(app.coPerform) == "dead" then
-        app.stemToRender = nil
+        app.stem_to_render = nil
         app.renderGroupToRender = nil
         app.coPerform = nil
-        if #(app.errors or {}) > 0 then
-          app.summary_msg = table.concat(app.errors,"\n\n")
-          app.errors = {}
-        else
-          app.do_post_perform_action = true
+        if app.render_count > 0 then
+          if app.current_renderaction == RENDERACTION_RENDERQUEUE_OPEN then r.Main_OnCommand(40929, 0)
+          elseif  (app.current_renderaction == RENDERACTION_RENDERQUEUE_RUN) and (app.perform.fullRender) then r.Main_OnCommand(41207, 0) 
+          end
         end
+        app.current_renderaction = nil
       end
     end
   end
   
   function app.loop()
     r.DeleteExtState(scr.context_name, 'defer', false)
+    checkPerform()
     r.ImGui_PushFont(gui.ctx, gui.st.fonts.default)
     app.open = app.drawMainWindow(open)
     r.ImGui_PopFont(gui.ctx)
-    checkPerform()
     checkExternalCommand()
     if app.open then
       r.SetExtState(scr.context_name, 'defer', '1', false) 
@@ -3005,6 +3091,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
       r.ImGui_DestroyContext(gui.ctx)
     end
   end
+  
   loadSettings()
   r.defer(app.loop)
 end
