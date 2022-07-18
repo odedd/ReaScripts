@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="e04c16f47d7f6b968d4757033e2d919bf57aceaa">
+<index version="1" name="Odedd ReaScripts" commit="369d9d7eefbee2da1f09fa36d2a5deee589984c6">
   <category name="Rendering/Stem Manager">
     <reapack name="Odedd_Stem Manager.lua" type="script" desc="Stem Manager">
       <metadata>
@@ -190,6 +190,12 @@ Added external action - 'render all stems']]></changelog>
         <source main="main">https://github.com/odedd/ReaScripts/raw/e04c16f47d7f6b968d4757033e2d919bf57aceaa/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
         <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/e04c16f47d7f6b968d4757033e2d919bf57aceaa/Resources/Fonts/Cousine-90deg.otf</source>
         <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/e04c16f47d7f6b968d4757033e2d919bf57aceaa/Resources/Fonts/Cousine-Regular.ttf</source>
+      </version>
+      <version name="0.5.4" author="Oded Davidov" time="2022-07-18T10:01:14Z">
+        <changelog><![CDATA[Only check region matrix when render source is set to region matrix or region matrix via master]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/369d9d7eefbee2da1f09fa36d2a5deee589984c6/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
+        <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/369d9d7eefbee2da1f09fa36d2a5deee589984c6/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/369d9d7eefbee2da1f09fa36d2a5deee589984c6/Resources/Fonts/Cousine-Regular.ttf</source>
       </version>
     </reapack>
   </category>
