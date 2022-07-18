@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="26a44314b68d3c369f8fae4c326a467472322321">
+<index version="1" name="Odedd ReaScripts" commit="02ef5637b4d7518c1d0372c4b3fe371307d4ec01">
   <category name="Rendering/Stem Manager">
     <reapack name="Odedd_Stem Manager.lua" type="script" desc="Stem Manager">
       <metadata>
@@ -202,6 +202,13 @@ Added external action - 'render all stems']]></changelog>
         <source main="main">https://github.com/odedd/ReaScripts/raw/26a44314b68d3c369f8fae4c326a467472322321/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
         <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/26a44314b68d3c369f8fae4c326a467472322321/Resources/Fonts/Cousine-90deg.otf</source>
         <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/26a44314b68d3c369f8fae4c326a467472322321/Resources/Fonts/Cousine-Regular.ttf</source>
+      </version>
+      <version name="0.6.0" author="Oded Davidov" time="2022-07-18T18:03:11Z">
+        <changelog><![CDATA[Region/marker selection in windows now works as expected
+Fixed - playback between renders now does not return to the beginning of the project, even if that setting is on]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/02ef5637b4d7518c1d0372c4b3fe371307d4ec01/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
+        <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/02ef5637b4d7518c1d0372c4b3fe371307d4ec01/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/02ef5637b4d7518c1d0372c4b3fe371307d4ec01/Resources/Fonts/Cousine-Regular.ttf</source>
       </version>
     </reapack>
   </category>
