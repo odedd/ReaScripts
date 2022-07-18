@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.5.3
+-- @version 0.5.4
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,8 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Render errors now appear before the render operation with the ability to cancel
---   Added external action - 'render all stems'
+--   Only check region matrix when render source is set to region matrix or region matrix via master
 
 reaper.ClearConsole()
 local STATES             = {
@@ -1348,18 +1347,22 @@ end]]):gsub('$(%w+)', {
               rIdx=rIdx+1
             end
             if found and failed_name then failed_name = true end
-            if not found and not failed_exist then failed_exist = true elseif (not failed_regionMatrix) and not r.EnumRegionRenderMatrix(0, tonumber(reg.id:sub(2, -1 )), 0) then failed_regionMatrix = true end
+            if preset.settings == 9 or preset.settings == 137 then --if render preset source is render matrix or render matrix via master
+              if not found and not failed_exist then failed_exist = true elseif (not failed_regionMatrix) and not r.EnumRegionRenderMatrix(0, tonumber(reg.id:sub(2, -1 )), 0) then failed_regionMatrix = true end
+            end
           end
           table.insert(checks,{passed = not failed_exist, 
                        status=("Selected region(s) %sexist"):format(failed_exist and "don't " or ''),
                        severity=failed_exist and 'critical' or nil,
                        hint=failed_exist and "Region(s) selected in the setting group do not exist, or their ID had changed." or "Selected regions exist in the project"})
           ok = ok and (not failed_exist)
-          table.insert(checks,{passed = not failed_regionMatrix, 
-                               status=("Region(s) %smapped in region matrix"):format(failed_regionMatrix and "not " or ''),
-                               severity=failed_regionMatrix and 'critical' or nil,
-                               hint=failed_regionMatrix and "Unmapped regions are skipped. Assign tracks in region matrix (eg 'Master mix')." or "All regions have tracks assigned in the region matrix."})
-          ok = ok and (not failed_regionMatrix)
+          if preset.settings == 9 or preset.settings == 137 then --if render preset source is render matrix or render matrix via master
+            table.insert(checks,{passed = not failed_regionMatrix, 
+                                 status=("Region(s) %smapped in region matrix"):format(failed_regionMatrix and "not " or ''),
+                                 severity=failed_regionMatrix and 'critical' or nil,
+                                 hint=failed_regionMatrix and "Unmapped regions are skipped. Assign tracks in region matrix (eg 'Master mix')." or "All regions have tracks assigned in the region matrix."})
+            ok = ok and (not failed_regionMatrix)
+          end
           if failed_name then
             table.insert(checks,{passed = false, 
                                status="Region names changed",
@@ -3020,7 +3023,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
     r.ImGui_SetNextWindowSize(ctx, 700,
                               math.min(1000, select(2, r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx)))),
                               r.ImGui_Cond_Appearing())
-    r.ImGui_SetNextWindowPos(ctx,100,100,r.ImGui_Cond_FirstUseEver())
+    r.ImGui_SetNextWindowPos(ctx,100,100,reaper.ImGui_Cond_FirstUseEver())
     local visible, open = r.ImGui_Begin(ctx, scr.name..' v'..scr.version .. "##mainWindow", true, r.ImGui_WindowFlags_MenuBar())
     gui.mainWindow      = {
       pos  = {r.ImGui_GetWindowPos(ctx)},
