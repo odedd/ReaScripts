@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.5.5
+-- @version 0.6.0
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,7 +14,8 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Minor graphic changes in settings window
+--   Region/marker selection in windows now works as expected
+--   Fixed - playback between renders now does not return to the beginning of the project, even if that setting is on
 
 reaper.ClearConsole()
 local STATES             = {
@@ -175,6 +176,10 @@ local function prereqCheck ()
   else
     table.insert(errors, 'This script requires "cfillion_Apply render preset.lua".\nPlease install it via ReaPack.')
   end
+  if not r.APIExists('SNM_SetIntConfigVar') then
+    table.insert(errors, 'This script requires the\nSWS/S&M extension.\n\nPlease install it at\nhttps://www.sws-extension.org/')
+  end
+  
   if file_exists(reaimgui_script_path) then 
     local verCheck = loadfile(reaimgui_script_path)
     local status, err = pcall(verCheck(),reaimgui_version)
@@ -1558,16 +1563,38 @@ end]]):gsub('$(%w+)', {
               -- window must be given an opportunity to open (therefore yielded) for the selection to work
               OpenAndGetRegionManagerWindow()
               coroutine.yield('Creating stem ' .. stemName.. ' (selecting markers)', idx, app.render_count)
-              SelectMarkers(rsg.selected_markers)
+              -- for some reason selecting in windows requires region manager window to remain open for some time
+              -- (this is a workaround until proper api support for selecting regions exists)
+              if os_is.win then
+                SelectMarkers(rsg.selected_markers, false)
+                local t = os.clock()
+                while (os.clock() - t < 0.5) do
+                  coroutine.yield('Creating stem ' .. stemName.. ' (selecting markers)', idx, app.render_count)
+                end
+                r.Main_OnCommand(40326, 0) -- close region/marker manager
+              else
+                SelectMarkers(rsg.selected_markers)
+              end
             elseif render_preset.boundsflag == RB_SELECTED_REGIONS and rsg.select_regions then
               -- window must be given an opportunity to open (therefore yielded) for the selection to work
+              
               OpenAndGetRegionManagerWindow()
               coroutine.yield('Creating stem ' .. stemName.. ' (selecting regions)', idx, app.render_count)
-              SelectRegions(rsg.selected_regions)
+              -- for some reason selecting in windows requires region manager window to remain open for some time
+              -- (this is a workaround until proper api support for selecting regions exists)
+              if os_is.win then
+                SelectRegions(rsg.selected_regions, false)
+                local t = os.clock()
+                while (os.clock() - t < 0.5) do
+                  coroutine.yield('Creating stem ' .. stemName.. ' (selecting regions)', idx, app.render_count)
+                end
+                r.Main_OnCommand(40326, 0) -- close region/marker manager
+              else
+                SelectRegions(rsg.selected_regions)
+              end
             elseif render_preset.boundsflag == RB_TIME_SELECTION and rsg.make_timeSel then
               r.GetSet_LoopTimeRange2(0,true, false, rsg.timeSelStart,rsg.timeSelEnd,0)--, boolean isLoop, number start, number end, boolean allowautoseek)
             end
-            
             local folder = ''
             if rsg.put_in_folder then
               folder            = rsg.folder and (rsg.folder:gsub('/%s*$','') .. "/") or ""
@@ -1597,10 +1624,13 @@ end]]):gsub('$(%w+)', {
                 end 
               end
               coroutine.yield('Rendering stem ' .. stemName, idx, app.render_count)
-              
+                            
               r.Main_OnCommand(42230, 0) --render now
               r.Main_OnCommand(40043,0) -- go to end of project
+              local stopprojlen = select(2, r.get_config_var_string('stopprojlen'))
+              if stopprojlen == '1' then r.SNM_SetIntConfigVar('stopprojlen', 0) end
               r.OnPlayButtonEx(0)
+              if stopprojlen == '1' then r.SNM_SetIntConfigVar('stopprojlen', 1 ) end 
               local t = os.clock()
               local moreStemsInLine = idx < app.render_count
               if moreStemsInLine then r.ImGui_OpenPopup(gui.ctx,scr.name..'##wait') end
@@ -1630,7 +1660,18 @@ end]]):gsub('$(%w+)', {
       if save_marker_selection and r.APIExists('JS_Localize') then
         OpenAndGetRegionManagerWindow()
         coroutine.yield('Restoring marker/region selection', 1, 1)
-        SelectRegionsOrMarkers(saved_markeregion_selection)
+        if os_is.win then
+          -- for some reason selecting in windows requires region manager window to remain open for some time
+          -- (this is a workaround until proper api support for selecting regions exists)
+          SelectRegionsOrMarkers(saved_markeregion_selection, false)
+          local t = os.clock()
+          while (os.clock() - t < 0.5) do
+            coroutine.yield('Restoring marker/region selection', idx, app.render_count)
+          end
+          r.Main_OnCommand(40326, 0) -- close region/marker manager
+        else
+          SelectRegionsOrMarkers(saved_markeregion_selection)
+        end
       end
       if save_time_selection then
         r.GetSet_LoopTimeRange2(0,true, false, saved_time_selection[1],saved_time_selection[2],0)--, boolean isLoop, number start, number end, boolean allowautoseek)
