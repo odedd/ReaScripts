@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.5.4
+-- @version 0.5.5
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,7 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Only check region matrix when render source is set to region matrix or region matrix via master
+--   Minor graphic changes in settings window
 
 reaper.ClearConsole()
 local STATES             = {
@@ -248,9 +248,11 @@ if next(prereqErrors) == nil then
     local cellSize     = 25
     local font_vertical = r.ImGui_CreateFont(scr.dir..'../../Resources/Fonts/Cousine-90deg.otf', 11)
     local font_default = r.ImGui_CreateFont(scr.dir..'../../Resources/Fonts/Cousine-Regular.ttf', 16)
+    local font_bold = r.ImGui_CreateFont(scr.dir..'../../Resources/Fonts/Cousine-Regular.ttf', 16,r.ImGui_FontFlags_Bold())
     
     r.ImGui_AttachFont(ctx, font_default)
     r.ImGui_AttachFont(ctx, font_vertical)
+    r.ImGui_AttachFont(ctx, font_bold)
 
     gui = {
       ctx           = ctx,
@@ -263,7 +265,8 @@ if next(prereqErrors) == nil then
       st            = {
         fonts = {
           default  = font_default,
-          vertical = font_vertical},
+          vertical = font_vertical,
+          bold     = font_bold},
         col   = {
           warning           = 0xf58e07FF,
           ok                = 0X55FF55FF,
@@ -1757,7 +1760,7 @@ end]]):gsub('$(%w+)', {
         local buttonTextWidth = r.ImGui_CalcTextSize(ctx, okButtonLabel) + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
         
         if showCancelButton then
-          buttonTextWidth = buttonTextWidth + reaper.ImGui_GetStyleVar(ctx, reaper.ImGui_StyleVar_ItemSpacing()) + r.ImGui_CalcTextSize(ctx, cancelButtonLabel) + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
+          buttonTextWidth = buttonTextWidth + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) + r.ImGui_CalcTextSize(ctx, cancelButtonLabel) + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
         end
         r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
   
@@ -1767,7 +1770,7 @@ end]]):gsub('$(%w+)', {
         end
         
         if showCancelButton then
-          reaper.ImGui_SameLine(ctx)
+          r.ImGui_SameLine(ctx)
           if r.ImGui_Button(ctx, cancelButtonLabel) or r.ImGui_IsKeyPressed(ctx, cancelKey) then
             okPressed = false
             r.ImGui_CloseCurrentPopup(ctx)
@@ -2449,8 +2452,11 @@ end]]):gsub('$(%w+)', {
       end
       
       local buttonsX = itemWidth+r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_FramePadding())*2
+      r.ImGui_PushFont(ctx,gui.st.fonts.bold)
       r.ImGui_Text(ctx, 'Project global settings')
+      r.ImGui_PopFont(ctx)
       r.ImGui_Separator(ctx)
+      
       
       gui.stWnd[cP].tS.renderaction              = setting('combo', 'Render action', ("What should the default rendering mode be."):format(scr.name), gui.stWnd[cP].tS.renderaction, {list=renderaction_list})
       if gui.stWnd[cP].tS.renderaction == RENDERACTION_RENDER then
@@ -2463,7 +2469,9 @@ end]]):gsub('$(%w+)', {
       gui.stWnd[cP].tS.show_hidden_tracks  = setting('checkbox','Show hidden tracks', "Show tracks that are hidden in the TCP?",gui.stWnd[cP].tS.show_hidden_tracks)
       
       r.ImGui_Text(ctx,'')
+      r.ImGui_PushFont(ctx,gui.st.fonts.bold)
       r.ImGui_Text(ctx, 'Project render groups')
+      r.ImGui_PopFont(ctx)
       app.setHoveredHint('settings',("Each stem is associated to one of %d render groups with its own set of settings."):format(RENDER_SETTING_GROUPS_SLOTS))
       r.ImGui_Separator(ctx)
       
@@ -2529,8 +2537,12 @@ end]]):gsub('$(%w+)', {
             for i,check in ipairs(gui.stWnd[cP].checks) do
               if not check.passed and check.severity == 'warning' then warnings = true end
             end
+            r.ImGui_Text(ctx,'')
+
             r.ImGui_AlignTextToFramePadding(ctx)
+            r.ImGui_PushFont(ctx,gui.st.fonts.bold)
             r.ImGui_Text(ctx,'Checklist:')
+            r.ImGui_PopFont(ctx)
             if warnings then
               r.ImGui_SameLine(ctx)
               rv, rsg.ignore_warnings = r.ImGui_Checkbox(ctx,"Don't show non critical (orange) errors before rendering", rsg.ignore_warnings)    
@@ -3023,7 +3035,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
     r.ImGui_SetNextWindowSize(ctx, 700,
                               math.min(1000, select(2, r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx)))),
                               r.ImGui_Cond_Appearing())
-    r.ImGui_SetNextWindowPos(ctx,100,100,reaper.ImGui_Cond_FirstUseEver())
+    r.ImGui_SetNextWindowPos(ctx,100,100,r.ImGui_Cond_FirstUseEver())
     local visible, open = r.ImGui_Begin(ctx, scr.name..' v'..scr.version .. "##mainWindow", true, r.ImGui_WindowFlags_MenuBar())
     gui.mainWindow      = {
       pos  = {r.ImGui_GetWindowPos(ctx)},
