@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.6.0
+-- @version 0.6.1
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,8 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Region/marker selection in windows now works as expected
---   Fixed - playback between renders now does not return to the beginning of the project, even if that setting is on
+--   last used render preset's filename gets restored after render is finished
 
 reaper.ClearConsole()
 local STATES             = {
@@ -1393,10 +1392,12 @@ end]]):gsub('$(%w+)', {
     local save_marker_selection = false
     local save_time_selection = false
     local saved_markeregion_selection = {}
+    local saved_filename = ''
     local saved_time_selection = {}
     local stems_to_render
     local foundAssignedTrack = {}
     local criticalErrorFound = {}
+    
     app.render_cancelled = false
     app.current_renderaction = app.forceRenderAction or settings.project.renderaction
     app.perform.fullRender = (app.stem_to_render == nil) --and app.renderGroupToRender == nil)
@@ -1604,6 +1605,7 @@ end]]):gsub('$(%w+)', {
               filename = (rsg.filename == nil or rsg.filename == '') and render_preset.filepattern or rsg.filename
             end
             local filenameInFolder  = (folder .. filename):gsub('$stem',stemName)
+            _, saved_filename = r.GetSetProjectInfo_String(0, "RENDER_PATTERN", '', false)
             r.GetSetProjectInfo_String(0, "RENDER_PATTERN", filenameInFolder, true)
            
             if rsg.run_actions then
@@ -1676,6 +1678,7 @@ end]]):gsub('$(%w+)', {
       if save_time_selection then
         r.GetSet_LoopTimeRange2(0,true, false, saved_time_selection[1],saved_time_selection[2],0)--, boolean isLoop, number start, number end, boolean allowautoseek)
       end
+      r.GetSetProjectInfo_String(0, "RENDER_PATTERN", saved_filename, true)
       coroutine.yield('Done', 1, 1)
     else
       coroutine.yield('Done', 0, 1)
