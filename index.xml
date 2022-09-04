@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="a13ad54aca2a9cc64361707b555c6ef5c722179f">
+<index version="1" name="Odedd ReaScripts" commit="b1434315f1ff8ff0fddf0293c587662a94163c00">
   <category name="Rendering/Stem Manager">
     <reapack name="Odedd_Stem Manager.lua" type="script" desc="Stem Manager">
       <metadata>
@@ -215,6 +215,12 @@ Fixed - playback between renders now does not return to the beginning of the pro
         <source main="main">https://github.com/odedd/ReaScripts/raw/a13ad54aca2a9cc64361707b555c6ef5c722179f/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
         <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/a13ad54aca2a9cc64361707b555c6ef5c722179f/Resources/Fonts/Cousine-90deg.otf</source>
         <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/a13ad54aca2a9cc64361707b555c6ef5c722179f/Resources/Fonts/Cousine-Regular.ttf</source>
+      </version>
+      <version name="1.0.0" author="Oded Davidov" time="2022-09-04T07:24:58Z">
+        <changelog><![CDATA[Reworked default settings save method (incompatible with previous versions)]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/b1434315f1ff8ff0fddf0293c587662a94163c00/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
+        <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/b1434315f1ff8ff0fddf0293c587662a94163c00/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/b1434315f1ff8ff0fddf0293c587662a94163c00/Resources/Fonts/Cousine-Regular.ttf</source>
       </version>
     </reapack>
   </category>
