@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 0.6.1
+-- @version 1.0.0
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,7 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   last used render preset's filename gets restored after render is finished
+--   Reworked default settings save method (incompatible with previous versions)
 
 reaper.ClearConsole()
 local STATES             = {
@@ -135,6 +135,7 @@ scr.path, scr.secID, scr.cmdID = select(2, r.get_action_context())
 scr.dir = scr.path:match(".+[\\/]")
 scr.basename = scr.path:match("^.+[\\/](.+)$")
 scr.no_ext = scr.basename:match("(.+)%.")
+scr.dfsetfile = scr.dir..scr.no_ext..'.ini'
 findContentKey(getContent(scr.path), "", true)
 scr.namespace   = "Odedd"
 scr.name        = scr.description
@@ -844,7 +845,7 @@ if next(prereqErrors) == nil then
     end
     
     if not factory then
-      local loaded_ext_settings = unpickle(r.GetExtState(scr.context_name, 'DEFAULT SETTINGS') or '')
+      local loaded_ext_settings = table.load(scr.dfsetfile) or {} --unpickle(r.GetExtState(scr.context_name, 'DEFAULT SETTINGS') or '')
       -- merge default settings from extstates with script defaults
       for k, v in pairs(loaded_ext_settings or {}) do
         if not (k == 'render_setting_groups') then
@@ -885,7 +886,7 @@ if next(prereqErrors) == nil then
   end
   
   local function saveSettings()
-    r.SetExtState(scr.context_name, 'DEFAULT SETTINGS', pickle(settings.default), true)
+    table.save(settings.default, scr.dfsetfile)
     saveLongProjExtState(scr.context_name,'PROJECT SETTINGS',pickle(settings.project))
     r.MarkProjectDirty(0)
   end
@@ -1021,10 +1022,168 @@ end]]):gsub('$(%w+)', {
     return iter
   end
   
+  
+  
+  
+  --------------------------------------------------------------------------------
+  -- table.save / table.load -----------------------------------------------------
+  --------------------------------------------------------------------------------
+  
+  --[[
+    Save Table to File
+    Load Table from File
+    v 1.0
+    
+    Lua 5.2 compatible
+    
+    Only Saves Tables, Numbers and Strings
+    Insides Table References are saved
+    Does not save Userdata, Metatables, Functions and indices of these
+    ----------------------------------------------------
+    table.save( table , filename )
+    
+    on failure: returns an error msg
+    
+    ----------------------------------------------------
+    table.load( filename or stringtable )
+    
+    Loads a table that has been saved via the table.save function
+    
+    on success: returns a previously saved table
+    on failure: returns as second argument an error msg
+    ----------------------------------------------------
+    
+    Licensed under the same terms as Lua itself.
+  ]]--
+  
+  do
+    -- declare local variables
+    --// exportstring( string )
+    --// returns a "Lua" portable version of the string
+    local function exportstring( s )
+      return string.format("%q", s)
+    end
+    
+    local function exportboolean( b )
+      return tostring( b ) 
+    end
+  
+    --// The Save Function
+    function table.save(  tbl,filename )
+      local charS,charE = "   ","\n"
+      local file,err = io.open( filename, "wb" )
+      if err then return err end
+      
+      -- initiate variables for save procedure
+      local tables,lookup = { tbl },{ [tbl] = 1 }
+      file:write( "return {"..charE )
+  
+      for idx,t in ipairs( tables ) do
+        file:write( "-- Table: {"..idx.."}"..charE )
+        file:write( "{"..charE )
+        local thandled = {}
+  
+        for i,v in ipairs( t ) do
+          thandled[i] = true
+          local stype = type( v )
+          -- only handle value
+          if stype == "table" then
+            if not lookup[v] then
+              table.insert( tables, v )
+              lookup[v] = #tables
+            end
+            file:write( charS.."{"..lookup[v].."},"..charE )
+          elseif stype == "string" then
+            file:write(  charS..exportstring( v )..","..charE )
+          elseif stype == "number" then
+            file:write(  charS..tostring( v )..","..charE )
+          elseif stype == "boolean" then -- edit to original to allow saving booleans
+            file:write( charS..exportboolean( v )..","..charE )
+          end
+        end
+  
+        for i,v in pairs( t ) do
+          -- escape handled values
+          if (not thandled[i]) then
+          
+            local str = ""
+            local stype = type( i )
+            -- handle index
+            if stype == "table" then
+              if not lookup[i] then
+                table.insert( tables,i )
+                lookup[i] = #tables
+              end
+              str = charS.."[{"..lookup[i].."}]="
+            elseif stype == "string" then
+              str = charS.."["..exportstring( i ).."]="
+            elseif stype == "number" then
+              str = charS.."["..tostring( i ).."]="
+            elseif stype == "boolean" then -- edit to original to allow saving booleans
+              str = charS.."["..exportboolean( i ).."]="
+            end
+          
+            if str ~= "" then
+              stype = type( v )
+              -- handle value
+              if stype == "table" then
+                if not lookup[v] then
+                  table.insert( tables,v )
+                  lookup[v] = #tables
+                end
+                file:write( str.."{"..lookup[v].."},"..charE )
+              elseif stype == "string" then
+                file:write( str..exportstring( v )..","..charE )
+              elseif stype == "number" then
+                file:write( str..tostring( v )..","..charE )
+              elseif stype == "boolean" then
+                file:write( str..exportboolean( v )..","..charE )
+              end
+            end
+          end
+        end
+        file:write( "},"..charE )
+      end
+      file:write( "}" )
+      file:close()
+    end
+    
+    --// The Load Function  
+    function table.load( sfile )
+    
+      local fs = io.open( sfile , "r") -- edit to original 
+      if not fs then return {} end
+      local str = fs:read( "*all" ) -- checking the contents of the config file to make sure its just a table
+      fs:close()
+      
+      local ftables, err = loadfile( sfile )
+      if err then return nil end
+      local tables = ftables()
+      for idx = 1,#tables do
+        local tolinki = {}
+        for i,v in pairs( tables[idx] ) do
+          if type( v ) == "table" then
+            tables[idx][i] = tables[v[1]]
+          end
+          if type( i ) == "table" and tables[i[1]] then
+            table.insert( tolinki,{ i,tables[i[1]] } )
+          end
+        end
+        -- link indices
+        for _,v in ipairs( tolinki ) do
+          tables[idx][v[2]],tables[idx][v[1]] =  tables[idx][v[1]],nil
+        end
+      end
+      return tables[1]
+    end
+  -- close do
+  end
+  
+  
   --------------------------------------------------------------------------------
   -- table serialization ---------------------------------------------------------
   --------------------------------------------------------------------------------
-  
+    
   ------------------------------------------- --
   -- Pickle.lua
   -- A table serialization utility for lua
@@ -1363,7 +1522,7 @@ end]]):gsub('$(%w+)', {
                        severity=failed_exist and 'critical' or nil,
                        hint=failed_exist and "Region(s) selected in the setting group do not exist, or their ID had changed." or "Selected regions exist in the project"})
           ok = ok and (not failed_exist)
-          if preset.settings == 9 or preset.settings == 137 then --if render preset source is render matrix or render matrix via master
+          if (preset.settings == 9 or preset.settings == 137) and not failed_exist then --if render preset source is render matrix or render matrix via master
             table.insert(checks,{passed = not failed_regionMatrix, 
                                  status=("Region(s) %smapped in region matrix"):format(failed_regionMatrix and "not " or ''),
                                  severity=failed_regionMatrix and 'critical' or nil,
@@ -1629,14 +1788,16 @@ end]]):gsub('$(%w+)', {
                             
               r.Main_OnCommand(42230, 0) --render now
               r.Main_OnCommand(40043,0) -- go to end of project
+              coroutine.yield('Waiting...', idx, app.render_count) -- let a frame pass to start count at a correct place
+                            
               local stopprojlen = select(2, r.get_config_var_string('stopprojlen'))
               if stopprojlen == '1' then r.SNM_SetIntConfigVar('stopprojlen', 0) end
               r.OnPlayButtonEx(0)
               if stopprojlen == '1' then r.SNM_SetIntConfigVar('stopprojlen', 1 ) end 
-              local t = os.clock()
               local moreStemsInLine = idx < app.render_count
               if moreStemsInLine then r.ImGui_OpenPopup(gui.ctx,scr.name..'##wait') end
-              while not app.render_cancelled and (os.clock() - t < settings.project.wait_time) and moreStemsInLine do
+              local t = os.clock()
+              while not app.render_cancelled and (os.clock() - t < settings.project.wait_time+1) and moreStemsInLine do
                 local wait_left = math.ceil(settings.project.wait_time - (os.clock() - t))
                 if app.drawPopup(gui.ctx, 'msg',scr.name..'##wait',{closeKey = r.ImGui_Key_Escape(),okButtonLabel = "Stop rendering", msg = ('Waiting for %d more second%s...'):format(wait_left, wait_left > 1 and 's' or '')}) then
                   app.render_cancelled = true
