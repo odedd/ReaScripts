@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 1.0.0
+-- @version 1.1.0
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,7 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Reworked default settings save method (incompatible with previous versions)
+--   Fixed loading of pre and post render actions
 
 reaper.ClearConsole()
 local STATES             = {
@@ -891,6 +891,27 @@ if next(prereqErrors) == nil then
     r.MarkProjectDirty(0)
   end
   
+  local function updateSettings()
+    for rgIdx,val in ipairs(settings.project.render_setting_groups) do
+      for rgAIdx, command_id in pairs(settings.project.render_setting_groups[rgIdx].actions_to_run or {}) do
+        if type(command_id) ~= "string" then
+          local named_command = reaper.ReverseNamedCommandLookup(command_id)
+          if named_command then
+            settings.project.render_setting_groups[rgIdx].actions_to_run[rgAIdx] = named_command
+          end
+        end
+      end
+      for rgAIdx, command_id in pairs(settings.project.render_setting_groups[rgIdx].actions_to_run_after or {}) do
+        if type(command_id) ~= "string" then
+          local named_command = reaper.ReverseNamedCommandLookup(command_id)
+          if named_command then
+            settings.project.render_setting_groups[rgIdx].actions_to_run_after[rgAIdx] = named_command
+          end
+        end
+      end
+    end
+    saveSettings()
+  end
   
   local function sanitizeFilename(name)
     -- replace special characters that are reserved on Windows
@@ -1769,7 +1790,11 @@ end]]):gsub('$(%w+)', {
            
             if rsg.run_actions then
              for aIdx, action in ipairs(rsg.actions_to_run or {}) do
-               r.Main_OnCommand(action, 0)
+                action = (type(action) == 'string') and '_'..action or action
+                local cmd = reaper.NamedCommandLookup(action)
+                if cmd then
+                  r.Main_OnCommand(cmd, 0)
+                end
              end
             end
             if app.current_renderaction == RENDERACTION_RENDER then
@@ -1810,7 +1835,11 @@ end]]):gsub('$(%w+)', {
             end
             if rsg.run_actions_after then
              for aIdx, action in ipairs(rsg.actions_to_run_after or {}) do
-               r.Main_OnCommand(action, 0)
+               action = (type(action) == 'string') and '_'..action or action
+               local cmd = reaper.NamedCommandLookup(action)
+               if cmd then
+                 r.Main_OnCommand(cmd, 0)
+               end
              end
             end
           end
@@ -2438,7 +2467,9 @@ end]]):gsub('$(%w+)', {
     end
   end
   
-  local function getReaperActionNameOrCommandId(actionNumber)
+  local function getReaperActionNameOrCommandId(actionNamedCommandID)
+    actionNamedCommandID = (type(actionNamedCommandID) == 'string') and '_'..actionNamedCommandID or actionNamedCommandID
+    local actionNumber = reaper.NamedCommandLookup(actionNamedCommandID)
     if r.APIExists('CF_GetCommandText') then -- if SWS, return name
       return true, r.CF_GetCommandText(0,actionNumber)
     else                                        --otherwise Fallback to Action ID
@@ -3313,5 +3344,6 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
   end
   
   loadSettings()
+  updateSettings() -- fix format of actions saved pre v1.1.0
   r.defer(app.loop)
 end
