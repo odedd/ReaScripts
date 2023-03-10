@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="cc6c4ee8c910d4489e1fbf58add3873be1f75ea2">
+<index version="1" name="Odedd ReaScripts" commit="e84356c32e6a70f0f89368c4021c63f7763d8150">
   <category name="Rendering/Stem Manager">
     <reapack name="Odedd_Stem Manager.lua" type="script" desc="Stem Manager">
       <metadata>
@@ -235,6 +235,12 @@ Added multiple selection of stems?]]></changelog>
         <source main="main">https://github.com/odedd/ReaScripts/raw/cc6c4ee8c910d4489e1fbf58add3873be1f75ea2/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
         <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/cc6c4ee8c910d4489e1fbf58add3873be1f75ea2/Resources/Fonts/Cousine-90deg.otf</source>
         <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/cc6c4ee8c910d4489e1fbf58add3873be1f75ea2/Resources/Fonts/Cousine-Regular.ttf</source>
+      </version>
+      <version name="1.2.1" author="Oded Davidov" time="2023-03-10T08:58:53Z">
+        <changelog><![CDATA[Fixed - rendering by clicking the main button after rendering an individual stem in a different way now works as expected]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/e84356c32e6a70f0f89368c4021c63f7763d8150/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
+        <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/e84356c32e6a70f0f89368c4021c63f7763d8150/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/e84356c32e6a70f0f89368c4021c63f7763d8150/Resources/Fonts/Cousine-Regular.ttf</source>
       </version>
     </reapack>
   </category>
