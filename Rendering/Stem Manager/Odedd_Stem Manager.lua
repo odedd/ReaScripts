@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 1.1.0
+-- @version 1.2.0
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,7 +14,9 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Fixed loading of pre and post render actions
+--   Rendering by clicking the button after changing render method now works
+--   Pre and post render actions now happen when adding to the render queue
+--   Added multiple selection of stems?
 
 reaper.ClearConsole()
 local STATES             = {
@@ -3259,6 +3261,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
     if col then r.ImGui_PopStyleColor(ctx) end
     if not app.coPerform then
       if r.ImGui_Button(ctx, RENDERACTION_DESCRIPTIONS[settings.project.renderaction]:gsub("^%l", string.upper), r.ImGui_GetContentRegionAvail(ctx)) then
+        app.forceRenderAction = nil
         app.coPerform = coroutine.create(doPerform)
       end
     else 
