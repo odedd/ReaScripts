@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 1.2.0
+-- @version 1.2.1
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,9 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Rendering by clicking the button after changing render method now works
---   Pre and post render actions now happen when adding to the render queue
---   Added multiple selection of stems?
+--   Fixed - rendering by clicking the main button after rendering an individual stem in a different way now works as expected
 
 reaper.ClearConsole()
 local STATES             = {
