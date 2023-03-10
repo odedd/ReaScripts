@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="b429956d4a8ecd89be4ec42c7593807287b090dc">
+<index version="1" name="Odedd ReaScripts" commit="cc6c4ee8c910d4489e1fbf58add3873be1f75ea2">
   <category name="Rendering/Stem Manager">
     <reapack name="Odedd_Stem Manager.lua" type="script" desc="Stem Manager">
       <metadata>
@@ -227,6 +227,14 @@ Fixed - playback between renders now does not return to the beginning of the pro
         <source main="main">https://github.com/odedd/ReaScripts/raw/b429956d4a8ecd89be4ec42c7593807287b090dc/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
         <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/b429956d4a8ecd89be4ec42c7593807287b090dc/Resources/Fonts/Cousine-90deg.otf</source>
         <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/b429956d4a8ecd89be4ec42c7593807287b090dc/Resources/Fonts/Cousine-Regular.ttf</source>
+      </version>
+      <version name="1.2.0" author="Oded Davidov" time="2023-03-10T08:55:37Z">
+        <changelog><![CDATA[Rendering by clicking the button after changing render method now works
+Pre and post render actions now happen when adding to the render queue
+Added multiple selection of stems?]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/cc6c4ee8c910d4489e1fbf58add3873be1f75ea2/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
+        <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/cc6c4ee8c910d4489e1fbf58add3873be1f75ea2/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/cc6c4ee8c910d4489e1fbf58add3873be1f75ea2/Resources/Fonts/Cousine-Regular.ttf</source>
       </version>
     </reapack>
   </category>
