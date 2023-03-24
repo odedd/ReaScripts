@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 1.2.1
+-- @version 1.2.3
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,7 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Fixed - rendering by clicking the main button after rendering an individual stem in a different way now works as expected
+--   Fix error when some normalize settings are used within a render preset
 
 reaper.ClearConsole()
 local STATES             = {
@@ -165,7 +165,7 @@ local function prereqCheck ()
   
   local apply_render_preset_script_path = r.GetResourcePath() .. '/Scripts/ReaTeam Scripts/Rendering/cfillion_Apply render preset.lua'
   local reaimgui_script_path = r.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/imgui.lua'
-  local reaimgui_version = '0.7'
+  local reaimgui_version = '0.8'
   local min_reaper_version = 6.44
 
   if r.ver < min_reaper_version then
@@ -255,16 +255,16 @@ if next(prereqErrors) == nil then
     local font_default = r.ImGui_CreateFont(scr.dir..'../../Resources/Fonts/Cousine-Regular.ttf', 16)
     local font_bold = r.ImGui_CreateFont(scr.dir..'../../Resources/Fonts/Cousine-Regular.ttf', 16,r.ImGui_FontFlags_Bold())
     
-    r.ImGui_AttachFont(ctx, font_default)
-    r.ImGui_AttachFont(ctx, font_vertical)
-    r.ImGui_AttachFont(ctx, font_bold)
+    r.ImGui_Attach(ctx, font_default)
+    r.ImGui_Attach(ctx, font_vertical)
+    r.ImGui_Attach(ctx, font_bold)
 
     gui = {
       ctx           = ctx,
       mainWindow    = {},
       draw_list     = r.ImGui_GetWindowDrawList(ctx),
-      keyModCtrlCmd = (os_is.mac or os_is.mac_arm) and r.ImGui_Key_ModSuper() or r.ImGui_Key_ModCtrl(),
-      notKeyModCtrlCmd = (os_is.mac or os_is.mac_arm) and r.ImGui_Key_ModCtrl() or r.ImGui_Key_ModSuper(),
+      keyModCtrlCmd = (os_is.mac or os_is.mac_arm) and r.ImGui_Mod_Super() or r.ImGui_Mod_Ctrl(),
+      notKeyModCtrlCmd = (os_is.mac or os_is.mac_arm) and r.ImGui_Mod_Ctrl() or r.ImGui_Mod_Super(),
       descModCtrlCmd= (os_is.mac or os_is.mac_arm) and 'cmd' or 'control',
       descModAlt    = (os_is.mac or os_is.mac_arm) and 'opt' or 'alt',      
       st            = {
@@ -383,8 +383,8 @@ if next(prereqErrors) == nil then
       end,
       updateModKeys = function (self)
         self.modKeys = ('%s%s%s%s'):format(
-                            r.ImGui_IsKeyDown(self.ctx, r.ImGui_Key_ModShift())  and 's' or '',
-                            r.ImGui_IsKeyDown(self.ctx, r.ImGui_Key_ModAlt())    and 'a' or '',
+                            r.ImGui_IsKeyDown(self.ctx, r.ImGui_Mod_Shift())  and 's' or '',
+                            r.ImGui_IsKeyDown(self.ctx, r.ImGui_Mod_Alt())    and 'a' or '',
                             r.ImGui_IsKeyDown(self.ctx, self.keyModCtrlCmd)       and 'c' or '',
                             r.ImGui_IsKeyDown(self.ctx, self.notKeyModCtrlCmd)    and 'x' or '')
         return self.modKeys
@@ -436,7 +436,7 @@ if next(prereqErrors) == nil then
       self.renderPresets = {}
       for line in file:lines() do
         tokens = tokenize(line)
-        if not (tokens[2] == "") and tokens[2] then
+        if (tokens[1] == '<RENDERPRESET' or tokens[1] == 'RENDERPRESET_OUTPUT') and not (tokens[2] == "") and tokens[2] then
           local name = tokens[2]
           self.renderPresets[name] = self.renderPresets[name] or {}
           self.renderPresets[name].name = name
