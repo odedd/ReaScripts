@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="e84356c32e6a70f0f89368c4021c63f7763d8150">
+<index version="1" name="Odedd ReaScripts" commit="510880f5417f327e82cc8463cd9bb740dbe5432c">
   <category name="Rendering/Stem Manager">
     <reapack name="Odedd_Stem Manager.lua" type="script" desc="Stem Manager">
       <metadata>
@@ -241,6 +241,12 @@ Added multiple selection of stems?]]></changelog>
         <source main="main">https://github.com/odedd/ReaScripts/raw/e84356c32e6a70f0f89368c4021c63f7763d8150/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
         <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/e84356c32e6a70f0f89368c4021c63f7763d8150/Resources/Fonts/Cousine-90deg.otf</source>
         <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/e84356c32e6a70f0f89368c4021c63f7763d8150/Resources/Fonts/Cousine-Regular.ttf</source>
+      </version>
+      <version name="1.2.3" author="Oded Davidov" time="2023-03-24T14:57:05Z">
+        <changelog><![CDATA[Fix error when some normalize settings are used within a render preset]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/510880f5417f327e82cc8463cd9bb740dbe5432c/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
+        <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/510880f5417f327e82cc8463cd9bb740dbe5432c/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/510880f5417f327e82cc8463cd9bb740dbe5432c/Resources/Fonts/Cousine-Regular.ttf</source>
       </version>
     </reapack>
   </category>
