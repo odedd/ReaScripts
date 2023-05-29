@@ -1,16 +1,13 @@
-local frameCount = 0
+-- @noindex
 
-function getContent(path)
-    local file = io.open(path)
-    if not file then
-        return ""
-    end
-    local content = file:read("*a")
-    file:close()
-    return content
-end
+local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
+dofile(p .. 'Helpers.lua')
+dofile(p .. 'ReaperHelpers.lua')
 
-function findContentKey(content, key, self)
+r = reaper
+local scr = {}
+
+local function findContentKey(content, key, self)
     if self then
         for match in content:gmatch("%-%- @(.-)\n") do
             local key, val = match:match("(.-) (.+)")
@@ -25,37 +22,29 @@ function findContentKey(content, key, self)
     return content and content:gsub(key .. "[:=]%s?", "") or false
 end
 
-scr = {}
-scr.path, scr.secID, scr.cmdID = select(2, r.get_action_context())
-scr.dir = scr.path:match(".+[\\/]")
-scr.basename = scr.path:match("^.+[\\/](.+)$")
-scr.no_ext = scr.basename:match("(.+)%.")
-findContentKey(getContent(scr.path), "", true)
-scr.namespace = "Odedd"
-scr.name = scr.description
-scr.context_name = scr.namespace:gsub(' ', '_') .. '_' .. scr.name:gsub(' ', '_')
-r.ver = tonumber(r.GetAppVersion():match("[%d%.]+"))
-
--------------------
--- basic helpers --
--------------------
-
-string.split = function(s, delimiter)
-    result = {};
-    for match in (s .. delimiter):gmatch("(.-)" .. delimiter) do
-        table.insert(result, match);
-    end
-    return result;
+local function getScr()
+    scr.path, scr.secID, scr.cmdID = select(2, r.get_action_context())
+    scr.dir = scr.path:match(".+[\\/]")
+    scr.basename = scr.path:match("^.+[\\/](.+)$")
+    scr.no_ext = scr.basename:match("(.+)%.")
+    findContentKey(getContent(scr.path), "", true)
+    scr.dfsetfile = scr.dir..scr.no_ext..'.ini'
+    scr.namespace = "Odedd"
+    scr.name = scr.description
+    scr.context_name = scr.namespace:gsub(' ', '_') .. '_' .. scr.name:gsub(' ', '_')
+    r.ver = tonumber(r.GetAppVersion():match("[%d%.]+"))
+    return scr
 end
 
-function file_exists(name)
-    local f = io.open(name, "r")
-    if f ~= nil then
-        io.close(f)
-        return true
-    else
-        return false
-    end
+local function getOS()
+    local cur_os = reaper.GetOS()
+    local os_is = {
+        win = cur_os:lower():match("win") and true or false,
+        mac = cur_os:lower():match("osx") or cur_os:lower():match("macos") and true or false,
+        mac_arm = cur_os:lower():match("macos") and true or false,
+        lin = cur_os:lower():match("other") and true or false
+    }
+    return os_is
 end
 
 local function prereqCheck(args)
@@ -64,29 +53,30 @@ local function prereqCheck(args)
     args.scripts = args.scripts or {} -- {"cfillion_Apply render preset.lua" , "r.GetResourcePath() .. '/Scripts/ReaTeam Scripts/Rendering/cfillion_Apply render preset.lua'"}
     local errors = {}
 
-    local reaimgui_script_path = args.reaimgui_path or r.GetResourcePath() .. '/Scripts/ReaTeam Extensions/API/imgui.lua'
+    local reaimgui_script_path = args.reaimgui_path or r.GetResourcePath() ..
+                                     '/Scripts/ReaTeam Extensions/API/imgui.lua'
     local check_reimgui = args.reaimgui or (args.reaimgui_version ~= nil) or false
     local check_sws = args.sws
 
-    local reaimgui_version = args.reaimgui_version or '0.7' 
-    local min_reaper_version = args.reaper_version or 6.44 
+    local reaimgui_version = args.reaimgui_version or '0.7'
+    local min_reaper_version = args.reaper_version or 6.44
 
     if r.ver < min_reaper_version then
         table.insert(errors, 'This script is designed to work with REAPER v' .. min_reaper_version .. '+')
     end
 
-    for desc,file in pairs(args.scripts) do
-        reaper.ShowConsoleMsg('hi')
+    for desc, file in pairs(args.scripts) do
         if file_exists(file) then
             applyPresetScript = loadfile(file)
         else
-            table.insert(errors, 'This script requires "'..desc..'".\nPlease install it via ReaPack.')
+            table.insert(errors, 'This script requires "' .. desc .. '".\nPlease install it via ReaPack.')
         end
     end
 
     if check_sws then
-        if r.APIExists('CF_GetCommandText') then 
-            table.insert(errors, 'This script requires the SWS/S&M extension.\nPlease download and install it at\nhttps://www.sws-extension.org/.')
+        if not r.APIExists('CF_GetCommandText') then
+            table.insert(errors,
+                'This script requires the SWS/S&M extension.\nPlease download and install it at\nhttps://www.sws-extension.org/.')
         end
     end
 
@@ -95,8 +85,8 @@ local function prereqCheck(args)
             local verCheck = loadfile(reaimgui_script_path)
             local status, err = pcall(verCheck(), reaimgui_version)
             if not status then
-                table.insert(errors,
-                    ('ReaImgui version must be %s or above.\nPlease update via ReaPack.'):format(reaimgui_version))
+                table.insert(errors, ('ReaImgui version must be %s or above.\nPlease update via ReaPack.'):format(
+                    reaimgui_version))
             elseif not r.ImGui_ColorConvertU32ToDouble4 then
                 table.insert(errors,
                     "ReaImGui error.\nPlease reinstall it via ReaPack.\n\nIf you already installed it, remember to restart reaper.")
@@ -108,7 +98,16 @@ local function prereqCheck(args)
     return errors
 end
 
-function checkPrerequisites(args)
+
+-------------------------------------------
+-- Public Stuff
+-------------------------------------------
+
+function OD_Init()
+    return getScr(), getOS()
+end
+
+function OD_PrereqsOK(args)
     local errors = prereqCheck(args)
     if #errors > 0 then
         r.MB(table.concat(errors, '\n------------\n'), scr.name, 0)
