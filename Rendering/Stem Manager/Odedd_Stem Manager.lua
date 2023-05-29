@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 1.2.3
+-- @version 1.5
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -14,7 +14,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Fix error when some normalize settings are used within a render preset
+--   Added presets
 
 reaper.ClearConsole()
 local STATES             = {
@@ -1699,9 +1699,9 @@ end]]):gsub('$(%w+)', {
       eMsg = 'The following stems will be rendered, but please see the following warnings:'..eMsg
     end
     if skpMsg or ceMsg or eMsg then
-    local msg = (ceMsg and ceMsg or '')..
-                (eMsg and (ceMsg and '\n\n' or '')..eMsg or '')..
-                (skpMsg and ((ceMsg or eMsg) and '\n\n' or '')..skpMsg or '')
+      local msg = (ceMsg and ceMsg or '')..
+                  (eMsg and (ceMsg and '\n\n' or '')..eMsg or '')..
+                  (skpMsg and ((ceMsg or eMsg) and '\n\n' or '')..skpMsg or '')
       local error_message_closed = false
       r.ImGui_OpenPopup(gui.ctx,scr.name..'##error')
       while not error_message_closed do
@@ -2893,6 +2893,30 @@ end]]):gsub('$(%w+)', {
     end
   end
   
+  
+  function app.drawLoadWindow()
+      local ctx = gui.ctx
+      r.ImGui_OpenPopup(gui.ctx,scr.name..'##loadStems')
+      local msg = "Load settings and stems, removing current stems\nor load settings only and keep current stems?"
+      local ok = app.drawPopup(gui.ctx, 'msg', scr.name..'##loadStems', {
+                    msg = msg, 
+                    showCancelButton = true, 
+                    okButtonLabel = "Settings + Stems", 
+                    cancelButtonLabel = "Settings Only"})
+      if ok then
+        rv, filename = reaper.GetUserFileNameForRead('', 'Select a stem preset file', 'stm')
+        if rv then
+          for stemName, stem in pairs(db.stems) do
+            db:removeStem(stemName)
+          end
+        end
+        app.load = false
+      elseif ok == false then
+        app.load = false
+      end
+      
+  end
+
   function app.drawCreateActionWindow()
       local ctx = gui.ctx
       local bottom_lines = 1
@@ -3281,9 +3305,24 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
     db:sync()
     if visible then
       local bottom_lines = 2
-       
+      local rv2  
       if r.ImGui_BeginMenuBar(ctx) then
         --r.ImGui_SetCursorPosX(ctx, r.ImGui_GetContentRegionAvail(ctx)- r.ImGui_CalcTextSize(ctx,'Settings'))
+
+        if reaper.ImGui_BeginMenu(ctx, 'File') then
+          -- rv,show_app.main_menu_bar =
+          --   ImGui.MenuItem(ctx, 'Main menu bar', nil, show_app.main_menu_bar)
+          rv,rv1 =
+            reaper.ImGui_MenuItem(ctx, 'Save...', nil, nil)
+          app.setHoveredHint('main', "Save current stems and settings")
+
+          if reaper.ImGui_MenuItem(ctx, 'Load...', nil, nil) then
+            app.load = true
+          end
+          app.setHoveredHint('main', "Load stems and settings") 
+          reaper.ImGui_EndMenu(ctx)
+        end
+        
         if r.ImGui_SmallButton(ctx, 'Settings') then 
           r.ImGui_OpenPopup(ctx,'Settings')
         end
@@ -3297,6 +3336,8 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
         if r.ImGui_IsPopupOpen(ctx, 'Settings') then app.drawSettings() end
         if app.show_help then app.drawHelp() end
         if app.show_action_window then app.drawCreateActionWindow() end
+        if app.load then app.drawLoadWindow() end
+        
         r.ImGui_EndMenuBar(ctx)
       end
       if app.coPerform and coroutine.status(app.coPerform) == 'running' then r.ImGui_BeginDisabled(ctx) end
