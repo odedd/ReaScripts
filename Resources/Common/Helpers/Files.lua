@@ -34,3 +34,7 @@ function getContent(path)
     file:close()
     return content
 end
+
+function dissectFilename(path)
+    return string.match(path, "(.-)([^\\/]-).([^%.]+)$") -- path, name, ext
+end

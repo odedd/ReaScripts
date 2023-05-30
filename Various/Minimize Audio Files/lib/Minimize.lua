@@ -1,5 +1,4 @@
 -- @noindex
-
 -- local function loadSettings()
 --     settings = getDefaultSettings()
 --     -- take merged updated default settings and merge project specific settings into them
@@ -97,9 +96,8 @@ end
 
 -- Collect media files and occurrences
 function collectMediaFiles()
-    local mediaFiles = {}
     local numMediaItems = r.CountMediaItems(0)
-
+    local count = 0
     for i = 0, numMediaItems - 1 do
         local mediaItem = r.GetMediaItem(0, i)
         -- local itemStartOffset = r.GetMediaItemInfo_Value(mediaItem,"D_LENGTH")
@@ -125,52 +123,58 @@ function collectMediaFiles()
                 if rev then
                     reverseItem(mediaItem)
                 end
-                if not section then
-                    -- Check if the media source is valid and has a filename with "WAVE" source type
-                    local sourceType = r.GetMediaSourceType(mediaSource, "")
-                    if mediaSource and sourceType == "WAVE" then
-                        local filename = r.GetMediaSourceFileName(mediaSource, "")
-                        local sp, ep, srclen = getTakeSourcePositions(take)
-                        -- Create a table to store the occurrence information
-                        local oc = {
-                            takeName = r.GetTakeName(take),
-                            startTime = sp, -- r.GetMediaItemInfo_Value(mediaItem, "D_POSITION"),
-                            endTime = ep, -- r.GetMediaItemInfo_Value(mediaItem, "D_LENGTH") + r.GetMediaItemInfo_Value(mediaItem, "D_POSITION"),
-                            newItemPosition = 0, -- Placeholder for the new item's position
-                            newItemLength = 0, -- Placeholder for the new item's length
-                            newItem = nil,
-                            newTake = nil,
-                            playrate = r.GetMediaItemTakeInfo_Value(take, "D_PLAYRATE"),
-                            item = mediaItem, -- Reference to the original media item
-                            take = take, -- Reference to the original media take
-                            placed = false,
-                            src = mediaSource,
-                            srclen = srclen,
-                            newsrclen = 0,
-                            rev = rev
-                            -- section = section,
-                            -- section_length = len or 0,
-                            -- section_offset = offs or 0,
-                            -- itemLength = itemLength,
-                            -- normalizedItemLength = (itemLength+sp) % math.max(len, srclen),
+                -- Check if the media source is valid and has a filename with "WAVE" source type
+                local sourceType = r.GetMediaSourceType(mediaSource, "")
+                if mediaSource and sourceType == "WAVE" then
+                    local filename = r.GetMediaSourceFileName(mediaSource, "")
+                    local sp, ep, srclen = getTakeSourcePositions(take)
+                    -- Create a table to store the occurrence information
+                    local oc = {
+                        takeName = r.GetTakeName(take),
+                        startTime = sp, -- r.GetMediaItemInfo_Value(mediaItem, "D_POSITION"),
+                        endTime = ep, -- r.GetMediaItemInfo_Value(mediaItem, "D_LENGTH") + r.GetMediaItemInfo_Value(mediaItem, "D_POSITION"),
+                        newItemPosition = 0, -- Placeholder for the new item's position
+                        newItemLength = 0, -- Placeholder for the new item's length
+                        newItem = nil,
+                        newTake = nil,
+                        playrate = r.GetMediaItemTakeInfo_Value(take, "D_PLAYRATE"),
+                        item = mediaItem, -- Reference to the original media item
+                        take = take, -- Reference to the original media take
+                        placed = false,
+                        src = mediaSource,
+                        srclen = srclen,
+                        newsrclen = 0,
+                        rev = rev,
+                        section = section
+                        -- section_length = len or 0,
+                        -- section_offset = offs or 0,
+                        -- itemLength = itemLength,
+                        -- normalizedItemLength = (itemLength+sp) % math.max(len, srclen),
 
-                        }
-                        -- Check if the media file entry exists in the mediaFiles table
-                        if mediaFiles[filename] then
-                            -- Append the occurrence to the existing entry
-                            table.insert(mediaFiles[filename], oc)
-                        else
-                            -- Create a new entry for the media file
-                            mediaFiles[filename] = {oc}
+                    }
+                    -- Check if the media file entry exists in the mediaFiles table
+                    if app.mediaFiles[filename] then
+                        -- Append the occurrence to the existing entry
+                        table.insert(app.mediaFiles[filename].occurrences, oc)
+                        if oc.section then
+                            app.mediaFiles[filename].hasSection = true
                         end
+                    else
+                        local path, basename, ext = dissectFilename(filename)
+                        -- Create a new entry for the media file
+                        app.mediaFiles[filename] = {
+                            order = count,
+                            basename = basename,
+                            occurrences = {oc},
+                            hasSection = oc.section
+                        }
+                        count = count + 1
                     end
-                else
-                    r.ShowConsoleMsg('Items with sections not supported')
                 end
             end
+            coroutine.yield('Collecting Items')
         end
     end
-    return mediaFiles
 end
 
 function removeSpaces(track)
@@ -329,59 +333,60 @@ function applyTakeMarkers(oc)
 end
 
 -- Create new items to reflect the new occurrences
-function copyItemsToNewTracks(mediaFiles, padding)
+function copyItemsToNewTracks(padding)
     r.SelectAllMediaItems(0, false)
     padding = padding or settings.padding
     local peakOperations = {}
 
-    for filename, occurrences in pairs(mediaFiles) do
-        -- Create a new track for each filename
-        local trackIndex = r.GetNumTracks()
-        r.InsertTrackAtIndex(trackIndex, false)
+    for filename, filenameinfo in pairsByOrder(app.mediaFiles) do
+        if filenameinfo.hasSection == false then
+            -- Create a new track for each filename
+            local trackIndex = r.GetNumTracks()
+            r.InsertTrackAtIndex(trackIndex, false)
 
-        local track = r.GetTrack(0, trackIndex)
-        -- r.SetMediaTrackInfo_Value(track, "B_SHOWINTCP", 0)
-        -- Hide the track in MCP
-        -- r.SetMediaTrackInfo_Value(track, "B_SHOWINMIXER", 0)
+            local track = r.GetTrack(0, trackIndex)
+            -- r.SetMediaTrackInfo_Value(track, "B_SHOWINTCP", 0)
+            -- Hide the track in MCP
+            -- r.SetMediaTrackInfo_Value(track, "B_SHOWINMIXER", 0)
 
-        -- local filedir = filename:match(".+[\\/]")
-        local basename = filename:match("^.+[\\/](.+)$")
-        local no_ext = basename:match("(.+)%.")
-        local trackName = no_ext .. settings.suffix
-        r.GetSetMediaTrackInfo_String(track, "P_NAME", trackName, true)
+            -- local filedir = filename:match(".+[\\/]")
+            local basename = filename:match("^.+[\\/](.+)$")
+            local no_ext = basename:match("(.+)%.")
+            local trackName = no_ext .. settings.suffix
+            r.GetSetMediaTrackInfo_String(track, "P_NAME", trackName, true)
 
-        local splitItems = {}
+            local splitItems = {}
 
-        -- turn off ripple editing
-        r.Main_OnCommand(40310, 0) -- set ripple editing per track
-        r.Main_OnCommand(41990, 0) -- toggle ripple editing
+            -- turn off ripple editing
+            r.Main_OnCommand(40310, 0) -- set ripple editing per track
+            r.Main_OnCommand(41990, 0) -- toggle ripple editing
 
-        for i, oc in ipairs(occurrences) do
+            for i, oc in ipairs(filenameinfo.occurrences) do
 
-            oc.startpadding = math.min(padding, oc.startTime)
-            local ocLength = oc.endTime - oc.startTime + oc.startpadding
+                oc.startpadding = math.min(padding, oc.startTime)
+                local ocLength = oc.endTime - oc.startTime + oc.startpadding
 
-            oc.endpadding = math.min(oc.srclen - (oc.startTime + ocLength - oc.startpadding), padding)
-            oc.endpadding = math.max(oc.endpadding, 0)
-            local ocLength = ocLength + oc.endpadding
-            -- r.ShowConsoleMsg(oc.srclen)
+                oc.endpadding = math.min(oc.srclen - (oc.startTime + ocLength - oc.startpadding), padding)
+                oc.endpadding = math.max(oc.endpadding, 0)
+                local ocLength = ocLength + oc.endpadding
+                -- r.ShowConsoleMsg(oc.srclen)
 
-            -- Create a new item on the track to reflect the occurrence
-            oc.newItem = r.AddMediaItemToTrack(track)
-            oc.newTake = r.AddTakeToMediaItem(oc.newItem)
+                -- Create a new item on the track to reflect the occurrence
+                oc.newItem = r.AddMediaItemToTrack(track)
+                oc.newTake = r.AddTakeToMediaItem(oc.newItem)
 
-            -- Set the position and length for the new item
-            -- r.SetMediaItemPosition(oc.newItem, oc.startTime + oc.section_offset - oc.startpadding, false)
-            r.SetMediaItemPosition(oc.newItem, oc.startTime - oc.startpadding, false)
-            r.SetMediaItemLength(oc.newItem, ocLength, false)
-            r.SetMediaItemInfo_Value(oc.newItem, "D_FADEINLEN", 0)
-            r.SetMediaItemInfo_Value(oc.newItem, "D_FADEOUTLEN", 0)
-            r.SetMediaItemInfo_Value(oc.newItem, "D_FADEINLEN_AUTO", -1)
-            r.SetMediaItemInfo_Value(oc.newItem, "D_FADEOUTLEN_AUTO", -1)
-            r.SetMediaItemTake_Source(oc.newTake, oc.src) -- r.GetMediaItemTake_Source(oc.take))
-            -- r.SetMediaItemTakeInfo_Value(oc.newTake, "D_STARTOFFS", math.max(0, oc.startTime + oc.section_offset - oc.startpadding))
-            r.SetMediaItemTakeInfo_Value(oc.newTake, "D_STARTOFFS", oc.startTime - oc.startpadding)
-            --[[
+                -- Set the position and length for the new item
+                -- r.SetMediaItemPosition(oc.newItem, oc.startTime + oc.section_offset - oc.startpadding, false)
+                r.SetMediaItemPosition(oc.newItem, oc.startTime - oc.startpadding, false)
+                r.SetMediaItemLength(oc.newItem, ocLength, false)
+                r.SetMediaItemInfo_Value(oc.newItem, "D_FADEINLEN", 0)
+                r.SetMediaItemInfo_Value(oc.newItem, "D_FADEOUTLEN", 0)
+                r.SetMediaItemInfo_Value(oc.newItem, "D_FADEINLEN_AUTO", -1)
+                r.SetMediaItemInfo_Value(oc.newItem, "D_FADEOUTLEN_AUTO", -1)
+                r.SetMediaItemTake_Source(oc.newTake, oc.src) -- r.GetMediaItemTake_Source(oc.take))
+                -- r.SetMediaItemTakeInfo_Value(oc.newTake, "D_STARTOFFS", math.max(0, oc.startTime + oc.section_offset - oc.startpadding))
+                r.SetMediaItemTakeInfo_Value(oc.newTake, "D_STARTOFFS", oc.startTime - oc.startpadding)
+                --[[
             if oc.section then
               
               local splitItem = r.SplitMediaItem(oc.newItem, oc.srclen)
@@ -403,119 +408,119 @@ function copyItemsToNewTracks(mediaFiles, padding)
               r.ShowConsoleMsg(oc.section_length..'\n')
             end--]]
 
-            -- if longer than media (loop) then wraparound end portion to the start
-            if oc.endTime > oc.srclen then
-                local splitItem = r.SplitMediaItem(oc.newItem, oc.srclen)
-                if splitItem ~= nil then
-                    table.insert(splitItems, splitItem)
-                    r.SetMediaItemPosition(splitItem, 0, false)
-                end
-            end
-
-        end
-
-        removeSpaces(track)
-        -- trim (leave only one item at any given point in time) and remove fades
-
-        -- first copy all positions to the oc object, before the items get deleted
-        -- (which is why this has to be done in a separate for loop, otherwise items
-        --  might be invalidated by the 40930 action before we get a chance to get their
-        --  "new" location)
-        for i, oc in ipairs(occurrences) do
-            oc.newItemPosition = r.GetMediaItemInfo_Value(oc.newItem, "D_POSITION") + oc.startpadding
-        end
-
-        -- then trim each object...
-        for i, oc in ipairs(occurrences) do
-            -- if item was deleted on the previous '40930' action, it is no longer valid
-            if r.ValidatePtr2(0, oc.newItem, "MediaItem*") then
-                r.SelectAllMediaItems(0, false)
-                r.SetMediaItemInfo_Value(oc.newItem, "D_FADEINLEN", 0)
-                r.SetMediaItemInfo_Value(oc.newItem, "D_FADEOUTLEN", 0)
-                r.SetMediaItemSelected(oc.newItem, true)
-                r.Main_OnCommand(40930, 0) -- trim content behind
-            end
-        end
-
-        -- ...as well as leftovers from the split operation (which are not included in the occurrences collection)
-        for i, splitItem in ipairs(splitItems) do
-            -- if item was deleted on the previous '40930' action, it is no longer valid
-            if r.ValidatePtr2(0, splitItem, "MediaItem*") then
-                r.SelectAllMediaItems(0, false)
-                r.SetMediaItemInfo_Value(splitItem, "D_FADEINLEN", 0)
-                r.SetMediaItemInfo_Value(splitItem, "D_FADEOUTLEN", 0)
-                r.SetMediaItemSelected(splitItem, true)
-                r.Main_OnCommand(40930, 0) -- trim content behind
-            end
-        end
-
-        -- temporarily remove max file size limitation, if it exists
-
-        local maxrecsize_use = select(2, r.get_config_var_string('maxrecsize_use'))
-        if maxrecsize_use & 1 == 1 then
-            r.SNM_SetIntConfigVar('maxrecsize_use', maxrecsize_use - 1)
-        end
-
-        -- glue
-        r.SetOnlyTrackSelected(track)
-        r.Main_OnCommand(40421, 0) -- select all items in track
-        r.Main_OnCommand(40362, 0) -- glue items, ignoring time selection
-        if maxrecsize_use & 1 then
-            r.SNM_SetIntConfigVar('maxrecsize_use', maxrecsize_use)
-        end
-
-        -- apply new source times to existing takes
-
-        local gluedItem = r.GetTrackMediaItem(track, 0)
-        if gluedItem then
-            local gluedTake = r.GetTake(gluedItem, 0)
-            if gluedTake then
-                local newSrc = r.GetMediaItemTake_Source(gluedTake)
-                local sourceFilename = r.GetMediaSourceFileName(newSrc)
-                -- Rename the source file to the track name
-                local path, filename = string.match(sourceFilename, "(.-)([^\\/]-([^%.]+))$")
-                local ext = filename:match(".+%.(.+)$")
-                local newFilename = path .. trackName .. "." .. ext
-                local newName = generateUniqueFilename(newFilename)
-                os.rename(sourceFilename, newName)
-
-                -- Update the glued item with the new source file and rebuild peaks
-                newSrc = r.PCM_Source_CreateFromFile(newName)
-                peakOperations[newName] = newSrc
-                r.PCM_Source_BuildPeaks(newSrc, 0)
-
-                local newSrcLength = r.GetMediaSourceLength(newSrc)
-                for i, oc in ipairs(occurrences) do
-                    oc.newsrclen = newSrcLength
-
-                    -- reset C_BEATATTACHMODE items temporarily for fixing stretch markers
-                    local tmpItemAutoStretch = r.GetMediaItemInfo_Value(oc.item, "C_AUTOSTRETCH")
-                    local tmpBeatAttachMode = r.GetMediaItemInfo_Value(oc.item, "C_BEATATTACHMODE")
-                    r.SetMediaItemInfo_Value(oc.item, "C_AUTOSTRETCH", 0)
-                    r.SetMediaItemInfo_Value(oc.item, "C_BEATATTACHMODE", 0) -- ]]
-                    local smrkrs = saveTakeStretchMarkers(oc)
-
-                    r.SetMediaItemTake_Source(oc.take, newSrc)
-                    r.SetMediaItemTakeInfo_Value(oc.take, "D_STARTOFFS", oc.newItemPosition)
-                    applyTakeStretchMarkers(oc, smrkrs)
-                    applyTakeMarkers(oc)
-
-                    -- apply saved item timbase settings
-                    r.SetMediaItemInfo_Value(oc.item, "C_AUTOSTRETCH", tmpItemAutoStretch)
-                    r.SetMediaItemInfo_Value(oc.item, "C_BEATATTACHMODE", tmpBeatAttachMode)
-
-                    -- save reverse info
-                    if oc.rev then
-                        reverseItem(oc.item)
+                -- if longer than media (loop) then wraparound end portion to the start
+                if oc.endTime > oc.srclen then
+                    local splitItem = r.SplitMediaItem(oc.newItem, oc.srclen)
+                    if splitItem ~= nil then
+                        table.insert(splitItems, splitItem)
+                        r.SetMediaItemPosition(splitItem, 0, false)
                     end
+                end
 
-                    --
+            end
+
+            removeSpaces(track)
+            -- trim (leave only one item at any given point in time) and remove fades
+
+            -- first copy all positions to the oc object, before the items get deleted
+            -- (which is why this has to be done in a separate for loop, otherwise items
+            --  might be invalidated by the 40930 action before we get a chance to get their
+            --  "new" location)
+            for i, oc in ipairs(filenameinfo.occurrences) do
+                oc.newItemPosition = r.GetMediaItemInfo_Value(oc.newItem, "D_POSITION") + oc.startpadding
+            end
+
+            -- then trim each object...
+            for i, oc in ipairs(filenameinfo.occurrences) do
+                -- if item was deleted on the previous '40930' action, it is no longer valid
+                if r.ValidatePtr2(0, oc.newItem, "MediaItem*") then
+                    r.SelectAllMediaItems(0, false)
+                    r.SetMediaItemInfo_Value(oc.newItem, "D_FADEINLEN", 0)
+                    r.SetMediaItemInfo_Value(oc.newItem, "D_FADEOUTLEN", 0)
+                    r.SetMediaItemSelected(oc.newItem, true)
+                    r.Main_OnCommand(40930, 0) -- trim content behind
                 end
             end
+
+            -- ...as well as leftovers from the split operation (which are not included in the occurrences collection)
+            for i, splitItem in ipairs(splitItems) do
+                -- if item was deleted on the previous '40930' action, it is no longer valid
+                if r.ValidatePtr2(0, splitItem, "MediaItem*") then
+                    r.SelectAllMediaItems(0, false)
+                    r.SetMediaItemInfo_Value(splitItem, "D_FADEINLEN", 0)
+                    r.SetMediaItemInfo_Value(splitItem, "D_FADEOUTLEN", 0)
+                    r.SetMediaItemSelected(splitItem, true)
+                    r.Main_OnCommand(40930, 0) -- trim content behind
+                end
+            end
+
+            -- temporarily remove max file size limitation, if it exists
+
+            local maxrecsize_use = select(2, r.get_config_var_string('maxrecsize_use'))
+            if maxrecsize_use & 1 == 1 then
+                r.SNM_SetIntConfigVar('maxrecsize_use', maxrecsize_use - 1)
+            end
+
+            -- glue
+            r.SetOnlyTrackSelected(track)
+            r.Main_OnCommand(40421, 0) -- select all items in track
+            r.Main_OnCommand(40362, 0) -- glue items, ignoring time selection
+            if maxrecsize_use & 1 then
+                r.SNM_SetIntConfigVar('maxrecsize_use', maxrecsize_use)
+            end
+
+            -- apply new source times to existing takes
+
+            local gluedItem = r.GetTrackMediaItem(track, 0)
+            if gluedItem then
+                local gluedTake = r.GetTake(gluedItem, 0)
+                if gluedTake then
+                    local newSrc = r.GetMediaItemTake_Source(gluedTake)
+                    local sourceFilename = r.GetMediaSourceFileName(newSrc)
+                    -- Rename the source file to the track name
+                    local path, filename = string.match(sourceFilename, "(.-)([^\\/]-([^%.]+))$")
+                    local ext = filename:match(".+%.(.+)$")
+                    local newFilename = path .. trackName .. "." .. ext
+                    local newName = generateUniqueFilename(newFilename)
+                    os.rename(sourceFilename, newName)
+
+                    -- Update the glued item with the new source file and rebuild peaks
+                    newSrc = r.PCM_Source_CreateFromFile(newName)
+                    peakOperations[newName] = newSrc
+                    r.PCM_Source_BuildPeaks(newSrc, 0)
+
+                    local newSrcLength = r.GetMediaSourceLength(newSrc)
+                    for i, oc in ipairs(filenameinfo.occurrences) do
+                        oc.newsrclen = newSrcLength
+
+                        -- reset C_BEATATTACHMODE items temporarily for fixing stretch markers
+                        local tmpItemAutoStretch = r.GetMediaItemInfo_Value(oc.item, "C_AUTOSTRETCH")
+                        local tmpBeatAttachMode = r.GetMediaItemInfo_Value(oc.item, "C_BEATATTACHMODE")
+                        r.SetMediaItemInfo_Value(oc.item, "C_AUTOSTRETCH", 0)
+                        r.SetMediaItemInfo_Value(oc.item, "C_BEATATTACHMODE", 0) -- ]]
+                        local smrkrs = saveTakeStretchMarkers(oc)
+
+                        r.SetMediaItemTake_Source(oc.take, newSrc)
+                        r.SetMediaItemTakeInfo_Value(oc.take, "D_STARTOFFS", oc.newItemPosition)
+                        applyTakeStretchMarkers(oc, smrkrs)
+                        applyTakeMarkers(oc)
+
+                        -- apply saved item timbase settings
+                        r.SetMediaItemInfo_Value(oc.item, "C_AUTOSTRETCH", tmpItemAutoStretch)
+                        r.SetMediaItemInfo_Value(oc.item, "C_BEATATTACHMODE", tmpBeatAttachMode)
+
+                        -- save reverse info
+                        if oc.rev then
+                            reverseItem(oc.item)
+                        end
+
+                        --
+                    end
+                end
+            end
+
+            r.DeleteTrack(track)
         end
-
-        r.DeleteTrack(track)
-
     end
     return peakOperations;
 end
