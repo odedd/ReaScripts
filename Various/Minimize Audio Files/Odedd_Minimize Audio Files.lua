@@ -33,51 +33,94 @@ scr, os_is = OD_Init()
 dofile(p .. 'lib/Settings.lua')
 dofile(p .. 'lib/Minimize.lua')
 dofile(p .. 'lib/Gui.lua')
+dofile(p .. 'lib/App.lua')
 
 if OD_PrereqsOK({
     reaimgui_version = '0.7',
     sws = true
 }) then
 
-    app = {
-        open = true,
-        coPerform = nil,
-        perform = {
-            status = nil,
-            pos = nil,
-            total = nil
-        },
-        hint = {
-            main = {},
-            settings = {}
-        }
-    }
 
-    r.Undo_BeginBlock()
-
-    -- local pos = r.GetCursorPosition()
-    -- local mediaFiles = collectMediaFiles()
-    -- local peakOperations = copyItemsToNewTracks(mediaFiles)
-    -- r.SetEditCurPos(pos, true, false)
-    -- finalizePeaksBuild(peakOperations)
-    r.Undo_EndBlock("Minimize Audio Files", 0)
+    local function doPerform()
+        r.Undo_BeginBlock()
+        app.showPerformWindow = true
+        local pos = r.GetCursorPosition()
+        app.mediaFiles = {}
+        collectMediaFiles()
+        -- local peakOperations = copyItemsToNewTracks(mediaFiles)
+        -- r.SetEditCurPos(pos, true, false)
+        -- finalizePeaksBuild(peakOperations)
+        r.Undo_EndBlock("Minimize Audio Files", 0)
+        coroutine.yield('Done', 0, 1)
+        return
+    end
 
     function checkPerform()
         if app.coPerform then
             if coroutine.status(app.coPerform) == "suspended" then
+                
+                reaper.ShowConsoleMsg(tablelength(app.mediaFiles)..'\n')
+        
                 coroutine.resume(app.coPerform)
-                -- retval, app.perform.status, app.perform.pos, app.perform.total =
-                -- coroutine.resume(app.coPerform, app.stem_to_render)
-                -- if not retval then
-                --    r.ShowConsoleMsg(app.perform.status)
-                -- end
+                retval, app.perform.status = coroutine.resume(app.coPerform)
+                if not retval then
+                   r.ShowConsoleMsg(app.perform.status)
+                end
             elseif coroutine.status(app.coPerform) == "dead" then
                 app.coPerform = nil
             end
         end
     end
 
-    function app.drawMainWindow(open)
+    function app.drawPerform(open)
+        if open then
+            local ctx = gui.ctx
+            r.ImGui_SetNextWindowSize(ctx, 700,
+                math.min(1000, select(2, r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx)))), r.ImGui_Cond_Appearing())
+            r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
+            local visible, open = r.ImGui_Begin(ctx, scr.name .. ' v' .. scr.version .. "##performWindow", true)
+            gui.mainWindow = {
+                pos = {r.ImGui_GetWindowPos(ctx)},
+                size = {r.ImGui_GetWindowSize(ctx)}
+            }
+            if visible then
+                for filename, filenameinfo in pairsByOrder(app.mediaFiles) do
+                    reaper.ImGui_Text(ctx,string.format("%02d",filenameinfo.order)..' '..filenameinfo.basename..' ('..tablelength(filenameinfo.occurrences)..')')
+                end
+                r.ImGui_End(ctx)
+            end
+            return open
+        end
+    end
+
+    function app.drawBottom(ctx, bottom_lines)
+        r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) -
+            (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines +
+                r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2))
+        local status, col = app.getStatus('main')
+        if col then
+            r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), gui.st.col[col])
+        end
+        r.ImGui_Spacing(ctx)
+        r.ImGui_Text(ctx, status)
+        app.setHint('main', '')
+        r.ImGui_Spacing(ctx)
+        if col then
+            r.ImGui_PopStyleColor(ctx)
+        end
+        if not app.coPerform then
+            if r.ImGui_Button(ctx, 'Minimize Files',
+                r.ImGui_GetContentRegionAvail(ctx)) then
+                saveSettings()
+                app.coPerform = coroutine.create(doPerform)
+            end
+        else
+            -- r.ImGui_ProgressBar(ctx, (app.perform.pos or 0) / (app.perform.total or 1),
+            --     r.ImGui_GetContentRegionAvail(ctx))
+        end
+    end
+
+    function app.drawMainWindow()
         local ctx = gui.ctx
         r.ImGui_SetNextWindowSize(ctx, 700,
             math.min(1000, select(2, r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx)))), r.ImGui_Cond_Appearing())
@@ -99,11 +142,18 @@ if OD_PrereqsOK({
             if app.coPerform and coroutine.status(app.coPerform) == 'running' then
                 r.ImGui_BeginDisabled(ctx)
             end
+
+            settings.suffix = gui.setting('text', 'suffix',
+                "Suffix to be added to minimized files", settings.suffix)
+            settings.padding = gui.setting('dragdouble', 'padding (s)',
+            "How much audio to before and after items", settings.padding, {speed=0.1,min=0.0,max=10.0, format="%.1f"})
+            if settings.padding < 0 then settings.padding = 0 end
+
 --            app.drawMatrices(ctx, bottom_lines)
             if app.coPerform and coroutine.status(app.coPerform) == 'running' then
                 r.ImGui_EndDisabled(ctx)
             end
---            app.drawBottom(ctx, bottom_lines)
+            app.drawBottom(ctx, bottom_lines)
             r.ImGui_End(ctx)
         end
         return open
@@ -112,7 +162,8 @@ if OD_PrereqsOK({
     function app.loop()
         checkPerform()
         r.ImGui_PushFont(gui.ctx, gui.st.fonts.default)
-        app.open = app.drawMainWindow(open)
+        app.open = app.drawMainWindow()
+        app.showPerformWindow = app.drawPerform(app.showPerformWindow)
         r.ImGui_PopFont(gui.ctx)
         -- checkExternalCommand()
         if app.open then
@@ -123,6 +174,7 @@ if OD_PrereqsOK({
     end
 
     loadSettings()
+    app.coPerform = coroutine.create(doPerform)
     r.defer(app.loop)
 
 end
