@@ -135,7 +135,7 @@ local applyPresetScript
 local frameCount = 0
 
 if OD_PrereqsOK({
-    reaimgui_version = '0.7',
+    reaimgui_version = '0.8',
     reaper_version = 6.44,
     scripts = {["cfillion_Apply render preset.lua"] = r.GetResourcePath() .. "/Scripts/ReaTeam Scripts/Rendering/cfillion_Apply render preset.lua"}
 }) then
