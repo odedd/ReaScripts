@@ -5,7 +5,7 @@ do
     -- these needs to be temporarily created to be refered to from some of the gui vars
     local ctx = r.ImGui_CreateContext(scr.context_name .. '_MAIN')
     local font_default = r.ImGui_CreateFont(scr.dir .. '../../Resources/Fonts/Cousine-Regular.ttf', 16)
-    r.ImGui_AttachFont(ctx, font_default)
+    r.ImGui_Attach(ctx, font_default)
 
     gui = {
         ctx = ctx,
