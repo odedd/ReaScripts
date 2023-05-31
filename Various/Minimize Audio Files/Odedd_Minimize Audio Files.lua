@@ -62,8 +62,8 @@ if OD_PrereqsOK({
         app.mediaFiles = {}
         collectMediaFiles()
         local peakOperations = copyItemsToNewTracks(mediaFiles)
-        -- r.SetEditCurPos(pos, true, false)
-        -- finalizePeaksBuild(peakOperations)
+        r.SetEditCurPos(pos, true, false)
+        finalizePeaksBuild(peakOperations)
         r.Undo_EndBlock("Minimize Audio Files", 0)
         coroutine.yield('Done', 0, 1)
         return
@@ -73,7 +73,7 @@ if OD_PrereqsOK({
         if app.coPerform then
             if coroutine.status(app.coPerform) == "suspended" then
 
-                coroutine.resume(app.coPerform)
+                -- coroutine.resume(app.coPerform)
                 retval, app.perform.status = coroutine.resume(app.coPerform)
                 if not retval then
                     r.ShowConsoleMsg(app.perform.status)
@@ -243,7 +243,7 @@ if OD_PrereqsOK({
     end
 
     loadSettings()
-    app.coPerform = coroutine.create(doPerform)
+   app.coPerform = coroutine.create(doPerform)
     r.defer(app.loop)
-
+    -- doPerform()
 end

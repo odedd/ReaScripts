@@ -37,62 +37,172 @@ function getTakeSourcePositions(take, srclen)
     r.SetMediaItemInfo_Value(item, "C_BEATATTACHMODE", 0) -- ]]
     local savedTake = r.GetActiveTake(item)
     r.SetActiveTake(take)
-    r.SelectAllMediaItems(0, false)
-    r.SetMediaItemSelected(item, true)
-    r.Main_OnCommand(40698, 0) -- copy item
-    r.SetActiveTake(savedTake)
-    local track = r.GetMediaItem_Track(item)
-    local trackIndex = r.GetMediaTrackInfo_Value(track, "IP_TRACKNUMBER")
-    r.InsertTrackAtIndex(trackIndex, false)
-    local newTrack = r.GetTrack(0, trackIndex)
-    r.SetOnlyTrackSelected(newTrack)
-    local newItemPos = r.GetMediaItemInfo_Value(item, "D_POSITION")
 
-    r.SetEditCurPos(newItemPos, false, false)
-    r.Main_OnCommand(42398, 0) -- paste item
+--    r.SelectAllMediaItems(0, false)
+--    r.SetMediaItemSelected(item, true)
+--    r.Main_OnCommand(40698, 0) -- copy item
+
+-- restore
+    local track = r.GetMediaItem_Track(item)
+--    local trackIndex = r.GetMediaTrackInfo_Value(track, "IP_TRACKNUMBER")
+--    r.InsertTrackAtIndex(trackIndex, false)
+--    local newTrack = r.GetTrack(0, trackIndex)
+--    r.SetOnlyTrackSelected(newTrack)
+--    local newItemPos = r.GetMediaItemInfo_Value(item, "D_POSITION")
+
+--    r.SetEditCurPos(newItemPos, false, false)
+--    r.Main_OnCommand(42398, 0) -- paste item
 
     -- apply saved item timbase settings
+
+    -- calculate source positions with regards to stretch markers, by creating "faux" take markers at take's start and end
+    local itemLength = r.GetMediaItemInfo_Value(item, "D_LENGTH")
+
+    local takePlayrate = r.GetMediaItemTakeInfo_Value(take, "D_PLAYRATE")
+    local takeSource = r.GetMediaItemTake_Source(take)
+    local sourceParent = r.GetMediaSourceParent(takeSource)
+    if sourceParent then
+        takeSource = sourceParent
+    end
+    local srclen = srclen or r.GetMediaSourceLength(takeSource)
+
+    local numStrtchMarkers = r.GetTakeNumStretchMarkers(take)
+
+    local endPos = math.round(itemLength * takePlayrate, 9)
+    local startPos = 0
+    local startSrcPos, endSrcPos
+    local foundStart, foundEnd
+    -- check if there are markers at start and end of item. if not, add them.
+    -- local beforeStartIndex, beforeEndIndex
+    local beforeStartSlope, beforeEndSlope
+
+    for j = 0, numStrtchMarkers - 1 do
+        local rv, pos, srcpos = r.GetTakeStretchMarker(take, j)
+        if pos < startPos then
+            beforeStartSlope = r.GetTakeStretchMarkerSlope(take,j)
+        end
+        if pos < endPos then
+            beforeEndSlope = r.GetTakeStretchMarkerSlope(take,j)
+        end
+        if pos == startPos then
+            foundStart = true
+            startSrcPos = srcpos
+        end
+        if math.round(pos, 9) == endPos then
+            foundEnd = true
+            endSrcPos = srcpos
+        end
+    end
+
+    -- add start and end markers unless found
+    if not foundStart then
+        local startSm = r.SetTakeStretchMarker(take, -1, startPos)
+        local rv, pos, srcpos = r.GetTakeStretchMarker(take, startSm)
+        startSrcPos = srcpos
+        r.DeleteTakeStretchMarkers(take,startSm)
+        if beforeStartSlope then reaper.SetTakeStretchMarkerSlope(take,startSm-1,beforeStartSlope) end
+    end
+    if not foundEnd then
+        local endSm = r.SetTakeStretchMarker(take, -1, endPos)
+        local rv, pos, srcpos = r.GetTakeStretchMarker(take, endSm)
+        endSrcPos = srcpos
+        local prevSlope
+        --if endSm > 0 then prevSlope = reaper.GetTakeStretchMarkerSlope(take,endSm - 1) end
+        r.DeleteTakeStretchMarkers(take,endSm)
+        if beforeEndSlope then reaper.SetTakeStretchMarkerSlope(take,endSm-1,beforeEndSlope) end
+
+        --if prevSlope then reaper.SetTakeStretchMarkerSlope(take,endSm-1,prevSlope) end
+    end
+
+    r.SetActiveTake(savedTake)
     r.SetMediaItemInfo_Value(item, "C_AUTOSTRETCH", tmpItemAutoStretch)
     r.SetMediaItemInfo_Value(item, "C_BEATATTACHMODE", tmpBeatAttachMode)
 
-    -- calculate source positions with regards to stretch markers, by creating "faux" take markers at take's start and end
-    local newItem = r.GetSelectedMediaItem(0, 0)
-    local newItemLength = r.GetMediaItemInfo_Value(newItem, "D_LENGTH")
-
-    local newTake = r.GetActiveTake(newItem)
-    local newTakeplayrate = r.GetMediaItemTakeInfo_Value(newTake, "D_PLAYRATE")
-    local newTakeSource = r.GetMediaItemTake_Source(newTake)
-    local sourceParent = r.GetMediaSourceParent(newTakeSource)
-    if sourceParent then
-        newTakeSource = sourceParent
-    end
-    local srclen = srclen or r.GetMediaSourceLength(newTakeSource)
-
-    local numStrtchMarkers = r.GetTakeNumStretchMarkers(newTake)
-    local newSm = r.SetTakeStretchMarker(newTake, -1, 0)
-    local rv, pos, startpos = r.GetTakeStretchMarker(newTake, newSm)
-
-    local endSm = r.SetTakeStretchMarker(newTake, -1, newItemLength * newTakeplayrate)
-    local rv, pos, endpos = r.GetTakeStretchMarker(newTake, endSm)
-
     -- multiply by the take's playrate
-    local originalLength = (endpos - startpos)
+    local originalLength = (endSrcPos - startSrcPos)
 
     -- ignore loops (in case the startpos is not at the first "loop")
-    startpos = math.abs(startpos % srclen)
-    endpos = startpos + originalLength -- * newTakeplayrate)
-    local finalLength = endpos - startpos
+    startSrcPos = math.abs(startSrcPos % srclen)
+    endSrcPos = startSrcPos + originalLength -- * newTakeplayrate)
+    local finalLength = endSrcPos - startSrcPos
 
     -- for looped items, if longer than one source length, no need for "full" length with all loops
     if finalLength > srclen then
         finalLength = srclen
-        endpos = startpos + srclen
+        endSrcPos = startSrcPos + srclen
     end
 
-    r.DeleteTrack(newTrack)
+--    r.DeleteTrack(newTrack)
 
-    return startpos, endpos, srclen -- maybe should be finalLength instead? check in regards to playrate
+    return startSrcPos, endSrcPos, srclen -- maybe should be finalLength instead? check in regards to playrate
 end
+
+-- function getTakeSourcePositionsWithCopy(take, srclen)
+--     -- copy item to new track
+--     local item = r.GetMediaItemTake_Item(take)
+--     -- reset item timebase to time, because it screws up taking, but save current setting to re-apply them after copying
+--     local tmpItemAutoStretch = r.GetMediaItemInfo_Value(item, "C_AUTOSTRETCH")
+--     local tmpBeatAttachMode = r.GetMediaItemInfo_Value(item, "C_BEATATTACHMODE")
+--     r.SetMediaItemInfo_Value(item, "C_AUTOSTRETCH", 0)
+--     r.SetMediaItemInfo_Value(item, "C_BEATATTACHMODE", 0) -- ]]
+--     local savedTake = r.GetActiveTake(item)
+--     r.SetActiveTake(take)
+--     r.SelectAllMediaItems(0, false)
+--     r.SetMediaItemSelected(item, true)
+--     r.Main_OnCommand(40698, 0) -- copy item
+--     r.SetActiveTake(savedTake)
+--     local track = r.GetMediaItem_Track(item)
+--     local trackIndex = r.GetMediaTrackInfo_Value(track, "IP_TRACKNUMBER")
+--     r.InsertTrackAtIndex(trackIndex, false)
+--     local newTrack = r.GetTrack(0, trackIndex)
+--     r.SetOnlyTrackSelected(newTrack)
+--     local newItemPos = r.GetMediaItemInfo_Value(item, "D_POSITION")
+
+--     r.SetEditCurPos(newItemPos, false, false)
+--     r.Main_OnCommand(42398, 0) -- paste item
+
+--     -- apply saved item timbase settings
+--     r.SetMediaItemInfo_Value(item, "C_AUTOSTRETCH", tmpItemAutoStretch)
+--     r.SetMediaItemInfo_Value(item, "C_BEATATTACHMODE", tmpBeatAttachMode)
+
+--     -- calculate source positions with regards to stretch markers, by creating "faux" take markers at take's start and end
+--     local newItem = r.GetSelectedMediaItem(0, 0)
+--     local newItemLength = r.GetMediaItemInfo_Value(newItem, "D_LENGTH")
+
+--     local newTake = r.GetActiveTake(newItem)
+--     local newTakeplayrate = r.GetMediaItemTakeInfo_Value(newTake, "D_PLAYRATE")
+--     local newTakeSource = r.GetMediaItemTake_Source(newTake)
+--     local sourceParent = r.GetMediaSourceParent(newTakeSource)
+--     if sourceParent then
+--         newTakeSource = sourceParent
+--     end
+--     local srclen = srclen or r.GetMediaSourceLength(newTakeSource)
+
+--     local numStrtchMarkers = r.GetTakeNumStretchMarkers(newTake)
+--     local newSm = r.SetTakeStretchMarker(newTake, -1, 0)
+--     local rv, pos, startpos = r.GetTakeStretchMarker(newTake, newSm)
+
+--     local endSm = r.SetTakeStretchMarker(newTake, -1, newItemLength * newTakeplayrate)
+--     local rv, pos, endpos = r.GetTakeStretchMarker(newTake, endSm)
+
+--     -- multiply by the take's playrate
+--     local originalLength = (endpos - startpos)
+
+--     -- ignore loops (in case the startpos is not at the first "loop")
+--     startpos = math.abs(startpos % srclen)
+--     endpos = startpos + originalLength -- * newTakeplayrate)
+--     local finalLength = endpos - startpos
+
+--     -- for looped items, if longer than one source length, no need for "full" length with all loops
+--     if finalLength > srclen then
+--         finalLength = srclen
+--         endpos = startpos + srclen
+--     end
+
+--     r.DeleteTrack(newTrack)
+
+--     return startpos, endpos, srclen -- maybe should be finalLength instead? check in regards to playrate
+-- end
 
 function reverseItem(item)
     r.SelectAllMediaItems(0, false)
@@ -277,7 +387,6 @@ function removeSpaces(track, filename)
         r.Main_OnCommand(40006, 0) -- delete item
     end
     r.Main_OnCommand(41990, 0) -- toggle ripple editing
-    reaper.ShowConsoleMsg(keepCounter)
     app.mediaFiles[filename].keep = 1-keepCounter
     app.mediaFiles[filename].sections = sections
     app.mediaFiles[filename].status = STATUS.MINIMIZED
