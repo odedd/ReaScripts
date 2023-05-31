@@ -15,6 +15,8 @@
 -- todo: delete replaced files
 -- todo: make sure to match glued file format / quality to original
 -- todo: figure out MP3s
+-- todo: figure out other sourceTypes (videos etc)
+-- todo: figure out sampler files
 -- requires sws to remove max file size limitation, as well as for sections
 --    if r.GetPlayState()&4==4 then;
 --        re aper.MB("Eng:\nYou shouldn't record when using this action.\n\n"..
@@ -22,6 +24,8 @@
 --        ,"Oops",0);
 --    else;
 r = reaper
+
+REAL = false
 
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
 dofile(p .. '../../Resources/Common/Common.lua')
@@ -37,13 +41,17 @@ dofile(p .. 'lib/App.lua')
 
 gui.tables = {
     horizontal = {
-        flags1 = r.ImGui_TableFlags_ScrollX() | r.ImGui_TableFlags_ScrollY() | r.ImGui_TableFlags_BordersOuter() |
-            r.ImGui_TableFlags_Borders() | r.ImGui_TableFlags_NoHostExtendX() | r.ImGui_TableFlags_SizingFixedFit()
+        flags1 = r.ImGui_TableFlags_NoSavedSettings() | r.ImGui_TableFlags_ScrollX() | r.ImGui_TableFlags_ScrollY() |
+            r.ImGui_TableFlags_BordersOuter() | r.ImGui_TableFlags_Borders() | r.ImGui_TableFlags_Resizable() |
+            r.ImGui_TableFlags_NoHostExtendX() | r.ImGui_TableFlags_SizingFixedFit()
     }
 }
+gui.st.col.item=0x333333ff;
+gui.st.col.item_keep=0x2a783fff;
+gui.st.col.item_delete=0x852f29ff;
 
 if OD_PrereqsOK({
-    reaimgui_version = '0.7',
+    reaimgui_version = '0.8',
     sws = true
 }) then
 
@@ -53,7 +61,7 @@ if OD_PrereqsOK({
         local pos = r.GetCursorPosition()
         app.mediaFiles = {}
         collectMediaFiles()
-        -- local peakOperations = copyItemsToNewTracks(mediaFiles)
+        local peakOperations = copyItemsToNewTracks(mediaFiles)
         -- r.SetEditCurPos(pos, true, false)
         -- finalizePeaksBuild(peakOperations)
         r.Undo_EndBlock("Minimize Audio Files", 0)
@@ -77,9 +85,13 @@ if OD_PrereqsOK({
     end
 
     function app.drawPerform(open)
+        local ctx = gui.ctx
         local bottom_lines = 2
+        local overview_width = 100
+        local line_height = r.ImGui_GetTextLineHeight(ctx)
+
         if open then
-            local ctx = gui.ctx
+
             r.ImGui_SetNextWindowSize(ctx, 700, math.min(1000, select(2, r.ImGui_Viewport_GetSize(
                 r.ImGui_GetMainViewport(ctx)))), r.ImGui_Cond_Appearing())
             r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
@@ -94,19 +106,45 @@ if OD_PrereqsOK({
                                             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2)
                 -- if r.ImGui_CollapsingHeader(ctx,"Stem Selection",false,r.ImGui_TreeNodeFlags_DefaultOpen()) then
                 if r.ImGui_BeginChild(ctx, 'mediaFiles', 0, childHeight) then
-                    if r.ImGui_BeginTable(ctx, 'table_scrollx', 2, gui.tables.horizontal.flags1) then
+                    if r.ImGui_BeginTable(ctx, 'table_scrollx', 5, gui.tables.horizontal.flags1) then
                         --- SETUP MATRIX TABLE
                         local parent_open, depth, open_depth = true, 0, 0
-                        r.ImGui_TableSetupScrollFreeze(ctx, 1, 2)
-                        r.ImGui_TableSetupColumn(ctx, 'File', r.ImGui_TableColumnFlags_NoHide(), nil) -- Make the first column not hideable to match our use of TableSetupScrollFreeze()
+                        r.ImGui_TableSetupColumn(ctx, 'File', r.ImGui_TableColumnFlags_NoHide(), 250) -- Make the first column not hideable to match our use of TableSetupScrollFreeze()
+                        r.ImGui_TableSetupColumn(ctx, '#', nil, 30)
+                        r.ImGui_TableSetupColumn(ctx, 'Overview', nil, overview_width)
+                        r.ImGui_TableSetupColumn(ctx, 'Keep', nil, 45)
+                        r.ImGui_TableSetupColumn(ctx, 'Folder', nil, nil)
+                        r.ImGui_TableSetupScrollFreeze(ctx, 1, 1)
 
-                        r.ImGui_TableSetupColumn(ctx, 'Occurances', nil, nil)
-                        for filename, filenameinfo in pairsByOrder(app.mediaFiles) do
+                        r.ImGui_TableHeadersRow(ctx)
+                        for filename, info in pairsByOrder(app.mediaFiles) do
                             r.ImGui_TableNextRow(ctx)
-                            r.ImGui_TableNextColumn(ctx)
-                            r.ImGui_Text(ctx, filenameinfo.basename)
-                            r.ImGui_TableNextColumn(ctx)
-                            r.ImGui_Text(ctx, #filenameinfo.occurrences)
+                            if info.hasSection then
+                                reaper.ImGui_TableSetBgColor(ctx, reaper.ImGui_TableBgTarget_RowBg0(), 0x4d4db3a6)
+                            end
+                            r.ImGui_TableNextColumn(ctx) -- file
+                            r.ImGui_Text(ctx, info.basename)
+                            r.ImGui_TableNextColumn(ctx) -- takes
+                            r.ImGui_Text(ctx, #info.occurrences)
+                            r.ImGui_TableNextColumn(ctx) -- status
+                            local curScrPos = {r.ImGui_GetCursorScreenPos(ctx)}
+                            curScrPos[2] = curScrPos[2] + 1
+
+
+                            overview_width = r.ImGui_GetContentRegionAvail(ctx)
+                            r.ImGui_DrawList_AddRectFilled(gui.draw_list, curScrPos[1], curScrPos[2], curScrPos[1] + overview_width,
+                                curScrPos[2] + line_height-1, (info.status >= STATUS.MINIMIZED) and gui.st.col.item_keep or gui.st.col.item)
+                            
+                            for i, sect in pairsByOrder(info.sections or {}) do
+                                r.ImGui_DrawList_AddRectFilled(gui.draw_list, curScrPos[1]+overview_width*sect.from, curScrPos[2], curScrPos[1] +overview_width*sect.to,
+                                curScrPos[2] + line_height-1, gui.st.col.item_delete)
+                            end
+                            --r.ImGui_ProgressBar(ctx, 0,nil, nil,string.format("%.2f", filenameinfo.srclen))
+                            r.ImGui_TableNextColumn(ctx) -- keep
+                            r.ImGui_Text(ctx,string.format("%.f %%",info.keep*100))
+                            -- r.ImGui_Text(ctx, info.hasSection and 'Sections not supported. Skipping.' or '')
+                            r.ImGui_TableNextColumn(ctx) -- folder
+                            r.ImGui_Text(ctx, info.path)
                         end
                         r.ImGui_EndTable(ctx)
                     end
