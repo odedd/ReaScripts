@@ -46,9 +46,9 @@ gui.tables = {
             r.ImGui_TableFlags_NoHostExtendX() | r.ImGui_TableFlags_SizingFixedFit()
     }
 }
-gui.st.col.item=0x333333ff;
-gui.st.col.item_keep=0x2a783fff;
-gui.st.col.item_delete=0x852f29ff;
+gui.st.col.item = 0x333333ff;
+gui.st.col.item_keep = 0x2a783fff;
+gui.st.col.item_delete = 0x852f29ff;
 
 if OD_PrereqsOK({
     reaimgui_version = '0.8',
@@ -57,7 +57,7 @@ if OD_PrereqsOK({
 
     local function doPerform()
         r.Undo_BeginBlock()
-        app.showPerformWindow = true
+        app.showPerform = true
         local pos = r.GetCursorPosition()
         app.mediaFiles = {}
         collectMediaFiles()
@@ -90,70 +90,69 @@ if OD_PrereqsOK({
         local overview_width = 100
         local line_height = r.ImGui_GetTextLineHeight(ctx)
 
-        if open then
+        -- r.ImGui_SetNextWindowSize(ctx, 700, math.min(1000, select(2, r.ImGui_Viewport_GetSize(
+        --     r.ImGui_GetMainViewport(ctx)))), r.ImGui_Cond_Appearing())
+        -- r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
+        if open and r.ImGui_BeginChild(ctx, "perform", 0, select(2, r.ImGui_GetContentRegionAvail(ctx))) then
+            local childHeight = select(2, r.ImGui_GetContentRegionAvail(ctx)) -
+                                    (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines +
+                                        r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2)
+            -- if r.ImGui_CollapsingHeader(ctx,"Stem Selection",false,r.ImGui_TreeNodeFlags_DefaultOpen()) then
+            if r.ImGui_BeginChild(ctx, 'mediaFiles', 0, childHeight) then
+                if r.ImGui_BeginTable(ctx, 'table_scrollx', 5, gui.tables.horizontal.flags1) then
+                    --- SETUP MATRIX TABLE
+                    local parent_open, depth, open_depth = true, 0, 0
+                    r.ImGui_TableSetupColumn(ctx, 'File', r.ImGui_TableColumnFlags_NoHide(), 250) -- Make the first column not hideable to match our use of TableSetupScrollFreeze()
+                    r.ImGui_TableSetupColumn(ctx, '#', nil, 30)
+                    r.ImGui_TableSetupColumn(ctx, 'Overview', nil, overview_width)
+                    r.ImGui_TableSetupColumn(ctx, 'Keep', nil, 45)
+                    r.ImGui_TableSetupColumn(ctx, 'Folder', nil, nil)
+                    r.ImGui_TableSetupScrollFreeze(ctx, 1, 1)
 
-            r.ImGui_SetNextWindowSize(ctx, 700, math.min(1000, select(2, r.ImGui_Viewport_GetSize(
-                r.ImGui_GetMainViewport(ctx)))), r.ImGui_Cond_Appearing())
-            r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
-            local visible, open = r.ImGui_Begin(ctx, scr.name .. ' v' .. scr.version .. "##performWindow", true)
-            gui.mainWindow = {
-                pos = {r.ImGui_GetWindowPos(ctx)},
-                size = {r.ImGui_GetWindowSize(ctx)}
-            }
-            if visible then
-                local childHeight = select(2, r.ImGui_GetContentRegionAvail(ctx)) -
-                                        (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines +
-                                            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2)
-                -- if r.ImGui_CollapsingHeader(ctx,"Stem Selection",false,r.ImGui_TreeNodeFlags_DefaultOpen()) then
-                if r.ImGui_BeginChild(ctx, 'mediaFiles', 0, childHeight) then
-                    if r.ImGui_BeginTable(ctx, 'table_scrollx', 5, gui.tables.horizontal.flags1) then
-                        --- SETUP MATRIX TABLE
-                        local parent_open, depth, open_depth = true, 0, 0
-                        r.ImGui_TableSetupColumn(ctx, 'File', r.ImGui_TableColumnFlags_NoHide(), 250) -- Make the first column not hideable to match our use of TableSetupScrollFreeze()
-                        r.ImGui_TableSetupColumn(ctx, '#', nil, 30)
-                        r.ImGui_TableSetupColumn(ctx, 'Overview', nil, overview_width)
-                        r.ImGui_TableSetupColumn(ctx, 'Keep', nil, 45)
-                        r.ImGui_TableSetupColumn(ctx, 'Folder', nil, nil)
-                        r.ImGui_TableSetupScrollFreeze(ctx, 1, 1)
-
-                        r.ImGui_TableHeadersRow(ctx)
-                        for filename, info in pairsByOrder(app.mediaFiles) do
-                            r.ImGui_TableNextRow(ctx)
-                            if info.hasSection then
-                                reaper.ImGui_TableSetBgColor(ctx, reaper.ImGui_TableBgTarget_RowBg0(), 0x4d4db3a6)
-                            end
-                            r.ImGui_TableNextColumn(ctx) -- file
-                            r.ImGui_Text(ctx, info.basename)
+                    r.ImGui_TableHeadersRow(ctx)
+                    for filename, info in pairsByOrder(app.mediaFiles) do
+                        r.ImGui_TableNextRow(ctx)
+                        
+                        if info.hasSection then
+                            reaper.ImGui_TableSetBgColor(ctx, reaper.ImGui_TableBgTarget_RowBg0(), 0x4d4db3a6)
+                        end
+                        r.ImGui_TableNextColumn(ctx) -- file
+                        r.ImGui_Text(ctx, info.basename)
+                        local skiprow = false
+                        if not r.ImGui_IsItemVisible(ctx) then
+                            skiprow = true
+                        end
+                        if not skiprow then
                             r.ImGui_TableNextColumn(ctx) -- takes
                             r.ImGui_Text(ctx, #info.occurrences)
                             r.ImGui_TableNextColumn(ctx) -- status
+ --                           if (r.ImGui_TableGetColumnFlags(ctx, -1) & reaper.ImGui_TableColumnFlags_IsVisible()) ~= 0 then reaper.ShowConsoleMsg('\n') end
                             local curScrPos = {r.ImGui_GetCursorScreenPos(ctx)}
                             curScrPos[2] = curScrPos[2] + 1
 
-
                             overview_width = r.ImGui_GetContentRegionAvail(ctx)
-                            r.ImGui_DrawList_AddRectFilled(gui.draw_list, curScrPos[1], curScrPos[2], curScrPos[1] + overview_width,
-                                curScrPos[2] + line_height-1, (info.status >= STATUS.MINIMIZED) and gui.st.col.item_keep or gui.st.col.item)
-                            
+                            r.ImGui_DrawList_AddRectFilled(gui.draw_list, curScrPos[1], curScrPos[2],
+                                curScrPos[1] + overview_width, curScrPos[2] + line_height - 1, (info.status >=
+                                    STATUS.MINIMIZED) and gui.st.col.item_keep or gui.st.col.item)
+
                             for i, sect in pairsByOrder(info.sections or {}) do
-                                r.ImGui_DrawList_AddRectFilled(gui.draw_list, curScrPos[1]+overview_width*sect.from, curScrPos[2], curScrPos[1] +overview_width*sect.to,
-                                curScrPos[2] + line_height-1, gui.st.col.item_delete)
+                                r.ImGui_DrawList_AddRectFilled(gui.draw_list, curScrPos[1] + overview_width * sect.from,
+                                    curScrPos[2], curScrPos[1] + overview_width * sect.to,
+                                    curScrPos[2] + line_height - 1, gui.st.col.item_delete)
                             end
-                            --r.ImGui_ProgressBar(ctx, 0,nil, nil,string.format("%.2f", filenameinfo.srclen))
+                            -- r.ImGui_ProgressBar(ctx, 0,nil, nil,string.format("%.2f", filenameinfo.srclen))
                             r.ImGui_TableNextColumn(ctx) -- keep
-                            r.ImGui_Text(ctx,string.format("%.f %%",info.keep*100))
+                            r.ImGui_Text(ctx, string.format("%.f %%", info.keep * 100))
                             -- r.ImGui_Text(ctx, info.hasSection and 'Sections not supported. Skipping.' or '')
                             r.ImGui_TableNextColumn(ctx) -- folder
                             r.ImGui_Text(ctx, info.path)
                         end
-                        r.ImGui_EndTable(ctx)
                     end
-                    r.ImGui_EndChild(ctx)
+                    r.ImGui_EndTable(ctx)
                 end
-
-                r.ImGui_End(ctx)
+                r.ImGui_EndChild(ctx)
             end
-            return open
+            r.ImGui_EndChild(ctx)
         end
     end
 
@@ -185,11 +184,12 @@ if OD_PrereqsOK({
 
     function app.drawMainWindow()
         local ctx = gui.ctx
-        r.ImGui_SetNextWindowSize(ctx, 700,
-            math.min(1000, select(2, r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx)))), r.ImGui_Cond_Appearing())
+        max_w, max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx))
+
+        -- reaper.ShowConsoleMsg(viewPortWidth)
+        r.ImGui_SetNextWindowSize(ctx, math.min(1800, max_w), math.min(800, max_h), r.ImGui_Cond_Appearing())
         r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
-        local visible, open = r.ImGui_Begin(ctx, scr.name .. ' v' .. scr.version .. "##mainWindow", true,
-            r.ImGui_WindowFlags_MenuBar())
+        local visible, open = r.ImGui_Begin(ctx, scr.name .. ' v' .. scr.version .. "##mainWindow", true)
         gui.mainWindow = {
             pos = {r.ImGui_GetWindowPos(ctx)},
             size = {r.ImGui_GetWindowSize(ctx)}
@@ -218,6 +218,13 @@ if OD_PrereqsOK({
                 settings.padding = 0
             end
 
+            settings.deleteOperation = gui.setting('combo', 'After minimizing', "What should be done after minimizing.",
+                settings.deleteOperation, {
+                    list = DELETE_OPERATIONS_LIST
+                })
+
+            app.drawPerform(app.showPerform)
+
             --            app.drawMatrices(ctx, bottom_lines)
             if app.coPerform and coroutine.status(app.coPerform) == 'running' then
                 r.ImGui_EndDisabled(ctx)
@@ -232,7 +239,6 @@ if OD_PrereqsOK({
         checkPerform()
         r.ImGui_PushFont(gui.ctx, gui.st.fonts.default)
         app.open = app.drawMainWindow()
-        app.showPerformWindow = app.drawPerform(app.showPerformWindow)
         r.ImGui_PopFont(gui.ctx)
         -- checkExternalCommand()
         if app.open then
@@ -243,7 +249,7 @@ if OD_PrereqsOK({
     end
 
     loadSettings()
-   app.coPerform = coroutine.create(doPerform)
+    app.coPerform = coroutine.create(doPerform)
     r.defer(app.loop)
     -- doPerform()
 end
