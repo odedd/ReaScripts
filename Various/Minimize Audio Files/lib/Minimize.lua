@@ -3,13 +3,21 @@
 STATUS = {
     IGNORE = 0,
     SCANNED = 1,
+    MINIMIZING = 9,
     MINIMIZED = 10,
+    MOVING = 50,
+    COPYING = 51,
+    DONE = 100,
 }
 
 STATUS_DESCRIPTIONS = {
-    [STATUS.IGNORE] = 'Ignore File (%1)',
+    [STATUS.IGNORE] = 'Ignore',
     [STATUS.SCANNED] = 'Scanned',
-    [STATUS.MINIMIZED] = 'Minimized'
+    [STATUS.MINIMIZING] = 'Minimizing',
+    [STATUS.MINIMIZED] = 'Minimized',
+    [STATUS.MOVING] = 'Moving',
+    [STATUS.COPYING] = 'Copying',
+    [STATUS.DONE] = 'Done'
 }
 
 FORMATS = {
@@ -182,7 +190,6 @@ function collectMediaFiles()
                         -- section_offset = offs or 0,
                         -- itemLength = itemLength,
                         -- normalizedItemLength = (itemLength+sp) % math.max(len, srclen),
-
                     }
                 end
                 -- Check if the media file entry exists in the mediaFiles table
@@ -194,28 +201,34 @@ function collectMediaFiles()
                     end
                 else
                     local fullpath, basename, ext = dissectFilename(filename)
-                    local relOrAbsPath = getRelativeOrAbsolutePath(sourceFile, projPath)
+                    local relOrAbsPath, pathIsRelative = getRelativeOrAbsolutePath(sourceFile, projPath)
                     -- Create a new entry for the media file
                     app.mediaFiles[filename] = {
                         status = STATUS.SCANNED,
                         order = count,
+                        filenameWithPath = filename,
                         fullpath = fullpath,
                         relOrAbsPath = relOrAbsPath,
+                        pathIsRelative = pathIsRelative,
                         basename = basename,
+                        ext = ext,
                         occurrences = {oc},
                         hasSection = oc and oc.section or false,
                         srclen = srclen,
                         keep = 1,
                         to_process = (oc ~= nil),
                         ignore = (oc == nil),
-                        status_info = (oc == nil) and 'file type' or ''
+                        status_info = (oc == nil) and ('%s'):format(sourceType) or '',
+                        newfilename = nil
                     }
                     count = count + 1
                 end
-                if app.mediaFiles[filename].hasSection then app.mediaFiles[filename].ignore = true end
+                if app.mediaFiles[filename].hasSection then 
+                    app.mediaFiles[filename].status_info = 'Has sections'
+                    app.mediaFiles[filename].ignore = true
+                end
                 if app.mediaFiles[filename].ignore then 
-                    app.mediaFiles[filename].status = STATUS.IGNORE 
-                    app.mediaFiles[filename].status_info = 'sections not supported'
+                    app.mediaFiles[filename].status = STATUS.IGNORE
                 end
             end
             coroutine.yield('Collecting Items')
@@ -310,7 +323,6 @@ function removeSpaces(track, filename)
     r.Main_OnCommand(41990, 0) -- toggle ripple editing
     app.mediaFiles[filename].keep = 1-keepCounter
     app.mediaFiles[filename].sections = sections
-    app.mediaFiles[filename].status = STATUS.MINIMIZED
 end
 
 function saveTakeStretchMarkers(oc)
@@ -402,13 +414,15 @@ function applyTakeMarkers(oc)
 end
 
 -- Create new items to reflect the new occurrences
-function copyItemsToNewTracks(padding)
+function copyItemsToNewTracks()
     r.SelectAllMediaItems(0, false)
-    padding = padding or settings.padding
     local peakOperations = {}
 
     for filename, filenameinfo in pairsByOrder(app.mediaFiles) do
+        
         if filenameinfo.ignore == false then
+            app.mediaFiles[filename].status = STATUS.MINIMIZING
+            coroutine.yield('Minimizing Items')
             -- Create a new track for each filename
             local trackIndex = r.GetNumTracks()
             r.InsertTrackAtIndex(trackIndex, false)
@@ -425,17 +439,17 @@ function copyItemsToNewTracks(padding)
             r.GetSetMediaTrackInfo_String(track, "P_NAME", trackName, true)
 
             local splitItems = {}
-
+            -- reaper.PreventUIRefresh(1)
             -- turn off ripple editing
             r.Main_OnCommand(40310, 0) -- set ripple editing per track
             r.Main_OnCommand(41990, 0) -- toggle ripple editing
 
             for i, oc in ipairs(filenameinfo.occurrences) do
 
-                oc.startpadding = math.min(padding, oc.startTime)
+                oc.startpadding = math.min(settings.padding, oc.startTime)
                 local ocLength = oc.endTime - oc.startTime + oc.startpadding
 
-                oc.endpadding = math.min(oc.srclen - (oc.startTime + ocLength - oc.startpadding), padding)
+                oc.endpadding = math.min(oc.srclen - (oc.startTime + ocLength - oc.startpadding), settings.padding)
                 oc.endpadding = math.max(oc.endpadding, 0)
                 local ocLength = ocLength + oc.endpadding
                 -- r.ShowConsoleMsg(oc.srclen)
@@ -501,7 +515,7 @@ function copyItemsToNewTracks(padding)
 
             -- then trim each object...
             for i, oc in ipairs(filenameinfo.occurrences) do
-                -- if item was deleted on the previous '40930' action, it is no longer valid
+                -- if item was deleted on the vious '40930' action, it is no longer valid
                 if r.ValidatePtr2(0, oc.newItem, "MediaItem*") then
                     r.SelectAllMediaItems(0, false)
                     r.SetMediaItemInfo_Value(oc.newItem, "D_FADEINLEN", 0)
@@ -534,10 +548,11 @@ function copyItemsToNewTracks(padding)
                 r.SetOnlyTrackSelected(track)
                 r.Main_OnCommand(40421, 0) -- select all items in track
                 r.Main_OnCommand(40362, 0) -- glue items, ignoring time selection
-                if maxrecsize_use & 1 then
-                    r.SNM_SetIntConfigVar('maxrecsize_use', maxrecsize_use)
-                end
-
+            end
+            if maxrecsize_use & 1 then
+                r.SNM_SetIntConfigVar('maxrecsize_use', maxrecsize_use)
+            end
+            if REAL then
                 -- apply new source times to existing takes
 
                 local gluedItem = r.GetTrackMediaItem(track, 0)
@@ -556,6 +571,7 @@ function copyItemsToNewTracks(padding)
                         -- Update the glued item with the new source file and rebuild peaks
                         newSrc = r.PCM_Source_CreateFromFile(newName)
                         peakOperations[newName] = newSrc
+                        filenameinfo.newfilename = newName
                         r.PCM_Source_BuildPeaks(newSrc, 0)
 
                         local newSrcLength = r.GetMediaSourceLength(newSrc)
@@ -589,10 +605,16 @@ function copyItemsToNewTracks(padding)
                 end
             end
             r.DeleteTrack(track)
-            coroutine.yield('Applying Items')
+            -- reaper.PreventUIRefresh(-1)
+            app.mediaFiles[filename].status = STATUS.MINIMIZED
+            coroutine.yield('Minimizing Items')
         end
     end
     return peakOperations;
+end
+
+function copyItemsToDestination()
+
 end
 
 function finalizePeaksBuild(peakOperations, count)

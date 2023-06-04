@@ -21,12 +21,6 @@ do
                 critical = 0xDD0000FF,
                 error = 0xFF5555FF,
                 hint = 0xCCCCCCFF,
-                button = {
-                    [r.ImGui_Col_Text()] = 0x000000ff,
-                    [r.ImGui_Col_Button()] = 0x707070ff,
-                    [r.ImGui_Col_ButtonHovered()] = 0x858585FF,
-                    [r.ImGui_Col_ButtonActive()] = 0x9c9c9cFF
-                }
             }
         },
         popups = {
@@ -65,7 +59,6 @@ do
 end
 
 gui.setting = function(stType, text, hint, val, data, sameline)
-    
     -- generalize
     local halfWidth = 230
     local itemWidth = halfWidth * 2
@@ -100,10 +93,22 @@ gui.setting = function(stType, text, hint, val, data, sameline)
     elseif stType == 'dragint' then
         _, retval = r.ImGui_DragInt(ctx, '##' .. text, val, data.step, data.min, data.max)
     elseif stType == 'dragdouble' then
-        _, retval = r.ImGui_DragDouble(ctx, '##' .. text, val, data.speed, data.min, data.max, data.format)    
+        _, retval = r.ImGui_DragDouble(ctx, '##' .. text, val, data.speed, data.min, data.max, data.format)
         -- format: = "%.3f"
     elseif stType == 'button' then
         retval = r.ImGui_Button(ctx, data.label, widgetWidth)
+    elseif stType == 'file' then
+        retval = val
+        if r.ImGui_Button(ctx, val or data.label or 'Browse...', widgetWidth) then
+            local rv, file = reaper.GetUserFileNameForRead(data.filename or '', data.title or '', data.defext or '');
+            retval = rv and file or nil
+        end
+    elseif stType == 'folder' then
+        retval = val
+        if r.ImGui_Button(ctx, val or data.label or 'Browse...', widgetWidth) then
+            local rv, folder = reaper.JS_Dialog_BrowseForFolder(data.title or '', data.initialPath);
+            retval = rv == 1 and folder or nil
+        end
     elseif stType == 'text' then
         _, retval = r.ImGui_InputText(ctx, '##' .. text, val)
     elseif stType == 'text_with_hint' then
@@ -115,3 +120,17 @@ gui.setting = function(stType, text, hint, val, data, sameline)
     app.setHoveredHint('main', hint)
     return retval, retval_b
 end
+
+gui.bitwise_setting = function(stType, val, list)
+    if not has_value({"checkbox"}, stType) then
+        return
+    end
+    local tmpVal = val
+    for bwVal, option in pairsByOrder(list) do
+        local op = gui.setting(stType, option.label, option.hint, (val & bwVal ~= 0))
+        tmpVal = tmpVal % bwVal + (op and 1 or 0) * bwVal
+    end
+
+    return tmpVal
+end
+

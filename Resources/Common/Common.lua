@@ -56,9 +56,13 @@ local function prereqCheck(args)
     local reaimgui_script_path = args.reaimgui_path or r.GetResourcePath() ..
                                      '/Scripts/ReaTeam Extensions/API/imgui.lua'
     local check_reimgui = args.reaimgui or (args.reaimgui_version ~= nil) or false
+    local reaimgui_version = args.reaimgui_version or '0.7'
+    
     local check_sws = args.sws
 
-    local reaimgui_version = args.reaimgui_version or '0.7'
+    local check_js = args.js or (args.js_version ~= nil) or false
+    local js_version = args.js_version
+
     local min_reaper_version = args.reaper_version or 6.44
 
     if r.ver < min_reaper_version then
@@ -66,9 +70,7 @@ local function prereqCheck(args)
     end
 
     for desc, file in pairs(args.scripts) do
-        if file_exists(file) then
-            applyPresetScript = loadfile(file)
-        else
+        if not file_exists(file) then
             table.insert(errors, 'This script requires "' .. desc .. '".\nPlease install it via ReaPack.')
         end
     end
@@ -77,6 +79,18 @@ local function prereqCheck(args)
         if not r.APIExists('CF_GetCommandText') then
             table.insert(errors,
                 'This script requires the SWS/S&M extension.\nPlease download and install it at\nhttps://www.sws-extension.org/.')
+        end
+    end
+
+    if check_js then
+        if r.APIExists('JS_ReaScriptAPI_Version') then
+            if r.JS_ReaScriptAPI_Version() < js_version then
+                table.insert(errors, ('JS_ReaScriptAPI version must be %s or above.\nPlease update via ReaPack.'):format(
+                    js_version))
+            end
+        else
+            table.insert(errors,
+                'This script requires the JS_ReaScriptAPI extension.\nPlease install it via ReaPack.')
         end
     end
 

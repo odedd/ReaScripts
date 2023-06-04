@@ -139,6 +139,7 @@ if OD_PrereqsOK({
     reaper_version = 6.44,
     scripts = {["cfillion_Apply render preset.lua"] = r.GetResourcePath() .. "/Scripts/ReaTeam Scripts/Rendering/cfillion_Apply render preset.lua"}
 }) then
+    applyPresetScript = loadfile(r.GetResourcePath() .. "/Scripts/ReaTeam Scripts/Rendering/cfillion_Apply render preset.lua")
     local app = {
         open = true,
         coPerform = nil,
