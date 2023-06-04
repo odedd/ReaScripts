@@ -1,4 +1,11 @@
 -- @noindex
+function getProjectPaths()
+    local projectRecordingPath = reaper.GetProjectPath()
+    local proj, fullProjPath = reaper.EnumProjects(-1, '') -- full project name including path and RPP file
+    local projFileName = reaper.GetProjectName(proj) -- just the RPP file
+    local projPath = fullProjPath:gsub(projFileName .. '$', '') -- just the project path
+    return projPath, projFileName, fullProjPath, projectRecordingPath
+end
 
 function getReaperActionCommandId(actionNumber)
     local actionId = r.ReverseNamedCommandLookup(actionNumber)

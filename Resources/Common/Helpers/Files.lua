@@ -1,5 +1,4 @@
 -- @noindex
-
 function file_exists(name)
     local f = io.open(name, "r")
     if f ~= nil then
@@ -37,4 +36,12 @@ end
 
 function dissectFilename(path)
     return string.match(path, "(.-)([^\\/]-).([^%.]+)$") -- path, name, ext
+end
+
+-- returns relPath, isRelative:
+--   relPath - filename in relative form, if possible
+--   isRelative - true if relative, false if absolute
+function getRelativeOrAbsolutePath(fileName, rootPath)
+    local relPath = fileName:gsub('^' .. rootPath, '')
+    return (relPath and relPath or fileName), (relPath ~= fileName)
 end

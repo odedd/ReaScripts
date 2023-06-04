@@ -6,6 +6,16 @@ for _ in pairs(T) do count = count + 1 end
 return count
 end
 
+function has_value(tab, val)
+    for index, value in ipairs(tab) do
+        if value == val then
+            return true
+        end
+    end
+
+    return false
+end
+
 ------------------------------------------- --
 -- Pickle.lua
 -- A table serialization utility for lua

@@ -1,8 +1,23 @@
 -- @noindex
 
 STATUS = {
+    IGNORE = 0,
     SCANNED = 1,
     MINIMIZED = 10,
+}
+
+STATUS_DESCRIPTIONS = {
+    [STATUS.IGNORE] = 'Ignore File (%1)',
+    [STATUS.SCANNED] = 'Scanned',
+    [STATUS.MINIMIZED] = 'Minimized'
+}
+
+FORMATS = {
+    COMPRESSED = {'VORBIS', 'OGG', 'OPUS', 'MOGG', 'FLAC', 'MP3', 'WAVPACK'},
+    UNCOMPRESSED = {'AIFF', 'WAVE', 'BW64', 'BWF','RF64','SD2', 'WAV', 'W64'},
+    INCOMPATIBLE = {'WMV','AVI','MOV', 'EDL','MIDI','MUSICXML', 'MPEG','KAR','QT', 'SYX'},
+    SPECIAL = {'REX2'},
+    TO_TEST = {'CAF', 'ACID', 'CDDA', 'RAW/PCM', 'RADAR'}
 }
 
 function getTakeSourcePositions(take, srclen)
@@ -108,6 +123,7 @@ function collectMediaFiles()
     r.Main_OnCommand(40310, 0) -- set ripple editing per track
     r.Main_OnCommand(41990, 0) -- toggle ripple editing
 
+    local projPath, projFileName, fullProjPath, projectRecordingPath = getProjectPaths()
     local numMediaItems = r.CountMediaItems(0)
     local count = 0
     for i = 0, numMediaItems - 1 do
@@ -127,6 +143,7 @@ function collectMediaFiles()
                 local section = false
                 local rv, offs, len, rev = r.PCM_Source_GetSectionInfo(mediaSource)
                 local sourceParent = r.GetMediaSourceParent(mediaSource)
+                local sourceFile = r.GetMediaSourceFileName(mediaSource)
                 local srclen = r.GetMediaSourceLength(mediaSource)
                 if sourceParent then
                     mediaSource = sourceParent
@@ -138,11 +155,13 @@ function collectMediaFiles()
                 end
                 -- Check if the media source is valid and has a filename with "WAVE" source type
                 local sourceType = r.GetMediaSourceType(mediaSource, "")
-                if mediaSource and sourceType == "WAVE" then
-                    local filename = r.GetMediaSourceFileName(mediaSource, "")
+                -- reaper.ShowConsoleMsg(sourceType);
+                local oc = nil
+                local filename = r.GetMediaSourceFileName(mediaSource, "")
+                if mediaSource and (has_value(FORMATS.UNCOMPRESSED, sourceType) or ((settings.minimizeSourceTypes == MINIMIZE_SOURCE_TYPES.ALL) and has_value(FORMATS.COMPRESSED, sourceType) )) then
                     local sp, ep = getTakeSourcePositions(take, srclen)
                     -- Create a table to store the occurrence information
-                    local oc = {
+                    oc = {
                         takeName = r.GetTakeName(take),
                         startTime = sp, -- r.GetMediaItemInfo_Value(mediaItem, "D_POSITION"),
                         endTime = ep, -- r.GetMediaItemInfo_Value(mediaItem, "D_LENGTH") + r.GetMediaItemInfo_Value(mediaItem, "D_POSITION"),
@@ -165,28 +184,38 @@ function collectMediaFiles()
                         -- normalizedItemLength = (itemLength+sp) % math.max(len, srclen),
 
                     }
-                    -- Check if the media file entry exists in the mediaFiles table
-                    if app.mediaFiles[filename] then
-                        -- Append the occurrence to the existing entry
-                        table.insert(app.mediaFiles[filename].occurrences, oc)
-                        if oc.section then
-                            app.mediaFiles[filename].hasSection = true
-                        end
-                    else
-                        local path, basename, ext = dissectFilename(filename)
-                        -- Create a new entry for the media file
-                        app.mediaFiles[filename] = {
-                            status = STATUS.SCANNED,
-                            order = count,
-                            path = path,
-                            basename = basename,
-                            occurrences = {oc},
-                            hasSection = oc.section,
-                            srclen = srclen,
-                            keep = 1
-                        }
-                        count = count + 1
+                end
+                -- Check if the media file entry exists in the mediaFiles table
+                if app.mediaFiles[filename] then
+                    -- Append the occurrence to the existing entry
+                    table.insert(app.mediaFiles[filename].occurrences, oc)
+                    if oc.section then
+                        app.mediaFiles[filename].hasSection = true
                     end
+                else
+                    local fullpath, basename, ext = dissectFilename(filename)
+                    local relOrAbsPath = getRelativeOrAbsolutePath(sourceFile, projPath)
+                    -- Create a new entry for the media file
+                    app.mediaFiles[filename] = {
+                        status = STATUS.SCANNED,
+                        order = count,
+                        fullpath = fullpath,
+                        relOrAbsPath = relOrAbsPath,
+                        basename = basename,
+                        occurrences = {oc},
+                        hasSection = oc and oc.section or false,
+                        srclen = srclen,
+                        keep = 1,
+                        to_process = (oc ~= nil),
+                        ignore = (oc == nil),
+                        status_info = (oc == nil) and 'file type' or ''
+                    }
+                    count = count + 1
+                end
+                if app.mediaFiles[filename].hasSection then app.mediaFiles[filename].ignore = true end
+                if app.mediaFiles[filename].ignore then 
+                    app.mediaFiles[filename].status = STATUS.IGNORE 
+                    app.mediaFiles[filename].status_info = 'sections not supported'
                 end
             end
             coroutine.yield('Collecting Items')
@@ -379,7 +408,7 @@ function copyItemsToNewTracks(padding)
     local peakOperations = {}
 
     for filename, filenameinfo in pairsByOrder(app.mediaFiles) do
-        if filenameinfo.hasSection == false then
+        if filenameinfo.ignore == false then
             -- Create a new track for each filename
             local trackIndex = r.GetNumTracks()
             r.InsertTrackAtIndex(trackIndex, false)
