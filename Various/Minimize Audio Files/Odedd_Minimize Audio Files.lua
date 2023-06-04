@@ -17,7 +17,9 @@
 -- todo: figure out MP3s
 -- todo: figure out other sourceTypes (videos etc)
 -- todo: figure out sampler files
--- todo: disable auto-save before backup operation and re-enable after
+-- todo: disable auto-save before backup operation and reapply previous setting after
+-- todo: enable "Save project file references with relative pathnames" and reapply previous setting after
+-- todo: keep selected takes only
 -- requires sws to remove max file size limitation, as well as for sections
 --    if r.GetPlayState()&4==4 then;
 --        re aper.MB("Eng:\nYou shouldn't record when using this action.\n\n"..
