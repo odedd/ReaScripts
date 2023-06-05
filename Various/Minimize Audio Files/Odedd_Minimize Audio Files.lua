@@ -115,14 +115,15 @@ if OD_PrereqsOK({
                 local targetPath = settings.backupDestination .. '/'
                 local targetProject = targetPath .. projFileName
                 copyFile(fullProjPath, targetProject)
-
+                app.perform.total = app.mediaFileCount
+                app.perform.pos = 0
                 for filename, filenameinfo in pairsByOrder(app.mediaFiles) do
                     -- move processed files
                     reaper.RecursiveCreateDirectory(targetPath .. relProjectRecordingPath, 0)
-
+                    app.perform.pos = app.perform.pos + 1
+                    coroutine.yield('Creating backup project')
                     if filenameinfo.ignore == false then
                         filenameinfo.status = STATUS.MOVING
-                        coroutine.yield('Creating backup project')
                         -- reaper.ShowConsoleMsg(filenameinfo.newfilename..'\n')
                         local _, newFN, newExt = dissectFilename(filenameinfo.newfilename)
                         local target = targetPath .. relProjectRecordingPath .. '/' .. newFN .. '.' .. newExt
@@ -152,8 +153,8 @@ if OD_PrereqsOK({
                 -- restore temporary file saved before minimizing
                 copyFile(tmpBackupFileName, fullProjPath)
 
-                -- r.Main_openProject(fullProjPath)
-                r.Main_openProject(targetProject)
+                r.Main_openProject(fullProjPath)
+--                r.Main_openProject(targetProject)
 
                 local success, error = os.remove(tmpBackupFileName)
 
@@ -283,8 +284,8 @@ if OD_PrereqsOK({
                 end
             end
         else
-            -- r.ImGui_ProgressBar(ctx, (app.perform.pos or 0) / (app.perform.total or 1),
-            --     r.ImGui_GetContentRegionAvail(ctx))
+            r.ImGui_ProgressBar(ctx, (app.perform.pos or 0) / (app.perform.total or 1),
+                 r.ImGui_GetContentRegionAvail(ctx))
         end
     end
 

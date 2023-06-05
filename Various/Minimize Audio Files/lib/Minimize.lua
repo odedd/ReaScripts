@@ -133,14 +133,16 @@ function collectMediaFiles()
 
     local projPath, projFileName, fullProjPath, projectRecordingPath = getProjectPaths()
     local numMediaItems = r.CountMediaItems(0)
-    local count = 0
+    app.perform.total = numMediaItems
+    app.perform.pos = 0
+    app.mediaFileCount = 0
     for i = 0, numMediaItems - 1 do
         local mediaItem = r.GetMediaItem(0, i)
         -- local itemStartOffset = r.GetMediaItemInfo_Value(mediaItem,"D_LENGTH")
 
         -- Get the total number of takes for the media item
         local numTakes = r.GetMediaItemNumTakes(mediaItem)
-
+        app.perform.total = app.perform.total + numTakes - 1
         -- Iterate over each take of the media item
         for j = 0, numTakes - 1 do
             local take = r.GetMediaItemTake(mediaItem, j)
@@ -205,7 +207,7 @@ function collectMediaFiles()
                     -- Create a new entry for the media file
                     app.mediaFiles[filename] = {
                         status = STATUS.SCANNED,
-                        order = count,
+                        order = app.mediaFileCount,
                         filenameWithPath = filename,
                         fullpath = fullpath,
                         relOrAbsPath = relOrAbsPath,
@@ -221,7 +223,7 @@ function collectMediaFiles()
                         status_info = (oc == nil) and ('%s'):format(sourceType) or '',
                         newfilename = nil
                     }
-                    count = count + 1
+                    app.mediaFileCount = app.mediaFileCount + 1
                 end
                 if app.mediaFiles[filename].hasSection then 
                     app.mediaFiles[filename].status_info = 'Has sections'
@@ -230,8 +232,9 @@ function collectMediaFiles()
                 if app.mediaFiles[filename].ignore then 
                     app.mediaFiles[filename].status = STATUS.IGNORE
                 end
+                app.perform.pos = app.perform.pos + 1
+                coroutine.yield('Collecting Items')
             end
-            coroutine.yield('Collecting Items')
         end
     end
 end
@@ -417,11 +420,13 @@ end
 function copyItemsToNewTracks()
     r.SelectAllMediaItems(0, false)
     local peakOperations = {}
-
+    app.perform.total = app.mediaFileCount
+    app.perform.pos = 0
     for filename, filenameinfo in pairsByOrder(app.mediaFiles) do
         
         if filenameinfo.ignore == false then
             app.mediaFiles[filename].status = STATUS.MINIMIZING
+            app.perform.pos = app.perform.pos + 1
             coroutine.yield('Minimizing Items')
             -- Create a new track for each filename
             local trackIndex = r.GetNumTracks()

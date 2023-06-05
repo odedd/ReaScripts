@@ -3,7 +3,10 @@ app = {
     coPerform = nil,
     mediaFiles = {},
     perform = {
-        status = nil
+        status = nil,
+        pos = 0,
+        total = 1,
+        mediaFileCount = 0
     },
     hint = {
         main = {},

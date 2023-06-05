@@ -62,7 +62,7 @@ function getFilesInFolder(folder, ignore_ds)
     local i = 0
     repeat
         local retval = r.EnumerateFiles(folder, i)
-        if (not ignore_ds) or retval ~= '.DS_File'  then
+        if retval and ((not ignore_ds) or retval ~= '.DS_File')  then
             table.insert(files, retval)
         end
         i = i + 1
@@ -72,7 +72,7 @@ end
 
 function isFolderEmpty(folder)
     local files = getFilesInFolder(folder, true)
-    return not (r.EnumerateSubdirectories(folder, 0) or #files == 0)
+    return r.EnumerateSubdirectories(folder, 0) == nil  and #files == 0
 end
 
 -- function by amagalma. thanks!
