@@ -7,3 +7,7 @@ string.split = function(s, delimiter)
     end
     return result;
 end
+
+function escape_pattern(text)
+    return text:gsub("([^%w])", "%%%1")
+end

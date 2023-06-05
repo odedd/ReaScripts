@@ -8,6 +8,7 @@ STATUS = {
     MOVING = 50,
     COPYING = 51,
     DONE = 100,
+    ERROR = 1000,
 }
 
 STATUS_DESCRIPTIONS = {
@@ -17,7 +18,8 @@ STATUS_DESCRIPTIONS = {
     [STATUS.MINIMIZED] = 'Minimized',
     [STATUS.MOVING] = 'Moving',
     [STATUS.COPYING] = 'Copying',
-    [STATUS.DONE] = 'Done'
+    [STATUS.DONE] = 'Done',
+    [STATUS.ERROR] = 'Error'
 }
 
 FORMATS = {
@@ -506,10 +508,10 @@ function copyItemsToNewTracks()
                 end
 
             end
-
+            reaper.PreventUIRefresh(1)
             removeSpaces(track, filename)
             -- trim (leave only one item at any given point in time) and remove fades
-
+           
             -- first copy all positions to the oc object, before the items get deleted
             -- (which is why this has to be done in a separate for loop, otherwise items
             --  might be invalidated by the 40930 action before we get a chance to get their
@@ -548,12 +550,14 @@ function copyItemsToNewTracks()
             if maxrecsize_use & 1 == 1 then
                 r.SNM_SetIntConfigVar('maxrecsize_use', maxrecsize_use - 1)
             end
+
             if REAL then
                 -- glue
                 r.SetOnlyTrackSelected(track)
                 r.Main_OnCommand(40421, 0) -- select all items in track
                 r.Main_OnCommand(40362, 0) -- glue items, ignoring time selection
             end
+
             if maxrecsize_use & 1 then
                 r.SNM_SetIntConfigVar('maxrecsize_use', maxrecsize_use)
             end
@@ -610,7 +614,7 @@ function copyItemsToNewTracks()
                 end
             end
             r.DeleteTrack(track)
-            -- reaper.PreventUIRefresh(-1)
+            reaper.PreventUIRefresh(-1)
             app.mediaFiles[filename].status = STATUS.MINIMIZED
             coroutine.yield('Minimizing Items')
         end

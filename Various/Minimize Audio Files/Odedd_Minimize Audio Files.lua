@@ -49,10 +49,22 @@ gui.tables = {
             r.ImGui_TableFlags_NoHostExtendX() | r.ImGui_TableFlags_SizingFixedFit()
     }
 }
+
 gui.st.col.item = 0x333333ff;
 gui.st.col.item_keep = 0x2a783fff;
 gui.st.col.item_delete = 0x852f29ff;
 gui.st.col.item_ignore = 0x852f29ff;
+
+gui.st.col.status ={
+    [STATUS.IGNORE] = 0x333333ff,
+    [STATUS.SCANNED] = nil,
+    [STATUS.MINIMIZING] = 0x703d19ff,
+    [STATUS.MINIMIZED] = 0xb06027ff,
+    [STATUS.MOVING] = 0xa67e23ff,
+    [STATUS.COPYING] = 0xa67e23ff,
+    [STATUS.DONE] = 0x2a783fff,
+    [STATUS.ERROR] = 0x852f29ff
+}
 
 if OD_PrereqsOK({
     reaimgui_version = '0.8',
@@ -124,6 +136,7 @@ if OD_PrereqsOK({
                     coroutine.yield('Creating backup project')
                     if filenameinfo.ignore == false then
                         filenameinfo.status = STATUS.MOVING
+                        coroutine.yield('Creating backup project')
                         -- reaper.ShowConsoleMsg(filenameinfo.newfilename..'\n')
                         local _, newFN, newExt = dissectFilename(filenameinfo.newfilename)
                         local target = targetPath .. relProjectRecordingPath .. '/' .. newFN .. '.' .. newExt
@@ -138,6 +151,7 @@ if OD_PrereqsOK({
                     else -- copy all other files, if in media folder
                         if filenameinfo.pathIsRelative then
                             filenameinfo.status = STATUS.COPYING
+                            coroutine.yield('Creating backup project')
                             local target = targetPath .. filenameinfo.relOrAbsPath
                             -- reaper.ShowConsoleMsg(target)
                             
@@ -168,10 +182,10 @@ if OD_PrereqsOK({
         return
     end
 
-    function checkPerform()
+    local function checkPerform()
         if app.coPerform then
             if coroutine.status(app.coPerform) == "suspended" then
-
+            --    reaper.PreventUIRefresh(-1)
                 -- coroutine.resume(app.coPerform)
                 retval, app.perform.status = coroutine.resume(app.coPerform)
                 if not retval then
@@ -206,18 +220,18 @@ if OD_PrereqsOK({
                     r.ImGui_TableSetupColumn(ctx, 'Overview', nil, overview_width)
                     r.ImGui_TableSetupColumn(ctx, 'Keep', nil, 45)
                     r.ImGui_TableSetupColumn(ctx, 'Status', nil, 180)
-                    r.ImGui_TableSetupColumn(ctx, 'Folder', nil, nil)
+                    r.ImGui_TableSetupColumn(ctx, 'Full Path', nil, nil)
                     r.ImGui_TableSetupScrollFreeze(ctx, 1, 1)
 
                     r.ImGui_TableHeadersRow(ctx)
                     for filename, info in pairsByOrder(app.mediaFiles) do
                         r.ImGui_TableNextRow(ctx)
-                        if info.ignore then
-                            reaper.ImGui_TableSetBgColor(ctx, reaper.ImGui_TableBgTarget_RowBg0(),
-                                gui.st.col.item_ignore)
-                        end
+--                        if info.ignore then
+--                            reaper.ImGui_TableSetBgColor(ctx, reaper.ImGui_TableBgTarget_RowBg0(),
+--                                gui.st.col.item_ignore)
+--                        end
                         r.ImGui_TableNextColumn(ctx) -- file
-                        r.ImGui_Text(ctx, info.basename)
+                        r.ImGui_Text(ctx, info.basename..'.'..info.ext)
                         local skiprow = false
                         if not r.ImGui_IsItemVisible(ctx) then
                             skiprow = true
@@ -244,10 +258,16 @@ if OD_PrereqsOK({
                             r.ImGui_Text(ctx, string.format("%.f %%", info.keep * 100))
                             -- r.ImGui_Text(ctx, info.hasSection and 'Sections not supported. Skipping.' or '')
                             r.ImGui_TableNextColumn(ctx) -- status
+                            if gui.st.col.status[info.status] then
+                                reaper.ImGui_TableSetBgColor(ctx, reaper.ImGui_TableBgTarget_CellBg(),
+                                gui.st.col.status[info.status])
+                            end
+                            
                             r.ImGui_Text(ctx, STATUS_DESCRIPTIONS[info.status] ..
                                 (info.status_info ~= '' and (' (%s)'):format(info.status_info) or ''))
                             r.ImGui_TableNextColumn(ctx) -- folder
-                            r.ImGui_Text(ctx, info.relOrAbsPath)
+                            local path = (info.relOrAbsPath):gsub(escape_pattern((info.basename)..'.'..(info.ext))..'$','')
+                            r.ImGui_Text(ctx, path)
                         end
                     end
                     r.ImGui_EndTable(ctx)
@@ -285,13 +305,13 @@ if OD_PrereqsOK({
             end
         else
             r.ImGui_ProgressBar(ctx, (app.perform.pos or 0) / (app.perform.total or 1),
-                 r.ImGui_GetContentRegionAvail(ctx))
+                 r.ImGui_GetContentRegionAvail(ctx), nil, ("%s/%s"):format(app.perform.pos, app.perform.total))
         end
     end
 
     function app.drawMainWindow()
         local ctx = gui.ctx
-        max_w, max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx))
+        local max_w, max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx))
 
         -- reaper.ShowConsoleMsg(viewPortWidth)
         r.ImGui_SetNextWindowSize(ctx, math.min(1800, max_w), math.min(800, max_h), r.ImGui_Cond_Appearing())

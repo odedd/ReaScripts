@@ -42,7 +42,7 @@ end
 --   relPath - filename in relative form, if possible
 --   isRelative - true if relative, false if absolute
 function getRelativeOrAbsolutePath(fileName, rootPath)
-    local relPath = fileName:gsub('^' .. rootPath, '')
+    local relPath = fileName:gsub('^' .. escape_pattern(rootPath), '')
     return (relPath and relPath or fileName), (relPath ~= fileName)
 end
 
@@ -62,7 +62,7 @@ function getFilesInFolder(folder, ignore_ds)
     local i = 0
     repeat
         local retval = r.EnumerateFiles(folder, i)
-        if retval and ((not ignore_ds) or retval ~= '.DS_File')  then
+        if retval and ((not ignore_ds) or retval ~= '.DS_Store')  then
             table.insert(files, retval)
         end
         i = i + 1
