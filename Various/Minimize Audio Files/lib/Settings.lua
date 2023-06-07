@@ -1,39 +1,27 @@
 -- @noindex
 settings = {}
 
-MAIN_OPERATION = {
-    MINIMIZE = 0,
-    BACKUP = 1
-}
-MAIN_OPERATION_DESCRIPTIONS = {
-    [MAIN_OPERATION.MINIMIZE] = 'Minimize files in project',
-    [MAIN_OPERATION.BACKUP] = 'Backup to a new folder with minimized files'
-}
-for i = 0, #MAIN_OPERATION_DESCRIPTIONS do
-    MAIN_OPERATIONS_LIST = (MAIN_OPERATIONS_LIST or '') .. MAIN_OPERATION_DESCRIPTIONS[i] .. '\0'
-end
-
 -- bitwise
-BACKUP_OPERATION = {
-    RS5K = 1,
+COLLECT = {
+    EXTERNAL = 1,
     VIDEO = 2,
-    EXTERNAL = 4
+    RS5K = 4
 }
-BACKUP_OPERATION_DESCRIPTIONS = {
-    [BACKUP_OPERATION.RS5K] = {
+COLLECT_DESCRIPTIONS = {
+    [COLLECT.EXTERNAL] = {
         order = 0,
-        label = "rs5k samples",
-        hint = 'ReaSamplOmatic5000 samples'
+        label = "Collect external audio files",
+        hint = 'Copy all external audio files to the project\'s media folder'
     },
-    [BACKUP_OPERATION.VIDEO] = {
+    [COLLECT.VIDEO] = {
         order = 1,
-        label = "video files",
-        hint = 'Video files'
+        label = "Collect video files",
+        hint = 'Copy all video files to the project\'s media folder'
     },
-    [BACKUP_OPERATION.EXTERNAL] = {
+    [COLLECT.RS5K] = {
         order = 2,
-        label = "external files",
-        hint = 'External audio files'
+        label = "Collect rs5k samples",
+        hint = 'Copy all used ReaSamplOmatic5000 samples to the project\'s media folder'
     }
 }
 
@@ -54,15 +42,49 @@ for i = 0, #DELETE_OPERATION_DESCRIPTIONS - 1 do
 end
 
 MINIMIZE_SOURCE_TYPES = {
-    UNCOMPRESSED_ONLY = 0,
+    UNCOMPRESSED_AND_LOSSLESS = 0,
     ALL = 1
 }
 MINIMIZE_SOURCE_TYPES_DESCRIPTIONS = {
-    [MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_ONLY] = 'Uncompressed (PCM) only',
-    [MINIMIZE_SOURCE_TYPES.ALL] = 'All source types (might result in larger media size)'
+    [MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_AND_LOSSLESS] = 'Uncompressed & Lossless only',
+    [MINIMIZE_SOURCE_TYPES.ALL] = 'All audio source types'
 }
 for i = 0, #MINIMIZE_SOURCE_TYPES_DESCRIPTIONS do
     MINIMIZE_SOURCE_TYPES_LIST = (MINIMIZE_SOURCE_TYPES_LIST or '') .. MINIMIZE_SOURCE_TYPES_DESCRIPTIONS[i] .. '\0'
+end
+
+GLUE_FORMATS = {
+    WAV24 = 0,
+    WAV32F = 1,
+    FLAC24 = 2,
+    WAVPACK24 = 3,
+    WAVPACK32F = 4
+}
+
+GLUE_FORMATS_DETAILS = {
+    [GLUE_FORMATS.WAV24] = {
+        description = 'WAV 24bit',
+        formatString = 'ZXZhdxgAAA=='
+    },
+    [GLUE_FORMATS.WAV32F] = {
+        description = 'WAV 32bit fp',
+        formatString = 'ZXZhdyAAAA=='
+    },
+    [GLUE_FORMATS.FLAC24] = {
+        description = 'FLAC 24bit',
+        formatString = 'Y2FsZhgAAAAIAAAA'
+    },
+    [GLUE_FORMATS.WAVPACK24] = {
+        description = 'WAVPACK 24bit',
+        formatString = 'a3B2dwAAAAABAAAAAAAAAAEAAAA='
+    },
+    [GLUE_FORMATS.WAVPACK32F] = {
+        description = 'WAVPACK 32bit fp',
+        formatString = 'a3B2dwAAAAADAAAAAAAAAAEAAAA='
+    }
+}
+for i = 0, #GLUE_FORMATS_DETAILS do
+    GLUE_FORMATS_LIST = (GLUE_FORMATS_LIST or '') .. GLUE_FORMATS_DETAILS[i].description .. '\0'
 end
 
 function getDefaultSettings(factory)
@@ -71,11 +93,12 @@ function getDefaultSettings(factory)
     end
     local settings = {
         default = {
-            mainOperation = MAIN_OPERATION.BACKUP,
-            minimizeSourceTypes = MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_ONLY,
+            backup = true,
+            minimizeSourceTypes = MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_AND_LOSSLESS,
             deleteOperation = DELETE_OPERATION.MOVE_TO_TRASH,
-            backupOperation = BACKUP_OPERATION.RS5K + BACKUP_OPERATION.VIDEO,
+            collect = COLLECT.RS5K + COLLECT.VIDEO + COLLECT.EXTERNAL,
             keepMediaFolderStructure = true,
+            glueFormat = GLUE_FORMATS.FLAC24,
             padding = 1,
             suffix = '_m'
         }
@@ -102,12 +125,17 @@ end
 
 function checkSettings()
     local errors = {}
-    if settings.mainOperation == MAIN_OPERATION.BACKUP then
+    if r.GetPlayState() & 4 == 4 then
+        table.insert(errors, "Reaper cannot be recording while minimizing")
+    end
+    if settings.backup then
         if settings.backupDestination == nil then
             table.insert(errors, 'Must select destination folder')
+        elseif not file_exists(settings.backupDestination) then
+            table.insert(errors, 'Destination folder does not exist')
         elseif not isFolderEmpty(settings.backupDestination) then
             table.insert(errors, 'Destination folder must be empty')
         end
-    end 
+    end
     return #errors == 0, errors
 end

@@ -56,33 +56,36 @@ do
             return self.modKeys
         end
     }
+    r.ImGui_PushFont(ctx, gui.st.fonts.default)
+    gui.TEXT_BASE_WIDTH, gui.TEXT_BASE_HEIGHT = r.ImGui_CalcTextSize(ctx, 'A'),
+        r.ImGui_GetTextLineHeightWithSpacing(ctx)
+    r.ImGui_PopFont(ctx)
 end
 
 gui.setting = function(stType, text, hint, val, data, sameline)
     -- generalize
-    local halfWidth = 230
-    local itemWidth = halfWidth * 2
-
     local ctx = gui.ctx
+    local thirdWidth = gui.mainWindow.size[1] / 3
+    local itemWidth = thirdWidth * 2 - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
+
     local data = data or {}
     local retval
     local widgetWidth
     if not sameline then
         r.ImGui_BeginGroup(ctx)
         r.ImGui_AlignTextToFramePadding(ctx)
-        r.ImGui_PushTextWrapPos(ctx, halfWidth)
+        r.ImGui_PushTextWrapPos(ctx, thirdWidth)
         r.ImGui_Text(ctx, text)
         r.ImGui_PopTextWrapPos(ctx)
         r.ImGui_SameLine(ctx)
-        r.ImGui_SetCursorPosX(ctx, halfWidth)
+        r.ImGui_SetCursorPosX(ctx, thirdWidth)
         widgetWidth = itemWidth
 
     else
         r.ImGui_SameLine(ctx)
         r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx) -
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemInnerSpacing()))
-        widgetWidth = itemWidth - gui.TEXT_BASE_WIDTH * 2 - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) *
-                          2
+        widgetWidth = itemWidth - gui.TEXT_BASE_WIDTH * 2 - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
     end
     r.ImGui_PushItemWidth(ctx, widgetWidth)
 
