@@ -100,7 +100,8 @@ function getDefaultSettings(factory)
             keepMediaFolderStructure = true,
             glueFormat = GLUE_FORMATS.FLAC24,
             padding = 1,
-            suffix = '_m'
+            suffix = '_m',
+            showMinimizeWarning = true
         }
     }
 

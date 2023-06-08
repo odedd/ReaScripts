@@ -167,12 +167,11 @@ function app.drawPerform(open)
                         r.ImGui_TableNextColumn(ctx) -- orig. size
                         r.ImGui_Text(ctx, getFormattedFileSize(fileInfo.sourceFileSize))
                         r.ImGui_TableNextColumn(ctx) -- new size
-                        if fileInfo.newFileSize then
-                            r.ImGui_Text(ctx, getFormattedFileSize(fileInfo.newFileSize))
-                        end
+                        r.ImGui_Text(ctx, getFormattedFileSize(fileInfo.newFileSize))
                         r.ImGui_TableNextColumn(ctx) -- keep size
-                        if fileInfo.newFileSize then
-                            r.ImGui_Text(ctx, string.format("%.f %%", fileInfo.newFileSize/fileInfo.sourceFileSize * 100))
+                        if fileInfo.newFileSize and fileInfo.sourceFileSize then
+                            r.ImGui_Text(ctx,
+                                string.format("%.f %%", fileInfo.newFileSize / fileInfo.sourceFileSize * 100))
                         end
                         r.ImGui_TableNextColumn(ctx) -- status
                         if gui.st.col.status[fileInfo.status] then
@@ -191,6 +190,151 @@ function app.drawPerform(open)
             end
             r.ImGui_EndChild(ctx)
         end
+    end
+end
+
+function app.drawWarning()
+    local ctx = gui.ctx
+    local center = {gui.mainWindow.pos[1] + gui.mainWindow.size[1] / 2,
+                    gui.mainWindow.pos[2] + gui.mainWindow.size[2] / 2} -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
+    local text = [[
+You have selected not to backup to a new folder.
+
+This means that all the audio source files will be
+DELETED and new "minimized" versions of them will be
+created instead.
+
+This will make any other RPP that uses the original 
+files UNUSABLE!
+
+The only project that will work with those new files
+is this one.
+
+Since files are deleted - this cannot be undone!
+
+Please think about it carefully before continuing.
+
+]]
+    local okButtonLabel = app.popup.secondWarningShown and 'Come on already let\'s do it!' or 'OK'
+    local cancelButtonLabel = 'Cancel'
+    local okPressed = false
+    local cancelPressed = false
+    local bottom_lines = 1
+
+    local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, text)
+    
+    r.ImGui_SetNextWindowSize(ctx,
+        math.max(220, textWidth) + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4, textHeight + 90 + r.ImGui_GetTextLineHeightWithSpacing(ctx))
+
+    r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
+    r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_WindowTitleAlign(), 0.5, 0.5)
+    if r.ImGui_BeginPopupModal(ctx, 'Are you sure?', nil,
+        r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
+
+        local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
+        r.ImGui_PushItemWidth(ctx, width)
+
+        local windowWidth, windowHeight = r.ImGui_GetWindowSize(ctx);
+        r.ImGui_SetCursorPos(ctx, (windowWidth - textWidth) * .5, (windowHeight - textHeight - r.ImGui_GetTextLineHeightWithSpacing(ctx)) * .5);
+        if r.ImGui_BeginChild(ctx,'msgBody',0,select(2,r.ImGui_GetContentRegionAvail(ctx))-(r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
+            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())) then
+            r.ImGui_TextWrapped(ctx, text)
+
+            local _, hideThis = r.ImGui_Checkbox(ctx, "Dont show this again", not settings.showMinimizeWarning)
+            settings.showMinimizeWarning = not hideThis
+            r.ImGui_EndChild(ctx)
+        end
+        r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
+            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
+
+        local buttonTextWidth = r.ImGui_CalcTextSize(ctx, okButtonLabel) +
+                                    r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
+
+        buttonTextWidth = buttonTextWidth + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) +
+                              r.ImGui_CalcTextSize(ctx, cancelButtonLabel) +
+                              r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
+        r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
+
+        if r.ImGui_Button(ctx, okButtonLabel) then
+            if not app.popup.secondWarningShown then
+                r.ImGui_OpenPopup(ctx, 'Also...')
+            else
+                app.popup.secondWarningShown = false
+                okPressed = true
+                r.ImGui_CloseCurrentPopup(ctx)
+            end
+        end
+        
+        r.ImGui_SameLine(ctx)
+        if r.ImGui_Button(ctx, cancelButtonLabel) then
+            app.popup.secondWarningShown = false
+            okPressed = false
+            cancelPressed = true
+            r.ImGui_CloseCurrentPopup(ctx)
+        end
+
+        local secondWarningText = [[
+This script is not even at version 1.0!
+Are you crazy?!
+
+While I'm pretty damn sure everything works
+you should still probably make sure to have 
+a backup of this project and all of its
+media files, until you're certain that
+this script did its job correctly.
+
+I'm not taking responsibility in case
+anything goes wrong.
+
+Which reminds me - please let me know at the
+Reaper forums if anything does go wrong so
+I can fix it.
+
+
+
+But everything wil probably be ok :)
+
+]]
+        local buttonLabel = 'Got it'
+        local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, secondWarningText)
+        r.ImGui_SetNextWindowSize(ctx,
+        math.max(220, textWidth) + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4, textHeight + 90)
+
+        r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
+
+        if r.ImGui_BeginPopupModal(ctx, 'Also...', nil, 
+        r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
+            app.popup.secondWarningShown = true
+
+            local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
+            r.ImGui_PushItemWidth(ctx, width)
+    
+            local windowWidth, windowHeight = r.ImGui_GetWindowSize(ctx);
+            r.ImGui_SetCursorPos(ctx, (windowWidth - textWidth) * .5, (windowHeight - textHeight) * .5);
+    
+            r.ImGui_TextWrapped(ctx, secondWarningText)
+    
+
+            r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
+            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
+            local buttonTextWidth = r.ImGui_CalcTextSize(ctx, buttonLabel) +
+            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
+            r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
+
+            if r.ImGui_Button(ctx, 'Got it') then
+                r.ImGui_CloseCurrentPopup(ctx)
+            end
+            r.ImGui_EndPopup(ctx)
+        end
+
+        r.ImGui_EndPopup(ctx)
+    end
+    r.ImGui_PopStyleVar(ctx)
+    if okPressed then
+        saveSettings()
+        app.coPerform = coroutine.create(doPerform)
+    elseif cancelPressed then
+        saveSettings()
     end
 end
 
@@ -217,13 +361,20 @@ function app.drawBottom(ctx, bottom_lines)
             settings.backupDestination = nil
             saveSettings()
             settings.backupDestination = tmpDest
+
             local ok, errors = checkSettings()
             if not ok then
                 app.msg(table.concat(errors, '\n------------\n'))
             else
-                app.coPerform = coroutine.create(doPerform)
+                if not settings.backup and settings.showMinimizeWarning then
+                    r.ImGui_OpenPopup(ctx, 'Are you sure?')
+                else
+                    app.coPerform = coroutine.create(doPerform)
+                end
             end
         end
+
+        app.drawWarning()
     else
         local w, h = r.ImGui_GetContentRegionAvail(ctx)
         local btnWidth = 150
@@ -235,7 +386,6 @@ function app.drawBottom(ctx, bottom_lines)
             cancel()
         end
         reaper.ImGui_PopStyleColor(ctx)
-
     end
 end
 
@@ -252,7 +402,9 @@ function app.drawMainWindow()
         pos = {r.ImGui_GetWindowPos(ctx)},
         size = {r.ImGui_GetWindowSize(ctx)}
     }
+
     if visible then
+
         local bottom_lines = 2
         local rv2
         -- if r.ImGui_BeginMenuBar(ctx) then
@@ -326,7 +478,6 @@ function app.drawMainWindow()
 end
 
 function app.loop()
-
     checkPerform()
     r.ImGui_PushFont(gui.ctx, gui.st.fonts.default)
     app.open = app.drawMainWindow()
@@ -346,7 +497,8 @@ end
 if OD_PrereqsOK({
     reaimgui_version = '0.8',
     sws = true, -- required for SNM_SetIntConfigVar - setting config vars (max file size limitation and autosave options)
-    js_version = 1.310 -- required for JS_Dialog_BrowseForFolder
+    js_version = 1.310, -- required for JS_Dialog_BrowseForFolder
+    reaper_version = 6.76 -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
     -- scripts = {
     --     ['Mavriq Lua Batteris'] =  r.GetResourcePath() .."/Scripts/Mavriq ReaScript Repository/Various/Mavriq-Lua-Batteries/batteries_header.lua"
     -- }
@@ -360,7 +512,9 @@ end
 -- IDEAS and TODOS --------------------
 ---------------------------------------
 
--- todo: warning on minimize only (not backup)
+-- todo: handle unsaved project
+-- todo: handle empty project
+-- todo: test handling of missing files
 -- todo: figure out trash on windows
 -- todo: collect external audio + video files + rs5k
 -- todo: enable "Save project file references with relative pathnames" and reapply previous setting after

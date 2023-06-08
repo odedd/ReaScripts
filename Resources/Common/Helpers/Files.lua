@@ -128,6 +128,7 @@ function moveToTrash(filename)
 end
 
 function getFormattedFileSize(fileSize)
+    if fileSize == nil then return '' end
     local suffixes = {"B", "KB", "MB", "GB", "TB"}
     local i = 1
 

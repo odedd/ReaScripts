@@ -177,7 +177,8 @@ function collectMediaFiles()
                 local sourceType = r.GetMediaSourceType(mediaSource, "")
                 local oc = nil
                 local filename = r.GetMediaSourceFileName(mediaSource, "")
-                if mediaSource and
+                local fileExists = file_exists(filename)
+                if fileExists and mediaSource and
                     (has_value(FORMATS.UNCOMPRESSED, sourceType) or has_value(FORMATS.LOSSLESS, sourceType) or
                         ((settings.minimizeSourceTypes == MINIMIZE_SOURCE_TYPES.ALL) and
                             has_value(FORMATS.COMPRESSED, sourceType))) then
@@ -237,7 +238,8 @@ function collectMediaFiles()
                         keep_length = 1,
                         to_process = (oc ~= nil),
                         ignore = (oc == nil),
-                        status_info = (oc == nil) and ('%s'):format(sourceType) or '',
+                        missing = not fileExists,
+                        status_info = fileExists and ((oc == nil) and ('%s'):format(sourceType) or '') or 'file missing',
                         newfilename = nil
                     }
                     app.mediaFileCount = app.mediaFileCount + 1
@@ -249,6 +251,9 @@ function collectMediaFiles()
                 if app.mediaFiles[filename].ignore then
                     app.mediaFiles[filename].newFileSize = app.mediaFiles[filename].sourceFileSize
                     app.mediaFiles[filename].status = STATUS.IGNORE
+                end
+                if app.mediaFiles[filename].missing then 
+                    app.mediaFiles[filename].status = STATUS.ERROR
                 end
                 app.perform.pos = app.perform.pos + 1
                 coroutine.yield('Collecting Takes')
@@ -286,7 +291,6 @@ function minimizeAndApplyMedia()
             oc.endpadding = math.min(oc.srclen - (oc.startTime + ocLength - oc.startpadding), settings.padding)
             oc.endpadding = math.max(oc.endpadding, 0)
             local ocLength = ocLength + oc.endpadding
-            -- r.ShowConsoleMsg(oc.srclen)
 
             -- Create a new item on the track to reflect the occurrence
             oc.newItem = r.AddMediaItemToTrack(track)
@@ -470,7 +474,6 @@ function minimizeAndApplyMedia()
     local function saveTakeStretchMarkers(oc)
         local smrkrs = {}
         local numTakeStretchMarkers = r.GetTakeNumStretchMarkers(oc.take)
-        -- r.ShowConsoleMsg(numTakeStretchMarkers)
         if numTakeStretchMarkers > 0 then
             local itemLength = r.GetMediaItemInfo_Value(oc.item, "D_LENGTH")
             local foundStart = false
@@ -610,7 +613,7 @@ function minimizeAndApplyMedia()
     app.perform.total = app.mediaFileCount
     app.perform.pos = 0
     for filename, fileInfo in pairsByOrder(app.mediaFiles) do
-        if fileInfo.ignore == false then
+        if not fileInfo.ignore and not fileInfo.missing then
             app.mediaFiles[filename].status = STATUS.MINIMIZING
             app.perform.pos = app.perform.pos + 1
             coroutine.yield('Minimizing Files')
@@ -744,7 +747,7 @@ function createBackupProject()
         -- move processed files
         reaper.RecursiveCreateDirectory(targetPath .. app.relProjectRecordingPath, 0)
         app.perform.pos = app.perform.pos + 1
-        if fileInfo.ignore == false then
+        if not fileInfo.ignore and not fileInfo.missing then
             fileInfo.status = STATUS.MOVING
             coroutine.yield('Creating backup project')
             local _, newFN, newExt = dissectFilename(fileInfo.newfilename)
@@ -755,7 +758,7 @@ function createBackupProject()
                 fileInfo.status = STATUS.ERROR
                 fileInfo.status_info = 'move failed'
             end
-        else -- copy all other files, if in media folder
+        elseif not fileInfo.ignore then -- copy all other files, if in media folder
             if fileInfo.pathIsRelative then
                 fileInfo.status = STATUS.COPYING
                 coroutine.yield('Creating backup project')
@@ -782,20 +785,19 @@ function deleteOriginals()
         -- delete original files which were replaced by minimized versions
         app.perform.pos = app.perform.pos + 1
         coroutine.yield('Deleting original files')
-        if fileInfo.ignore == false then
+        if not fileInfo.ignore and not fileInfo.missing then
             fileInfo.status = STATUS.DELETING
             coroutine.yield('Deleting original files')
             if (settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and moveToTrash(fileInfo.filenameWithPath) or
                 os.remove(fileInfo.filenameWithPath)) then
-
                 fileInfo.status = STATUS.DONE
             else
                 fileInfo.status = STATUS.ERROR
                 fileInfo.error = 'delete original failed'
             end
-
+        elseif not fileInfo.missing then
+            fileInfo.status = STATUS.DONE
         end
-        fileInfo.status = STATUS.DONE
         coroutine.yield('Creating backup project')
     end
 end

@@ -121,7 +121,7 @@ app.drawPopup = function(popupType, title, data)
         r.ImGui_SetNextWindowSize(ctx, math.max(220, textWidth) +
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4, textHeight + 90)
         r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
-
+        r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_WindowTitleAlign(), 0.5, 0.5)
         if r.ImGui_BeginPopupModal(ctx, title, false, r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
             gui.popups.title = title
 
@@ -160,6 +160,7 @@ app.drawPopup = function(popupType, title, data)
 
             r.ImGui_EndPopup(ctx)
         end
+        r.ImGui_PopStyleVar(ctx)
         return okPressed
     end
     return false
@@ -171,7 +172,7 @@ app.msg = function(msg, title)
 end
 
 app.drawMsg = function()
-    if next(app.popup) ~= nil then
+    if next(app.popup) ~= nil and app.popup.msg ~= nil then
         r.ImGui_OpenPopup(gui.ctx, app.popup.title .. "##msg")
         local rv = app.drawPopup('msg', app.popup.title .. "##msg", {
             msg = app.popup.msg
