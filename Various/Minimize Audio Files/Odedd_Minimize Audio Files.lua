@@ -512,15 +512,15 @@ end
 -- IDEAS and TODOS --------------------
 ---------------------------------------
 
--- todo: handle unsaved project
--- todo: handle empty project
--- todo: test handling of missing files
--- todo: figure out trash on windows
 -- todo: collect external audio + video files + rs5k
 -- todo: enable "Save project file references with relative pathnames" and reapply previous setting after
 -- todo: keep selected takes only (unless item marked with "play all takes")
+-- todo: show total savings and close script upon completion
+-- todo: scan media folder for extra files at the end
+-- todo: verify minimization before deleting files 
+-- todo: figure out trash on windows
+-- todo: check handling of missing files
+-- todo: handle unsaved project
+-- todo: handle empty project
 -- todo: reset when switching projects
--- todo: show total savings?
--- todo: rename items? probably not
--- todo: scan media folder at the end
 -- todo (later): figure out section
