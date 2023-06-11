@@ -1,12 +1,12 @@
 -- @noindex
 
-function tablelength(T)
+function OD_TableLength(T)
 local count = 0
 for _ in pairs(T) do count = count + 1 end
 return count
 end
 
-function has_value(tab, val)
+function OD_HasValue(tab, val)
     for index, value in ipairs(tab) do
         if value == val then
             return true
@@ -297,7 +297,7 @@ do
 end
 
 -- Save copied tables in `copies`, indexed by original table.
-function deepcopy(orig, copies)
+function OD_DeepCopy(orig, copies)
     copies = copies or {}
     local orig_type = type(orig)
     local copy
@@ -308,9 +308,9 @@ function deepcopy(orig, copies)
             copy = {}
             copies[orig] = copy
             for orig_key, orig_value in next, orig, nil do
-                copy[deepcopy(orig_key, copies)] = deepcopy(orig_value, copies)
+                copy[OD_DeepCopy(orig_key, copies)] = OD_DeepCopy(orig_value, copies)
             end
-            setmetatable(copy, deepcopy(getmetatable(orig), copies))
+            setmetatable(copy, OD_DeepCopy(getmetatable(orig), copies))
         end
     else -- number, string, boolean, etc
         copy = orig
@@ -318,7 +318,7 @@ function deepcopy(orig, copies)
     return copy
 end
 
-function pairsByOrder(t, f)
+function OD_PairsByOrder(t, f)
     local a = {}
     for n in pairs(t) do
         table.insert(a, n)

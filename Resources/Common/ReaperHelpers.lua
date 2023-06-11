@@ -4,7 +4,7 @@ function getProjectPaths()
     local proj, fullProjPath = reaper.EnumProjects(-1, '') -- full project name including path and RPP file
     local projFileName = reaper.GetProjectName(proj) -- just the RPP file
     local projPath = fullProjPath:gsub(projFileName .. '$', '') -- just the project path
-    local relProjectRecordingPath = getRelativeOrAbsolutePath(projectRecordingPath,projPath)
+    local relProjectRecordingPath = OD_GetRelativeOrAbsolutePath(projectRecordingPath,projPath)
     return projPath, projFileName, fullProjPath, projectRecordingPath, relProjectRecordingPath
 end
 

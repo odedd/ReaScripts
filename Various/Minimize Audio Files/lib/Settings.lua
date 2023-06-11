@@ -117,7 +117,7 @@ end
 
 function loadSettings()
     local st = getDefaultSettings()
-    settings = deepcopy(st.default)
+    settings = OD_DeepCopy(st.default)
 end
 
 function saveSettings()
@@ -132,9 +132,9 @@ function checkSettings()
     if settings.backup then
         if settings.backupDestination == nil then
             table.insert(errors, 'Must select destination folder')
-        elseif not folder_exists(settings.backupDestination) then
+        elseif not OD_FolderExists(settings.backupDestination) then
             table.insert(errors, 'Destination folder does not exist')
-        elseif not isFolderEmpty(settings.backupDestination) then
+        elseif not OD_IsFolderEmpty(settings.backupDestination) then
             table.insert(errors, 'Destination folder must be empty')
         end
     end

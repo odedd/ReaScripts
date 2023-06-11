@@ -1,6 +1,6 @@
 -- @noindex
 
-function hslToRgb(h, s, l)
+function OD_HslToRgb(h, s, l)
     if s == 0 then
         return l, l, l
     end
@@ -27,7 +27,7 @@ function hslToRgb(h, s, l)
     return to(p, q, h + .33334), to(p, q, h), to(p, q, h - .33334)
 end
 
-function rgbToHsl(r, g, b)
+function OD_RgbToHsl(r, g, b)
     local max, min = math.max(r, g, b), math.min(r, g, b)
     local b = max + min
     local h = b / 2

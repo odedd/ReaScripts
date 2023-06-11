@@ -7,7 +7,7 @@ dofile(p .. 'ReaperHelpers.lua')
 r = reaper
 local scr = {}
 
-local function findContentKey(content, key, self)
+local function OD_FindContentKey(content, key, self)
     if self then
         for match in content:gmatch("%-%- @(.-)\n") do
             local key, val = match:match("(.-) (.+)")
@@ -22,12 +22,12 @@ local function findContentKey(content, key, self)
     return content and content:gsub(key .. "[:=]%s?", "") or false
 end
 
-local function getScr()
+local function OD_GetScr()
     scr.path, scr.secID, scr.cmdID = select(2, r.get_action_context())
     scr.dir = scr.path:match(".+[\\/]")
     scr.basename = scr.path:match("^.+[\\/](.+)$")
     scr.no_ext = scr.basename:match("(.+)%.")
-    findContentKey(getContent(scr.path), "", true)
+    OD_FindContentKey(OD_GetContent(scr.path), "", true)
     scr.dfsetfile = scr.dir..scr.no_ext..'.ini'
     scr.namespace = "Odedd"
     scr.name = scr.description
@@ -36,7 +36,7 @@ local function getScr()
     return scr
 end
 
-local function getOS()
+local function OD_GetOS()
     local cur_os = reaper.GetOS()
     local os_is = {
         win = cur_os:lower():match("win") and true or false,
@@ -70,7 +70,7 @@ local function prereqCheck(args)
     end
 
     for desc, file in pairs(args.scripts) do
-        if not file_exists(file) then
+        if not OD_FileExists(file) then
             table.insert(errors, 'This script requires "' .. desc .. '".\nPlease install it via ReaPack.')
         end
     end
@@ -95,7 +95,7 @@ local function prereqCheck(args)
     end
 
     if check_reimgui then
-        if file_exists(reaimgui_script_path) then
+        if OD_FileExists(reaimgui_script_path) then
             local verCheck = loadfile(reaimgui_script_path)
             local status, err = pcall(verCheck(), reaimgui_version)
             if not status then
@@ -118,7 +118,7 @@ end
 -------------------------------------------
 
 function OD_Init()
-    return getScr(), getOS()
+    return OD_GetScr(), OD_GetOS()
 end
 
 function OD_PrereqsOK(args)

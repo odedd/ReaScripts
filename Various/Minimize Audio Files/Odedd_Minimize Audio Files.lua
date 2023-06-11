@@ -44,6 +44,7 @@ gui.st.col.status = {
     [STATUS.MOVING] = 0xa67e23ff,
     [STATUS.COPYING] = 0xa67e23ff,
     [STATUS.DELETING] = 0xa67e23ff,
+    [STATUS.MOVING_TO_TRASH] = 0xa67e23ff,
     [STATUS.DONE] = 0x2a783fff,
     [STATUS.ERROR] = 0x852f29ff
 }
@@ -68,23 +69,33 @@ local function doPerform()
         setQuality()
         -- get information on all takes, separated by media source file
         collectMediaFiles()
-        -- minimize files and apply to original sources
-        minimizeAndApplyMedia()
-
-        if settings.backup then
-            -- copy to a new project path (move glued files, copy others)
-            createBackupProject()
-            -- revert back to temporary copy of project
-            revert()
+        -- if sources are networked, trashing may not be an option.
+        if (not settings.backup) and (settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH) and
+            (networkedFilesExist()) then
+            cancel(
+                'Networked files were found.\nMoving networkd files to the\ntrash is not supported.\nPlease select deleting files\nor consider backing up instead of\nminimizing.')
         else
-            deleteOriginals()
-            -- finish building peaks for new files
-            finalizePeaksBuild()
-        end
-        -- restore settings and other stuff saved at the beginning of the process
-        restore()
+            -- minimize files and apply to original sources
+            minimizeAndApplyMedia()
 
-        coroutine.yield('Done', 0, 1)
+            -- if OD_BwCheck(settings.collect, COLLECT.RS5K) then
+            --     collectRS5KSamples()
+            -- end
+
+            if settings.backup then
+                -- copy to a new project path (move glued files, copy others)
+                createBackupProject()
+                -- revert back to temporary copy of project
+                revert()
+            else
+                deleteOriginals()
+                -- finish building peaks for new files
+                finalizePeaksBuild()
+            end
+            -- restore settings and other stuff saved at the beginning of the process
+            restore()
+            coroutine.yield('Done', 0, 1)
+        end
     end
 
     return
@@ -95,10 +106,12 @@ local function checkPerform()
         if coroutine.status(app.coPerform) == "suspended" then
             retval, app.perform.status = coroutine.resume(app.coPerform)
             if not retval then
-                if app.perform.status:sub(-9) ~= 'cancelled' then
-                    r.ShowConsoleMsg(app.perform.status)
+                if app.perform.status:sub(-17) == 'cancelled by glue' then
+                    cancel()
+                else
+                    -- r.ShowConsoleMsg(app.perform.status)
+                    cancel(('Error occured:\n%s'):format(app.perform.status))
                 end
-                cancel()
             end
         elseif coroutine.status(app.coPerform) == "dead" then
             app.coPerform = nil
@@ -135,7 +148,7 @@ function app.drawPerform(open)
                 r.ImGui_TableSetupScrollFreeze(ctx, 1, 1)
 
                 r.ImGui_TableHeadersRow(ctx)
-                for filename, fileInfo in pairsByOrder(app.mediaFiles) do
+                for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
                     r.ImGui_TableNextRow(ctx)
                     r.ImGui_TableNextColumn(ctx) -- file
                     r.ImGui_Text(ctx, fileInfo.basename .. '.' .. fileInfo.ext)
@@ -156,7 +169,7 @@ function app.drawPerform(open)
                                 STATUS.MINIMIZED or #(fileInfo.sections or {}) > 0) and gui.st.col.item_keep or
                                 gui.st.col.item)
 
-                        for i, sect in pairsByOrder(fileInfo.sections or {}) do
+                        for i, sect in OD_PairsByOrder(fileInfo.sections or {}) do
                             r.ImGui_DrawList_AddRectFilled(gui.draw_list, curScrPos[1] + overview_width * sect.from,
                                 curScrPos[2], curScrPos[1] + overview_width * sect.to, curScrPos[2] + line_height - 1,
                                 gui.st.col.item_delete)
@@ -165,9 +178,9 @@ function app.drawPerform(open)
                         r.ImGui_TableNextColumn(ctx) -- keep length
                         r.ImGui_Text(ctx, string.format("%.f %%", fileInfo.keep_length * 100))
                         r.ImGui_TableNextColumn(ctx) -- orig. size
-                        r.ImGui_Text(ctx, getFormattedFileSize(fileInfo.sourceFileSize))
+                        r.ImGui_Text(ctx, OD_GetFormattedFileSize(fileInfo.sourceFileSize))
                         r.ImGui_TableNextColumn(ctx) -- new size
-                        r.ImGui_Text(ctx, getFormattedFileSize(fileInfo.newFileSize))
+                        r.ImGui_Text(ctx, OD_GetFormattedFileSize(fileInfo.newFileSize))
                         r.ImGui_TableNextColumn(ctx) -- keep size
                         if fileInfo.newFileSize and fileInfo.sourceFileSize then
                             r.ImGui_Text(ctx,
@@ -182,7 +195,7 @@ function app.drawPerform(open)
                             (fileInfo.status_info ~= '' and (' (%s)'):format(fileInfo.status_info) or ''))
                         r.ImGui_TableNextColumn(ctx) -- folder
                         local path = (fileInfo.relOrAbsPath):gsub(
-                            escape_pattern((fileInfo.basename) .. '.' .. (fileInfo.ext)) .. '$', '')
+                            OD_EscapePattern((fileInfo.basename) .. '.' .. (fileInfo.ext)) .. '$', '')
                         r.ImGui_Text(ctx, path)
                     end
                 end
@@ -222,9 +235,10 @@ Please think about it carefully before continuing.
     local bottom_lines = 1
 
     local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, text)
-    
+
     r.ImGui_SetNextWindowSize(ctx,
-        math.max(220, textWidth) + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4, textHeight + 90 + r.ImGui_GetTextLineHeightWithSpacing(ctx))
+        math.max(220, textWidth) + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4,
+        textHeight + 90 + r.ImGui_GetTextLineHeightWithSpacing(ctx))
 
     r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
     r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_WindowTitleAlign(), 0.5, 0.5)
@@ -235,9 +249,11 @@ Please think about it carefully before continuing.
         r.ImGui_PushItemWidth(ctx, width)
 
         local windowWidth, windowHeight = r.ImGui_GetWindowSize(ctx);
-        r.ImGui_SetCursorPos(ctx, (windowWidth - textWidth) * .5, (windowHeight - textHeight - r.ImGui_GetTextLineHeightWithSpacing(ctx)) * .5);
-        if r.ImGui_BeginChild(ctx,'msgBody',0,select(2,r.ImGui_GetContentRegionAvail(ctx))-(r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
-            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())) then
+        r.ImGui_SetCursorPos(ctx, (windowWidth - textWidth) * .5,
+            (windowHeight - textHeight - r.ImGui_GetTextLineHeightWithSpacing(ctx)) * .5);
+        if r.ImGui_BeginChild(ctx, 'msgBody', 0,
+            select(2, r.ImGui_GetContentRegionAvail(ctx)) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
+                r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())) then
             r.ImGui_TextWrapped(ctx, text)
 
             local _, hideThis = r.ImGui_Checkbox(ctx, "Dont show this again", not settings.showMinimizeWarning)
@@ -264,7 +280,7 @@ Please think about it carefully before continuing.
                 r.ImGui_CloseCurrentPopup(ctx)
             end
         end
-        
+
         r.ImGui_SameLine(ctx)
         if r.ImGui_Button(ctx, cancelButtonLabel) then
             app.popup.secondWarningShown = false
@@ -297,28 +313,26 @@ But everything wil probably be ok :)
 ]]
         local buttonLabel = 'Got it'
         local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, secondWarningText)
-        r.ImGui_SetNextWindowSize(ctx,
-        math.max(220, textWidth) + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4, textHeight + 90)
+        r.ImGui_SetNextWindowSize(ctx, math.max(220, textWidth) +
+            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4, textHeight + 90)
 
         r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
 
-        if r.ImGui_BeginPopupModal(ctx, 'Also...', nil, 
-        r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
+        if r.ImGui_BeginPopupModal(ctx, 'Also...', nil, r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
             app.popup.secondWarningShown = true
 
             local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
             r.ImGui_PushItemWidth(ctx, width)
-    
+
             local windowWidth, windowHeight = r.ImGui_GetWindowSize(ctx);
             r.ImGui_SetCursorPos(ctx, (windowWidth - textWidth) * .5, (windowHeight - textHeight) * .5);
-    
+
             r.ImGui_TextWrapped(ctx, secondWarningText)
-    
 
             r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
-            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
+                r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
             local buttonTextWidth = r.ImGui_CalcTextSize(ctx, buttonLabel) +
-            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
+                                        r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
             r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
             if r.ImGui_Button(ctx, 'Got it') then
@@ -515,19 +529,58 @@ end
 -- todo: collect external audio + video files + rs5k
 -- todo: enable "Save project file references with relative pathnames" and reapply previous setting after
 -- todo: keep selected takes only (unless item marked with "play all takes")
--- todo: show explanation when cancelling
 -- todo: show total savings and close script upon completion
 -- todo: scan media folder for extra files at the end
 -- todo: verify minimization before deleting files 
--- todo: figure out trash on windows
 -- todo: check handling of missing files
 -- todo: handle unsaved project
 -- todo: handle empty project
 -- todo: reset when switching projects
 -- todo (later): figure out section
 
+-- check project has a folder:
+--     local proj_name = reaper.GetProjectName( 0, '' )
+--    if proj_name == '' then MB('Project has not any parent folder.', 'Collect RS5k samples into project folder', 0) return end
+-- local spls_path = reaper.GetProjectPathEx( 0, '' )..'/RS5K samples/'
 
--- reaper.Main_OnCommand(40100,0)
--- file = "C:\\Users\\david\\Desktop\\Full Recording\\Audio Files\\02 Tavi'i Itach Yain Mix 1 No Limiter.wav"
--- reaper.ShowConsoleMsg(tostring(moveToTrash(file)))
--- reaper.Main_OnCommand(40101,0)
+-- -- function by MPL
+-- --------------------------------------------------------------------- 
+-- function IsRS5K(tr, fxnumber)
+--     if not tr then
+--         return
+--     end
+--     local rv, buf = reaper.TrackFX_GetFXName(tr, fxnumber, '')
+--     if not rv then
+--         return
+--     end
+--     local rv, buf = reaper.TrackFX_GetParamName(tr, fxnumber, 3, '')
+--     if not rv or buf ~= 'Note range start' then
+--         return
+--     end
+--     return true, tr, fxnumber
+-- end
+-- -- heavily based on funciton by MPL
+-- ---------------------------------------------------------------------
+-- function collectRS5KSamples()
+--     local proj_name = reaper.GetProjectName(0, '')
+--     local spls_path = reaper.GetProjectPathEx(0, '') .. '/RS5K samples/'
+--     r.RecursiveCreateDirectory(spls_path, 0)
+--     for i = 1, reaper.GetNumTracks(0) do
+--         local tr = r.GetTrack(0, i - 1)
+--         for fx = 1, r.TrackFX_GetCount(tr) do
+--             if IsRS5K(tr, fx - 1) then
+--                 local retval, file_src = r.TrackFX_GetNamedConfigParm(tr, fx - 1, 'FILE0')
+--                 local _, file, ext = dissectFilename(file_src)
+--                 local file_dest = spls_path .. file .. '.' .. ext
+--                 local rel_file_dest = 'RS5K samples/' .. file .. '.' .. ext
+--                 file_src = file_src:gsub('\\', '/')
+--                 file_dest = file_dest:gsub('\\', '/')
+--                 rel_file_dest = rel_file_dest:gsub('\\', '/')
+--                 reaper.ShowConsoleMsg(file_src .. '\n')
+--                 reaper.ShowConsoleMsg(rel_file_dest .. '\n')
+--                 copyFile(file_src, file_dest)
+--                 r.TrackFX_SetNamedConfigParm(tr, fx - 1, 'FILE0', rel_file_dest)
+--             end
+--         end
+--     end
+-- end

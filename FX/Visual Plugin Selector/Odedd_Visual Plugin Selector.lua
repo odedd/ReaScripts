@@ -9,7 +9,7 @@
 -- @about
 --   # Stem Manager
 --   Advanced stem rendering automator.
---   Stem Manager was designed with the goal of simplifying the process of stem creation with REAPER.
+--   Stem Manager was designed with the goal of simplifying the process of stem creation with r.
 --   While REAPER's flexibility is unmatched, it is still quite cumbersome to create and render sets of tracks independently of signal flow, with emphasis on easy cross-project portability (do it once, then use it everywhere!).
 --
 --   This is where Stem Manager comes in.
@@ -65,14 +65,6 @@ r.ver = tonumber(r.GetAppVersion():match("[%d%.]+"))
 -- basic helpers --
 -------------------
 
-string.split = function(s, delimiter)
-  result = {};
-  for match in (s..delimiter):gmatch("(.-)"..delimiter) do
-    table.insert(result, match);
-  end
-  return result;
-end
- 
 function file_exists(name)
    local f=io.open(name,"r")
    if f~=nil then io.close(f) return true else return false end
@@ -133,7 +125,7 @@ if next(prereqErrors) == nil then
     local font_default = r.ImGui_CreateFont('sans-serif', 16)
     --local font_bold = r.ImGui_CreateFont(scr.dir..'../../Resources/Fonts/Cousine-Regular.ttf', 16,r.ImGui_FontFlags_Bold())
     
-    reaper.ImGui_Attach(ctx, font_default)
+    r.ImGui_Attach(ctx, font_default)
   --  r.ImGui_AttachFont(ctx, font_vertical)
   --  r.ImGui_AttachFont(ctx, font_bold)
   --]]
@@ -208,29 +200,29 @@ if next(prereqErrors) == nil then
   end
   --[[
   function waitforplugin(plugin_name, track)
-    reaper.ShowConsoleMsg('.')
+    r.ShowConsoleMsg('.')
   
-    if reaper.TrackFX_AddByName(track, plugin_name, false, 0) == -1 then 
+    if r.TrackFX_AddByName(track, plugin_name, false, 0) == -1 then 
       r.defer(function() waitforplugin(plugin_name, track) end)
     end
     return
   end
   --]] 
   function loadPlugin(plugin_name)
- track = reaper.GetTrack(0, 0) -- get the currently selected track
-    fx_count = reaper.TrackFX_GetCount(track) -- get the number of effects on the track
+ track = r.GetTrack(0, 0) -- get the currently selected track
+    fx_count = r.TrackFX_GetCount(track) -- get the number of effects on the track
     found = false
-    fx = reaper.TrackFX_AddByName(track, plugin_name, false, 1)
-    reaper.TrackFX_Show(track, fx, 3)
-    local retval = reaper.JS_Window_FindTop(plugin_name, false)
+    fx = r.TrackFX_AddByName(track, plugin_name, false, 1)
+    r.TrackFX_Show(track, fx, 3)
+    local retval = r.JS_Window_FindTop(plugin_name, false)
     return retval
   end
   
   function GetPluginWindowBounds(hwnd)
-    local _, left, top, right, bottom = reaper.JS_Window_GetClientRect(hwnd)
+    local _, left, top, right, bottom = r.JS_Window_GetClientRect(hwnd)
     if os_is.mac then
-      local parent = reaper.JS_Window_GetParent(hwnd)
-      local _, _, scrh,  scrw,_ = reaper.JS_Window_GetRect(parent) -- macos
+      local parent = r.JS_Window_GetParent(hwnd)
+      local _, _, scrh,  scrw,_ = r.JS_Window_GetRect(parent) -- macos
       top,bottom = scrh-top, scrh-bottom -- macos (On macOS, screen coordinates are relative to the *bottom* left corner of the primary display, and the positive Y-axis points upward.)
       top = top + 20 -- compensate for macos main menu bar
       top = top + 28 -- plugin reaper bar
@@ -242,7 +234,7 @@ if next(prereqErrors) == nil then
     x, y, w, h = GetPluginWindowBounds(window)
     local cmd = 'screencapture -R'..x..','..y..','..w..','..h..' -x -a -tjpg /Users/odeddavidov/Desktop/test2.jpg'
     os.execute(cmd)
-    img = reaper.ImGui_CreateImage('/Users/odeddavidov/Desktop/test2.jpg')
+    img = r.ImGui_CreateImage('/Users/odeddavidov/Desktop/test2.jpg')
   end
   
   function app.drawMainWindow(open)
@@ -257,7 +249,7 @@ if next(prereqErrors) == nil then
       size = {r.ImGui_GetWindowSize(ctx)}
     }
     if visible then
-      local w, h = reaper.ImGui_Image_GetSize(img)
+      local w, h = r.ImGui_Image_GetSize(img)
       -- crop to middle square of image
       if w > h then
         uv0_x,uv0_y,uv1_x,uv1_y=(1-h/w)/2,0,1-((1-h/w)/2),1
@@ -266,7 +258,7 @@ if next(prereqErrors) == nil then
       else
         uv0_x,uv0_y,uv1_x,uv1_y=0,0,1,1
       end
-      reaper.ImGui_Image(ctx, img, 300, 300,uv0_x,uv0_y,uv1_x,uv1_y)
+      r.ImGui_Image(ctx, img, 300, 300,uv0_x,uv0_y,uv1_x,uv1_y)
       r.ImGui_End(ctx)
     end
     return open
@@ -279,16 +271,16 @@ if next(prereqErrors) == nil then
     app.open = app.drawMainWindow(open)
     r.ImGui_PopFont(gui.ctx)
     if app.open then
-      --reaper.ShowConsoleMsg(frame..'\n')
+      --r.ShowConsoleMsg(frame..'\n')
       r.defer(app.loop)
     else
       r.ImGui_DestroyContext(gui.ctx)
     end
   end
   
-  reaper.ClearConsole()
+  r.ClearConsole()
   local window = loadPlugin(pluginname)
-  reaper.defer(function() capture_plugin_window(window) end)
+  r.defer(function() capture_plugin_window(window) end)
   
   r.defer(app.loop)
   

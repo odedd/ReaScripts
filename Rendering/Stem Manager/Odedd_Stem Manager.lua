@@ -10,7 +10,7 @@
 -- @about
 --   # Stem Manager
 --   Advanced stem rendering automator.
---   Stem Manager was designed with the goal of simplifying the process of stem creation with REAPER.
+--   Stem Manager was designed with the goal of simplifying the process of stem creation with r.
 --   While REAPER's flexibility is unmatched, it is still quite cumbersome to create and render sets of tracks independently of signal flow, with emphasis on easy cross-project portability (do it once, then use it everywhere!).
 --
 --   This is where Stem Manager comes in.
@@ -580,7 +580,7 @@ if OD_PrereqsOK({
                     render_setting_group = 1
                 }
                 -- get render setting group from last stem in list
-                for k, v in pairsByOrder(self.stems) do
+                for k, v in OD_PairsByOrder(self.stems) do
                     if v.order == self.stemCount - 1 then
                         self.stems[name].render_setting_group = v.render_setting_group
                     end
@@ -822,7 +822,7 @@ if OD_PrereqsOK({
             ignore_warnings = false
         }
         for i = 1, RENDER_SETTING_GROUPS_SLOTS do
-            table.insert(settings.default.render_setting_groups, deepcopy(default_render_settings))
+            table.insert(settings.default.render_setting_groups, OD_DeepCopy(default_render_settings))
         end
 
         if not factory then
@@ -836,7 +836,7 @@ if OD_PrereqsOK({
                         for rgSetting, rgV in pairs(val or {}) do
 
                             if not settings.default.render_setting_groups[rgIdx] then -- if more render were saved than there are by default, create them by loading default vaules first
-                                settings.default.render_setting_groups[rgIdx] = deepcopy(default_render_settings)
+                                settings.default.render_setting_groups[rgIdx] = OD_DeepCopy(default_render_settings)
                             end
                             settings.default.render_setting_groups[rgIdx][rgSetting] = rgV
                         end
@@ -852,7 +852,7 @@ if OD_PrereqsOK({
         settings = getDefaultSettings()
         -- take merged updated default settings and merge project specific settings into them
         local loaded_project_settings = unpickle(loadLongProjExtKey(scr.context_name, 'PROJECT SETTINGS'))
-        settings.project = deepcopy(settings.default)
+        settings.project = OD_DeepCopy(settings.default)
         for k, v in pairs(loaded_project_settings or {}) do
             if not (k == 'render_setting_groups') then
                 settings.project[k] = v
@@ -876,7 +876,7 @@ if OD_PrereqsOK({
         for rgIdx, val in ipairs(settings.project.render_setting_groups) do
             for rgAIdx, command_id in pairs(settings.project.render_setting_groups[rgIdx].actions_to_run or {}) do
                 if type(command_id) ~= "string" then
-                    local named_command = reaper.ReverseNamedCommandLookup(command_id)
+                    local named_command = r.ReverseNamedCommandLookup(command_id)
                     if named_command then
                         settings.project.render_setting_groups[rgIdx].actions_to_run[rgAIdx] = named_command
                     end
@@ -884,7 +884,7 @@ if OD_PrereqsOK({
             end
             for rgAIdx, command_id in pairs(settings.project.render_setting_groups[rgIdx].actions_to_run_after or {}) do
                 if type(command_id) ~= "string" then
-                    local named_command = reaper.ReverseNamedCommandLookup(command_id)
+                    local named_command = r.ReverseNamedCommandLookup(command_id)
                     if named_command then
                         settings.project.render_setting_groups[rgIdx].actions_to_run_after[rgAIdx] = named_command
                     end
@@ -1320,7 +1320,7 @@ end]]):gsub('$(%w+)', {
                 end
             end
         else
-            stems_to_render = deepcopy(db.stems)
+            stems_to_render = OD_DeepCopy(db.stems)
         end
         coroutine.yield('Rendering stems', 0, 1)
         -- go over all stems to be rendered, in order to:
@@ -1396,7 +1396,7 @@ end]]):gsub('$(%w+)', {
         for rsgIdx, statuses in pairs(criticalErrors) do
             if #statuses > 0 then
                 local stems_in_rsg = {}
-                for stemName, stem in pairsByOrder(stems_to_render) do
+                for stemName, stem in OD_PairsByOrder(stems_to_render) do
                     if stem.render_setting_group == rsgIdx then
                         table.insert(stems_in_rsg, stemName)
                     end
@@ -1416,7 +1416,7 @@ end]]):gsub('$(%w+)', {
         for rsgIdx, statuses in pairs(errors) do
             if #statuses > 0 then
                 local stems_in_rsg = {}
-                for stemName, stem in pairsByOrder(stems_to_render) do
+                for stemName, stem in OD_PairsByOrder(stems_to_render) do
                     if stem.render_setting_group == rsgIdx then
                         table.insert(stems_in_rsg, stemName)
                     end
@@ -1465,7 +1465,7 @@ end]]):gsub('$(%w+)', {
             if r.GetAllProjectPlayStates(0) & 1 then
                 r.OnStopButton()
             end
-            for stemName, stem in pairsByOrder(stems_to_render) do
+            for stemName, stem in OD_PairsByOrder(stems_to_render) do
                 if not app.render_cancelled then
                     idx = idx + 1
                     -- TODO: CONSOLIDATE UNDO HISTORY?:
@@ -1533,7 +1533,7 @@ end]]):gsub('$(%w+)', {
                         if rsg.run_actions then
                             for aIdx, action in ipairs(rsg.actions_to_run or {}) do
                                 action = (type(action) == 'string') and '_' .. action or action
-                                local cmd = reaper.NamedCommandLookup(action)
+                                local cmd = r.NamedCommandLookup(action)
                                 if cmd then
                                     r.Main_OnCommand(cmd, 0)
                                 end
@@ -1543,9 +1543,9 @@ end]]):gsub('$(%w+)', {
                             if settings.project.overwrite_without_asking and RENDERACTION_RENDER then
                                 local rv, target_list = r.GetSetProjectInfo_String(0, 'RENDER_TARGETS', '', false)
                                 if rv then
-                                    local targets = (target_list):split(';')
+                                    local targets = OD_Split(target_list, ';')
                                     for i, target in ipairs(targets) do
-                                        if file_exists(target) then
+                                        if OD_FileExists(target) then
                                             os.remove(target)
                                         end
                                     end
@@ -1590,7 +1590,7 @@ end]]):gsub('$(%w+)', {
                         if rsg.run_actions_after then
                             for aIdx, action in ipairs(rsg.actions_to_run_after or {}) do
                                 action = (type(action) == 'string') and '_' .. action or action
-                                local cmd = reaper.NamedCommandLookup(action)
+                                local cmd = r.NamedCommandLookup(action)
                                 if cmd then
                                     r.Main_OnCommand(cmd, 0)
                                 end
@@ -2158,7 +2158,7 @@ end]]):gsub('$(%w+)', {
                 local parent_open, depth, open_depth = true, 0, 0
                 r.ImGui_TableSetupScrollFreeze(ctx, 1, 3)
                 r.ImGui_TableSetupColumn(ctx, 'Track', r.ImGui_TableColumnFlags_NoHide(), width) -- Make the first column not hideable to match our use of TableSetupScrollFreeze()
-                for stemName, tracks in pairsByOrder(db.stems) do
+                for stemName, tracks in OD_PairsByOrder(db.stems) do
                     r.ImGui_TableSetupColumn(ctx, stemName, nil, cellSize)
                 end
                 --- STEM NAME ROW
@@ -2182,7 +2182,7 @@ end]]):gsub('$(%w+)', {
                 r.ImGui_SetCursorPos(ctx, x + defPadding, y + (headerRowHeight) - stemsTitleSizeY - defPadding)
                 r.ImGui_Text(ctx, 'Tracks')
                 -- COL: STEM NAMES
-                for k, stem in pairsByOrder(db.stems) do
+                for k, stem in OD_PairsByOrder(db.stems) do
                     if r.ImGui_TableNextColumn(ctx) then
                         app.drawCols.stemName(k)
                     end
@@ -2216,7 +2216,7 @@ end]]):gsub('$(%w+)', {
                     r.ImGui_Text(ctx, 'Render Setting Groups')
                 end
                 -- COL: STEM RENDER GROUP
-                for k, stem in pairsByOrder(db.stems) do
+                for k, stem in OD_PairsByOrder(db.stems) do
                     if r.ImGui_TableNextColumn(ctx) then
                         app.drawBtn('renderGroupSelector', {
                             stemName = k,
@@ -2237,7 +2237,7 @@ end]]):gsub('$(%w+)', {
                     r.ImGui_Text(ctx, 'Mirror stem')
                 end
                 -- COLS: STEM SYNC BUTTONS
-                for k, stem in pairsByOrder(db.stems) do
+                for k, stem in OD_PairsByOrder(db.stems) do
                     r.ImGui_PushID(ctx, 'sync' .. k)
                     if r.ImGui_TableNextColumn(ctx) then
                         local syncMode = (modKeys == 'a') and
@@ -2289,7 +2289,7 @@ end]]):gsub('$(%w+)', {
                             r.ImGui_PushID(ctx, i) -- Tracks might have the same name
                             parent_open = r.ImGui_TreeNode(ctx, track.name .. '  ', node_flags)
                             r.ImGui_PopID(ctx)
-                            for k, stem in pairsByOrder(db.stems) do
+                            for k, stem in OD_PairsByOrder(db.stems) do
                                 if r.ImGui_TableNextColumn(ctx) then
                                     -- COL: STEM STATE
                                     app.drawBtn('stemState', {
@@ -2304,7 +2304,7 @@ end]]):gsub('$(%w+)', {
                     elseif depth > open_depth then
                         --- HIDDEN SOLO STATES
                         local idx = 0
-                        for k, stem in pairsByOrder(db.stems) do
+                        for k, stem in OD_PairsByOrder(db.stems) do
                             idx = idx + 1
                             -- local state = track.stemMatrix[k] or ' '
                             if not arrow_drawn[k] then
@@ -2575,7 +2575,7 @@ end]]):gsub('$(%w+)', {
                 gui.stWnd[cP].frameCount = 0
                 if gui.stWnd[cP].tS == nil then
                     loadSettings()
-                    gui.stWnd[cP].tS = deepcopy(settings.project)
+                    gui.stWnd[cP].tS = OD_DeepCopy(settings.project)
                 end
                 db:getRenderPresets()
                 if r.APIExists('JS_Localize') then
@@ -2786,7 +2786,7 @@ end]]):gsub('$(%w+)', {
             end
 
             if r.ImGui_Button(ctx, "Load default settings") then
-                gui.stWnd[cP].tS = deepcopy(getDefaultSettings(gui.modKeys == 'a').default)
+                gui.stWnd[cP].tS = OD_DeepCopy(getDefaultSettings(gui.modKeys == 'a').default)
             end
             app.setHoveredHint('settings',
                 ('Revert to saved default settings. %s+click to load factory settings.'):format(
@@ -2794,8 +2794,8 @@ end]]):gsub('$(%w+)', {
 
             r.ImGui_SameLine(ctx)
             if r.ImGui_Button(ctx, "Save as default settings") then
-                settings.project = deepcopy(gui.stWnd[cP].tS)
-                settings.default = deepcopy(gui.stWnd[cP].tS)
+                settings.project = OD_DeepCopy(gui.stWnd[cP].tS)
+                settings.default = OD_DeepCopy(gui.stWnd[cP].tS)
                 saveSettings()
                 r.PromptForAction(-1, 0, 0)
                 r.ImGui_CloseCurrentPopup(ctx)
@@ -2810,7 +2810,7 @@ end]]):gsub('$(%w+)', {
                     r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 6)
 
             if r.ImGui_Button(ctx, "  OK  ") then
-                settings.project = deepcopy(gui.stWnd[cP].tS)
+                settings.project = OD_DeepCopy(gui.stWnd[cP].tS)
                 saveSettings()
                 r.PromptForAction(-1, 0, 0)
                 r.ImGui_CloseCurrentPopup(ctx)
@@ -2826,7 +2826,7 @@ end]]):gsub('$(%w+)', {
             r.ImGui_SameLine(ctx)
 
             if r.ImGui_Button(ctx, "Apply") then
-                settings.project = deepcopy(gui.stWnd[cP].tS)
+                settings.project = OD_DeepCopy(gui.stWnd[cP].tS)
                 saveSettings()
             end
             app.setHoveredHint('settings', ('Save settings for the current project.'):format(
@@ -2838,17 +2838,13 @@ end]]):gsub('$(%w+)', {
         end
     end
 
-    function escape_pattern(text)
-        return text:gsub("([^%w])", "%%%1")
-    end
-
     function updateActionStatuses(actionList)
-        local content = getContent(r.GetResourcePath() .. "/" .. "reaper-kb.ini")
+        local content = OD_GetContent(r.GetResourcePath() .. "/" .. "reaper-kb.ini")
         local statuses = {}
         for k, v in pairs(actionList) do
             for i in ipairs(v.actions) do
                 local action_name = 'Custom: ' .. scr.no_ext .. ' - ' .. actionList[k].actions[i].title .. '.lua'
-                actionList[k].actions[i].exists = (content:find(escape_pattern(action_name)) ~= nil)
+                actionList[k].actions[i].exists = (content:find(OD_EscapePattern(action_name)) ~= nil)
             end
         end
     end
@@ -2864,7 +2860,7 @@ end]]):gsub('$(%w+)', {
             cancelButtonLabel = "Settings Only"
         })
         if ok then
-            rv, filename = reaper.GetUserFileNameForRead('', 'Select a stem preset file', 'stm')
+            rv, filename = r.GetUserFileNameForRead('', 'Select a stem preset file', 'stm')
             if rv then
                 for stemName, stem in pairs(db.stems) do
                     db:removeStem(stemName)
@@ -2921,19 +2917,19 @@ end]]):gsub('$(%w+)', {
                     title = 'Add all stems to render queue',
                     command = 'add_all'
                 }}
-                for k, v in pairsByOrder(db.stems) do
+                for k, v in OD_PairsByOrder(db.stems) do
                     table.insert(gui.caWnd.actionList['Stem Toggle Actions'].actions, {
                         title = ("Toggle '%s' mirroring"):format(k),
                         command = ("sync %s"):format(k)
                     })
                 end
-                for k, v in pairsByOrder(db.stems) do
+                for k, v in OD_PairsByOrder(db.stems) do
                     table.insert(gui.caWnd.actionList['Stem Render Actions'].actions, {
                         title = ("Render '%s' now"):format(k),
                         command = ("render %s"):format(k)
                     })
                 end
-                for k, v in pairsByOrder(db.stems) do
+                for k, v in OD_PairsByOrder(db.stems) do
                     table.insert(gui.caWnd.actionList['Stem Render Actions'].actions, {
                         title = ("Add '%s' to render queue"):format(k),
                         command = ("add %s"):format(k)
@@ -2962,7 +2958,7 @@ end]]):gsub('$(%w+)', {
             local childHeight = select(2, r.ImGui_GetContentRegionAvail(ctx)) - r.ImGui_GetFrameHeightWithSpacing(ctx) -
                                     paddingY
             if r.ImGui_BeginChild(ctx, '##ActionList', 0, childHeight) then
-                for k, actionList in pairsByOrder(gui.caWnd.actionList) do
+                for k, actionList in OD_PairsByOrder(gui.caWnd.actionList) do
                     r.ImGui_Separator(ctx)
                     r.ImGui_Spacing(ctx)
                     if r.ImGui_TreeNode(ctx, k, r.ImGui_TreeNodeFlags_DefaultOpen()) then
@@ -3020,7 +3016,7 @@ end]]):gsub('$(%w+)', {
         if visible then
             local help = ([[
 |Introduction
-$script was designed with the goal of simplifying the process of stem creation with REAPER.
+$script was designed with the goal of simplifying the process of stem creation with r.
 
 While REAPER's flexibility is unmatched, it is still quite cumbersome to create and render sets of tracks independently of signal flow, with emphasis on easy cross-project portability (do it once, then use it everywhere!).
 
@@ -3338,17 +3334,17 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
             if r.ImGui_BeginMenuBar(ctx) then
                 -- r.ImGui_SetCursorPosX(ctx, r.ImGui_GetContentRegionAvail(ctx)- r.ImGui_CalcTextSize(ctx,'Settings'))
 
-                if reaper.ImGui_BeginMenu(ctx, 'File') then
+                if r.ImGui_BeginMenu(ctx, 'File') then
                     -- rv,show_app.main_menu_bar =
                     --   ImGui.MenuItem(ctx, 'Main menu bar', nil, show_app.main_menu_bar)
-                    rv, rv1 = reaper.ImGui_MenuItem(ctx, 'Save...', nil, nil)
+                    rv, rv1 = r.ImGui_MenuItem(ctx, 'Save...', nil, nil)
                     app.setHoveredHint('main', "Save current stems and settings")
 
-                    if reaper.ImGui_MenuItem(ctx, 'Load...', nil, nil) then
+                    if r.ImGui_MenuItem(ctx, 'Load...', nil, nil) then
                         app.load = true
                     end
                     app.setHoveredHint('main', "Load stems and settings")
-                    reaper.ImGui_EndMenu(ctx)
+                    r.ImGui_EndMenu(ctx)
                 end
 
                 if r.ImGui_SmallButton(ctx, 'Settings') then

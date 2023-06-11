@@ -168,7 +168,7 @@ end
 
 app.msg = function(msg, title)
     app.popup.msg = app.popup.msg or msg
-    app.popup.title = app.popup.title or scr.name
+    app.popup.title = app.popup.title or title or scr.name
 end
 
 app.drawMsg = function()

@@ -7,6 +7,7 @@ STATUS = {
     MOVING = 50,
     COPYING = 51,
     DELETING = 52,
+    MOVING_TO_TRASH = 53,
     DONE = 100,
     ERROR = 1000
 }
@@ -19,6 +20,7 @@ STATUS_DESCRIPTIONS = {
     [STATUS.MOVING] = 'Moving',
     [STATUS.COPYING] = 'Copying',
     [STATUS.DELETING] = 'Deleting',
+    [STATUS.MOVING_TO_TRASH] = 'Moving To Trash',
     [STATUS.DONE] = 'Done',
     [STATUS.ERROR] = 'Error'
 }
@@ -29,7 +31,8 @@ FORMATS = {
     UNCOMPRESSED = {'AIFF', 'WAVE', 'BW64', 'BWF', 'RF64', 'SD2', 'WAV', 'W64'},
     INCOMPATIBLE = {'WMV', 'AVI', 'MOV', 'EDL', 'MIDI', 'MUSICXML', 'MPEG', 'KAR', 'QT', 'SYX'},
     SPECIAL = {'REX2'},
-    TO_TEST = {'CAF', 'ACID', 'CDDA', 'RAW/PCM', 'RADAR'}
+    TO_TEST = {'CAF', 'ACID', 'CDDA', 'RAW/PCM', 'RADAR'},
+    VIDEO = {'VIDEO'}
 }
 
 local function reverseItem(item)
@@ -68,7 +71,7 @@ function collectMediaFiles()
 
         local numStrtchMarkers = r.GetTakeNumStretchMarkers(take)
 
-        local endPos = math.round(itemLength * takePlayrate, 9)
+        local endPos = OD_Round(itemLength * takePlayrate, 9)
         local startPos = 0
         local startSrcPos, endSrcPos
         local foundStart, foundEnd
@@ -87,7 +90,7 @@ function collectMediaFiles()
                 foundStart = true
                 startSrcPos = srcpos
             end
-            if math.round(pos, 9) == endPos then
+            if OD_Round(pos, 9) == endPos then
                 foundEnd = true
                 endSrcPos = srcpos
             end
@@ -176,12 +179,13 @@ function collectMediaFiles()
                 -- Check if the media source is valid and has a filename with "WAVE" source type
                 local sourceType = r.GetMediaSourceType(mediaSource, "")
                 local oc = nil
-                local filename = r.GetMediaSourceFileName(mediaSource, "")--:gsub('/',folderSep())
-                local fileExists = file_exists(filename)
+                local filename = r.GetMediaSourceFileName(mediaSource, "") -- :gsub('/',folderSep())
+                local fileExists = OD_FileExists(filename)
+                -- log occurance if it's to be minimized
                 if fileExists and mediaSource and
-                    (has_value(FORMATS.UNCOMPRESSED, sourceType) or has_value(FORMATS.LOSSLESS, sourceType) or
+                    (OD_HasValue(FORMATS.UNCOMPRESSED, sourceType) or OD_HasValue(FORMATS.LOSSLESS, sourceType) or
                         ((settings.minimizeSourceTypes == MINIMIZE_SOURCE_TYPES.ALL) and
-                            has_value(FORMATS.COMPRESSED, sourceType))) then
+                            OD_HasValue(FORMATS.COMPRESSED, sourceType))) then
                     local sp, ep = getTakeSourcePositions(take, srclen)
                     -- Create a table to store the occurrence information
                     oc = {
@@ -217,11 +221,13 @@ function collectMediaFiles()
                         end
                     end
                 else
-                    local fullpath, basename, ext = dissectFilename(filename)
-                    local relOrAbsPath, pathIsRelative = getRelativeOrAbsolutePath(filename, app.projPath)
-                    local sourceFileSize = getFileSize(filename)
+                    local fullpath, basename, ext = OD_DissectFilename(filename)
+                    local relOrAbsPath, pathIsRelative = OD_GetRelativeOrAbsolutePath(filename, app.projPath)
+                    local sourceFileSize = OD_GetFileSize(filename)
                     -- Create a new entry for the media file
                     app.mediaFiles[filename] = {
+                        external = not pathIsRelative,
+                        video = OD_HasValue(FORMATS.VIDEO, sourceType),
                         status = STATUS.SCANNED,
                         order = app.mediaFileCount,
                         occurrences = {oc},
@@ -252,7 +258,7 @@ function collectMediaFiles()
                     app.mediaFiles[filename].newFileSize = app.mediaFiles[filename].sourceFileSize
                     app.mediaFiles[filename].status = STATUS.IGNORE
                 end
-                if app.mediaFiles[filename].missing then 
+                if app.mediaFiles[filename].missing then
                     app.mediaFiles[filename].status = STATUS.ERROR
                 end
                 app.perform.pos = app.perform.pos + 1
@@ -344,7 +350,7 @@ function minimizeAndApplyMedia()
 
         local timeSelEnd
         local keepCounter = 0
-        for i, item in pairsByOrder(items) do
+        for i, item in OD_PairsByOrder(items) do
             local timeSelStart = currentPos
             timeSelEnd = item.startTime
             -- item.length = item.length * item.playrate
@@ -466,7 +472,7 @@ function minimizeAndApplyMedia()
         local _, newName = reaper.GetSetMediaItemTakeInfo_String(reaper.GetMediaItemTake(
             reaper.GetSelectedMediaItem(0, 0), 0), "P_NAME", "", false)
         if newName == oldName then
-            error('cancelled')
+            error('cancelled by glue')
         end
         return r.GetTrackMediaItem(track, 0)
     end
@@ -481,7 +487,7 @@ function minimizeAndApplyMedia()
             local startPos = 0 - oc.startpadding
             local endPos = (itemLength + oc.endpadding) * oc.playrate
 
-            endPos = math.round(endPos, 9)
+            endPos = OD_Round(endPos, 9)
             -- check if there are markers at start and end of item. if not, add them.
 
             for j = 0, numTakeStretchMarkers - 1 do
@@ -489,7 +495,7 @@ function minimizeAndApplyMedia()
                 if pos == startPos then
                     foundStart = true
                 end
-                if math.round(pos, 9) == endPos then
+                if OD_Round(pos, 9) == endPos then
                     foundEnd = true
                 end
             end
@@ -558,31 +564,30 @@ function minimizeAndApplyMedia()
         end
     end
 
---     getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files/02 Tavi'i Itach Yain Mix 1 No Limiter.wav 68709600
--- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files/Tzlil Mechuvan.wav 63352892
--- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files/Mehamerhakim.wav 110689724
+    --     getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files/02 Tavi'i Itach Yain Mix 1 No Limiter.wav 68709600
+    -- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files/Tzlil Mechuvan.wav 63352892
+    -- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files/Mehamerhakim.wav 110689724
 
--- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files\08-02 Tavi'i Itach Yain Mix 1 No Limiter_m-glued-01.wav 68346862
--- generateUniqueFilename: file didnt exist. returning it (\\DS1821\Downloads\tmp\Full Recording\Audio Files\02 Tavi'i Itach Yain Mix 1 No Limiter_m.wav)
+    -- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files\08-02 Tavi'i Itach Yain Mix 1 No Limiter_m-glued-01.wav 68346862
+    -- generateUniqueFilename: file didnt exist. returning it (\\DS1821\Downloads\tmp\Full Recording\Audio Files\02 Tavi'i Itach Yain Mix 1 No Limiter_m.wav)
 
--- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files\08-Tzlil Mechuvan_m-glued-01.wav 47515372
--- generateUniqueFilename: file didnt exist. returning it (\\DS1821\Downloads\tmp\Full Recording\Audio Files\Tzlil Mechuvan_m.wav)g
+    -- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files\08-Tzlil Mechuvan_m-glued-01.wav 47515372
+    -- generateUniqueFilename: file didnt exist. returning it (\\DS1821\Downloads\tmp\Full Recording\Audio Files\Tzlil Mechuvan_m.wav)g
 
--- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files\08-Mehamerhakim_m-glued-01.wav 83017996
--- generateUniqueFilename: file didnt exist. returning it (\\DS1821\Downloads\tmp\Full Recording\Audio Files\Mehamerhakim_m.wav)
+    -- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files\08-Mehamerhakim_m-glued-01.wav 83017996
+    -- generateUniqueFilename: file didnt exist. returning it (\\DS1821\Downloads\tmp\Full Recording\Audio Files\Mehamerhakim_m.wav)
 
--- copyFile: fail at (1): old_file: error, new_file: ok
---                        old_path: \\DS1821\Downloads\tmp\Full Recording\Audio Files\02 Tavi'i Itach Yain Mix 1 No Limiter_m.wav
---                        new_path: C:\Users\david\Desktop\Target\Audio Files\02 Tavi'i Itach Yain Mix 1 No Limiter_m.wav
+    -- copyFile: fail at (1): old_file: error, new_file: ok
+    --                        old_path: \\DS1821\Downloads\tmp\Full Recording\Audio Files\02 Tavi'i Itach Yain Mix 1 No Limiter_m.wav
+    --                        new_path: C:\Users\david\Desktop\Target\Audio Files\02 Tavi'i Itach Yain Mix 1 No Limiter_m.wav
 
---                        copyFile: fail at (1): old_file: error, new_file: ok
---                        old_path: \\DS1821\Downloads\tmp\Full Recording\Audio Files\Tzlil Mechuvan_m.wav
---                        new_path: C:\Users\david\Desktop\Target\Audio Files\Tzlil Mechuvan_m.wav
+    --                        copyFile: fail at (1): old_file: error, new_file: ok
+    --                        old_path: \\DS1821\Downloads\tmp\Full Recording\Audio Files\Tzlil Mechuvan_m.wav
+    --                        new_path: C:\Users\david\Desktop\Target\Audio Files\Tzlil Mechuvan_m.wav
 
---                        copyFile: fail at (1): old_file: error, new_file: ok
---                        old_path: \\DS1821\Downloads\tmp\Full Recording\Audio Files\Mehamerhakim_m.wav
---                        new_path: C:\Users\david\Desktop\Target\Audio Files\Mehamerhakim_m.wav
-
+    --                        copyFile: fail at (1): old_file: error, new_file: ok
+    --                        old_path: \\DS1821\Downloads\tmp\Full Recording\Audio Files\Mehamerhakim_m.wav
+    --                        new_path: C:\Users\david\Desktop\Target\Audio Files\Mehamerhakim_m.wav
 
     local function applyGluedSourceToOriginal(fileInfo, gluedItem)
 
@@ -590,25 +595,25 @@ function minimizeAndApplyMedia()
         if gluedTake then
             local newSrc = r.GetMediaItemTake_Source(gluedTake)
             local sourceFilename = r.GetMediaSourceFileName(newSrc)
-            fileInfo.newFileSize = getFileSize(sourceFilename)
+            fileInfo.newFileSize = OD_GetFileSize(sourceFilename)
             -- Rename the source file to the track name
             local path, filename = string.match(sourceFilename, "(.-)([^\\/]-([^%.]+))$")
             local ext = filename:match(".+%.(.+)$")
             local newFilename = path .. fileInfo.trackName .. "." .. ext
-            local uniqueName = generateUniqueFilename(newFilename)
-            
+            local uniqueName = OD_GenerateUniqueFilename(newFilename)
+
             -- give time to the file system to refresh 
             local t_point = reaper.time_precise()
-            repeat until reaper.time_precise() - t_point > 0.5
-            
-            reaper.SelectAllMediaItems(0,false)
-            reaper.SetMediaItemSelected(gluedItem,true)
-            -- reaper.Main_OnCommand(40100,0) -- set all media offline
+            repeat
+            until reaper.time_precise() - t_point > 0.5
 
-            reaper.Main_OnCommand(40440,0) -- set selected media temporarily offline
+            reaper.SelectAllMediaItems(0, false)
+            reaper.SetMediaItemSelected(gluedItem, true)
+
+            reaper.Main_OnCommand(40440, 0) -- set selected media temporarily offline
             local success = moveFile(sourceFilename, uniqueName)
-            reaper.Main_OnCommand(40439,0) -- online
-            
+            reaper.Main_OnCommand(40439, 0) -- online
+
             -- reaper.ShowConsoleMsg(('rename \n      %s \n   -> %s\n      '..(success and 'ok' or 'fail')..'\n'):format(sourceFilename,uniqueName))
             -- Update the glued item with the new source file and rebuild peaks
             newSrc = r.PCM_Source_CreateFromFile(uniqueName)
@@ -650,7 +655,7 @@ function minimizeAndApplyMedia()
     app.peakOperations = {}
     app.perform.total = app.mediaFileCount
     app.perform.pos = 0
-    for filename, fileInfo in pairsByOrder(app.mediaFiles) do
+    for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
         if not fileInfo.ignore and not fileInfo.missing then
             app.mediaFiles[filename].status = STATUS.MINIMIZING
             app.perform.pos = app.perform.pos + 1
@@ -703,13 +708,13 @@ end
 
 function revert(cancel)
     -- restore temporary file saved before minimizing and open it
-    copyFile(app.revert.tmpBackupFileName, app.fullProjPath)
+    OD_CopyFile(app.revert.tmpBackupFileName, app.fullProjPath)
     r.Main_openProject("noprompt:" .. app.fullProjPath)
 
     -- delete files created but not used
-    for filename, fileInfo in pairsByOrder(app.mediaFiles) do
+    for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
         if fileInfo.newfilename and fileInfo.status ~= STATUS.DONE then
-            if file_exists(fileInfo.newfilename) then
+            if OD_FileExists(fileInfo.newfilename) then
                 os.remove(fileInfo.newfilename)
             end
         end
@@ -721,7 +726,14 @@ function revert(cancel)
     end
 end
 
-function cancel()
+function cancel(msg)
+    if msg then 
+        app.msg(msg, 'Operation Cancelled')
+        if coroutine.isyieldable(app.coPerform) then
+            coroutine.yield('Cancelling', 0, 1)
+            coroutine.yield('Cancelling', 0, 1)
+        end
+    end
     -- if app.coPerform then coroutine.close(app.coPerform) end
     app.coPerform = nil
     revert(true)
@@ -750,9 +762,9 @@ function setQuality()
 end
 
 function prepareRevert()
-    app.revert.tmpBackupFileName = app.projPath .. select(2, dissectFilename(app.projFileName)) .. '_' ..
+    app.revert.tmpBackupFileName = app.projPath .. select(2, OD_DissectFilename(app.projFileName)) .. '_' ..
                                        reaper.time_precise() .. '.RPP'
-    copyFile(app.fullProjPath, app.revert.tmpBackupFileName)
+    OD_CopyFile(app.fullProjPath, app.revert.tmpBackupFileName)
 end
 
 function disableAutosave()
@@ -776,22 +788,21 @@ end
 
 function createBackupProject()
     reaper.Main_SaveProject(-1)
-    local targetPath = settings.backupDestination .. folderSep()
+    local targetPath = settings.backupDestination .. OD_FolderSep()
     local targetProject = targetPath .. app.projFileName
-    copyFile(app.fullProjPath, targetProject)
+    OD_CopyFile(app.fullProjPath, targetProject)
     app.perform.total = app.mediaFileCount
     app.perform.pos = 0
-    reaper.Main_OnCommand(40100, 0)  -- All media media items offline
 
-    for filename, fileInfo in pairsByOrder(app.mediaFiles) do
+    for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
         -- move processed files
         reaper.RecursiveCreateDirectory(targetPath .. app.relProjectRecordingPath, 0)
         app.perform.pos = app.perform.pos + 1
         if not fileInfo.ignore and not fileInfo.missing then
             fileInfo.status = STATUS.MOVING
             coroutine.yield('Creating backup project')
-            local _, newFN, newExt = dissectFilename(fileInfo.newfilename)
-            local target = targetPath .. app.relProjectRecordingPath .. folderSep() .. newFN .. '.' .. newExt
+            local _, newFN, newExt = OD_DissectFilename(fileInfo.newfilename)
+            local target = targetPath .. app.relProjectRecordingPath .. OD_FolderSep() .. newFN .. '.' .. newExt
             if moveFile(fileInfo.newfilename, target) then
                 fileInfo.status = STATUS.DONE
             else
@@ -803,7 +814,7 @@ function createBackupProject()
                 fileInfo.status = STATUS.COPYING
                 coroutine.yield('Creating backup project')
                 local target = targetPath .. fileInfo.relOrAbsPath
-                if copyFile(fileInfo.filenameWithPath, target) then
+                if OD_CopyFile(fileInfo.filenameWithPath, target) then
                     fileInfo.status = STATUS.DONE
                 else
                     fileInfo.status = STATUS.ERROR
@@ -815,32 +826,67 @@ function createBackupProject()
         end
         coroutine.yield('Creating backup project')
     end
-    reaper.Main_OnCommand(40101, 0)  -- All media media items online
+    -- reaper.Main_OnCommand(40101, 0)  -- All media media items online
+end
+
+function networkedFilesExist()
+    if os_is.win then
+        for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
+            if string.sub(fileInfo.filenameWithPath, 1, 2) == '\\\\' then return true end
+        end
+    end
+    return false
 end
 
 function deleteOriginals()
-    reaper.Main_SaveProject(-1)
-    reaper.Main_OnCommand(40100, 0)  -- All media media items offline
     app.perform.total = app.mediaFileCount
     app.perform.pos = 0
-    for filename, fileInfo in pairsByOrder(app.mediaFiles) do
+    local stat = settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and 'Moving originals to trash' or 'Deleting originals'
+    local filesToTrashWin = {}
+    for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
         -- delete original files which were replaced by minimized versions
         app.perform.pos = app.perform.pos + 1
-        coroutine.yield('Deleting original files')
+        coroutine.yield(stat)
         if not fileInfo.ignore and not fileInfo.missing then
-            fileInfo.status = STATUS.DELETING
-            coroutine.yield('Deleting original files')
-            if (settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and moveToTrash(fileInfo.filenameWithPath) or
-                os.remove(fileInfo.filenameWithPath)) then
+            fileInfo.status = settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and STATUS.MOVING_TO_TRASH or STATUS.DELETING
+            coroutine.yield(stat)
+            if os_is.win then
+                if settings.deleteOperation ~= DELETE_OPERATION.MOVE_TO_TRASH then
+                    reaper.reduce_open_files(2)  -- windows won't delete/move files that are in use
+                    if os.remove(fileInfo.filenameWithPath) then
+                        fileInfo.status = STATUS.DONE
+                    else
+                        fileInfo.status = STATUS.ERROR
+                        fileInfo.error = 'delete original failed'
+                    end
+                else -- if on windows but set to move to trash, we need to first collect filenames and only then send to trash to avoid opening powershell for each file 
+                    table.insert(filesToTrashWin, fileInfo.filenameWithPath)
+                end
+            else
+                if (settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and
+                    moveToTrash(fileInfo.filenameWithPath) or os.remove(fileInfo.filenameWithPath)) then
+                    fileInfo.status = STATUS.DONE
+                else
+                    fileInfo.status = STATUS.ERROR
+                    fileInfo.error = 'delete original failed'
+                end
+            end
+        elseif not fileInfo.missing then
+            fileInfo.status = STATUS.DONE
+        end
+        coroutine.yield(stat)
+    end
+    -- if on windows, trash all files at once to avoid powershelling for each file seperately 
+    if #filesToTrashWin > 0 then
+        reaper.reduce_open_files(2)  -- windows won't delete/move files that are in use
+        moveToTrash(filesToTrashWin)
+        for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do -- verify which files were and were not removed
+            if not OD_FileExists(fileInfo.filenameWithPath) then
                 fileInfo.status = STATUS.DONE
             else
                 fileInfo.status = STATUS.ERROR
                 fileInfo.error = 'delete original failed'
             end
-        elseif not fileInfo.missing then
-            fileInfo.status = STATUS.DONE
         end
-        coroutine.yield('Deleting Original Files')
     end
-    reaper.Main_OnCommand(40101, 0)  -- All media media items online
 end

@@ -121,17 +121,17 @@ gui.setting = function(stType, text, hint, val, data, sameline)
         r.ImGui_EndGroup(ctx)
     end
     app.setHoveredHint('main', hint)
-    return retval, retval_b
+    return retval
 end
 
 gui.bitwise_setting = function(stType, val, list)
-    if not has_value({"checkbox"}, stType) then
+    if not OD_HasValue({"checkbox"}, stType) then
         return
     end
     local tmpVal = val
-    for bwVal, option in pairsByOrder(list) do
+    for bwVal, option in OD_PairsByOrder(list) do
         local op = gui.setting(stType, option.label, option.hint, (val & bwVal ~= 0))
-        tmpVal = tmpVal % bwVal + (op and 1 or 0) * bwVal
+        tmpVal = OD_BwSet(tmpVal, bwVal, op)
     end
 
     return tmpVal
