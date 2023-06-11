@@ -36,7 +36,6 @@ function OD_GenerateUniqueFilename(filename)
             counter = counter + 1
             newFilename = path .. name .. "_" .. counter .. "." .. ext
         until not OD_FileExists(newFilename)
-        -- reaper.ShowConsoleMsg(('generateUniqueFilename: new file name! (%s)\n'):format(newFilename))
         return newFilename
     else
         return filename
@@ -156,7 +155,7 @@ function OD_MoveToTrash(filename)
             'powershell.exe -nologo -noprofile -Command "& {Add-Type -AssemblyName \'Microsoft.VisualBasic\'; Get-ChildItem -Path ' ..
                 table.concat(escaped_filenames, ' , ') ..
                 '| ForEach-Object { if ($_ -is [System.IO.DirectoryInfo]) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($_.FullName,\'OnlyErrorDialogs\',\'SendToRecycleBin\') } else { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($_.FullName,\'OnlyErrorDialogs\',\'SendToRecycleBin\') } } }"'
-        reaper.ExecProcess(cmd, 0)
+        r.ExecProcess(cmd, 0)
         -- check if the files were indeed moved away from the original place
         for i, fn in ipairs(filenames) do
             if OD_FileExists(fn) then return false end
@@ -192,15 +191,12 @@ function OD_GetFormattedFileSize(fileSize)
 end
 
 function OD_GetFileSize(fileName)
-    -- reaper.ShowConsoleMsg(('getFileSize for: %s '):format(fileName))
     local file = io.open(fileName, "rb")
     if file then
         local fileSize = file:seek("end")
         file:close()
-        -- reaper.ShowConsoleMsg(fileSize..'\n')
         return fileSize
     else
-        -- reaper.ShowConsoleMsg('failed\n')
         return nil
     end
 end

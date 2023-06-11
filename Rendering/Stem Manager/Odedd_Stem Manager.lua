@@ -10,7 +10,7 @@
 -- @about
 --   # Stem Manager
 --   Advanced stem rendering automator.
---   Stem Manager was designed with the goal of simplifying the process of stem creation with r.
+--   Stem Manager was designed with the goal of simplifying the process of stem creation with reaper.
 --   While REAPER's flexibility is unmatched, it is still quite cumbersome to create and render sets of tracks independently of signal flow, with emphasis on easy cross-project portability (do it once, then use it everywhere!).
 --
 --   This is where Stem Manager comes in.
@@ -3016,7 +3016,7 @@ end]]):gsub('$(%w+)', {
         if visible then
             local help = ([[
 |Introduction
-$script was designed with the goal of simplifying the process of stem creation with r.
+$script was designed with the goal of simplifying the process of stem creation with reaper.
 
 While REAPER's flexibility is unmatched, it is still quite cumbersome to create and render sets of tracks independently of signal flow, with emphasis on easy cross-project portability (do it once, then use it everywhere!).
 

@@ -103,7 +103,7 @@ function collectMediaFiles()
             startSrcPos = srcpos
             r.DeleteTakeStretchMarkers(take, startSm)
             if beforeStartSlope then
-                reaper.SetTakeStretchMarkerSlope(take, startSm - 1, beforeStartSlope)
+                r.SetTakeStretchMarkerSlope(take, startSm - 1, beforeStartSlope)
             end
         end
         if not foundEnd then
@@ -112,7 +112,7 @@ function collectMediaFiles()
             endSrcPos = srcpos
             r.DeleteTakeStretchMarkers(take, endSm)
             if beforeEndSlope then
-                reaper.SetTakeStretchMarkerSlope(take, endSm - 1, beforeEndSlope)
+                r.SetTakeStretchMarkerSlope(take, endSm - 1, beforeEndSlope)
             end
         end
 
@@ -460,8 +460,8 @@ function minimizeAndApplyMedia()
 
         r.SetOnlyTrackSelected(track)
         r.Main_OnCommand(40421, 0) -- select all items in track
-        local _, oldName = reaper.GetSetMediaItemTakeInfo_String(reaper.GetMediaItemTake(
-            reaper.GetSelectedMediaItem(0, 0), 0), "P_NAME", "", false)
+        local _, oldName = r.GetSetMediaItemTakeInfo_String(r.GetMediaItemTake(
+            r.GetSelectedMediaItem(0, 0), 0), "P_NAME", "", false)
         r.Main_OnCommand(40362, 0) -- glue items, ignoring time selection
         if maxrecsize_use & 1 then
             r.SNM_SetIntConfigVar('maxrecsize_use', maxrecsize_use)
@@ -469,8 +469,8 @@ function minimizeAndApplyMedia()
 
         -- check if glue succeeded (maybe cancelled?)
         r.Main_OnCommand(40421, 0) -- select all items in track
-        local _, newName = reaper.GetSetMediaItemTakeInfo_String(reaper.GetMediaItemTake(
-            reaper.GetSelectedMediaItem(0, 0), 0), "P_NAME", "", false)
+        local _, newName = r.GetSetMediaItemTakeInfo_String(r.GetMediaItemTake(
+            r.GetSelectedMediaItem(0, 0), 0), "P_NAME", "", false)
         if newName == oldName then
             error('cancelled by glue')
         end
@@ -603,18 +603,18 @@ function minimizeAndApplyMedia()
             local uniqueName = OD_GenerateUniqueFilename(newFilename)
 
             -- give time to the file system to refresh 
-            local t_point = reaper.time_precise()
+            local t_point = r.time_precise()
             repeat
-            until reaper.time_precise() - t_point > 0.5
+            until r.time_precise() - t_point > 0.5
 
-            reaper.SelectAllMediaItems(0, false)
-            reaper.SetMediaItemSelected(gluedItem, true)
+            r.SelectAllMediaItems(0, false)
+            r.SetMediaItemSelected(gluedItem, true)
 
-            reaper.Main_OnCommand(40440, 0) -- set selected media temporarily offline
+            r.Main_OnCommand(40440, 0) -- set selected media temporarily offline
             local success = moveFile(sourceFilename, uniqueName)
-            reaper.Main_OnCommand(40439, 0) -- online
+            r.Main_OnCommand(40439, 0) -- online
 
-            -- reaper.ShowConsoleMsg(('rename \n      %s \n   -> %s\n      '..(success and 'ok' or 'fail')..'\n'):format(sourceFilename,uniqueName))
+            -- r.ShowConsoleMsg(('rename \n      %s \n   -> %s\n      '..(success and 'ok' or 'fail')..'\n'):format(sourceFilename,uniqueName))
             -- Update the glued item with the new source file and rebuild peaks
             newSrc = r.PCM_Source_CreateFromFile(uniqueName)
             app.peakOperations[uniqueName] = newSrc
@@ -699,9 +699,9 @@ function restore()
     -- restore saved saving options
     r.SNM_SetIntConfigVar('saveopts', app.restore.saveopts)
     -- restore quality
-    reaper.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", app.restore.opencopy_cfgidx, true)
-    reaper.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", app.restore.afxfrmt, true)
-    reaper.GetSetProjectInfo(0, "PROJECT_SRATE_USE", app.restore.useprjsrate, true)
+    r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", app.restore.opencopy_cfgidx, true)
+    r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", app.restore.afxfrmt, true)
+    r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", app.restore.useprjsrate, true)
     -- delete temporary RPP backup file
     local success, error = os.remove(app.revert.tmpBackupFileName)
 end
@@ -745,9 +745,9 @@ function prepareRestore()
     -- save current autosave options
     app.restore.saveopts = select(2, r.get_config_var_string('saveopts'))
     -- save current glue settings
-    _, app.restore.opencopy_cfgidx = reaper.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", 0, false)
-    _, app.restore.afxfrmt = reaper.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", "", false)
-    app.restore.useprjsrate = reaper.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, false)
+    _, app.restore.opencopy_cfgidx = r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", 0, false)
+    _, app.restore.afxfrmt = r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", "", false)
+    app.restore.useprjsrate = r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, false)
 end
 
 function setProjPaths()
@@ -756,14 +756,14 @@ function setProjPaths()
 end
 
 function setQuality()
-    reaper.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", 1, true) -- use custom format
-    reaper.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", GLUE_FORMATS_DETAILS[settings.glueFormat].formatString, true) -- set format to selected format from the settings
-    reaper.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, true) -- turn off 'use sample rate', which makes the glue operation use the item's sample rate (that's good!)
+    r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", 1, true) -- use custom format
+    r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", GLUE_FORMATS_DETAILS[settings.glueFormat].formatString, true) -- set format to selected format from the settings
+    r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, true) -- turn off 'use sample rate', which makes the glue operation use the item's sample rate (that's good!)
 end
 
 function prepareRevert()
     app.revert.tmpBackupFileName = app.projPath .. select(2, OD_DissectFilename(app.projFileName)) .. '_' ..
-                                       reaper.time_precise() .. '.RPP'
+                                       r.time_precise() .. '.RPP'
     OD_CopyFile(app.fullProjPath, app.revert.tmpBackupFileName)
 end
 
@@ -787,7 +787,7 @@ function disableAutosave()
 end
 
 function createBackupProject()
-    reaper.Main_SaveProject(-1)
+    r.Main_SaveProject(-1)
     local targetPath = settings.backupDestination .. OD_FolderSep()
     local targetProject = targetPath .. app.projFileName
     OD_CopyFile(app.fullProjPath, targetProject)
@@ -796,7 +796,7 @@ function createBackupProject()
 
     for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
         -- move processed files
-        reaper.RecursiveCreateDirectory(targetPath .. app.relProjectRecordingPath, 0)
+        r.RecursiveCreateDirectory(targetPath .. app.relProjectRecordingPath, 0)
         app.perform.pos = app.perform.pos + 1
         if not fileInfo.ignore and not fileInfo.missing then
             fileInfo.status = STATUS.MOVING
@@ -826,7 +826,7 @@ function createBackupProject()
         end
         coroutine.yield('Creating backup project')
     end
-    -- reaper.Main_OnCommand(40101, 0)  -- All media media items online
+    -- r.Main_OnCommand(40101, 0)  -- All media media items online
 end
 
 function networkedFilesExist()
@@ -852,7 +852,7 @@ function deleteOriginals()
             coroutine.yield(stat)
             if os_is.win then
                 if settings.deleteOperation ~= DELETE_OPERATION.MOVE_TO_TRASH then
-                    reaper.reduce_open_files(2)  -- windows won't delete/move files that are in use
+                    r.reduce_open_files(2)  -- windows won't delete/move files that are in use
                     if os.remove(fileInfo.filenameWithPath) then
                         fileInfo.status = STATUS.DONE
                     else
@@ -878,7 +878,7 @@ function deleteOriginals()
     end
     -- if on windows, trash all files at once to avoid powershelling for each file seperately 
     if #filesToTrashWin > 0 then
-        reaper.reduce_open_files(2)  -- windows won't delete/move files that are in use
+        r.reduce_open_files(2)  -- windows won't delete/move files that are in use
         moveToTrash(filesToTrashWin)
         for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do -- verify which files were and were not removed
             if not OD_FileExists(fileInfo.filenameWithPath) then
