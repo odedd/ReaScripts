@@ -176,7 +176,7 @@ function collectMediaFiles()
                 -- Check if the media source is valid and has a filename with "WAVE" source type
                 local sourceType = r.GetMediaSourceType(mediaSource, "")
                 local oc = nil
-                local filename = r.GetMediaSourceFileName(mediaSource, "")
+                local filename = r.GetMediaSourceFileName(mediaSource, "")--:gsub('/',folderSep())
                 local fileExists = file_exists(filename)
                 if fileExists and mediaSource and
                     (has_value(FORMATS.UNCOMPRESSED, sourceType) or has_value(FORMATS.LOSSLESS, sourceType) or
@@ -558,6 +558,32 @@ function minimizeAndApplyMedia()
         end
     end
 
+--     getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files/02 Tavi'i Itach Yain Mix 1 No Limiter.wav 68709600
+-- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files/Tzlil Mechuvan.wav 63352892
+-- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files/Mehamerhakim.wav 110689724
+
+-- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files\08-02 Tavi'i Itach Yain Mix 1 No Limiter_m-glued-01.wav 68346862
+-- generateUniqueFilename: file didnt exist. returning it (\\DS1821\Downloads\tmp\Full Recording\Audio Files\02 Tavi'i Itach Yain Mix 1 No Limiter_m.wav)
+
+-- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files\08-Tzlil Mechuvan_m-glued-01.wav 47515372
+-- generateUniqueFilename: file didnt exist. returning it (\\DS1821\Downloads\tmp\Full Recording\Audio Files\Tzlil Mechuvan_m.wav)g
+
+-- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files\08-Mehamerhakim_m-glued-01.wav 83017996
+-- generateUniqueFilename: file didnt exist. returning it (\\DS1821\Downloads\tmp\Full Recording\Audio Files\Mehamerhakim_m.wav)
+
+-- copyFile: fail at (1): old_file: error, new_file: ok
+--                        old_path: \\DS1821\Downloads\tmp\Full Recording\Audio Files\02 Tavi'i Itach Yain Mix 1 No Limiter_m.wav
+--                        new_path: C:\Users\david\Desktop\Target\Audio Files\02 Tavi'i Itach Yain Mix 1 No Limiter_m.wav
+
+--                        copyFile: fail at (1): old_file: error, new_file: ok
+--                        old_path: \\DS1821\Downloads\tmp\Full Recording\Audio Files\Tzlil Mechuvan_m.wav
+--                        new_path: C:\Users\david\Desktop\Target\Audio Files\Tzlil Mechuvan_m.wav
+
+--                        copyFile: fail at (1): old_file: error, new_file: ok
+--                        old_path: \\DS1821\Downloads\tmp\Full Recording\Audio Files\Mehamerhakim_m.wav
+--                        new_path: C:\Users\david\Desktop\Target\Audio Files\Mehamerhakim_m.wav
+
+
     local function applyGluedSourceToOriginal(fileInfo, gluedItem)
 
         local gluedTake = r.GetTake(gluedItem, 0)
@@ -569,13 +595,25 @@ function minimizeAndApplyMedia()
             local path, filename = string.match(sourceFilename, "(.-)([^\\/]-([^%.]+))$")
             local ext = filename:match(".+%.(.+)$")
             local newFilename = path .. fileInfo.trackName .. "." .. ext
-            local newName = generateUniqueFilename(newFilename)
-            os.rename(sourceFilename, newName)
+            local uniqueName = generateUniqueFilename(newFilename)
+            
+            -- give time to the file system to refresh 
+            local t_point = reaper.time_precise()
+            repeat until reaper.time_precise() - t_point > 0.5
+            
+            reaper.SelectAllMediaItems(0,false)
+            reaper.SetMediaItemSelected(gluedItem,true)
+            -- reaper.Main_OnCommand(40100,0) -- set all media offline
 
+            reaper.Main_OnCommand(40440,0) -- set selected media temporarily offline
+            local success = moveFile(sourceFilename, uniqueName)
+            reaper.Main_OnCommand(40439,0) -- online
+            
+            -- reaper.ShowConsoleMsg(('rename \n      %s \n   -> %s\n      '..(success and 'ok' or 'fail')..'\n'):format(sourceFilename,uniqueName))
             -- Update the glued item with the new source file and rebuild peaks
-            newSrc = r.PCM_Source_CreateFromFile(newName)
-            app.peakOperations[newName] = newSrc
-            fileInfo.newfilename = newName
+            newSrc = r.PCM_Source_CreateFromFile(uniqueName)
+            app.peakOperations[uniqueName] = newSrc
+            fileInfo.newfilename = uniqueName
             r.PCM_Source_BuildPeaks(newSrc, 0)
 
             local newSrcLength = r.GetMediaSourceLength(newSrc)
@@ -738,11 +776,13 @@ end
 
 function createBackupProject()
     reaper.Main_SaveProject(-1)
-    local targetPath = settings.backupDestination .. '/'
+    local targetPath = settings.backupDestination .. folderSep()
     local targetProject = targetPath .. app.projFileName
     copyFile(app.fullProjPath, targetProject)
     app.perform.total = app.mediaFileCount
     app.perform.pos = 0
+    reaper.Main_OnCommand(40100, 0)  -- All media media items offline
+
     for filename, fileInfo in pairsByOrder(app.mediaFiles) do
         -- move processed files
         reaper.RecursiveCreateDirectory(targetPath .. app.relProjectRecordingPath, 0)
@@ -751,7 +791,7 @@ function createBackupProject()
             fileInfo.status = STATUS.MOVING
             coroutine.yield('Creating backup project')
             local _, newFN, newExt = dissectFilename(fileInfo.newfilename)
-            local target = targetPath .. app.relProjectRecordingPath .. '/' .. newFN .. '.' .. newExt
+            local target = targetPath .. app.relProjectRecordingPath .. folderSep() .. newFN .. '.' .. newExt
             if moveFile(fileInfo.newfilename, target) then
                 fileInfo.status = STATUS.DONE
             else
@@ -775,10 +815,12 @@ function createBackupProject()
         end
         coroutine.yield('Creating backup project')
     end
+    reaper.Main_OnCommand(40101, 0)  -- All media media items online
 end
 
 function deleteOriginals()
     reaper.Main_SaveProject(-1)
+    reaper.Main_OnCommand(40100, 0)  -- All media media items offline
     app.perform.total = app.mediaFileCount
     app.perform.pos = 0
     for filename, fileInfo in pairsByOrder(app.mediaFiles) do
@@ -798,6 +840,7 @@ function deleteOriginals()
         elseif not fileInfo.missing then
             fileInfo.status = STATUS.DONE
         end
-        coroutine.yield('Creating backup project')
+        coroutine.yield('Deleting Original Files')
     end
+    reaper.Main_OnCommand(40101, 0)  -- All media media items online
 end

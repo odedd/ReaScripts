@@ -515,6 +515,7 @@ end
 -- todo: collect external audio + video files + rs5k
 -- todo: enable "Save project file references with relative pathnames" and reapply previous setting after
 -- todo: keep selected takes only (unless item marked with "play all takes")
+-- todo: show explanation when cancelling
 -- todo: show total savings and close script upon completion
 -- todo: scan media folder for extra files at the end
 -- todo: verify minimization before deleting files 
@@ -524,3 +525,9 @@ end
 -- todo: handle empty project
 -- todo: reset when switching projects
 -- todo (later): figure out section
+
+
+-- reaper.Main_OnCommand(40100,0)
+-- file = "C:\\Users\\david\\Desktop\\Full Recording\\Audio Files\\02 Tavi'i Itach Yain Mix 1 No Limiter.wav"
+-- reaper.ShowConsoleMsg(tostring(moveToTrash(file)))
+-- reaper.Main_OnCommand(40101,0)

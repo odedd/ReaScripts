@@ -132,7 +132,7 @@ function checkSettings()
     if settings.backup then
         if settings.backupDestination == nil then
             table.insert(errors, 'Must select destination folder')
-        elseif not file_exists(settings.backupDestination) then
+        elseif not folder_exists(settings.backupDestination) then
             table.insert(errors, 'Destination folder does not exist')
         elseif not isFolderEmpty(settings.backupDestination) then
             table.insert(errors, 'Destination folder must be empty')

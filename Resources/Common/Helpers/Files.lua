@@ -1,23 +1,41 @@
 -- @noindex
+
+function folderSep()
+    return os_is.win and '\\' or '/'
+end
+
 function file_exists(name)
     local f = io.open(name, "r")
     if f ~= nil then
         io.close(f)
         return true
-    else
-        return false
     end
+end
+
+-- file_exists works in mac but fails in windows under some conditions. this works in both (but fails as a total replacement for file_exists)
+function folder_exists(file)
+    local ok, err, code = os.rename(file, file)
+    if not ok then
+        if code == 13 then
+            -- Permission denied, but it exists
+            return true
+        end
+    end
+    if ok == nil then ok = false end
+    return ok, err
 end
 
 function generateUniqueFilename(filename)
     -- Check if the file already exists
-    if reaper.file_exists(filename) then
+    if file_exists(filename) then
         local counter = 1
         local path, name, ext = string.match(filename, "(.-)([^\\/]-).([^%.]+)$")
+        local newFilename
         repeat
             counter = counter + 1
             newFilename = path .. name .. "_" .. counter .. "." .. ext
-        until not reaper.file_exists(newFilename)
+        until not file_exists(newFilename)
+        -- reaper.ShowConsoleMsg(('generateUniqueFilename: new file name! (%s)\n'):format(newFilename))
         return newFilename
     else
         return filename
@@ -81,6 +99,11 @@ function copyFile(old_path, new_path)
     local new_file = io.open(new_path, "wb")
     local old_file_sz, new_file_sz = 0, 0
     if not old_file or not new_file then
+        if old_file then old_file:close() end
+        if new_file then new_file:close() end
+        -- reaper.ShowConsoleMsg('copyFile: fail at (1): old_file: '..(old_file and 'ok' or 'error')..', new_file: '..(new_file and 'ok' or 'error')..'\n')
+        -- reaper.ShowConsoleMsg('                       old_path: '..old_path..'\n')
+        -- reaper.ShowConsoleMsg('                       new_path: '..new_path..'\n')
         return false
     end
     while true do
@@ -94,17 +117,23 @@ function copyFile(old_path, new_path)
     old_file:close()
     new_file_sz = new_file:seek("end")
     new_file:close()
+    -- if not (new_file_sz == old_file_sz) then reaper.ShowConsoleMsg('copyFile: fail at (2)\n') end
     return new_file_sz == old_file_sz
 end
 
 function moveFile(old_path, new_path)
     local success = os.rename(old_path, new_path)
+    -- reaper.ShowConsoleMsg(('moveFile: old_path=%s | new_path=%s\n'):format(old_path,new_path))
     if success then
+        -- reaper.ShowConsoleMsg('moveFile: success on (1)\n')
         return true
     else -- if moving using rename failed, resort to copy + delete
+        -- reaper.ShowConsoleMsg('moveFile: trying copy (2)\n')
         if copyFile(old_path, new_path) then
+            -- reaper.ShowConsoleMsg('moveFile: success on copy. trying to remove... (3)\n')
             return os.remove(old_path)
         else
+            -- reaper.ShowConsoleMsg('moveFile: fail on copy (4)\n')
             return false
         end
     end
@@ -116,12 +145,21 @@ function moveToTrash(filename)
         trashPath = os.getenv("HOME") .. "/.Trash/"
     elseif os_is.lin then
         trashPath = os.getenv("HOME") .. "/.local/share/Trash/files/"
+    elseif os_is.win then
+        local escaped_filename = filename:gsub('\'','\'\'') --escape for powershell
+        local cmd = ([[
+@powershell.exe -nologo -noprofile -Command "& {Add-Type -AssemblyName 'Microsoft.VisualBasic'; Get-ChildItem -Path '%s' | ForEach-Object { if ($_ -is [System.IO.DirectoryInfo]) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($_.FullName,'OnlyErrorDialogs','SendToRecycleBin') } else { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($_.FullName,'OnlyErrorDialogs','SendToRecycleBin') } } }"
+]]):format(escaped_filename)
+    -- reaper.ShowConsoleMsg(cmd..'\n')
+        return os.execute(cmd)
+        -- return reaper.ExecProcess(cmd,0)
+    -- windows not yet clear
     else
-        -- windows not yet clear
         return false
     end
+
     local _, Fn, ext = dissectFilename(filename)
-    if not file_exists(trashPath) then return false end
+    if not folder_exists(trashPath) then return false end
 
     local fileInTrashPath = trashPath..Fn..'.'..ext
     return moveFile(filename, fileInTrashPath)
@@ -141,12 +179,15 @@ function getFormattedFileSize(fileSize)
 end
 
 function getFileSize(fileName)
+    -- reaper.ShowConsoleMsg(('getFileSize for: %s '):format(fileName))
     local file = io.open(fileName, "rb")
     if file then
         local fileSize = file:seek("end")
         file:close()
+        -- reaper.ShowConsoleMsg(fileSize..'\n')
         return fileSize
     else
+        -- reaper.ShowConsoleMsg('failed\n')
         return nil
     end
 end
