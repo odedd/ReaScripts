@@ -103,13 +103,13 @@ gui.setting = function(stType, text, hint, val, data, sameline)
     elseif stType == 'file' then
         retval = val
         if r.ImGui_Button(ctx, val or data.label or 'Browse...', widgetWidth) then
-            local rv, file = reaper.GetUserFileNameForRead(data.filename or '', data.title or '', data.defext or '');
+            local rv, file = r.GetUserFileNameForRead(data.filename or '', data.title or '', data.defext or '');
             retval = rv and file or nil
         end
     elseif stType == 'folder' then
         retval = val
         if r.ImGui_Button(ctx, val or data.label or 'Browse...', widgetWidth) then
-            local rv, folder = reaper.JS_Dialog_BrowseForFolder(data.title or '', data.initialPath);
+            local rv, folder = r.JS_Dialog_BrowseForFolder(data.title or '', data.initialPath);
             retval = rv == 1 and folder or nil
         end
     elseif stType == 'text' then

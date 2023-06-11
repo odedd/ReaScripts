@@ -56,7 +56,7 @@ gui.st.col.status = {
 local function doPerform()
     if checkSettings() then
         -- first save the project in its current form
-        reaper.Main_SaveProject(-1)
+        r.Main_SaveProject(-1)
         -- set global project path in app variable
         setProjPaths()
         -- save stuff to restore in any case
@@ -188,7 +188,7 @@ function app.drawPerform(open)
                         end
                         r.ImGui_TableNextColumn(ctx) -- status
                         if gui.st.col.status[fileInfo.status] then
-                            reaper.ImGui_TableSetBgColor(ctx, reaper.ImGui_TableBgTarget_CellBg(),
+                            r.ImGui_TableSetBgColor(ctx, r.ImGui_TableBgTarget_CellBg(),
                                 gui.st.col.status[fileInfo.status])
                         end
                         r.ImGui_Text(ctx, STATUS_DESCRIPTIONS[fileInfo.status] ..
@@ -395,11 +395,11 @@ function app.drawBottom(ctx, bottom_lines)
         r.ImGui_ProgressBar(ctx, (app.perform.pos or 0) / (app.perform.total or 1), w - 150, h,
             ("%s/%s"):format(app.perform.pos, app.perform.total))
         r.ImGui_SameLine(ctx)
-        reaper.ImGui_PushStyleColor(ctx, reaper.ImGui_Col_Button(), 0x444444ff)
+        r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Button(), 0x444444ff)
         if r.ImGui_Button(ctx, 'Cancel', r.ImGui_GetContentRegionAvail(ctx)) then
             cancel()
         end
-        reaper.ImGui_PopStyleColor(ctx)
+        r.ImGui_PopStyleColor(ctx)
     end
 end
 
@@ -407,11 +407,11 @@ function app.drawMainWindow()
     local ctx = gui.ctx
     local max_w, max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx))
 
-    -- reaper.ShowConsoleMsg(viewPortWidth)
+    -- r.ShowConsoleMsg(viewPortWidth)
     r.ImGui_SetNextWindowSize(ctx, math.min(1125, max_w), math.min(800, max_h), r.ImGui_Cond_Appearing())
     r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
     local visible, open = r.ImGui_Begin(ctx, scr.name .. ' v' .. scr.version .. "##mainWindow", not app.coPerform,
-        reaper.ImGui_WindowFlags_NoDocking() | reaper.ImGui_WindowFlags_NoCollapse())
+        r.ImGui_WindowFlags_NoDocking() | r.ImGui_WindowFlags_NoCollapse())
     gui.mainWindow = {
         pos = {r.ImGui_GetWindowPos(ctx)},
         size = {r.ImGui_GetWindowSize(ctx)}
@@ -539,9 +539,9 @@ end
 -- todo (later): figure out section
 
 -- check project has a folder:
---     local proj_name = reaper.GetProjectName( 0, '' )
+--     local proj_name = r.GetProjectName( 0, '' )
 --    if proj_name == '' then MB('Project has not any parent folder.', 'Collect RS5k samples into project folder', 0) return end
--- local spls_path = reaper.GetProjectPathEx( 0, '' )..'/RS5K samples/'
+-- local spls_path = r.GetProjectPathEx( 0, '' )..'/RS5K samples/'
 
 -- -- function by MPL
 -- --------------------------------------------------------------------- 
@@ -549,11 +549,11 @@ end
 --     if not tr then
 --         return
 --     end
---     local rv, buf = reaper.TrackFX_GetFXName(tr, fxnumber, '')
+--     local rv, buf = r.TrackFX_GetFXName(tr, fxnumber, '')
 --     if not rv then
 --         return
 --     end
---     local rv, buf = reaper.TrackFX_GetParamName(tr, fxnumber, 3, '')
+--     local rv, buf = r.TrackFX_GetParamName(tr, fxnumber, 3, '')
 --     if not rv or buf ~= 'Note range start' then
 --         return
 --     end
@@ -562,10 +562,10 @@ end
 -- -- heavily based on funciton by MPL
 -- ---------------------------------------------------------------------
 -- function collectRS5KSamples()
---     local proj_name = reaper.GetProjectName(0, '')
---     local spls_path = reaper.GetProjectPathEx(0, '') .. '/RS5K samples/'
+--     local proj_name = r.GetProjectName(0, '')
+--     local spls_path = r.GetProjectPathEx(0, '') .. '/RS5K samples/'
 --     r.RecursiveCreateDirectory(spls_path, 0)
---     for i = 1, reaper.GetNumTracks(0) do
+--     for i = 1, r.GetNumTracks(0) do
 --         local tr = r.GetTrack(0, i - 1)
 --         for fx = 1, r.TrackFX_GetCount(tr) do
 --             if IsRS5K(tr, fx - 1) then
@@ -576,8 +576,8 @@ end
 --                 file_src = file_src:gsub('\\', '/')
 --                 file_dest = file_dest:gsub('\\', '/')
 --                 rel_file_dest = rel_file_dest:gsub('\\', '/')
---                 reaper.ShowConsoleMsg(file_src .. '\n')
---                 reaper.ShowConsoleMsg(rel_file_dest .. '\n')
+--                 r.ShowConsoleMsg(file_src .. '\n')
+--                 r.ShowConsoleMsg(rel_file_dest .. '\n')
 --                 copyFile(file_src, file_dest)
 --                 r.TrackFX_SetNamedConfigParm(tr, fx - 1, 'FILE0', rel_file_dest)
 --             end

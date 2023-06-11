@@ -1,8 +1,8 @@
 -- @noindex
 function getProjectPaths()
-    local projectRecordingPath = reaper.GetProjectPath()
-    local proj, fullProjPath = reaper.EnumProjects(-1, '') -- full project name including path and RPP file
-    local projFileName = reaper.GetProjectName(proj) -- just the RPP file
+    local projectRecordingPath = r.GetProjectPath()
+    local proj, fullProjPath = r.EnumProjects(-1, '') -- full project name including path and RPP file
+    local projFileName = r.GetProjectName(proj) -- just the RPP file
     local projPath = fullProjPath:gsub(projFileName .. '$', '') -- just the project path
     local relProjectRecordingPath = OD_GetRelativeOrAbsolutePath(projectRecordingPath,projPath)
     return projPath, projFileName, fullProjPath, projectRecordingPath, relProjectRecordingPath
@@ -20,7 +20,7 @@ end
 function getReaperActionNameOrCommandId(actionNamedCommandID)
     actionNamedCommandID = (type(actionNamedCommandID) == 'string') and '_' .. actionNamedCommandID or
                                actionNamedCommandID
-    local actionNumber = reaper.NamedCommandLookup(actionNamedCommandID)
+    local actionNumber = r.NamedCommandLookup(actionNamedCommandID)
     if r.APIExists('CF_GetCommandText') then -- if SWS, return name
         return true, r.CF_GetCommandText(0, actionNumber)
     else -- otherwise Fallback to Action ID
