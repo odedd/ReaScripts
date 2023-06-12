@@ -172,7 +172,7 @@ function OD_MoveToTrash(filename)
     end
 
     local fileInTrashPath = trashPath .. Fn .. (ext and ('.' .. ext) or '')
-    return moveFile(filename, fileInTrashPath)
+    return OD_MoveFile(filename, fileInTrashPath)
 end
 
 function OD_GetFormattedFileSize(fileSize)

@@ -321,8 +321,12 @@ function CollectMedia()
                 local targetFileName = targetPath ..
                 fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or '')
                 local uniqueFilename = OD_GenerateUniqueFilename(targetFileName)
-                r.ShowConsoleMsg(("Will copy %s\n       to %s...'\n\n"):format(fileInfo.filenameWithPath,
-                    uniqueFilename))
+                -- r.ShowConsoleMsg(("Will copy %s\n       to %s...'\n\n"):format(fileInfo.filenameWithPath,
+                    -- uniqueFilename))
+                if not OD_FolderExists(targetPath) then 
+                    app.restore.foldersToDelete = app.restore.foldersToDelete or {}
+                    table.insert(app.restore.foldersToDelete, targetPath) 
+                end
                 r.RecursiveCreateDirectory(targetPath, 0)
 
                 local success = OD_CopyFile(fileInfo.filenameWithPath, uniqueFilename)
@@ -331,9 +335,12 @@ function CollectMedia()
                     fileInfo.status_info = 'collection failed'
                 else
                     local newSrc = r.PCM_Source_CreateFromFile(uniqueFilename)
-                    app.peakOperations[uniqueFilename] = newSrc
+                    
                     fileInfo.newfilename = uniqueFilename
-                    r.PCM_Source_BuildPeaks(newSrc, 0)
+                    if not settings.backup then 
+                        app.peakOperations[uniqueFilename] = newSrc
+                        r.PCM_Source_BuildPeaks(newSrc, 0) 
+                    end
                     fileInfo.collectBackupOperation = 'move'
                     for i, oc in ipairs(fileInfo.occurrences) do
                         r.SetMediaItemTake_Source(oc.take, newSrc)
@@ -670,10 +677,14 @@ function MinimizeAndApplyMedia()
             r.Main_OnCommand(40439, 0) -- online
 
             -- Update the glued item with the new source file and rebuild peaks
+            
             newSrc = r.PCM_Source_CreateFromFile(uniqueName)
-            app.peakOperations[uniqueName] = newSrc
             fileInfo.newfilename = uniqueName
-            r.PCM_Source_BuildPeaks(newSrc, 0)
+            if not settings.backup then 
+                app.peakOperations[uniqueName] = newSrc
+                r.PCM_Source_BuildPeaks(newSrc, 0) 
+            end
+            
 
             local newSrcLength = r.GetMediaSourceLength(newSrc)
             for i, oc in ipairs(fileInfo.occurrences) do
@@ -756,6 +767,10 @@ function Restore()
     r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", app.restore.opencopy_cfgidx, true)
     r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", app.restore.afxfrmt, true)
     r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", app.restore.useprjsrate, true)
+    -- delete temporary folders
+    for i, folder in ipairs(app.restore.foldersToDelete or {}) do
+        os.remove(folder)
+    end
     -- delete temporary RPP backup file
     local success, error = os.remove(app.revert.tmpBackupFileName)
 end
@@ -904,7 +919,7 @@ function DeleteOriginals()
         -- delete original files which were replaced by minimized versions
         app.perform.pos = app.perform.pos + 1
         coroutine.yield(stat)
-        if not fileInfo.ignore and not fileInfo.missing then
+        if not fileInfo.external and not fileInfo.ignore and not fileInfo.missing then
             fileInfo.status = settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and STATUS.MOVING_TO_TRASH or
                 STATUS.DELETING
             coroutine.yield(stat)

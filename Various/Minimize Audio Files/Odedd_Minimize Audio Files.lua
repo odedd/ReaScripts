@@ -133,8 +133,8 @@ function app.drawPerform(open)
 
     if open then
         local childHeight = select(2, r.ImGui_GetContentRegionAvail(ctx)) -
-                                (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines +
-                                    r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2)
+            (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines +
+                r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2)
         if r.ImGui_BeginChild(ctx, 'mediaFiles', 0, childHeight) then
             if r.ImGui_BeginTable(ctx, 'table_scrollx', 9, gui.tables.horizontal.flags1) then
                 local parent_open, depth, open_depth = true, 0, 0
@@ -162,14 +162,14 @@ function app.drawPerform(open)
                         r.ImGui_TableNextColumn(ctx) -- takes
                         r.ImGui_Text(ctx, #fileInfo.occurrences)
                         r.ImGui_TableNextColumn(ctx) -- status
-                        local curScrPos = {r.ImGui_GetCursorScreenPos(ctx)}
+                        local curScrPos = { r.ImGui_GetCursorScreenPos(ctx) }
                         curScrPos[2] = curScrPos[2] + 1
 
                         overview_width = r.ImGui_GetContentRegionAvail(ctx)
                         r.ImGui_DrawList_AddRectFilled(gui.draw_list, curScrPos[1], curScrPos[2],
                             curScrPos[1] + overview_width, curScrPos[2] + line_height - 1, (fileInfo.status >=
                                 STATUS.MINIMIZED or #(fileInfo.sections or {}) > 0) and gui.st.col.item_keep or
-                                gui.st.col.item)
+                            gui.st.col.item)
 
                         for i, sect in OD_PairsByOrder(fileInfo.sections or {}) do
                             r.ImGui_DrawList_AddRectFilled(gui.draw_list, curScrPos[1] + overview_width * sect.from,
@@ -197,7 +197,8 @@ function app.drawPerform(open)
                             (fileInfo.status_info ~= '' and (' (%s)'):format(fileInfo.status_info) or ''))
                         r.ImGui_TableNextColumn(ctx) -- folder
                         local path = (fileInfo.relOrAbsPath):gsub(
-                            OD_EscapePattern((fileInfo.basename) .. (fileInfo.ext and ('.' .. fileInfo.ext) or '') .. '$'),'')
+                            OD_EscapePattern((fileInfo.basename) .. (fileInfo.ext and ('.' .. fileInfo.ext) or '') .. '$'),
+                            '')
                         r.ImGui_Text(ctx, path)
                     end
                 end
@@ -210,12 +211,12 @@ end
 
 function app.drawWarning()
     local ctx = gui.ctx
-    local center = {gui.mainWindow.pos[1] + gui.mainWindow.size[1] / 2,
-                    gui.mainWindow.pos[2] + gui.mainWindow.size[2] / 2} -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
+    local center = { gui.mainWindow.pos[1] + gui.mainWindow.size[1] / 2,
+        gui.mainWindow.pos[2] + gui.mainWindow.size[2] / 2 }            -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
     local text = [[
 You have selected not to backup to a new folder.
 
-This means that all the audio source files will be
+This means that all* the audio source files will be
 DELETED and new "minimized" versions of them will be
 created instead.
 
@@ -229,6 +230,9 @@ Since files are deleted - this cannot be undone!
 
 Please think about it carefully before continuing.
 
+
+*Audio files outside of the project's media folder
+ will not be deleted.
 ]]
     local okButtonLabel = 'OK'
     local okButtonLabel = app.popup.secondWarningShown and 'Come on already let\'s do it!' or 'OK'
@@ -246,7 +250,7 @@ Please think about it carefully before continuing.
     r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
     r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_WindowTitleAlign(), 0.5, 0.5)
     if r.ImGui_BeginPopupModal(ctx, 'Are you sure?', nil,
-        r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
+            r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
         local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
         r.ImGui_PushItemWidth(ctx, width)
 
@@ -258,11 +262,11 @@ Please think about it carefully before continuing.
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
 
         local buttonTextWidth = r.ImGui_CalcTextSize(ctx, okButtonLabel) +
-                                    r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
+            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
 
         buttonTextWidth = buttonTextWidth + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) +
-                              r.ImGui_CalcTextSize(ctx, cancelButtonLabel) +
-                              r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
+            r.ImGui_CalcTextSize(ctx, cancelButtonLabel) +
+            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
         r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
         if r.ImGui_Button(ctx, okButtonLabel) then
@@ -323,7 +327,7 @@ But everything wil probably be ok :)
             r.ImGui_SetCursorPos(ctx, (windowWidth - textWidth) * .5, (windowHeight - textHeight) * .5);
 
             if r.ImGui_BeginChild(ctx, 'msgBody', 0,
-                select(2, r.ImGui_GetContentRegionAvail(ctx)) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
+                    select(2, r.ImGui_GetContentRegionAvail(ctx)) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
                     r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())) then
                 r.ImGui_TextWrapped(ctx, secondWarningText)
                 local _, hideThis =
@@ -336,7 +340,7 @@ But everything wil probably be ok :)
             r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
                 r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
             local buttonTextWidth = r.ImGui_CalcTextSize(ctx, buttonLabel) +
-                                        r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
+                r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
             r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
             if r.ImGui_Button(ctx, 'Got it') then
@@ -371,7 +375,7 @@ function app.drawBottom(ctx, bottom_lines)
     end
     if not app.coPerform then
         if r.ImGui_Button(ctx, settings.backup and 'Create Backup' or 'Minimize Current Project',
-            r.ImGui_GetContentRegionAvail(ctx)) then
+                r.ImGui_GetContentRegionAvail(ctx)) then
             -- don't save backupDestination into saved preferences, but save all other settings
             local tmpDest = settings.backupDestination
             settings.backupDestination = nil
@@ -415,8 +419,8 @@ function app.drawMainWindow()
     local visible, open = r.ImGui_Begin(ctx, scr.name .. ' v' .. scr.version .. "##mainWindow", not app.coPerform,
         r.ImGui_WindowFlags_NoDocking() | r.ImGui_WindowFlags_NoCollapse())
     gui.mainWindow = {
-        pos = {r.ImGui_GetWindowPos(ctx)},
-        size = {r.ImGui_GetWindowSize(ctx)}
+        pos = { r.ImGui_GetWindowPos(ctx) },
+        size = { r.ImGui_GetWindowSize(ctx) }
     }
 
     if visible then
@@ -473,7 +477,7 @@ function app.drawMainWindow()
             })
         if settings.backup then
             app.temp.originalBackupValue = app.temp.originalBackupValue or
-                                               OD_BfCheck(settings.collect, COLLECT.EXTERNAL)
+                OD_BfCheck(settings.collect, COLLECT.EXTERNAL)
             tmpSetting = {
                 [COLLECT.EXTERNAL] = COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL]
             }
@@ -522,14 +526,14 @@ end
 ---------------------------------------
 
 if OD_PrereqsOK({
-    reaimgui_version = '0.8',
-    sws = true, -- required for SNM_SetIntConfigVar - setting config vars (max file size limitation and autosave options)
-    js_version = 1.310, -- required for JS_Dialog_BrowseForFolder
-    reaper_version = 6.76 -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
-    -- scripts = {
-    --     ['Mavriq Lua Batteris'] =  r.GetResourcePath() .."/Scripts/Mavriq ReaScript Repository/Various/Mavriq-Lua-Batteries/batteries_header.lua"
-    -- }
-}) then
+        reaimgui_version = '0.8',
+        sws = true,       -- required for SNM_SetIntConfigVar - setting config vars (max file size limitation and autosave options)
+        js_version = 1.310, -- required for JS_Dialog_BrowseForFolder
+        reaper_version = 6.76 -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
+        -- scripts = {
+        --     ['Mavriq Lua Batteris'] =  r.GetResourcePath() .."/Scripts/Mavriq ReaScript Repository/Various/Mavriq-Lua-Batteries/batteries_header.lua"
+        -- }
+    }) then
     loadSettings()
     -- app.coPerform = coroutine.create(doPerform)
     r.defer(app.loop)
