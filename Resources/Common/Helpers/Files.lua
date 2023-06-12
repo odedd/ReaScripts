@@ -1,6 +1,6 @@
 -- @noindex
 function OD_FolderSep()
-    return os_is.win and '\\' or '/'
+    return OS_is.win and '\\' or '/'
 end
 
 function OD_FileExists(name)
@@ -136,11 +136,11 @@ end
 
 function OD_MoveToTrash(filename)
     local trashPath
-    if os_is.mac then
+    if OS_is.mac then
         trashPath = os.getenv("HOME") .. "/.Trash/"
-    elseif os_is.lin then
+    elseif OS_is.lin then
         trashPath = os.getenv("HOME") .. "/.local/share/Trash/files/"
-    elseif os_is.win then
+    elseif OS_is.win then
         local escaped_filenames = {}
         local filenames
         if type(filename) == "string" then

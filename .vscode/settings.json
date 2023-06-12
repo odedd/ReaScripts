@@ -1,3 +1,9 @@
 {
-    "todo-tree.tree.showBadges": true
+    "todo-tree.tree.showBadges": true,
+    "Lua.diagnostics.globals": [
+        "reaper",
+        "r",
+        "pickle",
+        "unpickle"
+    ]
 }

@@ -1,5 +1,5 @@
 -- @noindex
-settings = {}
+Settings = {}
 
 -- bitwise
 COLLECT = {
@@ -87,7 +87,7 @@ for i = 0, #GLUE_FORMATS_DETAILS do
     GLUE_FORMATS_LIST = (GLUE_FORMATS_LIST or '') .. GLUE_FORMATS_DETAILS[i].description .. '\0'
 end
 
-function getDefaultSettings(factory)
+local function getDefaultSettings(factory)
     if factory == nil then
         factory = false
     end
@@ -110,7 +110,7 @@ function getDefaultSettings(factory)
     }
 
     if not factory then
-        local loaded_ext_settings = table.load(scr.dfsetfile) or {}
+        local loaded_ext_settings = table.load(Scr.dfsetfile) or {}
         for k, v in pairs(loaded_ext_settings or {}) do
             settings.default[k] = v
         end
@@ -119,13 +119,13 @@ function getDefaultSettings(factory)
     return settings
 end
 
-function loadSettings()
+function LoadSettings()
     local st = getDefaultSettings()
-    settings = OD_DeepCopy(st.default)
+    Settings = OD_DeepCopy(st.default)
 end
 
-function saveSettings()
-    table.save(settings, scr.dfsetfile)
+function SaveSettings()
+    table.save(Settings, Scr.dfsetfile)
 end
 
 function CheckSettings()
@@ -133,12 +133,12 @@ function CheckSettings()
     if r.GetPlayState() & 4 == 4 then
         table.insert(errors, "Reaper cannot be recording while minimizing")
     end
-    if settings.backup then
-        if settings.backupDestination == nil then
+    if Settings.backup then
+        if Settings.backupDestination == nil then
             table.insert(errors, 'Must select destination folder')
-        elseif not OD_FolderExists(settings.backupDestination) then
+        elseif not OD_FolderExists(Settings.backupDestination) then
             table.insert(errors, 'Destination folder does not exist')
-        elseif not OD_IsFolderEmpty(settings.backupDestination) then
+        elseif not OD_IsFolderEmpty(Settings.backupDestination) then
             table.insert(errors, 'Destination folder must be empty')
         end
     end

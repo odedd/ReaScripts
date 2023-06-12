@@ -659,7 +659,7 @@ if OD_PrereqsOK({
                     r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. scr.context_name .. '_STEM_MATRIX', '', true)
                 end
             end
-            saveLongProjExtState(scr.context_name, 'STEMS', pickle(self.stems or {}))
+            OD_SaveLongProjExtState(scr.context_name, 'STEMS', pickle(self.stems or {}))
             for k, v in pairs(self.savedSoloStates) do
                 r.SetProjExtState(0, scr.context_name .. '_SAVED_SOLO_STATES', k, pickle(v))
             end
@@ -683,7 +683,7 @@ if OD_PrereqsOK({
                 if app.debug then
                     r.ShowConsoleMsg('FULL SYNC\n')
                 end
-                self.stems = unpickle(loadLongProjExtKey(scr.context_name, 'STEMS')) or {}
+                self.stems = unpickle(OD_LoadLongProjExtKey(scr.context_name, 'STEMS')) or {}
                 self.prefSoloIP = select(2, r.get_config_var_string('soloip')) == '1'
             end
 
@@ -851,7 +851,7 @@ if OD_PrereqsOK({
     local function loadSettings()
         settings = getDefaultSettings()
         -- take merged updated default settings and merge project specific settings into them
-        local loaded_project_settings = unpickle(loadLongProjExtKey(scr.context_name, 'PROJECT SETTINGS'))
+        local loaded_project_settings = unpickle(OD_LoadLongProjExtKey(scr.context_name, 'PROJECT SETTINGS'))
         settings.project = OD_DeepCopy(settings.default)
         for k, v in pairs(loaded_project_settings or {}) do
             if not (k == 'render_setting_groups') then
@@ -868,7 +868,7 @@ if OD_PrereqsOK({
 
     local function saveSettings()
         table.save(settings.default, scr.dfsetfile)
-        saveLongProjExtState(scr.context_name, 'PROJECT SETTINGS', pickle(settings.project))
+        OD_SaveLongProjExtState(scr.context_name, 'PROJECT SETTINGS', pickle(settings.project))
         r.MarkProjectDirty(0)
     end
 
@@ -2466,7 +2466,7 @@ end]]):gsub('$(%w+)', {
                         r.ImGui_SetNextItemWidth(ctx, widgetWidth)
                         if r.ImGui_BeginListBox(ctx, '##' .. text, 0, r.ImGui_GetTextLineHeightWithSpacing(ctx) * 4) then
                             for i, action in ipairs(retval_a) do
-                                local rv, name = getReaperActionNameOrCommandId(action)
+                                local rv, name = OD_GetReaperActionCommandId(action)
                                 if r.ImGui_Selectable(ctx, name .. '##' .. text .. i, gui.stWnd[cP][text] == i) then
                                     if gui.stWnd[cP][text] == i then
                                         gui.stWnd[cP][text] = nil

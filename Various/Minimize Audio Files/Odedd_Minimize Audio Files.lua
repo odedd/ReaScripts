@@ -16,14 +16,14 @@ dofile(p .. '../../Resources/Common/Common.lua')
 
 r.ClearConsole()
 
-scr, os_is = OD_Init()
+Scr, OS_is = OD_Init()
 
 dofile(p .. 'lib/Settings.lua')
 dofile(p .. 'lib/Minimize.lua')
 dofile(p .. 'lib/Gui.lua')
 dofile(p .. 'lib/App.lua')
 
-gui.tables = {
+Gui.tables = {
     horizontal = {
         flags1 = r.ImGui_TableFlags_NoSavedSettings() | r.ImGui_TableFlags_ScrollX() | r.ImGui_TableFlags_ScrollY() |
             r.ImGui_TableFlags_BordersOuter() | r.ImGui_TableFlags_Borders() | r.ImGui_TableFlags_Resizable() |
@@ -31,12 +31,12 @@ gui.tables = {
     }
 }
 
-gui.st.col.item = 0x333333ff;
-gui.st.col.item_keep = 0x2a783fff;
-gui.st.col.item_delete = 0x852f29ff;
-gui.st.col.item_ignore = 0x852f29ff;
+Gui.st.col.item = 0x333333ff;
+Gui.st.col.item_keep = 0x2a783fff;
+Gui.st.col.item_delete = 0x852f29ff;
+Gui.st.col.item_ignore = 0x852f29ff;
 
-gui.st.col.status = {
+Gui.st.col.status = {
     [STATUS.IGNORE] = 0x333333ff,
     [STATUS.SCANNED] = nil,
     [STATUS.MINIMIZING] = 0x703d19ff,
@@ -66,25 +66,25 @@ local function doPerform()
         -- save suff to restore in case of error/cancel or if creating a backup
         PrepareRevert()
         -- since changes will be made during the process, we don't want the project accidentally saved
-        DisableAutosave()
+        PrepareSettings()
         -- set glue quality
         SetQuality()
         -- get information on all takes, separated by media source file
         GetMediaFiles()
         -- if sources are networked, trashing may not be an option.
-        if (not settings.backup) and (settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH) and
+        if (not Settings.backup) and (Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH) and
             (NetworkedFilesExist()) then
-            cancel(
+            Cancel(
                 'Networked files were found.\nMoving networkd files to the\ntrash is not supported.\nPlease select deleting files\nor consider backing up instead of\nminimizing.')
         else
             -- minimize files and apply to original sources
             MinimizeAndApplyMedia()
             CollectMedia()
-            -- if OD_BwCheck(settings.collect, COLLECT.RS5K) then
+            -- if OD_BwCheck(Settings.collect, COLLECT.RS5K) then
             --     collectRS5KSamples()
             -- end
 
-            if settings.backup then
+            if Settings.backup then
                 -- copy to a new project path (move glued files, copy others)
                 CreateBackupProject()
                 -- revert back to temporary copy of project
@@ -104,19 +104,20 @@ local function doPerform()
 end
 
 local function checkPerform()
-    if app.coPerform then
-        if coroutine.status(app.coPerform) == "suspended" then
-            retval, app.perform.status = coroutine.resume(app.coPerform)
+    if App.coPerform then
+        if coroutine.status(App.coPerform) == "suspended" then
+            local retval
+            retval, App.perform.status = coroutine.resume(App.coPerform)
             if not retval then
-                if app.perform.status:sub(-17) == 'cancelled by glue' then
-                    cancel()
+                if App.perform.status:sub(-17) == 'cancelled by glue' then
+                    Cancel()
                 else
                     -- r.ShowConsoleMsg(app.perform.status)
-                    cancel(('Error occured:\n%s'):format(app.perform.status))
+                    Cancel(('Error occured:\n%s'):format(App.perform.status))
                 end
             end
-        elseif coroutine.status(app.coPerform) == "dead" then
-            app.coPerform = nil
+        elseif coroutine.status(App.coPerform) == "dead" then
+            App.coPerform = nil
         end
     end
 end
@@ -125,8 +126,8 @@ end
 -- UI ---------------------------------
 ---------------------------------------
 
-function app.drawPerform(open)
-    local ctx = gui.ctx
+function App.drawPerform(open)
+    local ctx = Gui.ctx
     local bottom_lines = 2
     local overview_width = 200
     local line_height = r.ImGui_GetTextLineHeight(ctx)
@@ -136,7 +137,7 @@ function app.drawPerform(open)
             (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines +
                 r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2)
         if r.ImGui_BeginChild(ctx, 'mediaFiles', 0, childHeight) then
-            if r.ImGui_BeginTable(ctx, 'table_scrollx', 9, gui.tables.horizontal.flags1) then
+            if r.ImGui_BeginTable(ctx, 'table_scrollx', 9, Gui.tables.horizontal.flags1) then
                 local parent_open, depth, open_depth = true, 0, 0
                 r.ImGui_TableSetupColumn(ctx, 'File', r.ImGui_TableColumnFlags_NoHide(), 250) -- Make the first column not hideable to match our use of TableSetupScrollFreeze()
                 r.ImGui_TableSetupColumn(ctx, '#', nil, 30)
@@ -150,7 +151,7 @@ function app.drawPerform(open)
                 r.ImGui_TableSetupScrollFreeze(ctx, 1, 1)
 
                 r.ImGui_TableHeadersRow(ctx)
-                for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
+                for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
                     r.ImGui_TableNextRow(ctx)
                     r.ImGui_TableNextColumn(ctx) -- file
                     r.ImGui_Text(ctx, fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or ''))
@@ -166,15 +167,15 @@ function app.drawPerform(open)
                         curScrPos[2] = curScrPos[2] + 1
 
                         overview_width = r.ImGui_GetContentRegionAvail(ctx)
-                        r.ImGui_DrawList_AddRectFilled(gui.draw_list, curScrPos[1], curScrPos[2],
+                        r.ImGui_DrawList_AddRectFilled(Gui.draw_list, curScrPos[1], curScrPos[2],
                             curScrPos[1] + overview_width, curScrPos[2] + line_height - 1, (fileInfo.status >=
-                                STATUS.MINIMIZED or #(fileInfo.sections or {}) > 0) and gui.st.col.item_keep or
-                            gui.st.col.item)
+                                STATUS.MINIMIZED or #(fileInfo.sections or {}) > 0) and Gui.st.col.item_keep or
+                            Gui.st.col.item)
 
                         for i, sect in OD_PairsByOrder(fileInfo.sections or {}) do
-                            r.ImGui_DrawList_AddRectFilled(gui.draw_list, curScrPos[1] + overview_width * sect.from,
+                            r.ImGui_DrawList_AddRectFilled(Gui.draw_list, curScrPos[1] + overview_width * sect.from,
                                 curScrPos[2], curScrPos[1] + overview_width * sect.to, curScrPos[2] + line_height - 1,
-                                gui.st.col.item_delete)
+                                Gui.st.col.item_delete)
                         end
                         -- r.ImGui_ProgressBar(ctx, 0,nil, nil,string.format("%.2f", fileInfo.srclen))
                         r.ImGui_TableNextColumn(ctx) -- keep length
@@ -189,9 +190,9 @@ function app.drawPerform(open)
                                 string.format("%.f %%", fileInfo.newFileSize / fileInfo.sourceFileSize * 100))
                         end
                         r.ImGui_TableNextColumn(ctx) -- status
-                        if gui.st.col.status[fileInfo.status] then
+                        if Gui.st.col.status[fileInfo.status] then
                             r.ImGui_TableSetBgColor(ctx, r.ImGui_TableBgTarget_CellBg(),
-                                gui.st.col.status[fileInfo.status])
+                                Gui.st.col.status[fileInfo.status])
                         end
                         r.ImGui_Text(ctx, STATUS_DESCRIPTIONS[fileInfo.status] ..
                             (fileInfo.status_info ~= '' and (' (%s)'):format(fileInfo.status_info) or ''))
@@ -209,10 +210,10 @@ function app.drawPerform(open)
     end
 end
 
-function app.drawWarning()
-    local ctx = gui.ctx
-    local center = { gui.mainWindow.pos[1] + gui.mainWindow.size[1] / 2,
-        gui.mainWindow.pos[2] + gui.mainWindow.size[2] / 2 }            -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
+function App.drawWarning()
+    local ctx = Gui.ctx
+    local center = { Gui.mainWindow.pos[1] + Gui.mainWindow.size[1] / 2,
+        Gui.mainWindow.pos[2] + Gui.mainWindow.size[2] / 2 }            -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
     local text = [[
 You have selected not to backup to a new folder.
 
@@ -235,7 +236,7 @@ Please think about it carefully before continuing.
  will not be deleted.
 ]]
     local okButtonLabel = 'OK'
-    local okButtonLabel = app.popup.secondWarningShown and 'Come on already let\'s do it!' or 'OK'
+    local okButtonLabel = App.popup.secondWarningShown and 'Come on already let\'s do it!' or 'OK'
     local cancelButtonLabel = 'Cancel'
     local okPressed = false
     local cancelPressed = false
@@ -270,10 +271,10 @@ Please think about it carefully before continuing.
         r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
         if r.ImGui_Button(ctx, okButtonLabel) then
-            if settings.showMinimizeDoubleWarning and not app.popup.secondWarningShown then
+            if Settings.showMinimizeDoubleWarning and not App.popup.secondWarningShown then
                 r.ImGui_OpenPopup(ctx, 'Also...')
             else
-                app.popup.secondWarningShown = false
+                App.popup.secondWarningShown = false
                 okPressed = true
                 r.ImGui_CloseCurrentPopup(ctx)
             end
@@ -281,7 +282,7 @@ Please think about it carefully before continuing.
 
         r.ImGui_SameLine(ctx)
         if r.ImGui_Button(ctx, cancelButtonLabel) then
-            app.popup.secondWarningShown = false
+            App.popup.secondWarningShown = false
             okPressed = false
             cancelPressed = true
             r.ImGui_CloseCurrentPopup(ctx)
@@ -318,7 +319,7 @@ But everything wil probably be ok :)
         r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
 
         if r.ImGui_BeginPopupModal(ctx, 'Also...', nil, r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
-            app.popup.secondWarningShown = true
+            App.popup.secondWarningShown = true
 
             local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
             r.ImGui_PushItemWidth(ctx, width)
@@ -331,8 +332,8 @@ But everything wil probably be ok :)
                     r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())) then
                 r.ImGui_TextWrapped(ctx, secondWarningText)
                 local _, hideThis =
-                    r.ImGui_Checkbox(ctx, "Dont show this again", not settings.showMinimizeDoubleWarning)
-                settings.showMinimizeDoubleWarning = not hideThis
+                    r.ImGui_Checkbox(ctx, "Dont show this again", not Settings.showMinimizeDoubleWarning)
+                Settings.showMinimizeDoubleWarning = not hideThis
                 r.ImGui_EndChild(ctx)
             end
             -- r.ImGui_TextWrapped(ctx, secondWarningText)
@@ -344,7 +345,7 @@ But everything wil probably be ok :)
             r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
             if r.ImGui_Button(ctx, 'Got it') then
-                saveSettings()
+                SaveSettings()
                 r.ImGui_CloseCurrentPopup(ctx)
             end
             r.ImGui_EndPopup(ctx)
@@ -354,71 +355,71 @@ But everything wil probably be ok :)
     end
     r.ImGui_PopStyleVar(ctx)
     if okPressed then
-        app.coPerform = coroutine.create(doPerform)
+        App.coPerform = coroutine.create(doPerform)
     end
 end
 
-function app.drawBottom(ctx, bottom_lines)
+function App.drawBottom(ctx, bottom_lines)
     r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) -
         (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines +
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2))
-    local status, col = app.getStatus('main')
+    local status, col = App.getStatus('main')
     if col then
-        r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), gui.st.col[col])
+        r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col[col])
     end
     r.ImGui_Spacing(ctx)
     r.ImGui_Text(ctx, status)
-    app.setHint('main', '')
+    App.setHint('main', '')
     r.ImGui_Spacing(ctx)
     if col then
         r.ImGui_PopStyleColor(ctx)
     end
-    if not app.coPerform then
-        if r.ImGui_Button(ctx, settings.backup and 'Create Backup' or 'Minimize Current Project',
+    if not App.coPerform then
+        if r.ImGui_Button(ctx, Settings.backup and 'Create Backup' or 'Minimize Current Project',
                 r.ImGui_GetContentRegionAvail(ctx)) then
             -- don't save backupDestination into saved preferences, but save all other settings
-            local tmpDest = settings.backupDestination
-            settings.backupDestination = nil
-            saveSettings()
-            settings.backupDestination = tmpDest
+            local tmpDest = Settings.backupDestination
+            Settings.backupDestination = nil
+            SaveSettings()
+            Settings.backupDestination = tmpDest
 
             local ok, errors = CheckSettings()
             if not ok then
-                app.msg(table.concat(errors, '\n------------\n'))
+                App.msg(table.concat(errors, '\n------------\n'))
             else
-                if not settings.backup then
+                if not Settings.backup then
                     r.ImGui_OpenPopup(ctx, 'Are you sure?')
                 else
-                    app.coPerform = coroutine.create(doPerform)
+                    App.coPerform = coroutine.create(doPerform)
                 end
             end
         end
 
-        app.drawWarning()
+        App.drawWarning()
     else
         local w, h = r.ImGui_GetContentRegionAvail(ctx)
         local btnWidth = 150
-        r.ImGui_ProgressBar(ctx, (app.perform.pos or 0) / (app.perform.total or 1), w - 150, h,
-            ("%s/%s"):format(app.perform.pos, app.perform.total))
+        r.ImGui_ProgressBar(ctx, (App.perform.pos or 0) / (App.perform.total or 1), w - 150, h,
+            ("%s/%s"):format(App.perform.pos, App.perform.total))
         r.ImGui_SameLine(ctx)
         r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Button(), 0x444444ff)
         if r.ImGui_Button(ctx, 'Cancel', r.ImGui_GetContentRegionAvail(ctx)) then
-            cancel()
+            Cancel()
         end
         r.ImGui_PopStyleColor(ctx)
     end
 end
 
-function app.drawMainWindow()
-    local ctx = gui.ctx
+function App.drawMainWindow()
+    local ctx = Gui.ctx
     local max_w, max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx))
 
     -- r.ShowConsoleMsg(viewPortWidth)
     r.ImGui_SetNextWindowSize(ctx, math.min(1125, max_w), math.min(800, max_h), r.ImGui_Cond_Appearing())
     r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
-    local visible, open = r.ImGui_Begin(ctx, scr.name .. ' v' .. scr.version .. "##mainWindow", not app.coPerform,
+    local visible, open = r.ImGui_Begin(ctx, Scr.name .. ' v' .. Scr.version .. "##mainWindow", not App.coPerform,
         r.ImGui_WindowFlags_NoDocking() | r.ImGui_WindowFlags_NoCollapse())
-    gui.mainWindow = {
+    Gui.mainWindow = {
         pos = { r.ImGui_GetWindowPos(ctx) },
         size = { r.ImGui_GetWindowSize(ctx) }
     }
@@ -430,94 +431,94 @@ function app.drawMainWindow()
         --     -- r.ImGui_SetCursorPosX(ctx, r.ImGui_GetContentRegionAvail(ctx)- r.ImGui_CalcTextSize(ctx,'Settings'))
         --     r.ImGui_EndMenuBar(ctx)
         -- end
-        if app.coPerform and coroutine.status(app.coPerform) == 'suspended' then
+        if App.coPerform and coroutine.status(App.coPerform) == 'suspended' then
             r.ImGui_BeginDisabled(ctx)
         end
 
         r.ImGui_SeparatorText(ctx, 'Settings')
 
-        settings.backup = gui.setting('checkbox', 'Backup to a new project',
-            "Create backup project or minimize current project", settings.backup)
-        if settings.backup then
-            settings.backupDestination = gui.setting('folder', 'Destination', 'Select an empty folder',
-                settings.backupDestination, {}, true)
+        Settings.backup = Gui.setting('checkbox', 'Backup to a new project',
+            "Create backup project or minimize current project", Settings.backup)
+        if Settings.backup then
+            Settings.backupDestination = Gui.setting('folder', 'Destination', 'Select an empty folder',
+                Settings.backupDestination, {}, true)
         end
 
-        settings.padding = gui.setting('dragdouble', 'padding (s)',
+        Settings.padding = Gui.setting('dragdouble', 'padding (s)',
             "How much unused audio, in seconds, to leave before and after items start and end positions",
-            settings.padding, {
+            Settings.padding, {
                 speed = 0.1,
                 min = 0.0,
                 max = 10.0,
                 format = "%.1f"
             })
-        if settings.padding < 0 then
-            settings.padding = 0
+        if Settings.padding < 0 then
+            Settings.padding = 0
         end
 
-        settings.minimizeSourceTypes = gui.setting('combo', 'File types to minimize',
+        Settings.minimizeSourceTypes = Gui.setting('combo', 'File types to minimize',
             "Minimizing compressed files, such as MP3s, will result in larger (!) \"minimized\" files, since those will be uncompressed WAV files",
-            settings.minimizeSourceTypes, {
+            Settings.minimizeSourceTypes, {
                 list = MINIMIZE_SOURCE_TYPES_LIST
             })
 
-        settings.glueFormat = gui.setting('combo', 'Minimized files format',
+        Settings.glueFormat = Gui.setting('combo', 'Minimized files format',
             "Lossless compression (FLAC and WAVPACK) will result in the smallest sizes without losing quality, but takes longer to create",
-            settings.glueFormat, {
+            Settings.glueFormat, {
                 list = GLUE_FORMATS_LIST
             })
 
         local tmpSetting
-        if settings.backup then
+        if Settings.backup then
             r.ImGui_BeginDisabled(ctx)
         end
-        settings.deleteOperation = gui.setting('combo', 'After minimizing', "What should be done after minimizing",
-            settings.deleteOperation, {
+        Settings.deleteOperation = Gui.setting('combo', 'After minimizing', "What should be done after minimizing",
+            Settings.deleteOperation, {
                 list = DELETE_OPERATIONS_LIST
             })
-        if settings.backup then
-            app.temp.originalBackupValue = app.temp.originalBackupValue or
-                OD_BfCheck(settings.collect, COLLECT.EXTERNAL)
+        if Settings.backup then
+            App.temp.originalBackupValue = App.temp.originalBackupValue or
+                OD_BfCheck(Settings.collect, COLLECT.EXTERNAL)
             tmpSetting = {
                 [COLLECT.EXTERNAL] = COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL]
             }
-            gui.bitwise_setting('checkbox', COLLECT.EXTERNAL, tmpSetting)
+            Gui.bitwise_setting('checkbox', COLLECT.EXTERNAL, tmpSetting)
             r.ImGui_SameLine(ctx)
             r.ImGui_Text(ctx, ('Must %s when backing up'):format(COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL].label):lower())
             COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL] = nil
-            -- settings.collect = OD_BwSet(settings.collect,COLLECT.EXTERNAL,true)
+            -- Settings.collect = OD_BwSet(Settings.collect,COLLECT.EXTERNAL,true)
             r.ImGui_EndDisabled(ctx)
         end
 
-        settings.collect = gui.bitwise_setting('checkbox', settings.collect, COLLECT_DESCRIPTIONS)
+        Settings.collect = Gui.bitwise_setting('checkbox', Settings.collect, COLLECT_DESCRIPTIONS)
 
-        if settings.backup then
+        if Settings.backup then
             COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL] = tmpSetting[COLLECT.EXTERNAL]
         end
-        if app.coPerform and coroutine.status(app.coPerform) == 'suspended' then
+        if App.coPerform and coroutine.status(App.coPerform) == 'suspended' then
             r.ImGui_EndDisabled(ctx)
         end
 
         r.ImGui_SeparatorText(ctx, 'Overview')
 
-        app.drawPerform(true)
-        app.drawBottom(ctx, bottom_lines)
-        app.drawMsg(ctx, bottom_lines)
+        App.drawPerform(true)
+        App.drawBottom(ctx, bottom_lines)
+        App.drawMsg()
         r.ImGui_End(ctx)
     end
     return open
 end
 
-function app.loop()
+function App.loop()
     checkPerform()
-    r.ImGui_PushFont(gui.ctx, gui.st.fonts.default)
-    app.open = app.drawMainWindow()
-    r.ImGui_PopFont(gui.ctx)
+    r.ImGui_PushFont(Gui.ctx, Gui.st.fonts.default)
+    App.open = App.drawMainWindow()
+    r.ImGui_PopFont(Gui.ctx)
     -- checkExternalCommand()
-    if app.open then
-        r.defer(app.loop)
+    if App.open then
+        r.defer(App.loop)
     else
-        r.ImGui_DestroyContext(gui.ctx)
+        r.ImGui_DestroyContext(Gui.ctx)
     end
 end
 
@@ -534,9 +535,9 @@ if OD_PrereqsOK({
         --     ['Mavriq Lua Batteris'] =  r.GetResourcePath() .."/Scripts/Mavriq ReaScript Repository/Various/Mavriq-Lua-Batteries/batteries_header.lua"
         -- }
     }) then
-    loadSettings()
+    LoadSettings()
     -- app.coPerform = coroutine.create(doPerform)
-    r.defer(app.loop)
+    r.defer(App.loop)
 end
 
 ---------------------------------------
@@ -544,8 +545,9 @@ end
 ---------------------------------------
 
 -- TODO collect rs5k samples
--- TODO handle subprojects (collect?)
--- TODO enable "Save project file references with relative pathnames" and reapply previous setting after
+-- TODO collect/backup only without minimizing
+-- TODO export current settings as action
+-- TODO handle subprojects (collect? render?)
 -- TODO keep selected takes only (unless item marked with "play all takes")
 -- TODO show total savings and close script upon completion
 -- TODO scan media folder for extra files at the end
@@ -553,7 +555,7 @@ end
 -- TODO check handling of missing files
 -- TODO handle unsaved project
 -- TODO handle empty project
--- TODO reset when switching projects
+-- TODO handle switching projects
 -- TODO (later): figure out section
 
 -- check project has a folder:

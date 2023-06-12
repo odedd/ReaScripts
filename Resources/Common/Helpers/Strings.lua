@@ -1,7 +1,7 @@
 -- @noindex
 
 function OD_Split (s, delimiter)
-    result = {};
+    local result = {};
     for match in (s .. delimiter):gmatch("(.-)" .. delimiter) do
         table.insert(result, match);
     end
