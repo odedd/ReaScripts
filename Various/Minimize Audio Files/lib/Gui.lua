@@ -131,7 +131,7 @@ gui.bitwise_setting = function(stType, val, list)
     local tmpVal = val
     for bwVal, option in OD_PairsByOrder(list) do
         local op = gui.setting(stType, option.label, option.hint, (val & bwVal ~= 0))
-        tmpVal = OD_BwSet(tmpVal, bwVal, op)
+        tmpVal = OD_BfSet(tmpVal, bwVal, op)
     end
 
     return tmpVal

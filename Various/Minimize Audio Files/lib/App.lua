@@ -4,6 +4,7 @@ app = {
     mediaFiles = {},
     revert = {},
     restore = {},
+    temp = {},
     perform = {
         status = nil,
         pos = 0,

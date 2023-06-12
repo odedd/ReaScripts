@@ -101,7 +101,7 @@ function getDefaultSettings(factory)
             glueFormat = GLUE_FORMATS.FLAC24,
             padding = 1,
             suffix = '_m',
-            showMinimizeWarning = true
+            showMinimizeDoubleWarning = true
         }
     }
 

@@ -228,7 +228,8 @@ Since files are deleted - this cannot be undone!
 Please think about it carefully before continuing.
 
 ]]
-    local okButtonLabel = app.popup.secondWarningShown and 'Come on already let\'s do it!' or 'OK'
+    local okButtonLabel = 'OK'
+    local okButtonLabel = app.popup.secondWarningShown and 'Come on already let\'s do it!' or 'OK' 
     local cancelButtonLabel = 'Cancel'
     local okPressed = false
     local cancelPressed = false
@@ -249,17 +250,9 @@ Please think about it carefully before continuing.
         r.ImGui_PushItemWidth(ctx, width)
 
         local windowWidth, windowHeight = r.ImGui_GetWindowSize(ctx);
-        r.ImGui_SetCursorPos(ctx, (windowWidth - textWidth) * .5,
-            (windowHeight - textHeight - r.ImGui_GetTextLineHeightWithSpacing(ctx)) * .5);
-        if r.ImGui_BeginChild(ctx, 'msgBody', 0,
-            select(2, r.ImGui_GetContentRegionAvail(ctx)) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
-                r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())) then
-            r.ImGui_TextWrapped(ctx, text)
+        r.ImGui_SetCursorPos(ctx, (windowWidth - textWidth) * .5, (windowHeight - textHeight) * .5);
+        r.ImGui_TextWrapped(ctx, text)
 
-            local _, hideThis = r.ImGui_Checkbox(ctx, "Dont show this again", not settings.showMinimizeWarning)
-            settings.showMinimizeWarning = not hideThis
-            r.ImGui_EndChild(ctx)
-        end
         r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
 
@@ -272,7 +265,7 @@ Please think about it carefully before continuing.
         r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
         if r.ImGui_Button(ctx, okButtonLabel) then
-            if not app.popup.secondWarningShown then
+            if settings.showMinimizeDoubleWarning and not app.popup.secondWarningShown then
                 r.ImGui_OpenPopup(ctx, 'Also...')
             else
                 app.popup.secondWarningShown = false
@@ -314,7 +307,8 @@ But everything wil probably be ok :)
         local buttonLabel = 'Got it'
         local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, secondWarningText)
         r.ImGui_SetNextWindowSize(ctx, math.max(220, textWidth) +
-            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4, textHeight + 90)
+            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4,
+            textHeight + 90 + r.ImGui_GetTextLineHeightWithSpacing(ctx) * 2)
 
         r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
 
@@ -327,7 +321,16 @@ But everything wil probably be ok :)
             local windowWidth, windowHeight = r.ImGui_GetWindowSize(ctx);
             r.ImGui_SetCursorPos(ctx, (windowWidth - textWidth) * .5, (windowHeight - textHeight) * .5);
 
-            r.ImGui_TextWrapped(ctx, secondWarningText)
+            if r.ImGui_BeginChild(ctx, 'msgBody', 0,
+                select(2, r.ImGui_GetContentRegionAvail(ctx)) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
+                    r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())) then
+                r.ImGui_TextWrapped(ctx, secondWarningText)
+                local _, hideThis =
+                    r.ImGui_Checkbox(ctx, "Dont show this again", not settings.showMinimizeDoubleWarning)
+                settings.showMinimizeDoubleWarning = not hideThis
+                r.ImGui_EndChild(ctx)
+            end
+            -- r.ImGui_TextWrapped(ctx, secondWarningText)
 
             r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
                 r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
@@ -336,6 +339,7 @@ But everything wil probably be ok :)
             r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
             if r.ImGui_Button(ctx, 'Got it') then
+                saveSettings()
                 r.ImGui_CloseCurrentPopup(ctx)
             end
             r.ImGui_EndPopup(ctx)
@@ -345,10 +349,7 @@ But everything wil probably be ok :)
     end
     r.ImGui_PopStyleVar(ctx)
     if okPressed then
-        saveSettings()
         app.coPerform = coroutine.create(doPerform)
-    elseif cancelPressed then
-        saveSettings()
     end
 end
 
@@ -380,7 +381,7 @@ function app.drawBottom(ctx, bottom_lines)
             if not ok then
                 app.msg(table.concat(errors, '\n------------\n'))
             else
-                if not settings.backup and settings.showMinimizeWarning then
+                if not settings.backup then
                     r.ImGui_OpenPopup(ctx, 'Are you sure?')
                 else
                     app.coPerform = coroutine.create(doPerform)
@@ -462,6 +463,7 @@ function app.drawMainWindow()
                 list = GLUE_FORMATS_LIST
             })
 
+        local tmpSetting
         if settings.backup then
             r.ImGui_BeginDisabled(ctx)
         end
@@ -470,15 +472,23 @@ function app.drawMainWindow()
                 list = DELETE_OPERATIONS_LIST
             })
         if settings.backup then
+            app.temp.originalBackupValue = app.temp.originalBackupValue or
+                                               OD_BfCheck(settings.collect, COLLECT.EXTERNAL)
+            tmpSetting = {
+                [COLLECT.EXTERNAL] = COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL]
+            }
+            gui.bitwise_setting('checkbox', COLLECT.EXTERNAL, tmpSetting)
+            r.ImGui_SameLine(ctx)
+            r.ImGui_Text(ctx, ('Must %s when backing up'):format(COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL].label):lower())
+            COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL] = nil
+            -- settings.collect = OD_BwSet(settings.collect,COLLECT.EXTERNAL,true) 
             r.ImGui_EndDisabled(ctx)
         end
 
-        -- r.ImGui_SeparatorText(ctx, 'Collect Files')
-
         settings.collect = gui.bitwise_setting('checkbox', settings.collect, COLLECT_DESCRIPTIONS)
-        if settings.backup and not OD_BwCheck(settings.collect, COLLECT.EXTERNAL) then 
-            settings.collect = OD_BwSet(settings.collect,COLLECT.EXTERNAL,true) 
-            r.ImGui_Text(ctx, 'must be')
+
+        if settings.backup then
+            COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL] = tmpSetting[COLLECT.EXTERNAL]
         end
         if app.coPerform and coroutine.status(app.coPerform) == 'suspended' then
             r.ImGui_EndDisabled(ctx)
