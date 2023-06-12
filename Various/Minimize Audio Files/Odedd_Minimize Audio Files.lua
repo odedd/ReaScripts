@@ -68,7 +68,7 @@ local function doPerform()
         -- set glue quality
         setQuality()
         -- get information on all takes, separated by media source file
-        collectMediaFiles()
+        getMediaFiles()
         -- if sources are networked, trashing may not be an option.
         if (not settings.backup) and (settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH) and
             (networkedFilesExist()) then
@@ -77,7 +77,7 @@ local function doPerform()
         else
             -- minimize files and apply to original sources
             minimizeAndApplyMedia()
-
+            collectMedia()
             -- if OD_BwCheck(settings.collect, COLLECT.RS5K) then
             --     collectRS5KSamples()
             -- end

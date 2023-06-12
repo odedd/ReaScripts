@@ -35,14 +35,20 @@ FORMATS = {
     VIDEO = {'VIDEO'}
 }
 
+FILE_TYPES = {
+    AUDIO = 0,
+    VIDEO = 1,
+    RS5K = 2
+}
+
 local function reverseItem(item)
     r.SelectAllMediaItems(0, false)
     r.SetMediaItemSelected(item, true)
     r.Main_OnCommand(41051, 0)
 end
 
--- Collect media files and occurrences
-function collectMediaFiles()
+-- Gather media files and occurrences
+function getMediaFiles()
 
     local function getTakeSourcePositions(take, srclen)
         -- copy item to new track
@@ -182,10 +188,7 @@ function collectMediaFiles()
                 local filename = r.GetMediaSourceFileName(mediaSource, "") -- :gsub('/',folderSep())
                 local fileExists = OD_FileExists(filename)
                 -- log occurance if it's to be minimized
-                if fileExists and mediaSource and
-                    (OD_HasValue(FORMATS.UNCOMPRESSED, sourceType) or OD_HasValue(FORMATS.LOSSLESS, sourceType) or
-                        ((settings.minimizeSourceTypes == MINIMIZE_SOURCE_TYPES.ALL) and
-                            OD_HasValue(FORMATS.COMPRESSED, sourceType))) then
+                if fileExists and mediaSource then
                     local sp, ep = getTakeSourcePositions(take, srclen)
                     -- Create a table to store the occurrence information
                     oc = {
@@ -221,13 +224,13 @@ function collectMediaFiles()
                         end
                     end
                 else
+                    -- Create a new entry for the media file
                     local fullpath, basename, ext = OD_DissectFilename(filename)
                     local relOrAbsPath, pathIsRelative = OD_GetRelativeOrAbsolutePath(filename, app.projPath)
                     local sourceFileSize = OD_GetFileSize(filename)
-                    -- Create a new entry for the media file
                     app.mediaFiles[filename] = {
+                        fileType = OD_HasValue(FORMATS.VIDEO, sourceType) and FILE_TYPES.VIDEO or FILE_TYPES.AUDIO,
                         external = not pathIsRelative,
-                        video = OD_HasValue(FORMATS.VIDEO, sourceType),
                         status = STATUS.SCANNED,
                         order = app.mediaFileCount,
                         occurrences = {oc},
@@ -241,12 +244,13 @@ function collectMediaFiles()
                         newFileSize = nil,
                         hasSection = oc and oc.section or false,
                         srclen = srclen,
-                        keep_length = 1,
-                        to_process = (oc ~= nil),
-                        ignore = (oc == nil),
+                        ignore = not (OD_HasValue(FORMATS.UNCOMPRESSED, sourceType) or OD_HasValue(FORMATS.LOSSLESS, sourceType) or
+                        ((settings.minimizeSourceTypes == MINIMIZE_SOURCE_TYPES.ALL) and
+                            OD_HasValue(FORMATS.COMPRESSED, sourceType))),
                         missing = not fileExists,
                         status_info = fileExists and ((oc == nil) and ('%s'):format(sourceType) or '') or 'file missing',
-                        newfilename = nil
+                        newfilename = nil,
+                        keep_length = 1, -- for display
                     }
                     app.mediaFileCount = app.mediaFileCount + 1
                 end
@@ -267,6 +271,51 @@ function collectMediaFiles()
         end
     end
 end
+
+function collectMedia()
+    r.SelectAllMediaItems(0, false)
+
+
+    app.perform.total = app.mediaFileCount
+    app.perform.pos = 0
+    for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
+        -- determine which files should be collected:
+        -- ------------------------------------------
+        -- only if backup, collect all audio files which were ignored 
+        local shouldCollect = settings.backup and fileInfo.fileType == FILE_TYPES.AUDIO and fileInfo.ignore
+        -- + if set to collect video files, collect all video files (if backup, collect them anyway, if not, only collect those that are external)
+        shouldCollect = shouldCollect or (OD_BfCheck(settings.collect, COLLECT.VIDEO) and fileInfo.fileType == FILE_TYPES.VIDEO and (settings.backup or fileInfo.external))
+        -- + if set to collect external audio files, collect those that were ignored
+        shouldCollect = shouldCollect or (OD_BfCheck(settings.collect, COLLECT.EXTERNAL) and fileInfo.fileType == FILE_TYPES.AUDIO and fileInfo.external and fileInfo.ignore)
+        -- + if set to collect rs5k files, collect all rs5k files (if backup, collect them anyway, if not, only collect those that are external)
+        shouldCollect = shouldCollect or (OD_BfCheck(settings.collect, COLLECT.RS5K) and fileInfo.fileType == FILE_TYPES.RS5K and (settings.backup or fileInfo.external))
+        
+        if shouldCollect then
+        
+        end
+        
+        -- if not fileInfo.ignore and not fileInfo.missing then
+        --     app.mediaFiles[filename].status = STATUS.MINIMIZING
+        --     app.perform.pos = app.perform.pos + 1
+        --     coroutine.yield('Minimizing Files')
+
+        --     local track = createTrackForFilename(filename)
+        --     local splitItems = addItemsToTrackAndWrapAround(track, fileInfo)
+        --     removeSpaces(track, filename)
+        --     saveNewPositions(fileInfo)
+        --     trimItems(fileInfo, splitItems)
+        --     local gluedItem = glueItems(track)
+        --     if gluedItem then
+        --         applyGluedSourceToOriginal(fileInfo, gluedItem)
+        --     end
+        --     r.DeleteTrack(track)
+
+        --     app.mediaFiles[filename].status = STATUS.MINIMIZED
+        --     coroutine.yield('Minimizing Files')
+        -- end
+    end
+end
+
 
 -- Create new items to reflect the new occurrences
 function minimizeAndApplyMedia()
@@ -460,8 +509,8 @@ function minimizeAndApplyMedia()
 
         r.SetOnlyTrackSelected(track)
         r.Main_OnCommand(40421, 0) -- select all items in track
-        local _, oldName = r.GetSetMediaItemTakeInfo_String(r.GetMediaItemTake(
-            r.GetSelectedMediaItem(0, 0), 0), "P_NAME", "", false)
+        local _, oldName = r.GetSetMediaItemTakeInfo_String(r.GetMediaItemTake(r.GetSelectedMediaItem(0, 0), 0),
+            "P_NAME", "", false)
         r.Main_OnCommand(40362, 0) -- glue items, ignoring time selection
         if maxrecsize_use & 1 then
             r.SNM_SetIntConfigVar('maxrecsize_use', maxrecsize_use)
@@ -469,8 +518,8 @@ function minimizeAndApplyMedia()
 
         -- check if glue succeeded (maybe cancelled?)
         r.Main_OnCommand(40421, 0) -- select all items in track
-        local _, newName = r.GetSetMediaItemTakeInfo_String(r.GetMediaItemTake(
-            r.GetSelectedMediaItem(0, 0), 0), "P_NAME", "", false)
+        local _, newName = r.GetSetMediaItemTakeInfo_String(r.GetMediaItemTake(r.GetSelectedMediaItem(0, 0), 0),
+            "P_NAME", "", false)
         if newName == oldName then
             error('cancelled by glue')
         end
@@ -564,31 +613,6 @@ function minimizeAndApplyMedia()
         end
     end
 
-    --     getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files/02 Tavi'i Itach Yain Mix 1 No Limiter.wav 68709600
-    -- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files/Tzlil Mechuvan.wav 63352892
-    -- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files/Mehamerhakim.wav 110689724
-
-    -- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files\08-02 Tavi'i Itach Yain Mix 1 No Limiter_m-glued-01.wav 68346862
-    -- generateUniqueFilename: file didnt exist. returning it (\\DS1821\Downloads\tmp\Full Recording\Audio Files\02 Tavi'i Itach Yain Mix 1 No Limiter_m.wav)
-
-    -- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files\08-Tzlil Mechuvan_m-glued-01.wav 47515372
-    -- generateUniqueFilename: file didnt exist. returning it (\\DS1821\Downloads\tmp\Full Recording\Audio Files\Tzlil Mechuvan_m.wav)g
-
-    -- getFileSize for: \\DS1821\Downloads\tmp\Full Recording\Audio Files\08-Mehamerhakim_m-glued-01.wav 83017996
-    -- generateUniqueFilename: file didnt exist. returning it (\\DS1821\Downloads\tmp\Full Recording\Audio Files\Mehamerhakim_m.wav)
-
-    -- copyFile: fail at (1): old_file: error, new_file: ok
-    --                        old_path: \\DS1821\Downloads\tmp\Full Recording\Audio Files\02 Tavi'i Itach Yain Mix 1 No Limiter_m.wav
-    --                        new_path: C:\Users\david\Desktop\Target\Audio Files\02 Tavi'i Itach Yain Mix 1 No Limiter_m.wav
-
-    --                        copyFile: fail at (1): old_file: error, new_file: ok
-    --                        old_path: \\DS1821\Downloads\tmp\Full Recording\Audio Files\Tzlil Mechuvan_m.wav
-    --                        new_path: C:\Users\david\Desktop\Target\Audio Files\Tzlil Mechuvan_m.wav
-
-    --                        copyFile: fail at (1): old_file: error, new_file: ok
-    --                        old_path: \\DS1821\Downloads\tmp\Full Recording\Audio Files\Mehamerhakim_m.wav
-    --                        new_path: C:\Users\david\Desktop\Target\Audio Files\Mehamerhakim_m.wav
-
     local function applyGluedSourceToOriginal(fileInfo, gluedItem)
 
         local gluedTake = r.GetTake(gluedItem, 0)
@@ -614,7 +638,6 @@ function minimizeAndApplyMedia()
             local success = moveFile(sourceFilename, uniqueName)
             r.Main_OnCommand(40439, 0) -- online
 
-            -- r.ShowConsoleMsg(('rename \n      %s \n   -> %s\n      '..(success and 'ok' or 'fail')..'\n'):format(sourceFilename,uniqueName))
             -- Update the glued item with the new source file and rebuild peaks
             newSrc = r.PCM_Source_CreateFromFile(uniqueName)
             app.peakOperations[uniqueName] = newSrc
@@ -727,7 +750,7 @@ function revert(cancel)
 end
 
 function cancel(msg)
-    if msg then 
+    if msg then
         app.msg(msg, 'Operation Cancelled')
         if coroutine.isyieldable(app.coPerform) then
             coroutine.yield('Cancelling', 0, 1)
@@ -832,7 +855,9 @@ end
 function networkedFilesExist()
     if os_is.win then
         for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
-            if string.sub(fileInfo.filenameWithPath, 1, 2) == '\\\\' then return true end
+            if string.sub(fileInfo.filenameWithPath, 1, 2) == '\\\\' then
+                return true
+            end
         end
     end
     return false
@@ -841,18 +866,20 @@ end
 function deleteOriginals()
     app.perform.total = app.mediaFileCount
     app.perform.pos = 0
-    local stat = settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and 'Moving originals to trash' or 'Deleting originals'
+    local stat = settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and 'Moving originals to trash' or
+                     'Deleting originals'
     local filesToTrashWin = {}
     for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
         -- delete original files which were replaced by minimized versions
         app.perform.pos = app.perform.pos + 1
         coroutine.yield(stat)
         if not fileInfo.ignore and not fileInfo.missing then
-            fileInfo.status = settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and STATUS.MOVING_TO_TRASH or STATUS.DELETING
+            fileInfo.status = settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and STATUS.MOVING_TO_TRASH or
+                                  STATUS.DELETING
             coroutine.yield(stat)
             if os_is.win then
                 if settings.deleteOperation ~= DELETE_OPERATION.MOVE_TO_TRASH then
-                    r.reduce_open_files(2)  -- windows won't delete/move files that are in use
+                    r.reduce_open_files(2) -- windows won't delete/move files that are in use
                     if os.remove(fileInfo.filenameWithPath) then
                         fileInfo.status = STATUS.DONE
                     else
@@ -878,7 +905,7 @@ function deleteOriginals()
     end
     -- if on windows, trash all files at once to avoid powershelling for each file seperately 
     if #filesToTrashWin > 0 then
-        r.reduce_open_files(2)  -- windows won't delete/move files that are in use
+        r.reduce_open_files(2) -- windows won't delete/move files that are in use
         moveToTrash(filesToTrashWin)
         for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do -- verify which files were and were not removed
             if not OD_FileExists(fileInfo.filenameWithPath) then
