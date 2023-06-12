@@ -45,6 +45,8 @@ gui.st.col.status = {
     [STATUS.COPYING] = 0xa67e23ff,
     [STATUS.DELETING] = 0xa67e23ff,
     [STATUS.MOVING_TO_TRASH] = 0xa67e23ff,
+    [STATUS.COLLECTING] = 0xa67e23ff,
+    [STATUS.COLLECTED] = 0x6b23a6ff,
     [STATUS.DONE] = 0x2a783fff,
     [STATUS.ERROR] = 0x852f29ff
 }
@@ -54,46 +56,46 @@ gui.st.col.status = {
 ---------------------------------------
 
 local function doPerform()
-    if checkSettings() then
+    if CheckSettings() then
         -- first save the project in its current form
         r.Main_SaveProject(-1)
         -- set global project path in app variable
-        setProjPaths()
+        SetProjPaths()
         -- save stuff to restore in any case
-        prepareRestore()
-        -- save stuff to restore in case of error/cancel or if creating a backup
-        prepareRevert()
+        PrepareRestore()
+        -- save suff to restore in case of error/cancel or if creating a backup
+        PrepareRevert()
         -- since changes will be made during the process, we don't want the project accidentally saved
-        disableAutosave()
+        DisableAutosave()
         -- set glue quality
-        setQuality()
+        SetQuality()
         -- get information on all takes, separated by media source file
-        getMediaFiles()
+        GetMediaFiles()
         -- if sources are networked, trashing may not be an option.
         if (not settings.backup) and (settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH) and
-            (networkedFilesExist()) then
+            (NetworkedFilesExist()) then
             cancel(
                 'Networked files were found.\nMoving networkd files to the\ntrash is not supported.\nPlease select deleting files\nor consider backing up instead of\nminimizing.')
         else
             -- minimize files and apply to original sources
-            minimizeAndApplyMedia()
-            collectMedia()
+            MinimizeAndApplyMedia()
+            CollectMedia()
             -- if OD_BwCheck(settings.collect, COLLECT.RS5K) then
             --     collectRS5KSamples()
             -- end
 
             if settings.backup then
                 -- copy to a new project path (move glued files, copy others)
-                createBackupProject()
+                CreateBackupProject()
                 -- revert back to temporary copy of project
-                revert()
+                Revert()
             else
-                deleteOriginals()
+                DeleteOriginals()
                 -- finish building peaks for new files
-                finalizePeaksBuild()
+                FinalizePeaksBuild()
             end
             -- restore settings and other stuff saved at the beginning of the process
-            restore()
+            Restore()
             coroutine.yield('Done', 0, 1)
         end
     end
@@ -151,7 +153,7 @@ function app.drawPerform(open)
                 for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
                     r.ImGui_TableNextRow(ctx)
                     r.ImGui_TableNextColumn(ctx) -- file
-                    r.ImGui_Text(ctx, fileInfo.basename .. '.' .. fileInfo.ext)
+                    r.ImGui_Text(ctx, fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or ''))
                     local skiprow = false
                     if not r.ImGui_IsItemVisible(ctx) then
                         skiprow = true
@@ -195,7 +197,7 @@ function app.drawPerform(open)
                             (fileInfo.status_info ~= '' and (' (%s)'):format(fileInfo.status_info) or ''))
                         r.ImGui_TableNextColumn(ctx) -- folder
                         local path = (fileInfo.relOrAbsPath):gsub(
-                            OD_EscapePattern((fileInfo.basename) .. '.' .. (fileInfo.ext)) .. '$', '')
+                            OD_EscapePattern((fileInfo.basename) .. (fileInfo.ext and ('.' .. fileInfo.ext) or '') .. '$'),'')
                         r.ImGui_Text(ctx, path)
                     end
                 end
@@ -217,7 +219,7 @@ This means that all the audio source files will be
 DELETED and new "minimized" versions of them will be
 created instead.
 
-This will make any other RPP that uses the original 
+This will make any other RPP that uses the original
 files UNUSABLE!
 
 The only project that will work with those new files
@@ -229,7 +231,7 @@ Please think about it carefully before continuing.
 
 ]]
     local okButtonLabel = 'OK'
-    local okButtonLabel = app.popup.secondWarningShown and 'Come on already let\'s do it!' or 'OK' 
+    local okButtonLabel = app.popup.secondWarningShown and 'Come on already let\'s do it!' or 'OK'
     local cancelButtonLabel = 'Cancel'
     local okPressed = false
     local cancelPressed = false
@@ -245,7 +247,6 @@ Please think about it carefully before continuing.
     r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_WindowTitleAlign(), 0.5, 0.5)
     if r.ImGui_BeginPopupModal(ctx, 'Are you sure?', nil,
         r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
-
         local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
         r.ImGui_PushItemWidth(ctx, width)
 
@@ -287,7 +288,7 @@ This script is not even at version 1.0!
 Are you crazy?!
 
 While I'm pretty damn sure everything works
-you should still probably make sure to have 
+you should still probably make sure to have
 a backup of this project and all of its
 media files, until you're certain that
 this script did its job correctly.
@@ -377,7 +378,7 @@ function app.drawBottom(ctx, bottom_lines)
             saveSettings()
             settings.backupDestination = tmpDest
 
-            local ok, errors = checkSettings()
+            local ok, errors = CheckSettings()
             if not ok then
                 app.msg(table.concat(errors, '\n------------\n'))
             else
@@ -419,7 +420,6 @@ function app.drawMainWindow()
     }
 
     if visible then
-
         local bottom_lines = 2
         local rv2
         -- if r.ImGui_BeginMenuBar(ctx) then
@@ -481,7 +481,7 @@ function app.drawMainWindow()
             r.ImGui_SameLine(ctx)
             r.ImGui_Text(ctx, ('Must %s when backing up'):format(COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL].label):lower())
             COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL] = nil
-            -- settings.collect = OD_BwSet(settings.collect,COLLECT.EXTERNAL,true) 
+            -- settings.collect = OD_BwSet(settings.collect,COLLECT.EXTERNAL,true)
             r.ImGui_EndDisabled(ctx)
         end
 
@@ -539,12 +539,13 @@ end
 -- IDEAS and TODOS --------------------
 ---------------------------------------
 
--- TODO collect external audio + video files + rs5k
+-- TODO collect rs5k samples
+-- TODO handle subprojects (collect?)
 -- TODO enable "Save project file references with relative pathnames" and reapply previous setting after
 -- TODO keep selected takes only (unless item marked with "play all takes")
 -- TODO show total savings and close script upon completion
 -- TODO scan media folder for extra files at the end
--- TODO verify minimization before deleting files 
+-- TODO verify minimization before deleting files
 -- TODO check handling of missing files
 -- TODO handle unsaved project
 -- TODO handle empty project
@@ -557,7 +558,7 @@ end
 -- local spls_path = r.GetProjectPathEx( 0, '' )..'/RS5K samples/'
 
 -- -- function by MPL
--- --------------------------------------------------------------------- 
+-- ---------------------------------------------------------------------
 -- function IsRS5K(tr, fxnumber)
 --     if not tr then
 --         return
@@ -584,8 +585,8 @@ end
 --             if IsRS5K(tr, fx - 1) then
 --                 local retval, file_src = r.TrackFX_GetNamedConfigParm(tr, fx - 1, 'FILE0')
 --                 local _, file, ext = dissectFilename(file_src)
---                 local file_dest = spls_path .. file .. '.' .. ext
---                 local rel_file_dest = 'RS5K samples/' .. file .. '.' .. ext
+--                 local file_dest = spls_path .. file .. (ext and ('.' .. ext) or '')
+--                 local rel_file_dest = 'RS5K samples/' .. file .. (ext and ('.' .. ext) or '')
 --                 file_src = file_src:gsub('\\', '/')
 --                 file_dest = file_dest:gsub('\\', '/')
 --                 rel_file_dest = rel_file_dest:gsub('\\', '/')

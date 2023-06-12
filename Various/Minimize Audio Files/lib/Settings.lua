@@ -101,7 +101,11 @@ function getDefaultSettings(factory)
             glueFormat = GLUE_FORMATS.FLAC24,
             padding = 1,
             suffix = '_m',
-            showMinimizeDoubleWarning = true
+            showMinimizeDoubleWarning = true,
+            targetPaths={
+                [FILE_TYPES.VIDEO] = 'Video Files',
+                [FILE_TYPES.RS5K] = 'RS5K Samples'
+            }
         }
     }
 
@@ -124,7 +128,7 @@ function saveSettings()
     table.save(settings, scr.dfsetfile)
 end
 
-function checkSettings()
+function CheckSettings()
     local errors = {}
     if r.GetPlayState() & 4 == 4 then
         table.insert(errors, "Reaper cannot be recording while minimizing")

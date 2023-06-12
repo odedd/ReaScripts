@@ -34,7 +34,7 @@ function OD_GenerateUniqueFilename(filename)
         local newFilename
         repeat
             counter = counter + 1
-            newFilename = path .. name .. "_" .. counter .. "." .. ext
+            newFilename = path .. name .. '_' .. counter .. (ext and ('.' .. ext) or '')
         until not OD_FileExists(newFilename)
         return newFilename
     else
@@ -171,7 +171,7 @@ function OD_MoveToTrash(filename)
         return false
     end
 
-    local fileInTrashPath = trashPath .. Fn .. '.' .. ext
+    local fileInTrashPath = trashPath .. Fn .. (ext and ('.' .. ext) or '')
     return moveFile(filename, fileInTrashPath)
 end
 
