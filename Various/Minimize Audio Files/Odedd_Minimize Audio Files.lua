@@ -476,7 +476,10 @@ function app.drawMainWindow()
         -- r.ImGui_SeparatorText(ctx, 'Collect Files')
 
         settings.collect = gui.bitwise_setting('checkbox', settings.collect, COLLECT_DESCRIPTIONS)
-
+        if settings.backup and not OD_BwCheck(settings.collect, COLLECT.EXTERNAL) then 
+            settings.collect = OD_BwSet(settings.collect,COLLECT.EXTERNAL,true) 
+            r.ImGui_Text(ctx, 'must be')
+        end
         if app.coPerform and coroutine.status(app.coPerform) == 'suspended' then
             r.ImGui_EndDisabled(ctx)
         end
