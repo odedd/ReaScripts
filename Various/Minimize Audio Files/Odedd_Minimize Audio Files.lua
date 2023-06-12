@@ -526,17 +526,17 @@ end
 -- IDEAS and TODOS --------------------
 ---------------------------------------
 
--- todo: collect external audio + video files + rs5k
--- todo: enable "Save project file references with relative pathnames" and reapply previous setting after
--- todo: keep selected takes only (unless item marked with "play all takes")
--- todo: show total savings and close script upon completion
--- todo: scan media folder for extra files at the end
--- todo: verify minimization before deleting files 
--- todo: check handling of missing files
--- todo: handle unsaved project
--- todo: handle empty project
--- todo: reset when switching projects
--- todo (later): figure out section
+-- TODO collect external audio + video files + rs5k
+-- TODO enable "Save project file references with relative pathnames" and reapply previous setting after
+-- TODO keep selected takes only (unless item marked with "play all takes")
+-- TODO show total savings and close script upon completion
+-- TODO scan media folder for extra files at the end
+-- TODO verify minimization before deleting files 
+-- TODO check handling of missing files
+-- TODO handle unsaved project
+-- TODO handle empty project
+-- TODO reset when switching projects
+-- TODO (later): figure out section
 
 -- check project has a folder:
 --     local proj_name = r.GetProjectName( 0, '' )
