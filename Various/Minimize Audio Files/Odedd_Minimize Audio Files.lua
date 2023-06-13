@@ -548,7 +548,7 @@ end
 -- TODO enable "Save project file references with relative pathnames" and reapply previous setting after
 -- TODO keep selected takes only (unless item marked with "play all takes")
 -- TODO show total savings and close script upon completion
--- TODO scan media folder for extra files at the end
+-- TODO scan media folder for extra files at the end (make that a setting)
 -- TODO verify minimization before deleting files
 -- TODO check handling of missing files
 -- TODO handle unsaved project
@@ -602,3 +602,4 @@ end
 --         end
 --     end
 -- end
+-- 
