@@ -1,4 +1,4 @@
--- @description Minimize Audio Files
+-- @description Project Archiver
 -- @author Oded Davidov
 -- @version 0.0.1
 -- @donation: https://paypal.me/odedda
@@ -20,7 +20,7 @@ r.ClearConsole()
 Scr, OS_is = OD_Init()
 
 dofile(p .. 'lib/Settings.lua')
-dofile(p .. 'lib/Minimize.lua')
+dofile(p .. 'lib/Operation.lua')
 dofile(p .. 'lib/Gui.lua')
 dofile(p .. 'lib/App.lua')
 
