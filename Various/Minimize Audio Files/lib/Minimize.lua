@@ -153,17 +153,17 @@ function GetMediaFiles()
     r.Main_OnCommand(41990, 0) -- toggle ripple editing
 
     local numMediaItems = r.CountMediaItems(0)
-    app.mediaFiles = {}
-    app.perform.total = numMediaItems
-    app.perform.pos = 0
-    app.mediaFileCount = 0
+    App.mediaFiles = {}
+    App.perform.total = numMediaItems
+    App.perform.pos = 0
+    App.mediaFileCount = 0
     for i = 0, numMediaItems - 1 do
         local mediaItem = r.GetMediaItem(0, i)
         -- local itemStartOffset = r.GetMediaItemInfo_Value(mediaItem,"D_LENGTH")
 
         -- Get the total number of takes for the media item
         local numTakes = r.GetMediaItemNumTakes(mediaItem)
-        app.perform.total = app.perform.total + numTakes - 1
+        App.perform.total = App.perform.total + numTakes - 1
         -- Iterate over each take of the media item
         for j = 0, numTakes - 1 do
             local take = r.GetMediaItemTake(mediaItem, j)
@@ -218,24 +218,24 @@ function GetMediaFiles()
                     }
                 end
                 -- Check if the media file entry exists in the mediaFiles table
-                if app.mediaFiles[filename] then
+                if App.mediaFiles[filename] then
                     if oc ~= nil then -- if unsupported format, the occurrence will be nil
                         -- Append the occurrence to the existing entry
-                        table.insert(app.mediaFiles[filename].occurrences, oc)
+                        table.insert(App.mediaFiles[filename].occurrences, oc)
                         if oc.section then
-                            app.mediaFiles[filename].hasSection = true
+                            App.mediaFiles[filename].hasSection = true
                         end
                     end
                 else
                     -- Create a new entry for the media file
                     local fullpath, basename, ext = OD_DissectFilename(filename)
-                    local relOrAbsPath, pathIsRelative = OD_GetRelativeOrAbsolutePath(filename, app.projPath)
+                    local relOrAbsPath, pathIsRelative = OD_GetRelativeOrAbsolutePath(filename, App.projPath)
                     local sourceFileSize = OD_GetFileSize(filename)
-                    app.mediaFiles[filename] = {
+                    App.mediaFiles[filename] = {
                         fileType = OD_HasValue(FORMATS.VIDEO, sourceType) and FILE_TYPES.VIDEO or FILE_TYPES.AUDIO,
                         external = not pathIsRelative,
                         status = STATUS.SCANNED,
-                        order = app.mediaFileCount,
+                        order = App.mediaFileCount,
                         occurrences = { oc },
                         filenameWithPath = filename,
                         fullpath = fullpath,
@@ -249,29 +249,29 @@ function GetMediaFiles()
                         srclen = srclen,
                         ignore = not (OD_HasValue(FORMATS.UNCOMPRESSED, sourceType) or
                             OD_HasValue(FORMATS.LOSSLESS, sourceType) or
-                            ((settings.minimizeSourceTypes == MINIMIZE_SOURCE_TYPES.ALL) and
+                            ((Settings.minimizeSourceTypes == MINIMIZE_SOURCE_TYPES.ALL) and
                                 OD_HasValue(FORMATS.COMPRESSED, sourceType))),
                         missing = not fileExists,
                         status_info = '',
                         newfilename = nil,
                         keep_length = 1 -- for display
                     }
-                    app.mediaFileCount = app.mediaFileCount + 1
+                    App.mediaFileCount = App.mediaFileCount + 1
                 end
-                if app.mediaFiles[filename].hasSection then
-                    app.mediaFiles[filename].status_info = 'Has sections'
-                    app.mediaFiles[filename].ignore = true
+                if App.mediaFiles[filename].hasSection then
+                    App.mediaFiles[filename].status_info = 'Has sections'
+                    App.mediaFiles[filename].ignore = true
                 end
-                if app.mediaFiles[filename].ignore then
-                    app.mediaFiles[filename].newFileSize = app.mediaFiles[filename].sourceFileSize
-                    app.mediaFiles[filename].status = STATUS.IGNORE
-                    app.mediaFiles[filename].status_info = sourceType
+                if App.mediaFiles[filename].ignore then
+                    App.mediaFiles[filename].newFileSize = App.mediaFiles[filename].sourceFileSize
+                    App.mediaFiles[filename].status = STATUS.IGNORE
+                    App.mediaFiles[filename].status_info = sourceType
                 end
-                if app.mediaFiles[filename].missing then
-                    app.mediaFiles[filename].status = STATUS.ERROR
-                    app.mediaFiles[filename].status_info = 'file missing'
+                if App.mediaFiles[filename].missing then
+                    App.mediaFiles[filename].status = STATUS.ERROR
+                    App.mediaFiles[filename].status_info = 'file missing'
                 end
-                app.perform.pos = app.perform.pos + 1
+                App.perform.pos = App.perform.pos + 1
                 coroutine.yield('Collecting Takes')
             end
         end
@@ -281,51 +281,50 @@ end
 function CollectMedia()
     r.SelectAllMediaItems(0, false)
 
-    app.perform.total = 0
-    app.perform.pos = 0
+    App.perform.total = 0
+    App.perform.pos = 0
     -- determine_total
-    for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
+    for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
         -- determine which files should be collected:
         -- ------------------------------------------
         -- only if backup, collect all audio files which were ignored
         fileInfo.shouldCollect =
-            settings.backup and fileInfo.fileType == FILE_TYPES.AUDIO and
+            Settings.backup and fileInfo.fileType == FILE_TYPES.AUDIO and
             fileInfo
             .ignore -- + if set to collect external audio files, collect those that were ignored
             or
-            (OD_BfCheck(settings.collect, COLLECT.EXTERNAL) and fileInfo.fileType == FILE_TYPES.AUDIO and
+            (OD_BfCheck(Settings.collect, COLLECT.EXTERNAL) and fileInfo.fileType == FILE_TYPES.AUDIO and
                 fileInfo.external and fileInfo.ignore)  -- + if set to collect video files, collect them (if backup, collect all of them, if not, only collect those that are external)
-            or (OD_BfCheck(settings.collect, COLLECT.VIDEO) and fileInfo.fileType == FILE_TYPES.VIDEO and
-                (settings.backup or fileInfo.external)) -- + if set to collect rs5k files, collect them (if backup, collect all of them, if not, only collect those that are external)
-            or (OD_BfCheck(settings.collect, COLLECT.RS5K) and fileInfo.fileType == FILE_TYPES.RS5K and
-                (settings.backup or fileInfo.external))
+            or (OD_BfCheck(Settings.collect, COLLECT.VIDEO) and fileInfo.fileType == FILE_TYPES.VIDEO and
+                (Settings.backup or fileInfo.external)) -- + if set to collect rs5k files, collect them (if backup, collect all of them, if not, only collect those that are external)
+            or (OD_BfCheck(Settings.collect, COLLECT.RS5K) and fileInfo.fileType == FILE_TYPES.RS5K and
+                (Settings.backup or fileInfo.external))
         if fileInfo.shouldCollect then
-            app.perform.total = app.perform.total + 1
+            App.perform.total = App.perform.total + 1
         end
     end
 
-    for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
+    for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
         if fileInfo.shouldCollect then
-            app.perform.pos = app.perform.pos + 1
-            app.mediaFiles[filename].status = STATUS.COLLECTING
+            App.perform.pos = App.perform.pos + 1
+            App.mediaFiles[filename].status = STATUS.COLLECTING
             coroutine.yield('Collecting Files')
-            if settings.backup and not fileInfo.external then
+            if Settings.backup and not fileInfo.external then
                 fileInfo.collectBackupOperation = 'copy'
             else
-                fileInfo.collectBackupTargetPath = ((settings.targetPaths[fileInfo.fileType] or app.relProjectRecordingPath))
+                fileInfo.collectBackupTargetPath = (Settings.targetPaths[fileInfo.fileType] or App.relProjectRecordingPath)
                     :gsub('\\', '/'):gsub(
                         '/$',
-                        '') ..
-                    OD_FolderSep()
-                local targetPath = app.projPath .. OD_FolderSep() .. fileInfo.collectBackupTargetPath
+                        '')
+                local targetPath = App.projPath .. fileInfo.collectBackupTargetPath .. OD_FolderSep()
                 local targetFileName = targetPath ..
                 fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or '')
                 local uniqueFilename = OD_GenerateUniqueFilename(targetFileName)
                 -- r.ShowConsoleMsg(("Will copy %s\n       to %s...'\n\n"):format(fileInfo.filenameWithPath,
                     -- uniqueFilename))
                 if not OD_FolderExists(targetPath) then 
-                    app.restore.foldersToDelete = app.restore.foldersToDelete or {}
-                    table.insert(app.restore.foldersToDelete, targetPath) 
+                    App.restore.foldersToDelete = App.restore.foldersToDelete or {}
+                    table.insert(App.restore.foldersToDelete, targetPath) 
                 end
                 r.RecursiveCreateDirectory(targetPath, 0)
 
@@ -337,8 +336,8 @@ function CollectMedia()
                     local newSrc = r.PCM_Source_CreateFromFile(uniqueFilename)
                     
                     fileInfo.newfilename = uniqueFilename
-                    if not settings.backup then 
-                        app.peakOperations[uniqueFilename] = newSrc
+                    if not Settings.backup then 
+                        App.peakOperations[uniqueFilename] = newSrc
                         r.PCM_Source_BuildPeaks(newSrc, 0) 
                     end
                     fileInfo.collectBackupOperation = 'move'
@@ -351,7 +350,7 @@ function CollectMedia()
                 end
             end
 
-            app.mediaFiles[filename].status = STATUS.COLLECTED
+            App.mediaFiles[filename].status = STATUS.COLLECTED
             coroutine.yield('Collecting Files')
         end
     end
@@ -365,8 +364,8 @@ function MinimizeAndApplyMedia()
         local track = r.GetTrack(0, trackIndex)
         local basename = filename:match("^.+[\\/](.+)$")
         local no_ext = basename:match("(.+)%.")
-        app.mediaFiles[filename].trackName = no_ext .. settings.suffix
-        r.GetSetMediaTrackInfo_String(track, "P_NAME", app.mediaFiles[filename].trackName, true)
+        App.mediaFiles[filename].trackName = no_ext .. Settings.suffix
+        r.GetSetMediaTrackInfo_String(track, "P_NAME", App.mediaFiles[filename].trackName, true)
         return track
     end
 
@@ -378,10 +377,10 @@ function MinimizeAndApplyMedia()
         r.Main_OnCommand(41990, 0) -- toggle ripple editing
 
         for i, oc in ipairs(fileInfo.occurrences) do
-            oc.startpadding = math.min(settings.padding, oc.startTime)
+            oc.startpadding = math.min(Settings.padding, oc.startTime)
             local ocLength = oc.endTime - oc.startTime + oc.startpadding
 
-            oc.endpadding = math.min(oc.srclen - (oc.startTime + ocLength - oc.startpadding), settings.padding)
+            oc.endpadding = math.min(oc.srclen - (oc.startTime + ocLength - oc.startpadding), Settings.padding)
             oc.endpadding = math.max(oc.endpadding, 0)
             local ocLength = ocLength + oc.endpadding
 
@@ -424,7 +423,7 @@ function MinimizeAndApplyMedia()
         local items = {}
         for i = 0, itemCount - 1 do
             local item = r.GetTrackMediaItem(track, i)
-            iteminfo = {
+            local iteminfo = {
                 order = i,
                 obj = item,
                 startTime = r.GetMediaItemInfo_Value(item, "D_POSITION"),
@@ -469,13 +468,13 @@ function MinimizeAndApplyMedia()
                 r.Main_OnCommand(40142, 0) -- insert empty item
                 table.insert(emptyItems, r.GetSelectedMediaItem(0, 0))
                 table.insert(sections, {
-                    from = timeSelStart / app.mediaFiles[filename].srclen,
-                    to = timeSelEnd / app.mediaFiles[filename].srclen,
+                    from = timeSelStart / App.mediaFiles[filename].srclen,
+                    to = timeSelEnd / App.mediaFiles[filename].srclen,
                     order = counter
                 })
                 keepCounter = keepCounter +
-                    ((timeSelEnd / app.mediaFiles[filename].srclen) -
-                        (timeSelStart / app.mediaFiles[filename].srclen))
+                    ((timeSelEnd / App.mediaFiles[filename].srclen) -
+                        (timeSelStart / App.mediaFiles[filename].srclen))
                 counter = counter + 1
             end
 
@@ -484,13 +483,13 @@ function MinimizeAndApplyMedia()
             end
         end
         -- add last section
-        if currentPos < app.mediaFiles[filename].srclen then
+        if currentPos < App.mediaFiles[filename].srclen then
             table.insert(sections, {
-                from = currentPos / app.mediaFiles[filename].srclen,
+                from = currentPos / App.mediaFiles[filename].srclen,
                 to = 1,
                 order = counter
             })
-            keepCounter = keepCounter + (1 - currentPos / app.mediaFiles[filename].srclen)
+            keepCounter = keepCounter + (1 - currentPos / App.mediaFiles[filename].srclen)
         end
         r.SelectAllMediaItems(0, false)
         r.Main_OnCommand(40310, 0) -- set ripple editing per track
@@ -499,8 +498,8 @@ function MinimizeAndApplyMedia()
             r.Main_OnCommand(40006, 0) -- delete item
         end
         r.Main_OnCommand(41990, 0)     -- toggle ripple editing
-        app.mediaFiles[filename].keep_length = 1 - keepCounter
-        app.mediaFiles[filename].sections = sections
+        App.mediaFiles[filename].keep_length = 1 - keepCounter
+        App.mediaFiles[filename].sections = sections
     end
 
     local function saveNewPositions(fileInfo)
@@ -680,8 +679,8 @@ function MinimizeAndApplyMedia()
             
             newSrc = r.PCM_Source_CreateFromFile(uniqueName)
             fileInfo.newfilename = uniqueName
-            if not settings.backup then 
-                app.peakOperations[uniqueName] = newSrc
+            if not Settings.backup then 
+                App.peakOperations[uniqueName] = newSrc
                 r.PCM_Source_BuildPeaks(newSrc, 0) 
             end
             
@@ -717,13 +716,13 @@ function MinimizeAndApplyMedia()
     end
 
     r.SelectAllMediaItems(0, false)
-    app.peakOperations = {}
-    app.perform.total = app.mediaFileCount
-    app.perform.pos = 0
-    for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
+    App.peakOperations = {}
+    App.perform.total = App.mediaFileCount
+    App.perform.pos = 0
+    for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
         if not fileInfo.ignore and not fileInfo.missing then
-            app.mediaFiles[filename].status = STATUS.MINIMIZING
-            app.perform.pos = app.perform.pos + 1
+            App.mediaFiles[filename].status = STATUS.MINIMIZING
+            App.perform.pos = App.perform.pos + 1
             coroutine.yield('Minimizing Files')
 
             local track = createTrackForFilename(filename)
@@ -737,16 +736,16 @@ function MinimizeAndApplyMedia()
             end
             r.DeleteTrack(track)
 
-            app.mediaFiles[filename].status = STATUS.MINIMIZED
+            App.mediaFiles[filename].status = STATUS.MINIMIZED
             coroutine.yield('Minimizing Files')
         end
     end
 end
 
-function FinalizePeaksBuild()
-    local count = 0
+function FinalizePeaksBuild(count)
+    local count = count or 0
     local total = 0
-    for k, src in pairs(app.peakOperations) do
+    for k, src in pairs(App.peakOperations) do
         local current = r.PCM_Source_BuildPeaks(src, 1)
         if current == 0 then
             r.PCM_Source_BuildPeaks(src, 2)
@@ -754,34 +753,36 @@ function FinalizePeaksBuild()
         total = total + current
     end
     if count < 100 and total ~= 0 then
-        FinalizePeaksBuild(app.peakOperations, count + 1)
+        FinalizePeaksBuild(count + 1)
     end
 end
 
 function Restore()
     -- restore edit cursor position
-    r.SetEditCurPos(app.restore.pos, true, false)
+    r.SetEditCurPos(App.restore.pos, true, false)
     -- restore saved saving options
-    r.SNM_SetIntConfigVar('saveopts', app.restore.saveopts)
+    r.SNM_SetIntConfigVar('saveopts', App.restore.saveopts)
+    -- restore saved "Save project file references with relative pathnames" setting
+    r.SNM_SetIntConfigVar('projrelpath', App.restore.projrelpath)
     -- restore quality
-    r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", app.restore.opencopy_cfgidx, true)
-    r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", app.restore.afxfrmt, true)
-    r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", app.restore.useprjsrate, true)
+    r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", App.restore.opencopy_cfgidx, true)
+    r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", App.restore.afxfrmt, true)
+    r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", App.restore.useprjsrate, true)
     -- delete temporary folders
-    for i, folder in ipairs(app.restore.foldersToDelete or {}) do
+    for i, folder in ipairs(App.restore.foldersToDelete or {}) do
         os.remove(folder)
     end
     -- delete temporary RPP backup file
-    local success, error = os.remove(app.revert.tmpBackupFileName)
+    local success, error = os.remove(App.revert.tmpBackupFileName)
 end
 
 function Revert(cancel)
     -- restore temporary file saved before minimizing and open it
-    OD_CopyFile(app.revert.tmpBackupFileName, app.fullProjPath)
-    r.Main_openProject("noprompt:" .. app.fullProjPath)
+    OD_CopyFile(App.revert.tmpBackupFileName, App.fullProjPath)
+    r.Main_openProject("noprompt:" .. App.fullProjPath)
 
     -- delete files created but not used
-    for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
+    for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
         if fileInfo.newfilename and fileInfo.status ~= STATUS.DONE then
             if OD_FileExists(fileInfo.newfilename) then
                 os.remove(fileInfo.newfilename)
@@ -789,89 +790,94 @@ function Revert(cancel)
         end
     end
     if cancel then
-        app.mediaFiles = {}
-        app.mediaFileCount = 0
+        App.mediaFiles = {}
+        App.mediaFileCount = 0
         Restore() -- if not cancelled, restore will be called anyway
     end
 end
 
-function cancel(msg)
+function Cancel(msg)
     if msg then
-        app.msg(msg, 'Operation Cancelled')
-        if coroutine.isyieldable(app.coPerform) then
+        App.msg(msg, 'Operation Cancelled')
+        if coroutine.isyieldable(App.coPerform) then
             coroutine.yield('Cancelling', 0, 1)
             coroutine.yield('Cancelling', 0, 1)
         end
     end
     -- if app.coPerform then coroutine.close(app.coPerform) end
-    app.coPerform = nil
+    App.coPerform = nil
     Revert(true)
 end
 
 function PrepareRestore()
     -- save current edit cursor position
-    app.restore.pos = r.GetCursorPosition()
+    App.restore.pos = r.GetCursorPosition()
     -- save current autosave options
-    app.restore.saveopts = select(2, r.get_config_var_string('saveopts'))
+    App.restore.saveopts = select(2, r.get_config_var_string('saveopts'))
+    -- save current "Save project file references with relative pathnames" setting
+    App.restore.projrelpath = select(2, r.get_config_var_string('projrelpath'))
     -- save current glue settings
-    _, app.restore.opencopy_cfgidx = r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", 0, false)
-    _, app.restore.afxfrmt = r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", "", false)
-    app.restore.useprjsrate = r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, false)
+    _, App.restore.opencopy_cfgidx = r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", 0, false)
+    _, App.restore.afxfrmt = r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", "", false)
+    App.restore.useprjsrate = r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, false)
 end
 
 function SetProjPaths()
-    app.projPath, app.projFileName, app.fullProjPath, app.projectRecordingPath, app.relProjectRecordingPath =
-        getProjectPaths()
+    App.projPath, App.projFileName, App.fullProjPath, App.projectRecordingPath, App.relProjectRecordingPath =
+        OD_GetProjectPaths()
 end
 
 function SetQuality()
     r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", 1, true)                                                     -- use custom format
-    r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", GLUE_FORMATS_DETAILS[settings.glueFormat].formatString, true) -- set format to selected format from the settings
+    r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", GLUE_FORMATS_DETAILS[Settings.glueFormat].formatString, true) -- set format to selected format from the settings
     r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, true)                                                          -- turn off 'use sample rate', which makes the glue operation use the item's sample rate (that's good!)
 end
 
 function PrepareRevert()
-    app.revert.tmpBackupFileName = app.projPath .. select(2, OD_DissectFilename(app.projFileName)) .. '_' ..
+    App.revert.tmpBackupFileName = App.projPath .. select(2, OD_DissectFilename(App.projFileName)) .. '_' ..
         r.time_precise() .. '.RPP'
-    OD_CopyFile(app.fullProjPath, app.revert.tmpBackupFileName)
+    OD_CopyFile(App.fullProjPath, App.revert.tmpBackupFileName)
 end
 
-function DisableAutosave()
-    local tmpOpts = app.restore.saveopts
+function PrepareSettings()
+    local tmpOpts = App.restore.saveopts
 
     -- disable autosave during operation
-    if app.restore.saveopts & 2 == 2 then
+    if App.restore.saveopts & 2 == 2 then
         tmpOpts = tmpOpts - 2
     end -- Save to project -> off
-    if app.restore.saveopts & 4 == 4 then
+    if App.restore.saveopts & 4 == 4 then
         tmpOpts = tmpOpts - 4
     end -- Save to timestamped file in project directory -> off
-    if app.restore.saveopts & 8 == 8 then
+    if App.restore.saveopts & 8 == 8 then
         tmpOpts = tmpOpts - 8
     end -- Save to timestamped file in additional directory -> off
 
     -- set disabled saving
     r.SNM_SetIntConfigVar('saveopts', tmpOpts)
+    -- set "Save project file references with relative pathnames" enabled
+    r.SNM_SetIntConfigVar('projrelpath', 1)
+
 end
 
 function CreateBackupProject()
     r.Main_SaveProject(-1)
-    local targetPath = settings.backupDestination .. OD_FolderSep()
-    local targetProject = targetPath .. app.projFileName
-    OD_CopyFile(app.fullProjPath, targetProject)
-    app.perform.total = app.mediaFileCount
-    app.perform.pos = 0
+    local targetPath = Settings.backupDestination .. OD_FolderSep()
+    local targetProject = targetPath .. App.projFileName
+    OD_CopyFile(App.fullProjPath, targetProject)
+    App.perform.total = App.mediaFileCount
+    App.perform.pos = 0
 
-    for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
+    for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
         -- move processed files
-        r.RecursiveCreateDirectory(targetPath .. (fileInfo.collectBackupTargetPath or app.relProjectRecordingPath), 0)
-        app.perform.pos = app.perform.pos + 1
+        r.RecursiveCreateDirectory(targetPath .. (fileInfo.collectBackupTargetPath or App.relProjectRecordingPath), 0)
+        App.perform.pos = App.perform.pos + 1
         if fileInfo.collectBackupOperation == 'move' or (not fileInfo.ignore and not fileInfo.missing) then
             fileInfo.status = STATUS.MOVING
             coroutine.yield('Creating backup project')
             local _, newFN, newExt = OD_DissectFilename(fileInfo.newfilename)
             local target = targetPath ..
-                (fileInfo.collectBackupTargetPath or app.relProjectRecordingPath) .. OD_FolderSep() .. newFN .. (newExt and ('.' .. newExt) or '')
+                (fileInfo.collectBackupTargetPath or App.relProjectRecordingPath) .. OD_FolderSep() .. newFN .. (newExt and ('.' .. newExt) or '')
             if OD_MoveFile(fileInfo.newfilename, target) then
                 fileInfo.status = STATUS.DONE
             else
@@ -899,8 +905,8 @@ function CreateBackupProject()
 end
 
 function NetworkedFilesExist()
-    if os_is.win then
-        for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
+    if OS_is.win then
+        for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
             if string.sub(fileInfo.filenameWithPath, 1, 2) == '\\\\' then
                 return true
             end
@@ -910,21 +916,21 @@ function NetworkedFilesExist()
 end
 
 function DeleteOriginals()
-    app.perform.total = app.mediaFileCount
-    app.perform.pos = 0
-    local stat = settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and 'Moving originals to trash' or
+    App.perform.total = App.mediaFileCount
+    App.perform.pos = 0
+    local stat = Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and 'Moving originals to trash' or
         'Deleting originals'
     local filesToTrashWin = {}
-    for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
+    for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
         -- delete original files which were replaced by minimized versions
-        app.perform.pos = app.perform.pos + 1
+        App.perform.pos = App.perform.pos + 1
         coroutine.yield(stat)
         if not fileInfo.external and not fileInfo.ignore and not fileInfo.missing then
-            fileInfo.status = settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and STATUS.MOVING_TO_TRASH or
+            fileInfo.status = Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and STATUS.MOVING_TO_TRASH or
                 STATUS.DELETING
             coroutine.yield(stat)
-            if os_is.win then
-                if settings.deleteOperation ~= DELETE_OPERATION.MOVE_TO_TRASH then
+            if OS_is.win then
+                if Settings.deleteOperation ~= DELETE_OPERATION.MOVE_TO_TRASH then
                     r.reduce_open_files(2) -- windows won't delete/move files that are in use
                     if os.remove(fileInfo.filenameWithPath) then
                         fileInfo.status = STATUS.DONE
@@ -936,7 +942,7 @@ function DeleteOriginals()
                     table.insert(filesToTrashWin, fileInfo.filenameWithPath)
                 end
             else
-                if (settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and
+                if (Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and
                         OD_MoveToTrash(fileInfo.filenameWithPath) or os.remove(fileInfo.filenameWithPath)) then
                     fileInfo.status = STATUS.DONE
                 else
@@ -953,7 +959,7 @@ function DeleteOriginals()
     if #filesToTrashWin > 0 then
         r.reduce_open_files(2)                                       -- windows won't delete/move files that are in use
         OD_MoveToTrash(filesToTrashWin)
-        for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do -- verify which files were and were not removed
+        for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do -- verify which files were and were not removed
             if not OD_FileExists(fileInfo.filenameWithPath) then
                 fileInfo.status = STATUS.DONE
             else

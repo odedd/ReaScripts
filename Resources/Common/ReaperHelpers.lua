@@ -1,5 +1,5 @@
 -- @noindex
-function getProjectPaths()
+function OD_GetProjectPaths()
     local projectRecordingPath = r.GetProjectPath()
     local proj, fullProjPath = r.EnumProjects(-1, '') -- full project name including path and RPP file
     local projFileName = r.GetProjectName(proj) -- just the RPP file
@@ -8,7 +8,7 @@ function getProjectPaths()
     return projPath, projFileName, fullProjPath, projectRecordingPath, relProjectRecordingPath
 end
 
-function getReaperActionCommandId(actionNumber)
+function OD_GetReaperActionCommandId(actionNumber)
     local actionId = r.ReverseNamedCommandLookup(actionNumber)
     if actionId == nil then
         return actionNumber
@@ -17,18 +17,18 @@ function getReaperActionCommandId(actionNumber)
     end
 end
 
-function getReaperActionNameOrCommandId(actionNamedCommandID)
+function OD_GetReaperActionNameOrCommandId(actionNamedCommandID)
     actionNamedCommandID = (type(actionNamedCommandID) == 'string') and '_' .. actionNamedCommandID or
                                actionNamedCommandID
     local actionNumber = r.NamedCommandLookup(actionNamedCommandID)
     if r.APIExists('CF_GetCommandText') then -- if SWS, return name
         return true, r.CF_GetCommandText(0, actionNumber)
     else -- otherwise Fallback to Action ID
-        return false, getReaperActionCommandId(actionNumber)
+        return false, OD_GetReaperActionCommandId(actionNumber)
     end
 end
 
-function deleteLongerProjExtState(section, key)
+local function deleteLongerProjExtState(section, key)
     local n = '*'
     while r.GetProjExtState(0, section, key .. n) == 1 do
         r.SetProjExtState(0, section, key .. n, '')
@@ -36,26 +36,26 @@ function deleteLongerProjExtState(section, key)
     end
 end
 
-function saveLongProjExtState(section, key, val)
+function OD_SaveLongProjExtState(section, key, val)
     local maxLength = 2 ^ 12 - #key - 2
     deleteLongerProjExtState(section, key)
     r.SetProjExtState(0, section, key, val:sub(1, maxLength))
     if #val > maxLength then
-        saveLongProjExtState(section, key .. '*', val:sub(maxLength + 1, #val))
+        OD_SaveLongProjExtState(section, key .. '*', val:sub(maxLength + 1, #val))
     end
 end
 
-function loadLongProjExtKey(section, key)
+function OD_LoadLongProjExtKey(section, key)
     local i = 0
     local maxLength = 2 ^ 12 - #key - 2
     while true do
-        retval, k, val = r.EnumProjExtState(0, section, i)
+        local retval, k, val = r.EnumProjExtState(0, section, i)
         if not retval then
             break
         end
         if (k == key) then
             if #val == maxLength then
-                val = val .. (loadLongProjExtKey(section, key .. '*') or '')
+                val = val .. (OD_LoadLongProjExtKey(section, key .. '*') or '')
             end
             return val
         end

@@ -1,13 +1,13 @@
 -- @noindex
-gui = {}
+Gui = {}
 
 do
     -- these needs to be temporarily created to be refered to from some of the gui vars
-    local ctx = r.ImGui_CreateContext(scr.context_name .. '_MAIN')
-    local font_default = r.ImGui_CreateFont(scr.dir .. '../../Resources/Fonts/Cousine-Regular.ttf', 16)
+    local ctx = r.ImGui_CreateContext(Scr.context_name .. '_MAIN')
+    local font_default = r.ImGui_CreateFont(Scr.dir .. '../../Resources/Fonts/Cousine-Regular.ttf', 16)
     r.ImGui_Attach(ctx, font_default)
 
-    gui = {
+    Gui = {
         ctx = ctx,
         mainWindow = {},
         draw_list = r.ImGui_GetWindowDrawList(ctx),
@@ -56,16 +56,16 @@ do
             return self.modKeys
         end
     }
-    r.ImGui_PushFont(ctx, gui.st.fonts.default)
-    gui.TEXT_BASE_WIDTH, gui.TEXT_BASE_HEIGHT = r.ImGui_CalcTextSize(ctx, 'A'),
+    r.ImGui_PushFont(ctx, Gui.st.fonts.default)
+    Gui.TEXT_BASE_WIDTH, Gui.TEXT_BASE_HEIGHT = r.ImGui_CalcTextSize(ctx, 'A'),
         r.ImGui_GetTextLineHeightWithSpacing(ctx)
     r.ImGui_PopFont(ctx)
 end
 
-gui.setting = function(stType, text, hint, val, data, sameline)
+Gui.setting = function(stType, text, hint, val, data, sameline)
     -- generalize
-    local ctx = gui.ctx
-    local thirdWidth = gui.mainWindow.size[1] / 3
+    local ctx = Gui.ctx
+    local thirdWidth = Gui.mainWindow.size[1] / 3
     local itemWidth = thirdWidth * 2 - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
 
     local data = data or {}
@@ -85,7 +85,7 @@ gui.setting = function(stType, text, hint, val, data, sameline)
         r.ImGui_SameLine(ctx)
         r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx) -
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemInnerSpacing()))
-        widgetWidth = itemWidth - gui.TEXT_BASE_WIDTH * 2 - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
+        widgetWidth = itemWidth - Gui.TEXT_BASE_WIDTH * 2 - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
     end
     r.ImGui_PushItemWidth(ctx, widgetWidth)
 
@@ -120,17 +120,17 @@ gui.setting = function(stType, text, hint, val, data, sameline)
     if not sameline then
         r.ImGui_EndGroup(ctx)
     end
-    app.setHoveredHint('main', hint)
+    App.setHoveredHint('main', hint)
     return retval
 end
 
-gui.bitwise_setting = function(stType, val, list)
+Gui.bitwise_setting = function(stType, val, list)
     if not OD_HasValue({"checkbox"}, stType) then
         return
     end
     local tmpVal = val
     for bwVal, option in OD_PairsByOrder(list) do
-        local op = gui.setting(stType, option.label, option.hint, (val & bwVal ~= 0))
+        local op = Gui.setting(stType, option.label, option.hint, (val & bwVal ~= 0))
         tmpVal = OD_BfSet(tmpVal, bwVal, op)
     end
 

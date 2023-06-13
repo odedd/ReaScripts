@@ -1,4 +1,4 @@
-app = {
+App = {
     open = true,
     coPerform = nil,
     mediaFiles = {},
@@ -18,52 +18,52 @@ app = {
     popup = {}
 }
 
-function app.getStatus(window)
+function App.getStatus(window)
     if window == 'main' then
         --  if db.error == 'no stemsFolder' then return "Stems folder not defined", 'error' end
-        if app.coPerform then
-            return app.perform.status
+        if App.coPerform then
+            return App.perform.status
         end
-        return app.hint.main.text, app.hint.main.color
+        return App.hint.main.text, App.hint.main.color
     elseif window == 'settings' then
-        return app.hint.settings.text, app.hint.settings.color
+        return App.hint.settings.text, App.hint.settings.color
     end
 end
 
-function app.setHoveredHint(window, text, color, ctx)
-    local ctx = ctx or gui.ctx
+function App.setHoveredHint(window, text, color, ctx)
+    local ctx = ctx or Gui.ctx
     if r.ImGui_IsItemHovered(ctx, r.ImGui_HoveredFlags_AllowWhenDisabled()) then
-        app.setHint(window, text, color, ctx)
+        App.setHint(window, text, color, ctx)
     end
 end
 
-function app.setHint(window, text, color, ctx)
-    local ctx = ctx or gui.ctx
+function App.setHint(window, text, color, ctx)
+    local ctx = ctx or Gui.ctx
     color = color or 'hint'
-    if (app.error or app.coPerform) and not (text == '') and text then
-        app.hint[window] = {
+    if (App.error or App.coPerform) and not (text == '') and text then
+        App.hint[window] = {
             window = {}
         }
         if color then
-            r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), gui.st.col[color])
+            r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col[color])
         end
         r.ImGui_SetTooltip(ctx, text)
         if color then
             r.ImGui_PopStyleColor(ctx)
         end
     else
-        app.hint[window] = {
+        App.hint[window] = {
             text = text,
             color = color
         }
     end
 end
 
-app.drawPopup = function(popupType, title, data)
-    local ctx = gui.ctx
+App.drawPopup = function(popupType, title, data)
+    local ctx = Gui.ctx
     local data = data or {}
-    local center = {gui.mainWindow.pos[1] + gui.mainWindow.size[1] / 2,
-                    gui.mainWindow.pos[2] + gui.mainWindow.size[2] / 2} -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
+    local center = {Gui.mainWindow.pos[1] + Gui.mainWindow.size[1] / 2,
+                    Gui.mainWindow.pos[2] + Gui.mainWindow.size[2] / 2} -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
     if popupType == 'singleInput' then
         local okPressed = nil
         local initVal = data.initVal or ''
@@ -76,26 +76,26 @@ app.drawPopup = function(popupType, title, data)
         r.ImGui_SetNextWindowSize(ctx, 350, 110)
         r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
         if r.ImGui_BeginPopupModal(ctx, title, false, r.ImGui_WindowFlags_AlwaysAutoResize()) then
-            gui.popups.title = title
+            Gui.popups.title = title
 
             if r.ImGui_IsWindowAppearing(ctx) then
                 r.ImGui_SetKeyboardFocusHere(ctx)
-                gui.popups.singleInput.value = initVal -- gui.popups.singleInput.stem.name
-                gui.popups.singleInput.status = ""
+                Gui.popups.singleInput.value = initVal -- gui.popups.singleInput.stem.name
+                Gui.popups.singleInput.status = ""
             end
             local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
             r.ImGui_PushItemWidth(ctx, width)
-            retval, gui.popups.singleInput.value = r.ImGui_InputText(ctx, '##singleInput', gui.popups.singleInput.value)
+            _, Gui.popups.singleInput.value = r.ImGui_InputText(ctx, '##singleInput', Gui.popups.singleInput.value)
 
             r.ImGui_SetItemDefaultFocus(ctx)
             r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
                 r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
-            r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), gui.st.col.error)
-            r.ImGui_Text(ctx, gui.popups.singleInput.status)
+            r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col.error)
+            r.ImGui_Text(ctx, Gui.popups.singleInput.status)
             r.ImGui_PopStyleColor(ctx)
             if r.ImGui_Button(ctx, okButtonLabel) or r.ImGui_IsKeyPressed(ctx, r.ImGui_Key_Enter()) then
-                gui.popups.singleInput.status = validation(initVal, gui.popups.singleInput.value)
-                if gui.popups.singleInput.status == true then
+                Gui.popups.singleInput.status = validation(initVal, Gui.popups.singleInput.value)
+                if Gui.popups.singleInput.status == true then
                     okPressed = true
                     r.ImGui_CloseCurrentPopup(ctx)
                 end
@@ -107,7 +107,7 @@ app.drawPopup = function(popupType, title, data)
             end
             r.ImGui_EndPopup(ctx)
         end
-        return okPressed, gui.popups.singleInput.value
+        return okPressed, Gui.popups.singleInput.value
     elseif popupType == 'msg' then
         local okPressed = nil
         local msg = data.msg or ''
@@ -124,7 +124,7 @@ app.drawPopup = function(popupType, title, data)
         r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
         r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_WindowTitleAlign(), 0.5, 0.5)
         if r.ImGui_BeginPopupModal(ctx, title, false, r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
-            gui.popups.title = title
+            Gui.popups.title = title
 
             local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
             r.ImGui_PushItemWidth(ctx, width)
@@ -167,20 +167,20 @@ app.drawPopup = function(popupType, title, data)
     return false
 end
 
-app.msg = function(msg, title)
-    app.popup.msg = app.popup.msg or msg
-    app.popup.title = app.popup.title or title or scr.name
+App.msg = function(msg, title)
+    App.popup.msg = App.popup.msg or msg
+    App.popup.title = App.popup.title or title or Scr.name
 end
 
-app.drawMsg = function()
-    if next(app.popup) ~= nil and app.popup.msg ~= nil then
-        r.ImGui_OpenPopup(gui.ctx, app.popup.title .. "##msg")
-        local rv = app.drawPopup('msg', app.popup.title .. "##msg", {
-            msg = app.popup.msg
+App.drawMsg = function()
+    if next(App.popup) ~= nil and App.popup.msg ~= nil then
+        r.ImGui_OpenPopup(Gui.ctx, App.popup.title .. "##msg")
+        local rv = App.drawPopup('msg', App.popup.title .. "##msg", {
+            msg = App.popup.msg
         })
 
         if rv then
-            app.popup = {}
+            App.popup = {}
         end
     end
 end

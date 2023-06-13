@@ -139,9 +139,7 @@ if next(prereqErrors) == nil then
       descModAlt    = (os_is.mac or os_is.mac_arm) and 'opt' or 'alt',      
       st            = {
         fonts = {
-          default  = font_default,
-          vertical = font_vertical,
-          bold     = font_bold}
+          default  = font_default}
       },
       stWnd = {}, --settings window states
       caWnd = {}, --create action window states
