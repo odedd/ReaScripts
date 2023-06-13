@@ -58,22 +58,11 @@ Gui.st.col.status = {
 
 local function doPerform()
     if CheckSettings() then
-        -- first save the project in its current form
-        r.Main_SaveProject(-1)
-        -- set global project path in app variable
-        SetProjPaths()
-        -- save stuff to restore in any case
-        PrepareRestore()
-        -- save suff to restore in case of error/cancel or if creating a backup
-        PrepareRevert()
-        -- since changes will be made during the process, we don't want the project accidentally saved
-        PrepareSettings()
-        -- set glue quality
-        SetQuality()
+        Prepare()
         -- get information on all takes, separated by media source file
         GetMediaFiles()
         -- if sources are networked, trashing may not be an option.
-        if (not Settings.backup) and (Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH) and
+        if (Settings.minimize and not Settings.backup) and (Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH) and
             (NetworkedFilesExist()) then
             Cancel(
                 'Networked files were found.\nMoving networkd files to the\ntrash is not supported.\nPlease select deleting files\nor consider backing up instead of\nminimizing.')
@@ -81,9 +70,6 @@ local function doPerform()
             -- minimize files and apply to original sources
             MinimizeAndApplyMedia()
             CollectMedia()
-            -- if OD_BwCheck(Settings.collect, COLLECT.RS5K) then
-            --     collectRS5KSamples()
-            -- end
 
             if Settings.backup then
                 -- copy to a new project path (move glued files, copy others)
@@ -91,9 +77,13 @@ local function doPerform()
                 -- revert back to temporary copy of project
                 Revert()
             else
-                DeleteOriginals()
+                if Settings.minimize then
+                    DeleteOriginals()
+                end
                 -- finish building peaks for new files
                 FinalizePeaksBuild()
+                -- if not creating a backup, save project
+                r.Main_SaveProject(-1)
             end
             -- restore settings and other stuff saved at the beginning of the process
             Restore()
@@ -213,8 +203,9 @@ function App.drawWarning()
     local ctx = Gui.ctx
     local center = { Gui.mainWindow.pos[1] + Gui.mainWindow.size[1] / 2,
         Gui.mainWindow.pos[2] + Gui.mainWindow.size[2] / 2 } -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
-    local text = [[
-You have selected not to backup to a new folder.
+    local text = ([[
+You have selected not to backup to a new folder, 
+and to %s.
 
 This means that all* the audio source files will be
 DELETED and new "minimized" versions of them will be
@@ -233,7 +224,7 @@ Please think about it carefully before continuing.
 
 *Audio files outside of the project's media folder
  will not be deleted.
-]]
+]]):format(DELETE_OPERATION_DESCRIPTIONS[Settings.deleteOperation]):lower()
     local okButtonLabel = 'OK'
     local okButtonLabel = App.popup.secondWarningShown and 'Come on already let\'s do it!' or 'OK'
     local cancelButtonLabel = 'Cancel'
@@ -382,7 +373,7 @@ function App.drawBottom(ctx, bottom_lines)
             if not ok then
                 App.msg(table.concat(errors, '\n------------\n'))
             else
-                if not Settings.backup then
+                if Settings.minimize and Settings.deleteOperation ~= DELETE_OPERATION.KEEP_IN_FOLDER then
                     r.ImGui_OpenPopup(ctx, 'Are you sure?')
                 else
                     App.coPerform = coroutine.create(doPerform)
@@ -427,9 +418,18 @@ function App.drawMainWindow()
         end
 
         r.ImGui_SeparatorText(ctx, 'Settings')
+
+        r.ImGui_Bullet(ctx)
+        Settings.backup = Gui.setting('checkbox', 'Backup project to a new folder',
+            "Copy project to a new directory, along with used media only", Settings.backup)
+        if Settings.backup then
+            Settings.backupDestination = Gui.setting('folder', 'Destination', 'Select an empty folder',
+                Settings.backupDestination, {}, true)
+        end
+
         r.ImGui_Bullet(ctx)
         Settings.keepActiveTakesOnly = Gui.setting('checkbox', 'Remove unused takes',
-        "Keep only selected takes", Settings.keepActiveTakesOnly)
+            "Keep only selected takes", Settings.keepActiveTakesOnly)
 
 
         r.ImGui_Bullet(ctx)
@@ -459,53 +459,53 @@ function App.drawMainWindow()
             Settings.glueFormat, {
                 list = GLUE_FORMATS_LIST
             })
-        if Settings.backup then r.ImGui_BeginDisabled(ctx) end
-        Settings.deleteOperation = Gui.setting('combo', 'Deletion Method',
-            "How should the original files, which were minimized and are no longer used, be deleted?",
-            Settings.deleteOperation, {
-                list = DELETE_OPERATIONS_LIST
-            })
-        if Settings.backup then r.ImGui_EndDisabled(ctx) end
         if not Settings.minimize then r.ImGui_EndDisabled(ctx) end
         r.ImGui_Unindent(ctx)
         r.ImGui_Bullet(ctx)
-        r.ImGui_Text(ctx, 'Collect Files into project folder')
+        Settings.collectOperation = Gui.setting('combo', 'Collect Files into project folder',
+        "When collecting external files, should they be copied or moved from their original location",
+        Settings.collectOperation, {
+            list = COLLECT_OPERATIONS_LIST
+        })
         
         r.ImGui_Indent(ctx)
-        
+
         local tmpSetting
         if Settings.backup then
             r.ImGui_BeginDisabled(ctx)
             App.temp.originalBackupValue = App.temp.originalBackupValue or
-            OD_BfCheck(Settings.collect, COLLECT.EXTERNAL)
+                OD_BfCheck(Settings.collect, COLLECT.EXTERNAL)
             tmpSetting = {
                 [COLLECT.EXTERNAL] = COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL]
             }
             Gui.bitwise_setting('checkbox', COLLECT.EXTERNAL, tmpSetting)
             r.ImGui_SameLine(ctx)
-            r.ImGui_Text(ctx, ('Must collect %s when backing up'):format(COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL].label):lower())
+            r.ImGui_Text(ctx,
+                ('Must collect %s when backing up'):format(COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL].label):lower())
             COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL] = nil
             -- Settings.collect = OD_BwSet(Settings.collect,COLLECT.EXTERNAL,true)
             r.ImGui_EndDisabled(ctx)
         end
-        
-        
+
+
         Settings.collect = Gui.bitwise_setting('checkbox', Settings.collect, COLLECT_DESCRIPTIONS)
-        
+
         if Settings.backup then COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL] = tmpSetting[COLLECT.EXTERNAL] end
         r.ImGui_Unindent(ctx)
         r.ImGui_Bullet(ctx)
         Settings.deleteUnusedMedia = Gui.setting('checkbox', 'Clean media folder',
             "Keep only the files that are being used in the project in the media folder", Settings.deleteUnusedMedia)
 
+        if Settings.minimize and not Settings.backup then
             r.ImGui_Bullet(ctx)
-        Settings.backup = Gui.setting('checkbox', 'Backup project to a new folder',
-            "Copy project to a new directory, along with used media only", Settings.backup)
-        if Settings.backup then
-            Settings.backupDestination = Gui.setting('folder', 'Destination', 'Select an empty folder',
-                Settings.backupDestination, {}, true)
+            Settings.deleteOperation = Gui.setting('combo', 'Deletion Method',
+                "When deleting files, which method should be used?",
+                Settings.deleteOperation, {
+                    list = DELETE_OPERATIONS_LIST
+                })
+        else
+            Gui.settingSpacing()
         end
-
 
         if App.coPerform and coroutine.status(App.coPerform) == 'suspended' then r.ImGui_EndDisabled(ctx) end
         r.ImGui_PopStyleVar(ctx)
@@ -542,9 +542,6 @@ if OD_PrereqsOK({
         sws = true,           -- required for SNM_SetIntConfigVar - setting config vars (max file size limitation and autosave options)
         js_version = 1.310,   -- required for JS_Dialog_BrowseForFolder
         reaper_version = 6.76 -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
-        -- scripts = {
-        --     ['Mavriq Lua Batteris'] =  r.GetResourcePath() .."/Scripts/Mavriq ReaScript Repository/Various/Mavriq-Lua-Batteries/batteries_header.lua"
-        -- }
     }) then
     LoadSettings()
     -- app.coPerform = coroutine.create(doPerform)

@@ -62,6 +62,13 @@ do
     r.ImGui_PopFont(ctx)
 end
 
+-- creates the space of one "setting" line
+Gui.settingSpacing = function()
+    local ctx = Gui.ctx
+    r.ImGui_AlignTextToFramePadding(ctx)
+    r.ImGui_Spacing(ctx)
+end
+
 Gui.setting = function(stType, text, hint, val, data, sameline)
     -- generalize
     local ctx = Gui.ctx
@@ -80,7 +87,6 @@ Gui.setting = function(stType, text, hint, val, data, sameline)
         r.ImGui_SameLine(ctx)
         r.ImGui_SetCursorPosX(ctx, thirdWidth)
         widgetWidth = itemWidth
-
     else
         r.ImGui_SameLine(ctx)
         r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx) -
@@ -125,7 +131,7 @@ Gui.setting = function(stType, text, hint, val, data, sameline)
 end
 
 Gui.bitwise_setting = function(stType, val, list)
-    if not OD_HasValue({"checkbox"}, stType) then
+    if not OD_HasValue({ "checkbox" }, stType) then
         return
     end
     local tmpVal = val
@@ -136,4 +142,3 @@ Gui.bitwise_setting = function(stType, val, list)
 
     return tmpVal
 end
-

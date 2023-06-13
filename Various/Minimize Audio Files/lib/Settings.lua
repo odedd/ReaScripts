@@ -10,8 +10,8 @@ COLLECT = {
 COLLECT_DESCRIPTIONS = {
     [COLLECT.EXTERNAL] = {
         order = 0,
-        label = "External audio files",
-        hint = 'Copy all external audio files to the project\'s media folder'
+        label = "External unminimized audio files",
+        hint = 'Copy all external audio files which were have not been minimized to the project\'s media folder'
     },
     [COLLECT.VIDEO] = {
         order = 1,
@@ -25,6 +25,21 @@ COLLECT_DESCRIPTIONS = {
     }
 }
 
+COLLECT_OPERATION = {
+    COPY = 0,
+    MOVE = 1
+}
+
+COLLECT_OPERATION_DESCRIPTIONS = {
+    [COLLECT_OPERATION.COPY] = 'Copy from original location',
+    [COLLECT_OPERATION.MOVE] = 'Move from original location'
+}
+
+
+for i = 0, #COLLECT_OPERATION_DESCRIPTIONS do
+    COLLECT_OPERATIONS_LIST = (COLLECT_OPERATIONS_LIST or '') .. COLLECT_OPERATION_DESCRIPTIONS[i] .. '\0'
+end
+
 DELETE_OPERATION = {
     MOVE_TO_TRASH = 0,
     DELETE_FROM_DISK = 1,
@@ -33,11 +48,11 @@ DELETE_OPERATION = {
 
 DELETE_OPERATION_DESCRIPTIONS = {
     [DELETE_OPERATION.MOVE_TO_TRASH] = 'Move originals to trash',
-    [DELETE_OPERATION.DELETE_FROM_DISK] = 'Delete originals immediately (caution!)',
+    [DELETE_OPERATION.DELETE_FROM_DISK] = 'Delete originals immediately',
     [DELETE_OPERATION.KEEP_IN_FOLDER] = 'Keep originals'
 }
 
-for i = 0, #DELETE_OPERATION_DESCRIPTIONS - 1 do
+for i = 0, #DELETE_OPERATION_DESCRIPTIONS do
     DELETE_OPERATIONS_LIST = (DELETE_OPERATIONS_LIST or '') .. DELETE_OPERATION_DESCRIPTIONS[i] .. '\0'
 end
 
@@ -97,7 +112,8 @@ local function getDefaultSettings(factory)
             keepActiveTakesOnly = true, -- TODO implement Settings.keepActiveTakesOnly (unless item marked with "play all takes")
             minimizeSourceTypes = MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_AND_LOSSLESS,
             deleteOperation = DELETE_OPERATION.MOVE_TO_TRASH,
-            collect = COLLECT.RS5K + COLLECT.VIDEO + COLLECT.EXTERNAL, -- TODO: implement RS5K collection
+            collect = COLLECT.RS5K + COLLECT.VIDEO + COLLECT.EXTERNAL, -- TODO implement RS5K collection
+            collectOperation = COLLECT_OPERATION.COPY,                 -- TODO implement collect operation (currently copy only)
             keepMediaFolderStructure = true,
             glueFormat = GLUE_FORMATS.FLAC24,
             padding = 1,

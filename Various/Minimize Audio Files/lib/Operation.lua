@@ -57,10 +57,13 @@ function GetMediaFiles()
         -- copy item to new track
         local item = r.GetMediaItemTake_Item(take)
         -- reset item timebase to time, because it screws up taking, but save current setting to re-apply them after copying
+
         local tmpItemAutoStretch = r.GetMediaItemInfo_Value(item, "C_AUTOSTRETCH")
         local tmpBeatAttachMode = r.GetMediaItemInfo_Value(item, "C_BEATATTACHMODE")
-        r.SetMediaItemInfo_Value(item, "C_AUTOSTRETCH", 0)
-        r.SetMediaItemInfo_Value(item, "C_BEATATTACHMODE", 0) -- ]]
+        if Settings.minimize then                                 -- no need to do it if not minimizing (wasteful)
+            r.SetMediaItemInfo_Value(item, "C_AUTOSTRETCH", 0)
+            r.SetMediaItemInfo_Value(item, "C_BEATATTACHMODE", 0) -- ]]
+        end
         local savedTake = r.GetActiveTake(item)
         r.SetActiveTake(take)
 
@@ -86,49 +89,50 @@ function GetMediaFiles()
         local foundStart, foundEnd
         -- check if there are markers at start and end of item. if not, add them.
         local beforeStartSlope, beforeEndSlope
+        if Settings.minimize then -- no need to do it if not minimizing (wasteful)
+            for j = 0, numStrtchMarkers - 1 do
+                local rv, pos, srcpos = r.GetTakeStretchMarker(take, j)
+                if pos < startPos then
+                    beforeStartSlope = r.GetTakeStretchMarkerSlope(take, j)
+                end
+                if pos < endPos then
+                    beforeEndSlope = r.GetTakeStretchMarkerSlope(take, j)
+                end
+                if pos == startPos then
+                    foundStart = true
+                    startSrcPos = srcpos
+                end
+                if OD_Round(pos, 9) == endPos then
+                    foundEnd = true
+                    endSrcPos = srcpos
+                end
+            end
 
-        for j = 0, numStrtchMarkers - 1 do
-            local rv, pos, srcpos = r.GetTakeStretchMarker(take, j)
-            if pos < startPos then
-                beforeStartSlope = r.GetTakeStretchMarkerSlope(take, j)
-            end
-            if pos < endPos then
-                beforeEndSlope = r.GetTakeStretchMarkerSlope(take, j)
-            end
-            if pos == startPos then
-                foundStart = true
+            -- add start and end markers unless found
+            if not foundStart then
+                local startSm = r.SetTakeStretchMarker(take, -1, startPos)
+                local rv, pos, srcpos = r.GetTakeStretchMarker(take, startSm)
                 startSrcPos = srcpos
+                r.DeleteTakeStretchMarkers(take, startSm)
+                if beforeStartSlope then
+                    r.SetTakeStretchMarkerSlope(take, startSm - 1, beforeStartSlope)
+                end
             end
-            if OD_Round(pos, 9) == endPos then
-                foundEnd = true
+            if not foundEnd then
+                local endSm = r.SetTakeStretchMarker(take, -1, endPos)
+                local rv, pos, srcpos = r.GetTakeStretchMarker(take, endSm)
                 endSrcPos = srcpos
+                r.DeleteTakeStretchMarkers(take, endSm)
+                if beforeEndSlope then
+                    r.SetTakeStretchMarkerSlope(take, endSm - 1, beforeEndSlope)
+                end
             end
         end
-
-        -- add start and end markers unless found
-        if not foundStart then
-            local startSm = r.SetTakeStretchMarker(take, -1, startPos)
-            local rv, pos, srcpos = r.GetTakeStretchMarker(take, startSm)
-            startSrcPos = srcpos
-            r.DeleteTakeStretchMarkers(take, startSm)
-            if beforeStartSlope then
-                r.SetTakeStretchMarkerSlope(take, startSm - 1, beforeStartSlope)
-            end
-        end
-        if not foundEnd then
-            local endSm = r.SetTakeStretchMarker(take, -1, endPos)
-            local rv, pos, srcpos = r.GetTakeStretchMarker(take, endSm)
-            endSrcPos = srcpos
-            r.DeleteTakeStretchMarkers(take, endSm)
-            if beforeEndSlope then
-                r.SetTakeStretchMarkerSlope(take, endSm - 1, beforeEndSlope)
-            end
-        end
-
         r.SetActiveTake(savedTake)
-        r.SetMediaItemInfo_Value(item, "C_AUTOSTRETCH", tmpItemAutoStretch)
-        r.SetMediaItemInfo_Value(item, "C_BEATATTACHMODE", tmpBeatAttachMode)
-
+        if Settings.minimize then -- no need to do it if not minimizing (wasteful)
+            r.SetMediaItemInfo_Value(item, "C_AUTOSTRETCH", tmpItemAutoStretch)
+            r.SetMediaItemInfo_Value(item, "C_BEATATTACHMODE", tmpBeatAttachMode)
+        end
         -- multiply by the take's playrate
         local originalLength = (endSrcPos - startSrcPos)
 
@@ -192,7 +196,10 @@ function GetMediaFiles()
                 local fileExists = OD_FileExists(filename)
                 -- log occurance if it's to be minimized
                 if fileExists and mediaSource then
-                    local sp, ep = getTakeSourcePositions(take, srclen)
+                    local sp, ep
+                    if Settings.minimize then -- no need to do it if not minimizing (wasteful)
+                        sp, ep = getTakeSourcePositions(take, srclen)
+                    end
                     -- Create a table to store the occurrence information
                     oc = {
                         takeName = r.GetTakeName(take),
@@ -298,7 +305,9 @@ function CollectMedia()
             or (OD_BfCheck(Settings.collect, COLLECT.VIDEO) and fileInfo.fileType == FILE_TYPES.VIDEO and
                 (Settings.backup or fileInfo.external)) -- + if set to collect rs5k files, collect them (if backup, collect all of them, if not, only collect those that are external)
             or (OD_BfCheck(Settings.collect, COLLECT.RS5K) and fileInfo.fileType == FILE_TYPES.RS5K and
-                (Settings.backup or fileInfo.external))
+                (Settings.backup or fileInfo.external)) -- + if not minimizing, collect all external audio files, regardless of their "ignore" status
+            or (OD_BfCheck(Settings.collect, COLLECT.EXTERNAL) and fileInfo.fileType == FILE_TYPES.AUDIO and
+                fileInfo.external)
         if fileInfo.shouldCollect then
             App.perform.total = App.perform.total + 1
         end
@@ -318,13 +327,13 @@ function CollectMedia()
                         '')
                 local targetPath = App.projPath .. fileInfo.collectBackupTargetPath .. OD_FolderSep()
                 local targetFileName = targetPath ..
-                fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or '')
+                    fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or '')
                 local uniqueFilename = OD_GenerateUniqueFilename(targetFileName)
                 -- r.ShowConsoleMsg(("Will copy %s\n       to %s...'\n\n"):format(fileInfo.filenameWithPath,
-                    -- uniqueFilename))
-                if not OD_FolderExists(targetPath) then 
+                -- uniqueFilename))
+                if not OD_FolderExists(targetPath) then
                     App.restore.foldersToDelete = App.restore.foldersToDelete or {}
-                    table.insert(App.restore.foldersToDelete, targetPath) 
+                    table.insert(App.restore.foldersToDelete, targetPath)
                 end
                 r.RecursiveCreateDirectory(targetPath, 0)
 
@@ -334,11 +343,11 @@ function CollectMedia()
                     fileInfo.status_info = 'collection failed'
                 else
                     local newSrc = r.PCM_Source_CreateFromFile(uniqueFilename)
-                    
+
                     fileInfo.newfilename = uniqueFilename
-                    if not Settings.backup then 
+                    if not Settings.backup then
                         App.peakOperations[uniqueFilename] = newSrc
-                        r.PCM_Source_BuildPeaks(newSrc, 0) 
+                        r.PCM_Source_BuildPeaks(newSrc, 0)
                     end
                     fileInfo.collectBackupOperation = 'move'
                     for i, oc in ipairs(fileInfo.occurrences) do
@@ -676,14 +685,14 @@ function MinimizeAndApplyMedia()
             r.Main_OnCommand(40439, 0) -- online
 
             -- Update the glued item with the new source file and rebuild peaks
-            
+
             newSrc = r.PCM_Source_CreateFromFile(uniqueName)
             fileInfo.newfilename = uniqueName
-            if not Settings.backup then 
+            if not Settings.backup then
                 App.peakOperations[uniqueName] = newSrc
-                r.PCM_Source_BuildPeaks(newSrc, 0) 
+                r.PCM_Source_BuildPeaks(newSrc, 0)
             end
-            
+
 
             local newSrcLength = r.GetMediaSourceLength(newSrc)
             for i, oc in ipairs(fileInfo.occurrences) do
@@ -714,30 +723,30 @@ function MinimizeAndApplyMedia()
             end
         end
     end
+    if Settings.minimize then -- no need to do it if not minimizing (wasteful)
+        r.SelectAllMediaItems(0, false)
+        App.perform.total = App.mediaFileCount
+        App.perform.pos = 0
+        for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
+            if not fileInfo.ignore and not fileInfo.missing then
+                App.mediaFiles[filename].status = STATUS.MINIMIZING
+                App.perform.pos = App.perform.pos + 1
+                coroutine.yield('Minimizing Files')
 
-    r.SelectAllMediaItems(0, false)
-    App.peakOperations = {}
-    App.perform.total = App.mediaFileCount
-    App.perform.pos = 0
-    for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
-        if not fileInfo.ignore and not fileInfo.missing then
-            App.mediaFiles[filename].status = STATUS.MINIMIZING
-            App.perform.pos = App.perform.pos + 1
-            coroutine.yield('Minimizing Files')
+                local track = createTrackForFilename(filename)
+                local splitItems = addItemsToTrackAndWrapAround(track, fileInfo)
+                removeSpaces(track, filename)
+                saveNewPositions(fileInfo)
+                trimItems(fileInfo, splitItems)
+                local gluedItem = glueItems(track)
+                if gluedItem then
+                    applyGluedSourceToOriginal(fileInfo, gluedItem)
+                end
+                r.DeleteTrack(track)
 
-            local track = createTrackForFilename(filename)
-            local splitItems = addItemsToTrackAndWrapAround(track, fileInfo)
-            removeSpaces(track, filename)
-            saveNewPositions(fileInfo)
-            trimItems(fileInfo, splitItems)
-            local gluedItem = glueItems(track)
-            if gluedItem then
-                applyGluedSourceToOriginal(fileInfo, gluedItem)
+                App.mediaFiles[filename].status = STATUS.MINIMIZED
+                coroutine.yield('Minimizing Files')
             end
-            r.DeleteTrack(track)
-
-            App.mediaFiles[filename].status = STATUS.MINIMIZED
-            coroutine.yield('Minimizing Files')
         end
     end
 end
@@ -809,7 +818,7 @@ function Cancel(msg)
     Revert(true)
 end
 
-function PrepareRestore()
+local function prepareRestore()
     -- save current edit cursor position
     App.restore.pos = r.GetCursorPosition()
     -- save current autosave options
@@ -822,24 +831,24 @@ function PrepareRestore()
     App.restore.useprjsrate = r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, false)
 end
 
-function SetProjPaths()
+local function setProjPaths()
     App.projPath, App.projFileName, App.fullProjPath, App.projectRecordingPath, App.relProjectRecordingPath =
         OD_GetProjectPaths()
 end
 
-function SetQuality()
+local function setQuality()
     r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", 1, true)                                                     -- use custom format
     r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", GLUE_FORMATS_DETAILS[Settings.glueFormat].formatString, true) -- set format to selected format from the settings
     r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, true)                                                          -- turn off 'use sample rate', which makes the glue operation use the item's sample rate (that's good!)
 end
 
-function PrepareRevert()
+local function prepareRevert()
     App.revert.tmpBackupFileName = App.projPath .. select(2, OD_DissectFilename(App.projFileName)) .. '_' ..
         r.time_precise() .. '.RPP'
     OD_CopyFile(App.fullProjPath, App.revert.tmpBackupFileName)
 end
 
-function PrepareSettings()
+local function prepareSettings()
     local tmpOpts = App.restore.saveopts
 
     -- disable autosave during operation
@@ -857,9 +866,24 @@ function PrepareSettings()
     r.SNM_SetIntConfigVar('saveopts', tmpOpts)
     -- set "Save project file references with relative pathnames" enabled
     r.SNM_SetIntConfigVar('projrelpath', 1)
-
 end
 
+function Prepare()
+    -- first save the project in its current form
+    r.Main_SaveProject(-1)
+    -- set global project path in app variable
+    setProjPaths()
+    -- save stuff to restore in any case
+    prepareRestore()
+    -- save suff to restore in case of error/cancel or if creating a backup
+    prepareRevert()
+    -- since changes will be made during the process, we don't want the project accidentally saved
+    prepareSettings()
+    -- set glue quality
+    setQuality()
+    -- prepare some variables
+    App.peakOperations = {}
+end
 function CreateBackupProject()
     r.Main_SaveProject(-1)
     local targetPath = Settings.backupDestination .. OD_FolderSep()
@@ -877,7 +901,8 @@ function CreateBackupProject()
             coroutine.yield('Creating backup project')
             local _, newFN, newExt = OD_DissectFilename(fileInfo.newfilename)
             local target = targetPath ..
-                (fileInfo.collectBackupTargetPath or App.relProjectRecordingPath) .. OD_FolderSep() .. newFN .. (newExt and ('.' .. newExt) or '')
+                (fileInfo.collectBackupTargetPath or App.relProjectRecordingPath) ..
+                OD_FolderSep() .. newFN .. (newExt and ('.' .. newExt) or '')
             if OD_MoveFile(fileInfo.newfilename, target) then
                 fileInfo.status = STATUS.DONE
             else
@@ -916,45 +941,47 @@ function NetworkedFilesExist()
 end
 
 function DeleteOriginals()
-    App.perform.total = App.mediaFileCount
-    App.perform.pos = 0
-    local stat = Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and 'Moving originals to trash' or
-        'Deleting originals'
-    local filesToTrashWin = {}
-    for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
-        -- delete original files which were replaced by minimized versions
-        App.perform.pos = App.perform.pos + 1
-        coroutine.yield(stat)
-        if not fileInfo.external and not fileInfo.ignore and not fileInfo.missing then
-            fileInfo.status = Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and STATUS.MOVING_TO_TRASH or
-                STATUS.DELETING
+    if Settings.minimize and Settings.deleteOperation ~= DELETE_OPERATION.KEEP_IN_FOLDER then
+        App.perform.total = App.mediaFileCount
+        App.perform.pos = 0
+        local stat = Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and 'Moving originals to trash' or
+            'Deleting originals'
+        local filesToTrashWin = {}
+        for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
+            -- delete original files which were replaced by minimized versions
+            App.perform.pos = App.perform.pos + 1
             coroutine.yield(stat)
-            if OS_is.win then
-                if Settings.deleteOperation ~= DELETE_OPERATION.MOVE_TO_TRASH then
-                    r.reduce_open_files(2) -- windows won't delete/move files that are in use
-                    if os.remove(fileInfo.filenameWithPath) then
+            if not fileInfo.external and not fileInfo.ignore and not fileInfo.missing then
+                fileInfo.status = Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and STATUS.MOVING_TO_TRASH or
+                    STATUS.DELETING
+                coroutine.yield(stat)
+                if OS_is.win then
+                    if Settings.deleteOperation ~= DELETE_OPERATION.MOVE_TO_TRASH then
+                        r.reduce_open_files(2) -- windows won't delete/move files that are in use
+                        if os.remove(fileInfo.filenameWithPath) then
+                            fileInfo.status = STATUS.DONE
+                        else
+                            fileInfo.status = STATUS.ERROR
+                            fileInfo.error = 'delete original failed'
+                        end
+                    else -- if on windows but set to move to trash, we need to first collect filenames and only then send to trash to avoid opening powershell for each file
+                        table.insert(filesToTrashWin, fileInfo.filenameWithPath)
+                    end
+                else
+                    if (Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and
+                            OD_MoveToTrash(fileInfo.filenameWithPath) or os.remove(fileInfo.filenameWithPath)) then
                         fileInfo.status = STATUS.DONE
                     else
                         fileInfo.status = STATUS.ERROR
                         fileInfo.error = 'delete original failed'
                     end
-                else -- if on windows but set to move to trash, we need to first collect filenames and only then send to trash to avoid opening powershell for each file
-                    table.insert(filesToTrashWin, fileInfo.filenameWithPath)
                 end
-            else
-                if (Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and
-                        OD_MoveToTrash(fileInfo.filenameWithPath) or os.remove(fileInfo.filenameWithPath)) then
-                    fileInfo.status = STATUS.DONE
-                else
-                    fileInfo.status = STATUS.ERROR
-                    fileInfo.error = 'delete original failed'
-                end
+            elseif not fileInfo.missing then
+                fileInfo.status = STATUS.DONE
             end
-        elseif not fileInfo.missing then
-            fileInfo.status = STATUS.DONE
+            coroutine.yield(stat)
         end
-        coroutine.yield(stat)
-    end
+    
     -- if on windows, trash all files at once to avoid powershelling for each file seperately
     if #filesToTrashWin > 0 then
         r.reduce_open_files(2)                                       -- windows won't delete/move files that are in use
@@ -968,4 +995,5 @@ function DeleteOriginals()
             end
         end
     end
+end
 end
