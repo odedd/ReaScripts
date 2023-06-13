@@ -107,20 +107,20 @@ local function getDefaultSettings(factory)
     local settings = {
         default = {
             backup = true,
-            minimize = true,            -- TODO implement Settings.minimize
+            minimize = true,
             deleteUnusedMedia = true,   -- TODO implement Settings.deleteUnusedMedia
             keepActiveTakesOnly = true, -- TODO implement Settings.keepActiveTakesOnly (unless item marked with "play all takes")
             minimizeSourceTypes = MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_AND_LOSSLESS,
             deleteOperation = DELETE_OPERATION.MOVE_TO_TRASH,
             collect = COLLECT.RS5K + COLLECT.VIDEO + COLLECT.EXTERNAL, -- TODO implement RS5K collection
-            collectOperation = COLLECT_OPERATION.COPY,                 -- TODO implement collect operation (currently copy only)
+            collectOperation = COLLECT_OPERATION.COPY,
             keepMediaFolderStructure = true,
             glueFormat = GLUE_FORMATS.FLAC24,
             padding = 1,
             suffix = '_m',
             showMinimizeDoubleWarning = true,
-            targetPaths = {
-                [FILE_TYPES.VIDEO] = 'Video Files',
+            targetPaths = { -- TODO add user setting for targetPaths
+                [FILE_TYPES.VIDEO] = 'Video Files', 
                 [FILE_TYPES.RS5K] = 'RS5K Samples'
             }
         }

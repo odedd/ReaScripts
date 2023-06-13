@@ -373,7 +373,7 @@ function App.drawBottom(ctx, bottom_lines)
             if not ok then
                 App.msg(table.concat(errors, '\n------------\n'))
             else
-                if Settings.minimize and Settings.deleteOperation ~= DELETE_OPERATION.KEEP_IN_FOLDER then
+                if Settings.minimize and Settings.deleteOperation ~= DELETE_OPERATION.KEEP_IN_FOLDER and not Settings.backup then
                     r.ImGui_OpenPopup(ctx, 'Are you sure?')
                 else
                     App.coPerform = coroutine.create(doPerform)
@@ -462,12 +462,18 @@ function App.drawMainWindow()
         if not Settings.minimize then r.ImGui_EndDisabled(ctx) end
         r.ImGui_Unindent(ctx)
         r.ImGui_Bullet(ctx)
-        Settings.collectOperation = Gui.setting('combo', 'Collect Files into project folder',
-        "When collecting external files, should they be copied or moved from their original location",
-        Settings.collectOperation, {
-            list = COLLECT_OPERATIONS_LIST
-        })
-        
+        if Settings.collect ~= 0 then
+            Settings.collectOperation = Gui.setting('combo', 'Collect Files into project folder',
+                "When collecting external files, should they be copied or moved from their original location",
+                Settings.collectOperation, {
+                    list = COLLECT_OPERATIONS_LIST
+                })
+        else
+            r.ImGui_AlignTextToFramePadding(ctx)
+            r.ImGui_Text(ctx, 'Collect Files into project folder')
+        end
+
+
         r.ImGui_Indent(ctx)
 
         local tmpSetting
@@ -492,10 +498,13 @@ function App.drawMainWindow()
 
         if Settings.backup then COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL] = tmpSetting[COLLECT.EXTERNAL] end
         r.ImGui_Unindent(ctx)
-        r.ImGui_Bullet(ctx)
-        Settings.deleteUnusedMedia = Gui.setting('checkbox', 'Clean media folder',
-            "Keep only the files that are being used in the project in the media folder", Settings.deleteUnusedMedia)
-
+        if not Settings.backup then
+            r.ImGui_Bullet(ctx)
+            Settings.deleteUnusedMedia = Gui.setting('checkbox', 'Clean media folder',
+                "Keep only the files that are being used in the project in the media folder", Settings.deleteUnusedMedia)
+        else
+            Gui.settingSpacing()
+        end
         if Settings.minimize and not Settings.backup then
             r.ImGui_Bullet(ctx)
             Settings.deleteOperation = Gui.setting('combo', 'Deletion Method',

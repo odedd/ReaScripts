@@ -306,7 +306,8 @@ function CollectMedia()
                 (Settings.backup or fileInfo.external)) -- + if set to collect rs5k files, collect them (if backup, collect all of them, if not, only collect those that are external)
             or (OD_BfCheck(Settings.collect, COLLECT.RS5K) and fileInfo.fileType == FILE_TYPES.RS5K and
                 (Settings.backup or fileInfo.external)) -- + if not minimizing, collect all external audio files, regardless of their "ignore" status
-            or (OD_BfCheck(Settings.collect, COLLECT.EXTERNAL) and fileInfo.fileType == FILE_TYPES.AUDIO and
+            or
+            ((not Settings.minimize) and OD_BfCheck(Settings.collect, COLLECT.EXTERNAL) and fileInfo.fileType == FILE_TYPES.AUDIO and
                 fileInfo.external)
         if fileInfo.shouldCollect then
             App.perform.total = App.perform.total + 1
@@ -318,8 +319,8 @@ function CollectMedia()
             App.perform.pos = App.perform.pos + 1
             App.mediaFiles[filename].status = STATUS.COLLECTING
             coroutine.yield('Collecting Files')
-            if Settings.backup and not fileInfo.external then
-                fileInfo.collectBackupOperation = 'copy'
+            if (Settings.backup and not fileInfo.external) then
+                fileInfo.collectBackupOperation = COLLECT_OPERATION.COPY
             else
                 fileInfo.collectBackupTargetPath = (Settings.targetPaths[fileInfo.fileType] or App.relProjectRecordingPath)
                     :gsub('\\', '/'):gsub(
@@ -336,8 +337,10 @@ function CollectMedia()
                     table.insert(App.restore.foldersToDelete, targetPath)
                 end
                 r.RecursiveCreateDirectory(targetPath, 0)
-
-                local success = OD_CopyFile(fileInfo.filenameWithPath, uniqueFilename)
+                local success =
+                    Settings.collectOperation == COLLECT_OPERATION.COPY and
+                    OD_CopyFile(fileInfo.filenameWithPath, uniqueFilename) or
+                    OD_MoveFile(fileInfo.filenameWithPath, uniqueFilename)
                 if not success then
                     fileInfo.status = STATUS.ERROR
                     fileInfo.status_info = 'collection failed'
@@ -349,7 +352,7 @@ function CollectMedia()
                         App.peakOperations[uniqueFilename] = newSrc
                         r.PCM_Source_BuildPeaks(newSrc, 0)
                     end
-                    fileInfo.collectBackupOperation = 'move'
+                    fileInfo.collectBackupOperation = COLLECT_OPERATION.MOVE
                     for i, oc in ipairs(fileInfo.occurrences) do
                         r.SetMediaItemTake_Source(oc.take, newSrc)
                         if oc.rev then
@@ -884,6 +887,7 @@ function Prepare()
     -- prepare some variables
     App.peakOperations = {}
 end
+
 function CreateBackupProject()
     r.Main_SaveProject(-1)
     local targetPath = Settings.backupDestination .. OD_FolderSep()
@@ -896,8 +900,9 @@ function CreateBackupProject()
         -- move processed files
         r.RecursiveCreateDirectory(targetPath .. (fileInfo.collectBackupTargetPath or App.relProjectRecordingPath), 0)
         App.perform.pos = App.perform.pos + 1
-        if fileInfo.collectBackupOperation == 'move' or (not fileInfo.ignore and not fileInfo.missing) then
+        if fileInfo.collectBackupOperation == COLLECT_OPERATION.MOVE or (Settings.minimize and not fileInfo.ignore and not fileInfo.missing) then
             fileInfo.status = STATUS.MOVING
+            reaper.ShowConsoleMsg('moving ' .. tostring(fileInfo.newfilename) .. '\n')
             coroutine.yield('Creating backup project')
             local _, newFN, newExt = OD_DissectFilename(fileInfo.newfilename)
             local target = targetPath ..
@@ -909,8 +914,9 @@ function CreateBackupProject()
                 fileInfo.status = STATUS.ERROR
                 fileInfo.status_info = 'move failed'
             end
-        elseif fileInfo.collectBackupOperation == 'copy' or (not fileInfo.ignore) then -- copy all other files, if in media folder
+        elseif Settings.minimize or fileInfo.collectBackupOperation == COLLECT_OPERATION.COPY or (not fileInfo.ignore) then -- copy all other files, if in media folder
             if fileInfo.pathIsRelative then
+                reaper.ShowConsoleMsg('copying ' .. tostring(fileInfo.relOrAbsPath) .. '\n')
                 fileInfo.status = STATUS.COPYING
                 coroutine.yield('Creating backup project')
                 local target = targetPath .. fileInfo.relOrAbsPath
@@ -981,19 +987,19 @@ function DeleteOriginals()
             end
             coroutine.yield(stat)
         end
-    
-    -- if on windows, trash all files at once to avoid powershelling for each file seperately
-    if #filesToTrashWin > 0 then
-        r.reduce_open_files(2)                                       -- windows won't delete/move files that are in use
-        OD_MoveToTrash(filesToTrashWin)
-        for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do -- verify which files were and were not removed
-            if not OD_FileExists(fileInfo.filenameWithPath) then
-                fileInfo.status = STATUS.DONE
-            else
-                fileInfo.status = STATUS.ERROR
-                fileInfo.error = 'delete original failed'
+
+        -- if on windows, trash all files at once to avoid powershelling for each file seperately
+        if #filesToTrashWin > 0 then
+            r.reduce_open_files(2)                                   -- windows won't delete/move files that are in use
+            OD_MoveToTrash(filesToTrashWin)
+            for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do -- verify which files were and were not removed
+                if not OD_FileExists(fileInfo.filenameWithPath) then
+                    fileInfo.status = STATUS.DONE
+                else
+                    fileInfo.status = STATUS.ERROR
+                    fileInfo.error = 'delete original failed'
+                end
             end
         end
     end
-end
 end
