@@ -157,9 +157,7 @@ function App.drawPerform(open)
                     r.ImGui_TableNextColumn(ctx) -- file
                     r.ImGui_Text(ctx, fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or ''))
                     local skiprow = false
-                    if not r.ImGui_IsItemVisible(ctx) then
-                        skiprow = true
-                    end
+                    if not r.ImGui_IsItemVisible(ctx) then skiprow = true end
                     if not skiprow then
                         r.ImGui_TableNextColumn(ctx) -- takes
                         r.ImGui_Text(ctx, #fileInfo.occurrences)
@@ -214,7 +212,7 @@ end
 function App.drawWarning()
     local ctx = Gui.ctx
     local center = { Gui.mainWindow.pos[1] + Gui.mainWindow.size[1] / 2,
-        Gui.mainWindow.pos[2] + Gui.mainWindow.size[2] / 2 }            -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
+        Gui.mainWindow.pos[2] + Gui.mainWindow.size[2] / 2 } -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
     local text = [[
 You have selected not to backup to a new folder.
 
@@ -365,16 +363,12 @@ function App.drawBottom(ctx, bottom_lines)
         (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines +
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2))
     local status, col = App.getStatus('main')
-    if col then
-        r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col[col])
-    end
+    if col then r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col[col]) end
     r.ImGui_Spacing(ctx)
     r.ImGui_Text(ctx, status)
     App.setHint('main', '')
     r.ImGui_Spacing(ctx)
-    if col then
-        r.ImGui_PopStyleColor(ctx)
-    end
+    if col then r.ImGui_PopStyleColor(ctx) end
     if not App.coPerform then
         if r.ImGui_Button(ctx, Settings.backup and 'Create Backup' or 'Minimize Current Project',
                 r.ImGui_GetContentRegionAvail(ctx)) then
@@ -427,24 +421,23 @@ function App.drawMainWindow()
 
     if visible then
         local bottom_lines = 2
-        local rv2
-        -- if r.ImGui_BeginMenuBar(ctx) then
-        --     -- r.ImGui_SetCursorPosX(ctx, r.ImGui_GetContentRegionAvail(ctx)- r.ImGui_CalcTextSize(ctx,'Settings'))
-        --     r.ImGui_EndMenuBar(ctx)
-        -- end
+        r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_IndentSpacing(), 35)
         if App.coPerform and coroutine.status(App.coPerform) == 'suspended' then
             r.ImGui_BeginDisabled(ctx)
         end
 
         r.ImGui_SeparatorText(ctx, 'Settings')
+        r.ImGui_Bullet(ctx)
+        Settings.keepActiveTakesOnly = Gui.setting('checkbox', 'Remove unused takes',
+        "Keep only selected takes", Settings.keepActiveTakesOnly)
 
-        Settings.backup = Gui.setting('checkbox', 'Backup to a new project',
-            "Create backup project or minimize current project", Settings.backup)
-        if Settings.backup then
-            Settings.backupDestination = Gui.setting('folder', 'Destination', 'Select an empty folder',
-                Settings.backupDestination, {}, true)
-        end
 
+        r.ImGui_Bullet(ctx)
+        Settings.minimize = Gui.setting('checkbox', 'Minimize audio files',
+            "Keep only the parts of the audio that are being used in the project", Settings.minimize)
+
+        r.ImGui_Indent(ctx)
+        if not Settings.minimize then r.ImGui_BeginDisabled(ctx) end
         Settings.padding = Gui.setting('dragdouble', 'padding (s)',
             "How much unused audio, in seconds, to leave before and after items start and end positions",
             Settings.padding, {
@@ -453,9 +446,7 @@ function App.drawMainWindow()
                 max = 10.0,
                 format = "%.1f"
             })
-        if Settings.padding < 0 then
-            Settings.padding = 0
-        end
+        if Settings.padding < 0 then Settings.padding = 0 end
 
         Settings.minimizeSourceTypes = Gui.setting('combo', 'File types to minimize',
             "Minimizing compressed files, such as MP3s, will result in larger (!) \"minimized\" files, since those will be uncompressed WAV files",
@@ -468,37 +459,56 @@ function App.drawMainWindow()
             Settings.glueFormat, {
                 list = GLUE_FORMATS_LIST
             })
-
-        local tmpSetting
-        if Settings.backup then
-            r.ImGui_BeginDisabled(ctx)
-        end
-        Settings.deleteOperation = Gui.setting('combo', 'After minimizing', "What should be done after minimizing",
+        if Settings.backup then r.ImGui_BeginDisabled(ctx) end
+        Settings.deleteOperation = Gui.setting('combo', 'Deletion Method',
+            "How should the original files, which were minimized and are no longer used, be deleted?",
             Settings.deleteOperation, {
                 list = DELETE_OPERATIONS_LIST
             })
+        if Settings.backup then r.ImGui_EndDisabled(ctx) end
+        if not Settings.minimize then r.ImGui_EndDisabled(ctx) end
+        r.ImGui_Unindent(ctx)
+        r.ImGui_Bullet(ctx)
+        r.ImGui_Text(ctx, 'Collect Files into project folder')
+        
+        r.ImGui_Indent(ctx)
+        
+        local tmpSetting
         if Settings.backup then
+            r.ImGui_BeginDisabled(ctx)
             App.temp.originalBackupValue = App.temp.originalBackupValue or
-                OD_BfCheck(Settings.collect, COLLECT.EXTERNAL)
+            OD_BfCheck(Settings.collect, COLLECT.EXTERNAL)
             tmpSetting = {
                 [COLLECT.EXTERNAL] = COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL]
             }
             Gui.bitwise_setting('checkbox', COLLECT.EXTERNAL, tmpSetting)
             r.ImGui_SameLine(ctx)
-            r.ImGui_Text(ctx, ('Must %s when backing up'):format(COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL].label):lower())
+            r.ImGui_Text(ctx, ('Must collect %s when backing up'):format(COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL].label):lower())
             COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL] = nil
             -- Settings.collect = OD_BwSet(Settings.collect,COLLECT.EXTERNAL,true)
             r.ImGui_EndDisabled(ctx)
         end
-
+        
+        
         Settings.collect = Gui.bitwise_setting('checkbox', Settings.collect, COLLECT_DESCRIPTIONS)
+        
+        if Settings.backup then COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL] = tmpSetting[COLLECT.EXTERNAL] end
+        r.ImGui_Unindent(ctx)
+        r.ImGui_Bullet(ctx)
+        Settings.deleteUnusedMedia = Gui.setting('checkbox', 'Clean media folder',
+            "Keep only the files that are being used in the project in the media folder", Settings.deleteUnusedMedia)
 
+            r.ImGui_Bullet(ctx)
+        Settings.backup = Gui.setting('checkbox', 'Backup project to a new folder',
+            "Copy project to a new directory, along with used media only", Settings.backup)
         if Settings.backup then
-            COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL] = tmpSetting[COLLECT.EXTERNAL]
+            Settings.backupDestination = Gui.setting('folder', 'Destination', 'Select an empty folder',
+                Settings.backupDestination, {}, true)
         end
-        if App.coPerform and coroutine.status(App.coPerform) == 'suspended' then
-            r.ImGui_EndDisabled(ctx)
-        end
+
+
+        if App.coPerform and coroutine.status(App.coPerform) == 'suspended' then r.ImGui_EndDisabled(ctx) end
+        r.ImGui_PopStyleVar(ctx)
 
         r.ImGui_SeparatorText(ctx, 'Overview')
 
@@ -529,8 +539,8 @@ end
 
 if OD_PrereqsOK({
         reaimgui_version = '0.8',
-        sws = true,       -- required for SNM_SetIntConfigVar - setting config vars (max file size limitation and autosave options)
-        js_version = 1.310, -- required for JS_Dialog_BrowseForFolder
+        sws = true,           -- required for SNM_SetIntConfigVar - setting config vars (max file size limitation and autosave options)
+        js_version = 1.310,   -- required for JS_Dialog_BrowseForFolder
         reaper_version = 6.76 -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
         -- scripts = {
         --     ['Mavriq Lua Batteris'] =  r.GetResourcePath() .."/Scripts/Mavriq ReaScript Repository/Various/Mavriq-Lua-Batteries/batteries_header.lua"
@@ -545,13 +555,9 @@ end
 -- IDEAS and TODOS --------------------
 ---------------------------------------
 
--- TODO collect rs5k samples
--- TODO collect/backup only without minimizing
 -- TODO export current settings as action
 -- TODO handle subprojects (collect? render?)
--- TODO keep selected takes only (unless item marked with "play all takes")
 -- TODO show total savings and close script upon completion
--- TODO scan media folder for extra files at the end (make that a setting)
 -- TODO verify minimization before deleting files
 -- TODO check handling of missing files
 -- TODO handle unsaved project
@@ -605,4 +611,4 @@ end
 --         end
 --     end
 -- end
--- 
+--

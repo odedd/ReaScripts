@@ -10,17 +10,17 @@ COLLECT = {
 COLLECT_DESCRIPTIONS = {
     [COLLECT.EXTERNAL] = {
         order = 0,
-        label = "Collect external audio files",
+        label = "External audio files",
         hint = 'Copy all external audio files to the project\'s media folder'
     },
     [COLLECT.VIDEO] = {
         order = 1,
-        label = "Collect video files",
+        label = "Video files",
         hint = 'Copy all video files to the project\'s media folder'
     },
     [COLLECT.RS5K] = {
         order = 2,
-        label = "Collect rs5k samples",
+        label = "RS5K samples",
         hint = 'Copy all used ReaSamplOmatic5000 samples to the project\'s media folder'
     }
 }
@@ -88,21 +88,22 @@ for i = 0, #GLUE_FORMATS_DETAILS do
 end
 
 local function getDefaultSettings(factory)
-    if factory == nil then
-        factory = false
-    end
+    if factory == nil then factory = false end
     local settings = {
         default = {
             backup = true,
+            minimize = true,            -- TODO implement Settings.minimize
+            deleteUnusedMedia = true,   -- TODO implement Settings.deleteUnusedMedia
+            keepActiveTakesOnly = true, -- TODO implement Settings.keepActiveTakesOnly (unless item marked with "play all takes")
             minimizeSourceTypes = MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_AND_LOSSLESS,
             deleteOperation = DELETE_OPERATION.MOVE_TO_TRASH,
-            collect = COLLECT.RS5K + COLLECT.VIDEO + COLLECT.EXTERNAL,
+            collect = COLLECT.RS5K + COLLECT.VIDEO + COLLECT.EXTERNAL, -- TODO: implement RS5K collection
             keepMediaFolderStructure = true,
             glueFormat = GLUE_FORMATS.FLAC24,
             padding = 1,
             suffix = '_m',
             showMinimizeDoubleWarning = true,
-            targetPaths={
+            targetPaths = {
                 [FILE_TYPES.VIDEO] = 'Video Files',
                 [FILE_TYPES.RS5K] = 'RS5K Samples'
             }
