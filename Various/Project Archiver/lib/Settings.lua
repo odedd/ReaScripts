@@ -29,6 +29,10 @@ COLLECT_OPERATION = {
     COPY = 0,
     MOVE = 1
 }
+COLLECT_BACKUP_OPERATION = {
+    COPY = 0,
+    MOVE = 1
+}
 
 COLLECT_OPERATION_DESCRIPTIONS = {
     [COLLECT_OPERATION.COPY] = 'Copy from original location',
@@ -40,20 +44,20 @@ for i = 0, #COLLECT_OPERATION_DESCRIPTIONS do
     COLLECT_OPERATIONS_LIST = (COLLECT_OPERATIONS_LIST or '') .. COLLECT_OPERATION_DESCRIPTIONS[i] .. '\0'
 end
 
-DELETE_OPERATION = {
+DELETE_METHOD = {
     MOVE_TO_TRASH = 0,
     DELETE_FROM_DISK = 1,
     KEEP_IN_FOLDER = 2
 }
 
-DELETE_OPERATION_DESCRIPTIONS = {
-    [DELETE_OPERATION.MOVE_TO_TRASH] = 'Move originals to trash',
-    [DELETE_OPERATION.DELETE_FROM_DISK] = 'Delete originals immediately',
-    [DELETE_OPERATION.KEEP_IN_FOLDER] = 'Keep originals'
+DELETE_METHOD_DESCRIPTIONS = {
+    [DELETE_METHOD.MOVE_TO_TRASH] = 'Move originals to trash',
+    [DELETE_METHOD.DELETE_FROM_DISK] = 'Delete originals immediately',
+    [DELETE_METHOD.KEEP_IN_FOLDER] = 'Keep originals'
 }
 
-for i = 0, #DELETE_OPERATION_DESCRIPTIONS do
-    DELETE_OPERATIONS_LIST = (DELETE_OPERATIONS_LIST or '') .. DELETE_OPERATION_DESCRIPTIONS[i] .. '\0'
+for i = 0, #DELETE_METHOD_DESCRIPTIONS do
+    DELETE_METHODS_LIST = (DELETE_METHODS_LIST or '') .. DELETE_METHOD_DESCRIPTIONS[i] .. '\0'
 end
 
 MINIMIZE_SOURCE_TYPES = {
@@ -111,7 +115,7 @@ local function getDefaultSettings(factory)
             cleanMediaFolder = true,   -- TODO implement Settings.deleteUnusedMedia
             keepActiveTakesOnly = true, -- TODO implement Settings.keepActiveTakesOnly (unless item marked with "play all takes")
             minimizeSourceTypes = MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_AND_LOSSLESS,
-            deleteOperation = DELETE_OPERATION.MOVE_TO_TRASH,
+            deleteMethod = DELETE_METHOD.MOVE_TO_TRASH,
             collect = COLLECT.RS5K + COLLECT.VIDEO + COLLECT.EXTERNAL, -- TODO implement RS5K collection
             collectOperation = COLLECT_OPERATION.COPY,
             keepMediaFolderStructure = true,

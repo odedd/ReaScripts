@@ -56,12 +56,14 @@ function OD_DissectFilename(path)
     return string.match(path, "(.-)([^\\/]-).([^%.]+)$") -- path, name, ext
 end
 
--- returns relPath, isRelative:
---   relPath - filename in relative form, if possible
+-- returns relFile, relPath, isRelative:
+--   relFile - filename in relative form, if possible
+--   relPath - only path in relative form, if possible
 --   isRelative - true if relative, false if absolute
-function OD_GetRelativeOrAbsolutePath(fileName, rootPath)
-    local relPath = fileName:gsub('^' .. OD_EscapePattern(rootPath), '')
-    return (relPath and relPath or fileName), (relPath ~= fileName)
+function OD_GetRelativeOrAbsoluteFile(fileName, rootPath)
+    local relFile = fileName:gsub('^' .. OD_EscapePattern(rootPath), '')
+    local relPath = OD_DissectFilename(relFile)
+    return (relFile and relFile or fileName), relPath, (relFile ~= fileName)
 end
 
 function OD_GetSubfolders(folder)

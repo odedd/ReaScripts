@@ -236,7 +236,7 @@ function GetMediaFiles()
                 else
                     -- Create a new entry for the media file
                     local fullpath, basename, ext = OD_DissectFilename(filename)
-                    local relOrAbsPath, pathIsRelative = OD_GetRelativeOrAbsolutePath(filename, App.projPath)
+                    local relOrAbsFile, relOrAbsPath, pathIsRelative = OD_GetRelativeOrAbsoluteFile(filename, App.projPath)
                     local sourceFileSize = OD_GetFileSize(filename)
                     App.mediaFiles[filename] = {
                         fileType = OD_HasValue(FORMATS.VIDEO, sourceType) and FILE_TYPES.VIDEO or FILE_TYPES.AUDIO,
@@ -246,7 +246,8 @@ function GetMediaFiles()
                         occurrences = { oc },
                         filenameWithPath = filename,
                         fullpath = fullpath,
-                        relOrAbsPath = relOrAbsPath,
+                        relOrAbsFile = relOrAbsFile,
+                        relOrAbsPath = relOrAbsPath, 
                         pathIsRelative = pathIsRelative,
                         basename = basename,
                         ext = ext,
@@ -320,12 +321,12 @@ function CollectMedia()
             App.mediaFiles[filename].status = STATUS.COLLECTING
             coroutine.yield('Collecting Files')
 
-            -- if backing up, should later copy (not move) internal files to the backup (leaving originals untouched)
-            -- otherwise, should first copy/move(according to setting) them to the current project folder, in order 
+            -- if backing up, should later copy (not move) *internal* files to the backup (leaving originals untouched)
+            -- otherwise, should first copy/move(according to setting) them to the current project folder, in order
             -- to get correct relative file references in the RPP, and set them to later MOVE to the backup destination
-            -- so they won't be left in the original folder. 
+            -- so they won't be left in the original folder.
             if (Settings.backup and not fileInfo.external) then
-                fileInfo.collectBackupOperation = COLLECT_OPERATION.COPY
+                fileInfo.collectBackupOperation = COLLECT_BACKUP_OPERATION.COPY
             else
                 fileInfo.collectBackupTargetPath = (Settings.targetPaths[fileInfo.fileType] or App.relProjectRecordingPath)
                     :gsub('\\', '/'):gsub(
@@ -355,7 +356,7 @@ function CollectMedia()
                         App.peakOperations[uniqueFilename] = newSrc
                         r.PCM_Source_BuildPeaks(newSrc, 0)
                     end
-                    fileInfo.collectBackupOperation = COLLECT_OPERATION.MOVE
+                    fileInfo.collectBackupOperation = COLLECT_BACKUP_OPERATION.MOVE
                     for i, oc in ipairs(fileInfo.occurrences) do
                         r.SetMediaItemTake_Source(oc.take, newSrc)
                         if oc.rev then
@@ -824,57 +825,53 @@ function Cancel(msg)
     Revert(true)
 end
 
-local function prepareRestore()
-    -- save current edit cursor position
-    App.restore.pos = r.GetCursorPosition()
-    -- save current autosave options
-    App.restore.saveopts = select(2, r.get_config_var_string('saveopts'))
-    -- save current "Save project file references with relative pathnames" setting
-    App.restore.projrelpath = select(2, r.get_config_var_string('projrelpath'))
-    -- save current glue settings
-    _, App.restore.opencopy_cfgidx = r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", 0, false)
-    _, App.restore.afxfrmt = r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", "", false)
-    App.restore.useprjsrate = r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, false)
-end
-
-local function setProjPaths()
-    App.projPath, App.projFileName, App.fullProjPath, App.projectRecordingPath, App.relProjectRecordingPath =
-        OD_GetProjectPaths()
-end
-
-local function setQuality()
-    r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", 1, true)                                                     -- use custom format
-    r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", GLUE_FORMATS_DETAILS[Settings.glueFormat].formatString, true) -- set format to selected format from the settings
-    r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, true)                                                          -- turn off 'use sample rate', which makes the glue operation use the item's sample rate (that's good!)
-end
-
-local function prepareRevert()
-    App.revert.tmpBackupFileName = App.projPath .. select(2, OD_DissectFilename(App.projFileName)) .. '_' ..
-        r.time_precise() .. '.RPP'
-    OD_CopyFile(App.fullProjPath, App.revert.tmpBackupFileName)
-end
-
-local function prepareSettings()
-    local tmpOpts = App.restore.saveopts
-
-    -- disable autosave during operation
-    if App.restore.saveopts & 2 == 2 then
-        tmpOpts = tmpOpts - 2
-    end -- Save to project -> off
-    if App.restore.saveopts & 4 == 4 then
-        tmpOpts = tmpOpts - 4
-    end -- Save to timestamped file in project directory -> off
-    if App.restore.saveopts & 8 == 8 then
-        tmpOpts = tmpOpts - 8
-    end -- Save to timestamped file in additional directory -> off
-
-    -- set disabled saving
-    r.SNM_SetIntConfigVar('saveopts', tmpOpts)
-    -- set "Save project file references with relative pathnames" enabled
-    r.SNM_SetIntConfigVar('projrelpath', 1)
-end
-
 function Prepare()
+    local function setProjPaths()
+        App.projPath, App.projFileName, App.fullProjPath, App.projectRecordingPath, App.relProjectRecordingPath =
+            OD_GetProjectPaths()
+    end
+    local function prepareRestore()
+        -- save current edit cursor position
+        App.restore.pos = r.GetCursorPosition()
+        -- save current autosave options
+        App.restore.saveopts = select(2, r.get_config_var_string('saveopts'))
+        -- save current "Save project file references with relative pathnames" setting
+        App.restore.projrelpath = select(2, r.get_config_var_string('projrelpath'))
+        -- save current glue settings
+        _, App.restore.opencopy_cfgidx = r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", 0, false)
+        _, App.restore.afxfrmt = r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", "", false)
+        App.restore.useprjsrate = r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, false)
+    end
+    local function prepareRevert()
+        App.revert.tmpBackupFileName = App.projPath .. select(2, OD_DissectFilename(App.projFileName)) .. '_' ..
+            r.time_precise() .. '.RPP'
+        OD_CopyFile(App.fullProjPath, App.revert.tmpBackupFileName)
+    end
+    local function prepareSettings()
+        local tmpOpts = App.restore.saveopts
+
+        -- disable autosave during operation
+        if App.restore.saveopts & 2 == 2 then
+            tmpOpts = tmpOpts - 2
+        end -- Save to project -> off
+        if App.restore.saveopts & 4 == 4 then
+            tmpOpts = tmpOpts - 4
+        end -- Save to timestamped file in project directory -> off
+        if App.restore.saveopts & 8 == 8 then
+            tmpOpts = tmpOpts - 8
+        end -- Save to timestamped file in additional directory -> off
+
+        -- set disabled saving
+        r.SNM_SetIntConfigVar('saveopts', tmpOpts)
+        -- set "Save project file references with relative pathnames" enabled
+        r.SNM_SetIntConfigVar('projrelpath', 1)
+    end
+    local function setQuality()
+        r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", 1, true)                                                     -- use custom format
+        r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", GLUE_FORMATS_DETAILS[Settings.glueFormat].formatString, true) -- set format to selected format from the settings
+        r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, true)                                                          -- turn off 'use sample rate', which makes the glue operation use the item's sample rate (that's good!)
+    end
+
     -- first save the project in its current form
     r.Main_SaveProject(-1)
     -- set global project path in app variable
@@ -901,11 +898,10 @@ function CreateBackupProject()
 
     for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
         -- move processed files
-        r.RecursiveCreateDirectory(targetPath .. (fileInfo.collectBackupTargetPath or App.relProjectRecordingPath), 0)
+        r.RecursiveCreateDirectory(targetPath .. (fileInfo.collectBackupTargetPath or (fileInfo.pathIsRelative and fileInfo.relOrAbsPath or App.relProjectRecordingPath)), 0)
         App.perform.pos = App.perform.pos + 1
-        if fileInfo.collectBackupOperation == COLLECT_OPERATION.MOVE or (Settings.minimize and not fileInfo.ignore and not fileInfo.missing) then
+        if fileInfo.collectBackupOperation == COLLECT_BACKUP_OPERATION.MOVE or (Settings.minimize and not fileInfo.ignore and not fileInfo.missing) then
             fileInfo.status = STATUS.MOVING
-            reaper.ShowConsoleMsg('moving ' .. tostring(fileInfo.newfilename) .. '\n')
             coroutine.yield('Creating backup project')
             local _, newFN, newExt = OD_DissectFilename(fileInfo.newfilename)
             local target = targetPath ..
@@ -917,12 +913,11 @@ function CreateBackupProject()
                 fileInfo.status = STATUS.ERROR
                 fileInfo.status_info = 'move failed'
             end
-        elseif Settings.minimize or fileInfo.collectBackupOperation == COLLECT_OPERATION.COPY or (not fileInfo.ignore) then -- copy all other files, if in media folder
+        elseif Settings.minimize or fileInfo.collectBackupOperation == COLLECT_BACKUP_OPERATION.COPY or (not fileInfo.ignore) then -- copy all other files, if in media folder
             if fileInfo.pathIsRelative then
-                reaper.ShowConsoleMsg('copying ' .. tostring(fileInfo.relOrAbsPath) .. '\n')
                 fileInfo.status = STATUS.COPYING
-                coroutine.yield('Creating backup project')
-                local target = targetPath .. fileInfo.relOrAbsPath
+                -- coroutine.yield('Creating backup project
+                local target = targetPath .. fileInfo.relOrAbsFile
                 if OD_CopyFile(fileInfo.filenameWithPath, target) then
                     fileInfo.status = STATUS.DONE
                 else
@@ -950,10 +945,10 @@ function NetworkedFilesExist()
 end
 
 function DeleteOriginals()
-    if Settings.minimize and Settings.deleteOperation ~= DELETE_OPERATION.KEEP_IN_FOLDER then
+    if Settings.minimize and Settings.deleteMethod ~= DELETE_METHOD.KEEP_IN_FOLDER then
         App.perform.total = App.mediaFileCount
         App.perform.pos = 0
-        local stat = Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and 'Moving originals to trash' or
+        local stat = Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and 'Moving originals to trash' or
             'Deleting originals'
         local filesToTrashWin = {}
         for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
@@ -961,11 +956,11 @@ function DeleteOriginals()
             App.perform.pos = App.perform.pos + 1
             coroutine.yield(stat)
             if not fileInfo.external and not fileInfo.ignore and not fileInfo.missing then
-                fileInfo.status = Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and STATUS.MOVING_TO_TRASH or
+                fileInfo.status = Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and STATUS.MOVING_TO_TRASH or
                     STATUS.DELETING
                 coroutine.yield(stat)
                 if OS_is.win then
-                    if Settings.deleteOperation ~= DELETE_OPERATION.MOVE_TO_TRASH then
+                    if Settings.deleteMethod ~= DELETE_METHOD.MOVE_TO_TRASH then
                         r.reduce_open_files(2) -- windows won't delete/move files that are in use
                         if os.remove(fileInfo.filenameWithPath) then
                             fileInfo.status = STATUS.DONE
@@ -977,7 +972,7 @@ function DeleteOriginals()
                         table.insert(filesToTrashWin, fileInfo.filenameWithPath)
                     end
                 else
-                    if (Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH and
+                    if (Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and
                             OD_MoveToTrash(fileInfo.filenameWithPath) or os.remove(fileInfo.filenameWithPath)) then
                         fileInfo.status = STATUS.DONE
                     else
@@ -1005,4 +1000,10 @@ function DeleteOriginals()
             end
         end
     end
+end
+
+function CleanMediaFolder()
+    -- get all remaning used files from all takes
+    -- get all (recursive?) ++media++ files in project media folder (unless it's the root project folder?)
+    -- if not used, delete acccording to Settings.deleteMethod
 end

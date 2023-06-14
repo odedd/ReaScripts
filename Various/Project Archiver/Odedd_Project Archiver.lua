@@ -63,7 +63,7 @@ local function doPerform()
         -- get information on all takes, separated by media source file
         GetMediaFiles()
         -- if sources are networked, trashing may not be an option.
-        if (Settings.minimize and not Settings.backup) and (Settings.deleteOperation == DELETE_OPERATION.MOVE_TO_TRASH) and
+        if (Settings.minimize and not Settings.backup) and (Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH) and
             (NetworkedFilesExist()) then
             Cancel(
                 'Networked files were found.\nMoving networkd files to the\ntrash is not supported.\nPlease select deleting files\nor consider backing up instead of\nminimizing.')
@@ -80,6 +80,9 @@ local function doPerform()
             else
                 if Settings.minimize then
                     DeleteOriginals()
+                end
+                if Settings.cleanMediaFolder then
+                  CleanMediaFolder()  
                 end
                 -- finish building peaks for new files
                 FinalizePeaksBuild()
@@ -187,9 +190,7 @@ function App.drawPerform(open)
                         r.ImGui_Text(ctx, STATUS_DESCRIPTIONS[fileInfo.status] ..
                             (fileInfo.status_info ~= '' and (' (%s)'):format(fileInfo.status_info) or ''))
                         r.ImGui_TableNextColumn(ctx) -- folder
-                        local path = (fileInfo.relOrAbsPath):gsub(
-                            OD_EscapePattern((fileInfo.basename) .. (fileInfo.ext and ('.' .. fileInfo.ext) or '') .. '$'),
-                            '')
+                        local path = fileInfo.relOrAbsPath
                         r.ImGui_Text(ctx, path)
                     end
                 end
@@ -478,16 +479,16 @@ function App.drawMainWindow()
             Gui.settingSpacing()
         end
         if (Settings.minimize or Settings.cleanMediaFolder) and not Settings.backup then
-            if Settings.deleteOperation == DELETE_OPERATION.DELETE_FROM_DISK then
+            if Settings.deleteMethod == DELETE_METHOD.DELETE_FROM_DISK then
                 Gui.settingCaution(TEXTS.CAUTION_DELETE)
                 App.warningCount = App.warningCount + 1
             else
                 r.ImGui_Bullet(ctx)
             end
-            Settings.deleteOperation = Gui.setting('combo', 'Deletion Method',
+            Settings.deleteMethod = Gui.setting('combo', 'Deletion Method',
                 "When deleting files, which method should be used?",
-                Settings.deleteOperation, {
-                    list = DELETE_OPERATIONS_LIST
+                Settings.deleteMethod, {
+                    list = DELETE_METHODS_LIST
                 })
         else
             Gui.settingSpacing()
