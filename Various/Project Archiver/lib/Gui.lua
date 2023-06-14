@@ -6,7 +6,7 @@ do
     local ctx = r.ImGui_CreateContext(Scr.context_name .. '_MAIN')
     local font_default = r.ImGui_CreateFont(Scr.dir .. '../../Resources/Fonts/Cousine-Regular.ttf', 16)
     r.ImGui_Attach(ctx, font_default)
-
+    
     Gui = {
         ctx = ctx,
         mainWindow = {},
@@ -60,6 +60,12 @@ do
     Gui.TEXT_BASE_WIDTH, Gui.TEXT_BASE_HEIGHT = r.ImGui_CalcTextSize(ctx, 'A'),
         r.ImGui_GetTextLineHeightWithSpacing(ctx)
     r.ImGui_PopFont(ctx)
+
+    Gui.icons = {
+        caution = r.ImGui_CreateImage(Scr.dir .. '../../Resources/Icons/caution.png')
+    }
+    r.ImGui_Attach(ctx, Gui.icons.caution)
+
 end
 
 -- creates the space of one "setting" line
@@ -141,4 +147,24 @@ Gui.bitwise_setting = function(stType, val, list)
     end
 
     return tmpVal
+end
+
+function Gui.settingCaution(text)
+    local ctx = Gui.ctx
+    r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_FramePadding(),0,0)
+    local origX, origY = r.ImGui_GetCursorPos(ctx)
+    local yOffset = 3
+    local xOffset = 4
+    local img_w, img_h = r.ImGui_Image_GetSize(Gui.icons.caution)
+    local w = 15
+    local h = img_h * (w / img_w) 
+    r.ImGui_SetCursorPosY(ctx, origY + yOffset)
+    r.ImGui_SetCursorPosX(ctx, origX + xOffset)
+    r.ImGui_Image(ctx, Gui.icons.caution, w, h)
+    if r.ImGui_IsItemHovered(ctx, r.ImGui_HoveredFlags_AllowWhenDisabled()) then
+    r.ImGui_SetTooltip(ctx, text)
+    end
+    r.ImGui_SetCursorPosY(ctx, origY)
+    r.ImGui_SetCursorPosX(ctx, origX+ r.ImGui_GetTreeNodeToLabelSpacing(ctx) + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()))
+    r.ImGui_PopStyleVar(ctx)
 end

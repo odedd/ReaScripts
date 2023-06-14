@@ -108,7 +108,7 @@ local function getDefaultSettings(factory)
         default = {
             backup = true,
             minimize = true,
-            deleteUnusedMedia = true,   -- TODO implement Settings.deleteUnusedMedia
+            cleanMediaFolder = true,   -- TODO implement Settings.deleteUnusedMedia
             keepActiveTakesOnly = true, -- TODO implement Settings.keepActiveTakesOnly (unless item marked with "play all takes")
             minimizeSourceTypes = MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_AND_LOSSLESS,
             deleteOperation = DELETE_OPERATION.MOVE_TO_TRASH,

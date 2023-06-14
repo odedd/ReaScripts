@@ -294,19 +294,19 @@ function CollectMedia()
     for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
         -- determine which files should be collected:
         -- ------------------------------------------
-        -- only if backup, collect all audio files which were ignored
         fileInfo.shouldCollect =
-            Settings.backup and fileInfo.fileType == FILE_TYPES.AUDIO and
-            fileInfo
-            .ignore -- + if set to collect external audio files, collect those that were ignored
-            or
+        --       only if backup, collect all audio files which were ignored
+            (Settings.backup and fileInfo.fileType == FILE_TYPES.AUDIO and fileInfo.ignore) or
+            -- + if set to collect external audio files, collect them
             (OD_BfCheck(Settings.collect, COLLECT.EXTERNAL) and fileInfo.fileType == FILE_TYPES.AUDIO and
-                fileInfo.external and fileInfo.ignore)  -- + if set to collect video files, collect them (if backup, collect all of them, if not, only collect those that are external)
+                fileInfo.external and fileInfo.ignore)
+            -- + if set to collect external video files, collect them (if backup, collect all of them, if not, only collect those that are external)
             or (OD_BfCheck(Settings.collect, COLLECT.VIDEO) and fileInfo.fileType == FILE_TYPES.VIDEO and
-                (Settings.backup or fileInfo.external)) -- + if set to collect rs5k files, collect them (if backup, collect all of them, if not, only collect those that are external)
+                (Settings.backup or fileInfo.external))
+            -- + if set to collect external rs5k files, collect them (if backup, collect all of them, if not, only collect those that are external)
             or (OD_BfCheck(Settings.collect, COLLECT.RS5K) and fileInfo.fileType == FILE_TYPES.RS5K and
-                (Settings.backup or fileInfo.external)) -- + if not minimizing, collect all external audio files, regardless of their "ignore" status
-            or
+                (Settings.backup or fileInfo.external)) or
+            -- + if not minimizing, collect all external audio files, regardless of their "ignore" status
             ((not Settings.minimize) and OD_BfCheck(Settings.collect, COLLECT.EXTERNAL) and fileInfo.fileType == FILE_TYPES.AUDIO and
                 fileInfo.external)
         if fileInfo.shouldCollect then
@@ -319,6 +319,11 @@ function CollectMedia()
             App.perform.pos = App.perform.pos + 1
             App.mediaFiles[filename].status = STATUS.COLLECTING
             coroutine.yield('Collecting Files')
+
+            -- if backing up, should later copy (not move) internal files to the backup (leaving originals untouched)
+            -- otherwise, should first copy/move(according to setting) them to the current project folder, in order 
+            -- to get correct relative file references in the RPP, and set them to later MOVE to the backup destination
+            -- so they won't be left in the original folder. 
             if (Settings.backup and not fileInfo.external) then
                 fileInfo.collectBackupOperation = COLLECT_OPERATION.COPY
             else
@@ -330,8 +335,6 @@ function CollectMedia()
                 local targetFileName = targetPath ..
                     fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or '')
                 local uniqueFilename = OD_GenerateUniqueFilename(targetFileName)
-                -- r.ShowConsoleMsg(("Will copy %s\n       to %s...'\n\n"):format(fileInfo.filenameWithPath,
-                -- uniqueFilename))
                 if not OD_FolderExists(targetPath) then
                     App.restore.foldersToDelete = App.restore.foldersToDelete or {}
                     table.insert(App.restore.foldersToDelete, targetPath)
@@ -990,7 +993,7 @@ function DeleteOriginals()
 
         -- if on windows, trash all files at once to avoid powershelling for each file seperately
         if #filesToTrashWin > 0 then
-            r.reduce_open_files(2)                                   -- windows won't delete/move files that are in use
+            r.reduce_open_files(2)                                       -- windows won't delete/move files that are in use
             OD_MoveToTrash(filesToTrashWin)
             for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do -- verify which files were and were not removed
                 if not OD_FileExists(fileInfo.filenameWithPath) then

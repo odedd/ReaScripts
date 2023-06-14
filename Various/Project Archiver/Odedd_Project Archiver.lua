@@ -23,6 +23,7 @@ dofile(p .. 'lib/Settings.lua')
 dofile(p .. 'lib/Operation.lua')
 dofile(p .. 'lib/Gui.lua')
 dofile(p .. 'lib/App.lua')
+dofile(p .. 'lib/Texts.lua')
 
 Gui.tables = {
     horizontal = {
@@ -203,36 +204,13 @@ function App.drawWarning()
     local ctx = Gui.ctx
     local center = { Gui.mainWindow.pos[1] + Gui.mainWindow.size[1] / 2,
         Gui.mainWindow.pos[2] + Gui.mainWindow.size[2] / 2 } -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
-    local text = ([[
-You have selected not to backup to a new folder, 
-and to %s.
-
-This means that all* the audio source files will be
-DELETED and new "minimized" versions of them will be
-created instead.
-
-This will make any other RPP that uses the original
-files UNUSABLE!
-
-The only project that will work with those new files
-is this one.
-
-Since files are deleted - this cannot be undone!
-
-Please think about it carefully before continuing.
-
-
-*Audio files outside of the project's media folder
- will not be deleted.
-]]):format(DELETE_OPERATION_DESCRIPTIONS[Settings.deleteOperation]):lower()
-    local okButtonLabel = 'OK'
-    local okButtonLabel = App.popup.secondWarningShown and 'Come on already let\'s do it!' or 'OK'
-    local cancelButtonLabel = 'Cancel'
+    local okButtonLabel = App.popup.secondWarningShown and 'Come on already let\'s do it!' or 'I do'
+    local cancelButtonLabel = 'Nope'
     local okPressed = false
     local cancelPressed = false
     local bottom_lines = 1
 
-    local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, text)
+    local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, TEXTS.WARNINGS_EXIST)
 
     r.ImGui_SetNextWindowSize(ctx,
         math.max(220, textWidth) + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4,
@@ -247,7 +225,7 @@ Please think about it carefully before continuing.
 
         local windowWidth, windowHeight = r.ImGui_GetWindowSize(ctx);
         r.ImGui_SetCursorPos(ctx, (windowWidth - textWidth) * .5, (windowHeight - textHeight) * .5);
-        r.ImGui_TextWrapped(ctx, text)
+        r.ImGui_TextWrapped(ctx, TEXTS.WARNINGS_EXIST)
 
         r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
@@ -278,30 +256,8 @@ Please think about it carefully before continuing.
             r.ImGui_CloseCurrentPopup(ctx)
         end
 
-        local secondWarningText = [[
-This script is not even at version 1.0!
-Are you crazy?!
-
-While I'm pretty damn sure everything works
-you should still probably make sure to have
-a backup of this project and all of its
-media files, until you're certain that
-this script did its job correctly.
-
-I'm not taking responsibility in case
-anything goes wrong.
-
-Which reminds me - please let me know at the
-Reaper forums if anything does go wrong so
-I can fix it.
-
-
-
-But everything wil probably be ok :)
-
-]]
         local buttonLabel = 'Got it'
-        local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, secondWarningText)
+        local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, TEXTS.BETA_WARNING)
         r.ImGui_SetNextWindowSize(ctx, math.max(220, textWidth) +
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4,
             textHeight + 90 + r.ImGui_GetTextLineHeightWithSpacing(ctx) * 2)
@@ -320,13 +276,12 @@ But everything wil probably be ok :)
             if r.ImGui_BeginChild(ctx, 'msgBody', 0,
                     select(2, r.ImGui_GetContentRegionAvail(ctx)) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
                     r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())) then
-                r.ImGui_TextWrapped(ctx, secondWarningText)
+                r.ImGui_TextWrapped(ctx, TEXTS.BETA_WARNING)
                 local _, hideThis =
                     r.ImGui_Checkbox(ctx, "Dont show this again", not Settings.showMinimizeDoubleWarning)
                 Settings.showMinimizeDoubleWarning = not hideThis
                 r.ImGui_EndChild(ctx)
             end
-            -- r.ImGui_TextWrapped(ctx, secondWarningText)
 
             r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
                 r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
@@ -373,7 +328,7 @@ function App.drawBottom(ctx, bottom_lines)
             if not ok then
                 App.msg(table.concat(errors, '\n------------\n'))
             else
-                if Settings.minimize and Settings.deleteOperation ~= DELETE_OPERATION.KEEP_IN_FOLDER and not Settings.backup then
+                if App.warningCount > 0 then
                     r.ImGui_OpenPopup(ctx, 'Are you sure?')
                 else
                     App.coPerform = coroutine.create(doPerform)
@@ -399,6 +354,7 @@ end
 function App.drawMainWindow()
     local ctx = Gui.ctx
     local max_w, max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx))
+    App.warningCount = 0
 
     -- r.ShowConsoleMsg(viewPortWidth)
     r.ImGui_SetNextWindowSize(ctx, math.min(1125, max_w), math.min(800, max_h), r.ImGui_Cond_Appearing())
@@ -431,8 +387,12 @@ function App.drawMainWindow()
         Settings.keepActiveTakesOnly = Gui.setting('checkbox', 'Remove unused takes',
             "Keep only selected takes", Settings.keepActiveTakesOnly)
 
-
-        r.ImGui_Bullet(ctx)
+        if Settings.minimize and not Settings.backup then
+            Gui.settingCaution(TEXTS.CAUTION_MINIMIZE)
+            App.warningCount = App.warningCount + 1
+        else
+            r.ImGui_Bullet(ctx)
+        end
         Settings.minimize = Gui.setting('checkbox', 'Minimize audio files',
             "Keep only the parts of the audio that are being used in the project", Settings.minimize)
 
@@ -461,14 +421,21 @@ function App.drawMainWindow()
             })
         if not Settings.minimize then r.ImGui_EndDisabled(ctx) end
         r.ImGui_Unindent(ctx)
-        r.ImGui_Bullet(ctx)
-        if Settings.collect ~= 0 then
+        if Settings.backup or Settings.collect ~= 0 then
+            if Settings.collectOperation == COLLECT_OPERATION.MOVE then
+                Gui.settingCaution(TEXTS.CAUTION_COLLECT_MOVE)
+                App.warningCount = App.warningCount + 1
+            else
+                r.ImGui_Bullet(ctx)
+            end
+
             Settings.collectOperation = Gui.setting('combo', 'Collect Files into project folder',
                 "When collecting external files, should they be copied or moved from their original location",
                 Settings.collectOperation, {
                     list = COLLECT_OPERATIONS_LIST
                 })
         else
+            r.ImGui_Bullet(ctx)
             r.ImGui_AlignTextToFramePadding(ctx)
             r.ImGui_Text(ctx, 'Collect Files into project folder')
         end
@@ -499,14 +466,24 @@ function App.drawMainWindow()
         if Settings.backup then COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL] = tmpSetting[COLLECT.EXTERNAL] end
         r.ImGui_Unindent(ctx)
         if not Settings.backup then
-            r.ImGui_Bullet(ctx)
-            Settings.deleteUnusedMedia = Gui.setting('checkbox', 'Clean media folder',
-                "Keep only the files that are being used in the project in the media folder", Settings.deleteUnusedMedia)
+            if Settings.cleanMediaFolder then
+                Gui.settingCaution(TEXTS.CAUTION_CLEAN_MEDIA_FOLDER)
+                App.warningCount = App.warningCount + 1
+            else
+                r.ImGui_Bullet(ctx)
+            end
+            Settings.cleanMediaFolder = Gui.setting('checkbox', 'Clean media folder',
+                "Keep only the files that are being used in the project in the media folder", Settings.cleanMediaFolder)
         else
             Gui.settingSpacing()
         end
-        if Settings.minimize and not Settings.backup then
-            r.ImGui_Bullet(ctx)
+        if (Settings.minimize or Settings.cleanMediaFolder) and not Settings.backup then
+            if Settings.deleteOperation == DELETE_OPERATION.DELETE_FROM_DISK then
+                Gui.settingCaution(TEXTS.CAUTION_DELETE)
+                App.warningCount = App.warningCount + 1
+            else
+                r.ImGui_Bullet(ctx)
+            end
             Settings.deleteOperation = Gui.setting('combo', 'Deletion Method',
                 "When deleting files, which method should be used?",
                 Settings.deleteOperation, {
@@ -570,6 +547,8 @@ end
 -- TODO handle empty project
 -- TODO handle switching projects
 -- TODO (later): figure out section
+-- TODO don't generate peak caches when creating a backup
+-- TODO check for "nothing to do" if no relevant setting was checked
 
 -- check project has a folder:
 --     local proj_name = r.GetProjectName( 0, '' )
