@@ -1,3 +1,4 @@
+-- @noindex
 App = {
     open = true,
     coPerform = nil,
