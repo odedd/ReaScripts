@@ -547,14 +547,13 @@ end
 -- TODO export current settings as action
 -- TODO handle subprojects (collect? render?)
 -- TODO show total savings and close script upon completion
--- TODO verify minimization before deleting files
--- TODO check handling of missing files
 -- TODO handle unsaved project
 -- TODO handle empty project
 -- TODO handle switching projects
 -- TODO (later): figure out section
--- TODO don't generate peak caches when creating a backup
 -- TODO check for "nothing to do" if no relevant setting was checked
+-- ? check handling of missing files
+-- ? check project media folder at project root
 
 -- check project has a folder:
 --     local proj_name = r.GetProjectName( 0, '' )
