@@ -1,4 +1,9 @@
 -- @noindex
+
+-- ! CONSTANTS
+
+YIELD_FREQUENCY = 50
+
 STATUS = {
     IGNORE = 0,
     SCANNED = 1,
@@ -21,23 +26,74 @@ STATUS_DESCRIPTIONS = {
     [STATUS.MINIMIZED] = 'Minimized',
     [STATUS.MOVING] = 'Moving',
     [STATUS.COPYING] = 'Copying',
-    [STATUS.DELETING] = 'Deleting',
-    [STATUS.MOVING_TO_TRASH] = 'Moving To Trash',
+    [STATUS.DELETING] = 'Deleting Original',
+    [STATUS.MOVING_TO_TRASH] = 'Moving Orig. To Trash',
     [STATUS.COLLECTING] = 'Collecting',
     [STATUS.COLLECTED] = 'Collected',
     [STATUS.DONE] = 'Done',
     [STATUS.ERROR] = 'Error'
 }
 
-FORMATS = {
-    COMPRESSED = { 'VORBIS', 'OGG', 'OPUS', 'MOGG', 'MP3' },
-    LOSSLESS = { 'FLAC', 'WAVPACK' },
-    UNCOMPRESSED = { 'AIFF', 'WAVE', 'BW64', 'BWF', 'RF64', 'SD2', 'WAV', 'W64' },
-    INCOMPATIBLE = { 'WMV', 'AVI', 'MOV', 'EDL', 'MIDI', 'MUSICXML', 'MPEG', 'KAR', 'QT', 'SYX' },
-    SPECIAL = { 'REX2' },
-    TO_TEST = { 'CAF', 'ACID', 'CDDA', 'RAW/PCM', 'RADAR' },
-    VIDEO = { 'VIDEO' }
+ALL_FORMATS = {
+    VORBIS = { type = 'COMPRESSED', extension = 'ogg' },
+    OGG = { type = 'COMPRESSED', extension = 'ogg' },
+    OPUS = { type = 'COMPRESSED', extension = 'opus' },
+    MOGG = { type = 'COMPRESSED', extension = 'mogg' },
+    MP3 = { type = 'COMPRESSED', extension = 'mp3' },
+    FLAC = { type = 'LOSSLESS', extension = 'flac' },
+    WAVPACK = { type = 'LOSSLESS', extension = 'wv' },
+    AIFF = { type = 'UNCOMPRESSED', extension = 'aiff' },
+    WAVE = { type = 'UNCOMPRESSED', extension = 'wav' },
+    BW64 = { type = 'UNCOMPRESSED', extension = 'bw64' },
+    BWF = { type = 'UNCOMPRESSED', extension = 'bwf' },
+    RF64 = { type = 'UNCOMPRESSED', extension = 'rf64' },
+    SD2 = { type = 'UNCOMPRESSED', extension = 'sd2' },
+    WAV = { type = 'UNCOMPRESSED', extension = 'wav' },
+    W64 = { type = 'UNCOMPRESSED', extension = 'w64' },
+    WMV = { type = 'INCOMPATIBLE', extension = 'wmv' },
+    AVI = { type = 'INCOMPATIBLE', extension = 'avi' },
+    MOV = { type = 'INCOMPATIBLE', extension = 'mov' },
+    EDL = { type = 'INCOMPATIBLE', extension = 'edl' },
+    MIDI = { type = 'INCOMPATIBLE', extension = 'midi' },
+    MUSICXML = { type = 'INCOMPATIBLE', extension = 'musicxml' },
+    MPEG = { type = 'INCOMPATIBLE', extension = 'mpeg' },
+    KAR = { type = 'INCOMPATIBLE', extension = 'kar' },
+    QT = { type = 'INCOMPATIBLE', extension = 'qt' },
+    SYX = { type = 'INCOMPATIBLE', extension = 'syx' },
+    REX2 = { type = 'SPECIAL', extension = 'rex2' },
+    CAF = { type = 'TO_TEST', extension = 'caf' },
+    ACID = { type = 'TO_TEST', extension = 'acid' },
+    CDDA = { type = 'TO_TEST', extension = 'cdda' },
+    ['RAW/PCM'] = { type = 'TO_TEST', extension = 'raw' },
+    RADAR = { type = 'TO_TEST', extension = 'radar' }
 }
+
+local function createTablesFromFormats(allFormats)
+    local mediaExtensions = {}
+    local mediaTypes = {} -- Initialize an empty table for mediaTypes
+
+    for format, data in pairs(allFormats) do
+        local extension = data.extension
+        local formatType = data.type
+
+        -- Add to mediaExtensions table
+        table.insert(mediaExtensions, extension)
+
+        -- Add to mediaTypes table dynamically
+        if not mediaTypes[formatType] then
+            mediaTypes[formatType] = {} -- Create a new empty table for the format type
+        end
+
+        table.insert(mediaTypes[formatType], format)
+    end
+
+    -- Add 'VIDEO' key to mediaTypes table
+    mediaTypes['VIDEO'] = { 'VIDEO' }
+
+    return mediaExtensions, mediaTypes
+end
+
+MEDIA_EXTENSIONS, MEDIA_TYPES = createTablesFromFormats(ALL_FORMATS)
 
 FILE_TYPES = {
     AUDIO = 0,
@@ -45,12 +101,14 @@ FILE_TYPES = {
     RS5K = 2
 }
 
+-- * local
 local function reverseItem(item)
     r.SelectAllMediaItems(0, false)
     r.SetMediaItemSelected(item, true)
     r.Main_OnCommand(41051, 0)
 end
 
+-- * public
 -- Gather media files and occurrences
 function GetMediaFiles()
     local function getTakeSourcePositions(take, srclen)
@@ -159,6 +217,7 @@ function GetMediaFiles()
     local numMediaItems = r.CountMediaItems(0)
     App.mediaFiles = {}
     App.perform.total = numMediaItems
+    local YIELD_FREQUENCY = math.min(OD_Round(App.perform.total / 50), YIELD_FREQUENCY)
     App.perform.pos = 0
     App.mediaFileCount = 0
     for i = 0, numMediaItems - 1 do
@@ -236,10 +295,11 @@ function GetMediaFiles()
                 else
                     -- Create a new entry for the media file
                     local fullpath, basename, ext = OD_DissectFilename(filename)
-                    local relOrAbsFile, relOrAbsPath, pathIsRelative = OD_GetRelativeOrAbsoluteFile(filename, App.projPath)
+                    local relOrAbsFile, relOrAbsPath, pathIsRelative = OD_GetRelativeOrAbsoluteFile(filename,
+                        App.projPath)
                     local sourceFileSize = OD_GetFileSize(filename)
                     App.mediaFiles[filename] = {
-                        fileType = OD_HasValue(FORMATS.VIDEO, sourceType) and FILE_TYPES.VIDEO or FILE_TYPES.AUDIO,
+                        fileType = OD_HasValue(MEDIA_TYPES.VIDEO, sourceType) and FILE_TYPES.VIDEO or FILE_TYPES.AUDIO,
                         external = not pathIsRelative,
                         status = STATUS.SCANNED,
                         order = App.mediaFileCount,
@@ -247,7 +307,7 @@ function GetMediaFiles()
                         filenameWithPath = filename,
                         fullpath = fullpath,
                         relOrAbsFile = relOrAbsFile,
-                        relOrAbsPath = relOrAbsPath, 
+                        relOrAbsPath = relOrAbsPath,
                         pathIsRelative = pathIsRelative,
                         basename = basename,
                         ext = ext,
@@ -255,10 +315,10 @@ function GetMediaFiles()
                         newFileSize = nil,
                         hasSection = oc and oc.section or false,
                         srclen = srclen,
-                        ignore = not (OD_HasValue(FORMATS.UNCOMPRESSED, sourceType) or
-                            OD_HasValue(FORMATS.LOSSLESS, sourceType) or
+                        ignore = not (OD_HasValue(MEDIA_TYPES.UNCOMPRESSED, sourceType) or
+                            OD_HasValue(MEDIA_TYPES.LOSSLESS, sourceType) or
                             ((Settings.minimizeSourceTypes == MINIMIZE_SOURCE_TYPES.ALL) and
-                                OD_HasValue(FORMATS.COMPRESSED, sourceType))),
+                                OD_HasValue(MEDIA_TYPES.COMPRESSED, sourceType))),
                         missing = not fileExists,
                         status_info = '',
                         newfilename = nil,
@@ -279,7 +339,9 @@ function GetMediaFiles()
                     App.mediaFiles[filename].status = STATUS.ERROR
                     App.mediaFiles[filename].status_info = 'file missing'
                 end
-                App.perform.pos = App.perform.pos + 1
+            end
+            App.perform.pos = App.perform.pos + 1
+            if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then 
                 coroutine.yield('Collecting Takes')
             end
         end
@@ -315,12 +377,14 @@ function CollectMedia()
         end
     end
 
+    coroutine.yield('Collecting Files')
     for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
         if fileInfo.shouldCollect then
             App.perform.pos = App.perform.pos + 1
             App.mediaFiles[filename].status = STATUS.COLLECTING
-            coroutine.yield('Collecting Files')
-
+            if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then 
+                coroutine.yield('Collecting Files')
+            end
             -- if backing up, should later copy (not move) *internal* files to the backup (leaving originals untouched)
             -- otherwise, should first copy/move(according to setting) them to the current project folder, in order
             -- to get correct relative file references in the RPP, and set them to later MOVE to the backup destination
@@ -367,7 +431,7 @@ function CollectMedia()
             end
 
             App.mediaFiles[filename].status = STATUS.COLLECTED
-            coroutine.yield('Collecting Files')
+            -- coroutine.yield('Collecting Files')
         end
     end
 end
@@ -730,30 +794,29 @@ function MinimizeAndApplyMedia()
             end
         end
     end
-    if Settings.minimize then -- no need to do it if not minimizing (wasteful)
-        r.SelectAllMediaItems(0, false)
-        App.perform.total = App.mediaFileCount
-        App.perform.pos = 0
-        for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
-            if not fileInfo.ignore and not fileInfo.missing then
-                App.mediaFiles[filename].status = STATUS.MINIMIZING
-                App.perform.pos = App.perform.pos + 1
-                coroutine.yield('Minimizing Files')
 
-                local track = createTrackForFilename(filename)
-                local splitItems = addItemsToTrackAndWrapAround(track, fileInfo)
-                removeSpaces(track, filename)
-                saveNewPositions(fileInfo)
-                trimItems(fileInfo, splitItems)
-                local gluedItem = glueItems(track)
-                if gluedItem then
-                    applyGluedSourceToOriginal(fileInfo, gluedItem)
-                end
-                r.DeleteTrack(track)
-
-                App.mediaFiles[filename].status = STATUS.MINIMIZED
-                coroutine.yield('Minimizing Files')
+    r.SelectAllMediaItems(0, false)
+    App.perform.total = App.mediaFileCount
+    App.perform.pos = 0
+    coroutine.yield('Minimizing Files')
+    for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
+        if not fileInfo.ignore and not fileInfo.missing then
+            App.mediaFiles[filename].status = STATUS.MINIMIZING
+            App.perform.pos = App.perform.pos + 1
+            coroutine.yield('Minimizing Files')
+            local track = createTrackForFilename(filename)
+            local splitItems = addItemsToTrackAndWrapAround(track, fileInfo)
+            removeSpaces(track, filename)
+            saveNewPositions(fileInfo)
+            trimItems(fileInfo, splitItems)
+            local gluedItem = glueItems(track)
+            if gluedItem then
+                applyGluedSourceToOriginal(fileInfo, gluedItem)
             end
+            r.DeleteTrack(track)
+
+            App.mediaFiles[filename].status = STATUS.MINIMIZED
+            -- coroutine.yield('Minimizing Files')
         end
     end
 end
@@ -761,7 +824,7 @@ end
 function FinalizePeaksBuild(count)
     local count = count or 0
     local total = 0
-    for k, src in pairs(App.peakOperations) do
+    for k, src in pairs(App.peakOperations or {}) do
         local current = r.PCM_Source_BuildPeaks(src, 1)
         if current == 0 then
             r.PCM_Source_BuildPeaks(src, 2)
@@ -898,7 +961,10 @@ function CreateBackupProject()
 
     for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
         -- move processed files
-        r.RecursiveCreateDirectory(targetPath .. (fileInfo.collectBackupTargetPath or (fileInfo.pathIsRelative and fileInfo.relOrAbsPath or App.relProjectRecordingPath)), 0)
+        r.RecursiveCreateDirectory(
+            targetPath ..
+            (fileInfo.collectBackupTargetPath or (fileInfo.pathIsRelative and fileInfo.relOrAbsPath or App.relProjectRecordingPath)),
+            0)
         App.perform.pos = App.perform.pos + 1
         if fileInfo.collectBackupOperation == COLLECT_BACKUP_OPERATION.MOVE or (Settings.minimize and not fileInfo.ignore and not fileInfo.missing) then
             fileInfo.status = STATUS.MOVING
@@ -916,7 +982,7 @@ function CreateBackupProject()
         elseif Settings.minimize or fileInfo.collectBackupOperation == COLLECT_BACKUP_OPERATION.COPY or (not fileInfo.ignore) then -- copy all other files, if in media folder
             if fileInfo.pathIsRelative then
                 fileInfo.status = STATUS.COPYING
-                -- coroutine.yield('Creating backup project
+                coroutine.yield('Creating backup project')
                 local target = targetPath .. fileInfo.relOrAbsFile
                 if OD_CopyFile(fileInfo.filenameWithPath, target) then
                     fileInfo.status = STATUS.DONE
@@ -947,17 +1013,18 @@ end
 function DeleteOriginals()
     if Settings.minimize and Settings.deleteMethod ~= DELETE_METHOD.KEEP_IN_FOLDER then
         App.perform.total = App.mediaFileCount
+
         App.perform.pos = 0
         local stat = Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and 'Moving originals to trash' or
             'Deleting originals'
         local filesToTrashWin = {}
+        coroutine.yield(stat)
         for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
             -- delete original files which were replaced by minimized versions
             App.perform.pos = App.perform.pos + 1
-            coroutine.yield(stat)
             if not fileInfo.external and not fileInfo.ignore and not fileInfo.missing then
                 fileInfo.status = Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and STATUS.MOVING_TO_TRASH or
-                    STATUS.DELETING
+                STATUS.DELETING
                 coroutine.yield(stat)
                 if OS_is.win then
                     if Settings.deleteMethod ~= DELETE_METHOD.MOVE_TO_TRASH then
@@ -982,8 +1049,8 @@ function DeleteOriginals()
                 end
             elseif not fileInfo.missing then
                 fileInfo.status = STATUS.DONE
+                coroutine.yield(stat)
             end
-            coroutine.yield(stat)
         end
 
         -- if on windows, trash all files at once to avoid powershelling for each file seperately
@@ -999,11 +1066,121 @@ function DeleteOriginals()
                 end
             end
         end
+        coroutine.yield(stat)
     end
 end
 
 function CleanMediaFolder()
-    -- get all remaning used files from all takes
-    -- get all (recursive?) ++media++ files in project media folder (unless it's the root project folder?)
-    -- if not used, delete acccording to Settings.deleteMethod
+    local function getUsedFiles()
+        -- get all used files that remain in the session from all takes
+        -- this could theoretically be calculated along the way, but
+        -- the safest and surest way would be to actually get the files
+        -- in the folder after minimizing, leaving only selected takes etc...
+        local numMediaItems = r.CountMediaItems(0)
+        App.usedFiles = {}
+        App.perform.total = numMediaItems
+        App.perform.pos = 0
+        App.mediaFileCount = 0
+        for i = 0, numMediaItems - 1 do
+            local mediaItem = r.GetMediaItem(0, i)
+            -- Get the total number of takes for the media item
+            local numTakes = r.GetMediaItemNumTakes(mediaItem)
+            App.perform.total = App.perform.total + numTakes - 1
+            -- Iterate over each take of the media item
+            for j = 0, numTakes - 1 do
+                local take = r.GetMediaItemTake(mediaItem, j)
+                if take and not r.TakeIsMIDI(take) then
+                    local mediaSource = r.GetMediaItemTake_Source(take)
+                    local sourceParent = r.GetMediaSourceParent(mediaSource)
+                    if sourceParent then
+                        mediaSource = sourceParent
+                    end
+
+                    local filename = r.GetMediaSourceFileName(mediaSource, "") -- :gsub('/',folderSep())
+                    -- log occurance if it's to be minimized
+                    if not App.usedFiles[filename] then
+                        App.usedFiles[filename] = 1
+                    end
+                end
+                App.perform.pos = App.perform.pos + 1
+                if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then
+                    coroutine.yield('Cleaning media folder (scanning takes)')
+                end
+            end
+        end
+    end
+
+    -- Scan project recording folder for media files
+    local function getUnusedFilesInRecordingFolder()
+        App.ununsedFilesInRecordingFolder = {}
+        local function isValidMediaFile(file)
+            -- Filter out specific file extensions
+            local _, _, extension = OD_DissectFilename(file)
+            return OD_HasValue(MEDIA_EXTENSIONS, extension, true)
+        end
+
+        -- Scan recording folder
+        -- local iterator = reaper.DirItemsIterator_Create(App.projectRecordingPath)
+        -- local file = reaper.DirItemsIterator_GetNext(iterator)
+        local fileIndex = 0
+        local file = reaper.EnumerateFiles(App.projectRecordingPath, fileIndex)
+
+        App.perform.pos = 0
+        while file do
+            App.perform.pos = App.perform.pos + 1
+            App.perform.total = App.perform.pos
+            if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then
+                coroutine.yield('Cleaning media folder (scanning folder)')
+            end
+            file = App.projectRecordingPath .. "/" .. file
+            if reaper.file_exists(file) then
+                if isValidMediaFile(file) and not App.usedFiles[file] and not App.usedFiles[file:gsub('.reapeaks$', '')] then
+                    table.insert(App.ununsedFilesInRecordingFolder, { filename = file, size = OD_GetFileSize(file) })
+                end
+            end
+            fileIndex = fileIndex + 1
+            file = reaper.EnumerateFiles(App.projectRecordingPath, fileIndex)
+        end
+    end
+
+    local function deleteUnusedFiles()
+        local stat = Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and 'Moving unused files to trash' or
+            'Deleting unused files'
+
+        local filesToTrashWin = {}
+        App.perform.total = OD_TableLength(App.ununsedFilesInRecordingFolder)
+        App.perform.pos = 0
+        for i, file in ipairs(App.ununsedFilesInRecordingFolder) do -- delete original files which were replaced by minimized versions
+            App.perform.pos = App.perform.pos + 1
+            if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then 
+                coroutine.yield(stat)
+            end
+            if OS_is.win then
+                if Settings.deleteMethod ~= DELETE_METHOD.MOVE_TO_TRASH then
+                    r.reduce_open_files(2) -- windows won't delete/move files that are in use
+                    os.remove(file.filename)
+                else                       -- if on windows but set to move to trash, we need to first collect filenames and only then send to trash to avoid opening powershell for each file
+                    table.insert(filesToTrashWin, file.filename)
+                end
+            else
+                if Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH then
+                    OD_MoveToTrash(file.filename)
+                else
+                    os.remove(file.filename)
+                end
+            end
+        end
+
+        -- if on windows, trash all files at once to avoid powershelling for each file seperately
+        if #filesToTrashWin > 0 then
+            r.reduce_open_files(2) -- windows won't delete/move files that are in use
+            OD_MoveToTrash(filesToTrashWin)
+        end
+    end
+
+    if not Settings.backup and Settings.cleanMediaFolder then
+        getUsedFiles()
+        getUnusedFilesInRecordingFolder()
+        deleteUnusedFiles()
+    end
 end

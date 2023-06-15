@@ -61,7 +61,9 @@ local function doPerform()
     if CheckSettings() then
         Prepare()
         -- get information on all takes, separated by media source file
-        GetMediaFiles()
+        if Settings.backup or Settings.keepActiveTakesOnly or Settings.minimize or Settings.collect ~= 0 then
+            GetMediaFiles()
+        end
         -- if sources are networked, trashing may not be an option.
         if (Settings.minimize and not Settings.backup) and (Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH) and
             (NetworkedFilesExist()) then
@@ -69,9 +71,12 @@ local function doPerform()
                 'Networked files were found.\nMoving networkd files to the\ntrash is not supported.\nPlease select deleting files\nor consider backing up instead of\nminimizing.')
         else
             -- minimize files and apply to original sources
-            MinimizeAndApplyMedia()
-            CollectMedia()
-
+            if Settings.minimize then
+                MinimizeAndApplyMedia()
+            end
+            if Settings.backup or Settings.collect ~= 0 then
+                CollectMedia()
+            end
             if Settings.backup then
                 -- copy to a new project path (move glued files, copy others)
                 CreateBackupProject()
@@ -82,7 +87,7 @@ local function doPerform()
                     DeleteOriginals()
                 end
                 if Settings.cleanMediaFolder then
-                  CleanMediaFolder()  
+                    CleanMediaFolder()
                 end
                 -- finish building peaks for new files
                 FinalizePeaksBuild()

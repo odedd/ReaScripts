@@ -1,6 +1,8 @@
 -- @noindex
 Settings = {}
 
+-- ! CONSTANTS
+
 -- bitwise
 COLLECT = {
     EXTERNAL = 1,
@@ -106,13 +108,14 @@ for i = 0, #GLUE_FORMATS_DETAILS do
     GLUE_FORMATS_LIST = (GLUE_FORMATS_LIST or '') .. GLUE_FORMATS_DETAILS[i].description .. '\0'
 end
 
+-- * local
 local function getDefaultSettings(factory)
     if factory == nil then factory = false end
     local settings = {
         default = {
             backup = true,
             minimize = true,
-            cleanMediaFolder = true,   -- TODO implement Settings.deleteUnusedMedia
+            cleanMediaFolder = true,
             keepActiveTakesOnly = true, -- TODO implement Settings.keepActiveTakesOnly (unless item marked with "play all takes")
             minimizeSourceTypes = MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_AND_LOSSLESS,
             deleteMethod = DELETE_METHOD.MOVE_TO_TRASH,
@@ -140,6 +143,7 @@ local function getDefaultSettings(factory)
     return settings
 end
 
+-- * public
 function LoadSettings()
     local st = getDefaultSettings()
     Settings = OD_DeepCopy(st.default)

@@ -52,6 +52,7 @@ function OD_GetContent(path)
     return content
 end
 
+-- returns path, name, ext
 function OD_DissectFilename(path)
     return string.match(path, "(.-)([^\\/]-).([^%.]+)$") -- path, name, ext
 end
