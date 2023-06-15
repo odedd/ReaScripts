@@ -6,14 +6,21 @@ function OD_TableLength(T)
     return count
 end
 
-function OD_HasValue(tab, val)
+function OD_HasValue(tab, val, case_indifferent)
     for index, value in ipairs(tab) do
-        if value == val then
-            return true
+        if case_indifferent and type(val) == string and type(value) == string then
+            if value:lower() == val:lower() then return true end
+        else
+            if value == val then return true end
         end
     end
-
     return false
+end
+
+function OD_Tablelength(T)
+    local count = 0
+    for _ in pairs(T) do count = count + 1 end
+    return count
 end
 
 ------------------------------------------- --

@@ -1,3 +1,4 @@
+-- @noindex
 TEXTS = {}
 
 TEXTS.CAUTION_MINIMIZE =
@@ -21,7 +22,11 @@ TEXTS.CAUTION_DELETE =
 
 TEXTS.CAUTION_CLEAN_MEDIA_FOLDER = 
 [[This will make any other RPP that uses files in the media folder UNUSABLE!
-The only project that will work with those new files is this one.]]
+The only project that will work with those new files is this one.
+
+This is especially risky if your media folder is your project's root folder,
+as this will delete any media file which exists in this folder, which may be
+renders etc.]]
 
 TEXTS.WARNINGS_EXIST =
 [[There are several warnings (those yellow icons with the !s).
