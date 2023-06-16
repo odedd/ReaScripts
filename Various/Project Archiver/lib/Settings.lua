@@ -116,7 +116,7 @@ local function getDefaultSettings(factory)
             backup = true,
             minimize = true,
             cleanMediaFolder = true,
-            keepActiveTakesOnly = true, -- TODO implement Settings.keepActiveTakesOnly (unless item marked with "play all takes")
+            keepActiveTakesOnly = true,
             minimizeSourceTypes = MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_AND_LOSSLESS,
             deleteMethod = DELETE_METHOD.MOVE_TO_TRASH,
             collect = COLLECT.RS5K + COLLECT.VIDEO + COLLECT.EXTERNAL, -- TODO implement RS5K collection

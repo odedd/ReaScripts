@@ -60,6 +60,9 @@ Gui.st.col.status = {
 local function doPerform()
     if CheckSettings() then
         Prepare()
+        if Settings.keepActiveTakesOnly then
+            KeepActiveTakesOnly()
+        end
         -- get information on all takes, separated by media source file
         if Settings.backup or Settings.keepActiveTakesOnly or Settings.minimize or Settings.collect ~= 0 or Settings.cleanMediaFolder then
             GetMediaFiles()
@@ -553,6 +556,7 @@ end
 -- TODO (later): figure out section
 -- TODO check for "nothing to do" if no relevant setting was checked
 -- ? check handling of missing files
+-- ? test only active takes
 -- ? test (updated) cleaning media folder
 -- ? check project media folder at project root
 
