@@ -61,7 +61,7 @@ local function doPerform()
     if CheckSettings() then
         Prepare()
         -- get information on all takes, separated by media source file
-        if Settings.backup or Settings.keepActiveTakesOnly or Settings.minimize or Settings.collect ~= 0 then
+        if Settings.backup or Settings.keepActiveTakesOnly or Settings.minimize or Settings.collect ~= 0 or Settings.cleanMediaFolder then
             GetMediaFiles()
         end
         -- if sources are networked, trashing may not be an option.
@@ -553,6 +553,7 @@ end
 -- TODO (later): figure out section
 -- TODO check for "nothing to do" if no relevant setting was checked
 -- ? check handling of missing files
+-- ? test (updated) cleaning media folder
 -- ? check project media folder at project root
 
 -- check project has a folder:

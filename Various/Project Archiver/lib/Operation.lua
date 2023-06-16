@@ -216,6 +216,7 @@ function GetMediaFiles()
 
     local numMediaItems = r.CountMediaItems(0)
     App.mediaFiles = {}
+    App.usedFiles = {} --keeps track of ALL files used in the session for cleaning the media folder
     App.perform.total = numMediaItems
     local YIELD_FREQUENCY = math.min(OD_Round(App.perform.total / 50), YIELD_FREQUENCY)
     App.perform.pos = 0
@@ -283,6 +284,10 @@ function GetMediaFiles()
                         -- normalizedItemLength = (itemLength+sp) % math.max(len, srclen),
                     }
                 end
+                -- Check if the media file entry exists in the usedFiles table
+                if not App.usedFiles[filename] then
+                    App.usedFiles[filename] = 1
+                end
                 -- Check if the media file entry exists in the mediaFiles table
                 if App.mediaFiles[filename] then
                     if oc ~= nil then -- if unsupported format, the occurrence will be nil
@@ -341,7 +346,7 @@ function GetMediaFiles()
                 end
             end
             App.perform.pos = App.perform.pos + 1
-            if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then 
+            if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then
                 coroutine.yield('Collecting Takes')
             end
         end
@@ -382,7 +387,7 @@ function CollectMedia()
         if fileInfo.shouldCollect then
             App.perform.pos = App.perform.pos + 1
             App.mediaFiles[filename].status = STATUS.COLLECTING
-            if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then 
+            if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then
                 coroutine.yield('Collecting Files')
             end
             -- if backing up, should later copy (not move) *internal* files to the backup (leaving originals untouched)
@@ -395,7 +400,9 @@ function CollectMedia()
                 fileInfo.collectBackupTargetPath = (Settings.targetPaths[fileInfo.fileType] or App.relProjectRecordingPath)
                     :gsub('\\', '/'):gsub(
                         '/$',
-                        '')
+                        ''):gsub(
+                            '^/',
+                            '')
                 local targetPath = App.projPath .. fileInfo.collectBackupTargetPath .. OD_FolderSep()
                 local targetFileName = targetPath ..
                     fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or '')
@@ -414,7 +421,8 @@ function CollectMedia()
                     fileInfo.status_info = 'collection failed'
                 else
                     local newSrc = r.PCM_Source_CreateFromFile(uniqueFilename)
-
+                    App.usedFiles[filename] = nil
+                    App.usedFiles[uniqueFilename] = 1
                     fileInfo.newfilename = uniqueFilename
                     if not Settings.backup then
                         App.peakOperations[uniqueFilename] = newSrc
@@ -731,7 +739,8 @@ function MinimizeAndApplyMedia()
         end
     end
 
-    local function applyGluedSourceToOriginal(fileInfo, gluedItem)
+    local function applyGluedSourceToOriginal(originalFilename, gluedItem)
+        local fileInfo = App.mediaFiles[originalFilename]
         local gluedTake = r.GetTake(gluedItem, 0)
         if gluedTake then
             local newSrc = r.GetMediaItemTake_Source(gluedTake)
@@ -742,7 +751,6 @@ function MinimizeAndApplyMedia()
             local ext = filename:match(".+%.(.+)$")
             local newFilename = path .. fileInfo.trackName .. (ext and ("." .. ext) or '')
             local uniqueName = OD_GenerateUniqueFilename(newFilename)
-
             -- -- give time to the file system to refresh
             -- local t_point = r.time_precise()
             -- repeat
@@ -751,20 +759,24 @@ function MinimizeAndApplyMedia()
             r.SelectAllMediaItems(0, false)
             r.SetMediaItemSelected(gluedItem, true)
 
-            r.Main_OnCommand(40440, 0) -- set selected media temporarily offline
-            local success = OD_MoveFile(sourceFilename, uniqueName)
-            r.Main_OnCommand(40439, 0) -- online
+            r.Main_OnCommand(40440, 0)                              -- set selected media temporarily offline
+            local success = OD_MoveFile(sourceFilename, uniqueName) --? should probably check for success
+            r.Main_OnCommand(40439, 0)                              -- online
 
             -- Update the glued item with the new source file and rebuild peaks
-
+            
             newSrc = r.PCM_Source_CreateFromFile(uniqueName)
             fileInfo.newfilename = uniqueName
+            -- update usedFiles table with the replaced file
+            App.usedFiles[originalFilename] = nil
+            App.usedFiles[uniqueName] = 1
+
             if not Settings.backup then
                 App.peakOperations[uniqueName] = newSrc
                 r.PCM_Source_BuildPeaks(newSrc, 0)
             end
 
-
+            -- update stretch markers and take markers
             local newSrcLength = r.GetMediaSourceLength(newSrc)
             for i, oc in ipairs(fileInfo.occurrences) do
                 oc.newsrclen = newSrcLength
@@ -811,7 +823,7 @@ function MinimizeAndApplyMedia()
             trimItems(fileInfo, splitItems)
             local gluedItem = glueItems(track)
             if gluedItem then
-                applyGluedSourceToOriginal(fileInfo, gluedItem)
+                applyGluedSourceToOriginal(filename, gluedItem)
             end
             r.DeleteTrack(track)
 
@@ -870,6 +882,7 @@ function Revert(cancel)
     end
     if cancel then
         App.mediaFiles = {}
+        App.usedFiles = {}
         App.mediaFileCount = 0
         Restore() -- if not cancelled, restore will be called anyway
     end
@@ -1024,7 +1037,7 @@ function DeleteOriginals()
             App.perform.pos = App.perform.pos + 1
             if not fileInfo.external and not fileInfo.ignore and not fileInfo.missing then
                 fileInfo.status = Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and STATUS.MOVING_TO_TRASH or
-                STATUS.DELETING
+                    STATUS.DELETING
                 coroutine.yield(stat)
                 if OS_is.win then
                     if Settings.deleteMethod ~= DELETE_METHOD.MOVE_TO_TRASH then
@@ -1071,45 +1084,6 @@ function DeleteOriginals()
 end
 
 function CleanMediaFolder()
-    local function getUsedFiles()
-        -- get all used files that remain in the session from all takes
-        -- this could theoretically be calculated along the way, but
-        -- the safest and surest way would be to actually get the files
-        -- in the folder after minimizing, leaving only selected takes etc...
-        local numMediaItems = r.CountMediaItems(0)
-        App.usedFiles = {}
-        App.perform.total = numMediaItems
-        App.perform.pos = 0
-        App.mediaFileCount = 0
-        for i = 0, numMediaItems - 1 do
-            local mediaItem = r.GetMediaItem(0, i)
-            -- Get the total number of takes for the media item
-            local numTakes = r.GetMediaItemNumTakes(mediaItem)
-            App.perform.total = App.perform.total + numTakes - 1
-            -- Iterate over each take of the media item
-            for j = 0, numTakes - 1 do
-                local take = r.GetMediaItemTake(mediaItem, j)
-                if take and not r.TakeIsMIDI(take) then
-                    local mediaSource = r.GetMediaItemTake_Source(take)
-                    local sourceParent = r.GetMediaSourceParent(mediaSource)
-                    if sourceParent then
-                        mediaSource = sourceParent
-                    end
-
-                    local filename = r.GetMediaSourceFileName(mediaSource, "") -- :gsub('/',folderSep())
-                    -- log occurance if it's to be minimized
-                    if not App.usedFiles[filename] then
-                        App.usedFiles[filename] = 1
-                    end
-                end
-                App.perform.pos = App.perform.pos + 1
-                if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then
-                    coroutine.yield('Cleaning media folder (scanning takes)')
-                end
-            end
-        end
-    end
-
     -- Scan project recording folder for media files
     local function getUnusedFilesInRecordingFolder()
         App.ununsedFilesInRecordingFolder = {}
@@ -1152,7 +1126,7 @@ function CleanMediaFolder()
         App.perform.pos = 0
         for i, file in ipairs(App.ununsedFilesInRecordingFolder) do -- delete original files which were replaced by minimized versions
             App.perform.pos = App.perform.pos + 1
-            if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then 
+            if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then
                 coroutine.yield(stat)
             end
             if OS_is.win then
@@ -1179,8 +1153,26 @@ function CleanMediaFolder()
     end
 
     if not Settings.backup and Settings.cleanMediaFolder then
-        getUsedFiles()
         getUnusedFilesInRecordingFolder()
         deleteUnusedFiles()
     end
+end
+
+function KeepActiveTakesOnly()
+    -- Count the number of media items
+    local itemCount = r.CountMediaItems(0)
+
+    -- Select all media items
+    r.SelectAllMediaItems(0, true)
+
+    -- Deselect the items where "Play all takes" is enabled
+    for i = 0, itemCount - 1 do
+        local item = r.GetMediaItem(0, i)
+        local allTakesPlay = r.GetMediaItemInfo_Value(item, "B_ALLTAKESPLAY")
+
+        if allTakesPlay == 1.0 then
+            r.SetMediaItemSelected(item, false)
+        end
+    end
+    reaper.Main_OnCommand(40131,0) -- Take: Crop to active take in items
 end
