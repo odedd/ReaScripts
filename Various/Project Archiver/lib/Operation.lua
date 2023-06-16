@@ -140,6 +140,10 @@ function GetMediaFiles()
             keep_length = 1
         }
         App.mediaFileCount = App.mediaFileCount + 1
+        -- Check if the media file entry exists in the usedFiles table
+        if not App.usedFiles[filename] then
+            App.usedFiles[filename] = 1
+        end
     end
 
     -- function by MPL
@@ -169,8 +173,6 @@ function GetMediaFiles()
                 mediaSource = sourceParent
                 section = ((len - offs) ~= srclen)
             end
-
-            -- local sourceFile = r.GetMediaSourceFileName(mediaSource)
 
             if rev then
                 reverseItem(mediaItem)
@@ -209,10 +211,6 @@ function GetMediaFiles()
                     -- itemLength = itemLength,
                     -- normalizedItemLength = (itemLength+sp) % math.max(len, srclen),
                 }
-            end
-            -- Check if the media file entry exists in the usedFiles table
-            if not App.usedFiles[filename] then
-                App.usedFiles[filename] = 1
             end
             -- Check if the media file entry exists in the mediaFiles table
             if App.mediaFiles[filename] then
@@ -254,23 +252,22 @@ function GetMediaFiles()
         for i = 0, numMediaItems - 1 do
             local mediaItem = r.GetMediaItem(0, i)
             -- local itemStartOffset = r.GetMediaItemInfo_Value(mediaItem,"D_LENGTH")
-    
+
             -- Get the total number of takes for the media item
             local numTakes = r.GetMediaItemNumTakes(mediaItem)
             App.perform.total = App.perform.total + numTakes - 1
             -- Iterate over each take of the media item
             for j = 0, numTakes - 1 do
                 local take = r.GetMediaItemTake(mediaItem, j)
-    
+
                 getMediaFileFromTake(mediaItem, take)
-    
+
                 App.perform.pos = App.perform.pos + 1
                 if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then
                     coroutine.yield('Collecting Takes')
                 end
             end
         end
-   
     end
 
     -- based on funciton by MPL
@@ -281,10 +278,10 @@ function GetMediaFiles()
                 if IsRS5K(tr, fx - 1) then
                     local retval, file_src = r.TrackFX_GetNamedConfigParm(tr, fx - 1, 'FILE0')
                     if App.mediaFiles[file_src] then
-                        table.insert(App.mediaFiles[file_src].instances, {track = tr, fxIndex = fx - 1 })
+                        table.insert(App.mediaFiles[file_src].instances, { track = tr, fxIndex = fx - 1 })
                     else
-                        addMediaFile(file_src,FILE_TYPES.RS5K,true)
-                        App.mediaFiles[file_src].instances = { {track = tr, fxIndex = fx - 1 } }
+                        addMediaFile(file_src, FILE_TYPES.RS5K, true)
+                        App.mediaFiles[file_src].instances = { { track = tr, fxIndex = fx - 1 } }
                     end
                 end
             end
@@ -295,7 +292,7 @@ function GetMediaFiles()
     -- turn off ripple editing
     -- r.Main_OnCommand(40310, 0) -- set ripple editing per track
     -- r.Main_OnCommand(41990, 0) -- toggle ripple editing
-    
+
     -- * init
     App.mediaFiles = {}
     App.usedFiles = {} --keeps track of ALL files used in the session for cleaning the media folder
@@ -303,24 +300,16 @@ function GetMediaFiles()
     App.perform.pos = 0
     App.perform.total = numMediaItems
     App.mediaFileCount = 0
-    
+
     getFilesFromItems(numMediaItems)
     getFilesFromRS5K()
-    
 end
 
 function CollectMedia()
-    r.SelectAllMediaItems(0, false)
-
-    App.perform.total = 0
-    App.perform.pos = 0
-    -- determine_total
-    for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
-        -- determine which files should be collected:
-        -- ------------------------------------------
-        fileInfo.shouldCollect =
+    -- determine which files should be collected:
+    local function shouldCollect(fileInfo)
         --       only if backup, collect all audio files which were ignored
-            (Settings.backup and fileInfo.fileType == FILE_TYPES.AUDIO and fileInfo.ignore) or
+        return (Settings.backup and fileInfo.fileType == FILE_TYPES.AUDIO and fileInfo.ignore) or
             -- + if set to collect external audio files, collect them
             (OD_BfCheck(Settings.collect, COLLECT.EXTERNAL) and fileInfo.fileType == FILE_TYPES.AUDIO and
                 fileInfo.external and fileInfo.ignore)
@@ -333,6 +322,72 @@ function CollectMedia()
             -- + if not minimizing, collect all external audio files, regardless of their "ignore" status
             ((not Settings.minimize) and OD_BfCheck(Settings.collect, COLLECT.EXTERNAL) and fileInfo.fileType == FILE_TYPES.AUDIO and
                 fileInfo.external)
+    end
+
+    local function collectFile(fileInfo)
+        fileInfo.collectBackupTargetPath = (Settings.targetPaths[fileInfo.fileType] or App.relProjectRecordingPath)
+            :gsub('\\', '/'):gsub('/$', ''):gsub('^/', '')
+        if fileInfo.collectBackupTargetPath ~= '' then
+            fileInfo.collectBackupTargetPath = fileInfo
+                .collectBackupTargetPath .. OD_FolderSep()
+        end
+        local targetPath = (App.projPath .. fileInfo.collectBackupTargetPath .. OD_FolderSep()):gsub('//$', '/')
+        local targetFileName = targetPath ..
+            fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or '')
+
+        local uniqueFilename = OD_GenerateUniqueFilename(targetFileName)
+        if not OD_FolderExists(targetPath) then
+            App.restore.foldersToDelete = App.restore.foldersToDelete or {}
+            table.insert(App.restore.foldersToDelete, targetPath)
+        end
+        r.RecursiveCreateDirectory(targetPath, 0)
+        local success = Settings.collectOperation == COLLECT_OPERATION.COPY and
+            OD_CopyFile(fileInfo.filenameWithPath, uniqueFilename) or
+            OD_MoveFile(fileInfo.filenameWithPath, uniqueFilename)
+
+        return success, uniqueFilename
+    end
+
+    local function applyToOriginal(filename, uniqueFilename)
+        local fileInfo = App.mediaFiles[filename]
+        App.usedFiles[filename] = nil
+        App.usedFiles[uniqueFilename] = 1
+        fileInfo.newfilename = uniqueFilename
+        if fileInfo.fileType == FILE_TYPES.RS5K then
+            local _, unqBasename, unqExt = OD_DissectFilename(uniqueFilename)
+            local uniqueFilenameInBackupDestination
+            -- RS5K samples can be set as relative, however they are saved as absolute paths,
+            -- so they need to already be set to the backup target location
+            if Settings.backup then
+                local targetPathInBackupDestination = (Settings.backupDestination:gsub('\\', '/'):gsub('/$', '') .. OD_FolderSep() .. fileInfo.collectBackupTargetPath .. OD_FolderSep())
+                    :gsub('//$', '/')
+                uniqueFilenameInBackupDestination = targetPathInBackupDestination ..
+                    unqBasename .. (unqExt and ('.' .. unqExt) or '')
+            end
+            for i, instance in ipairs(fileInfo.instances) do
+                r.TrackFX_SetNamedConfigParm(instance.track, instance.fxIndex, 'FILE0',
+                    uniqueFilenameInBackupDestination or uniqueFilename)
+            end
+        else
+            local newSrc = r.PCM_Source_CreateFromFile(uniqueFilename)
+            if not Settings.backup then
+                App.peakOperations[uniqueFilename] = newSrc
+                r.PCM_Source_BuildPeaks(newSrc, 0)
+            end
+            for i, oc in ipairs(fileInfo.occurrences) do
+                r.SetMediaItemTake_Source(oc.take, newSrc)
+                if oc.rev then -- ? test if this is relevant
+                    reverseItem(oc.item)
+                end
+            end
+        end
+    end
+
+    App.perform.total = 0
+    App.perform.pos = 0
+    -- determine_total
+    for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
+        fileInfo.shouldCollect = shouldCollect(fileInfo)
         if fileInfo.shouldCollect then
             App.perform.total = App.perform.total + 1
         end
@@ -353,63 +408,17 @@ function CollectMedia()
             if (Settings.backup and not fileInfo.external) then
                 fileInfo.collectBackupOperation = COLLECT_BACKUP_OPERATION.COPY
             else
-                fileInfo.collectBackupTargetPath = (Settings.targetPaths[fileInfo.fileType] or App.relProjectRecordingPath)
-                    :gsub('\\', '/'):gsub(
-                        '/$',
-                        ''):gsub(
-                        '^/',
-                        '')
-                if fileInfo.collectBackupTargetPath ~= '' then
-                    fileInfo.collectBackupTargetPath = fileInfo
-                        .collectBackupTargetPath .. OD_FolderSep()
-                end
-                local relTargetPath = fileInfo.collectBackupTargetPath .. OD_FolderSep()
-                local targetPath = App.projPath .. relTargetPath
-                local targetFileName = targetPath ..
-                    fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or '')
-                local uniqueFilename = OD_GenerateUniqueFilename(targetFileName)
-                if not OD_FolderExists(targetPath) then
-                    App.restore.foldersToDelete = App.restore.foldersToDelete or {}
-                    table.insert(App.restore.foldersToDelete, targetPath)
-                end
-                r.RecursiveCreateDirectory(targetPath, 0)
-                local success =
-                    Settings.collectOperation == COLLECT_OPERATION.COPY and
-                    OD_CopyFile(fileInfo.filenameWithPath, uniqueFilename) or
-                    OD_MoveFile(fileInfo.filenameWithPath, uniqueFilename)
-                if not success then
+                local success, newFileName = collectFile(fileInfo)
+                if success then
+                    fileInfo.collectBackupOperation = COLLECT_BACKUP_OPERATION.MOVE
+                    applyToOriginal(filename, newFileName)
+                else
                     fileInfo.status = STATUS.ERROR
                     fileInfo.status_info = 'collection failed'
-                else
-                    if fileInfo.fileType == FILE_TYPES.RS5K then
-                        local _, file, ext = OD_DissectFilename(uniqueFilename)
-                        local relTargetFile = relTargetPath .. file .. (ext and ('.' .. ext) or '')
-                        relTargetFile = relTargetFile:gsub('\\', '/')
-                        for i, instance in ipairs(fileInfo.instances) do 
-                            r.TrackFX_SetNamedConfigParm(instance.track, instance.fxIndex, 'FILE0', relTargetFile)
-                        end
-                    else
-                        local newSrc = r.PCM_Source_CreateFromFile(uniqueFilename)
-                        App.usedFiles[filename] = nil
-                        App.usedFiles[uniqueFilename] = 1
-                        fileInfo.newfilename = uniqueFilename
-                        if not Settings.backup then
-                            App.peakOperations[uniqueFilename] = newSrc
-                            r.PCM_Source_BuildPeaks(newSrc, 0)
-                        end
-                        fileInfo.collectBackupOperation = COLLECT_BACKUP_OPERATION.MOVE
-                        for i, oc in ipairs(fileInfo.occurrences) do
-                            r.SetMediaItemTake_Source(oc.take, newSrc)
-                            if oc.rev then -- ? test if this is relevant
-                                reverseItem(oc.item)
-                            end
-                        end
-                    end
                 end
             end
 
             App.mediaFiles[filename].status = STATUS.COLLECTED
-            -- coroutine.yield('Collecting Files')
         end
     end
 end
@@ -721,10 +730,6 @@ function MinimizeAndApplyMedia()
             local ext = filename:match(".+%.(.+)$")
             local newFilename = path .. fileInfo.trackName .. (ext and ("." .. ext) or '')
             local uniqueName = OD_GenerateUniqueFilename(newFilename)
-            -- -- give time to the file system to refresh
-            -- local t_point = r.time_precise()
-            -- repeat
-            -- until r.time_precise() - t_point > 0.5
 
             r.SelectAllMediaItems(0, false)
             r.SetMediaItemSelected(gluedItem, true)

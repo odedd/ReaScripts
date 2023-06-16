@@ -1,6 +1,7 @@
 -- @noindex
 function OD_FolderSep()
-    return OS_is.win and '\\' or '/'
+    -- return OS_is.win and '\\' or '/'
+    return '/'
 end
 
 function OD_FileExists(name)
