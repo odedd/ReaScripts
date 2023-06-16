@@ -11,3 +11,7 @@ end
 function OD_EscapePattern(text)
     return text:gsub("([^%w])", "%%%1")
 end
+
+function OD_Trim(s)
+    return s:match'^()%s*$' and '' or s:match'^%s*(.*%S)'
+end

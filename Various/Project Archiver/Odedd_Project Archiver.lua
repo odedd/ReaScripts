@@ -19,11 +19,12 @@ r.ClearConsole()
 
 Scr, OS_is = OD_Init()
 
+dofile(p .. 'lib/Constants.lua')
 dofile(p .. 'lib/Settings.lua')
 dofile(p .. 'lib/Operation.lua')
-dofile(p .. 'lib/Gui.lua')
 dofile(p .. 'lib/App.lua')
 dofile(p .. 'lib/Texts.lua')
+dofile(p .. 'lib/Gui.lua')
 
 Gui.tables = {
     horizontal = {
@@ -452,27 +453,34 @@ function App.drawMainWindow()
 
         r.ImGui_Indent(ctx)
 
-        local tmpSetting
-        if Settings.backup then
-            r.ImGui_BeginDisabled(ctx)
-            App.temp.originalBackupValue = App.temp.originalBackupValue or
-                OD_BfCheck(Settings.collect, COLLECT.EXTERNAL)
-            tmpSetting = {
-                [COLLECT.EXTERNAL] = COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL]
-            }
-            Gui.bitwise_setting('checkbox', COLLECT.EXTERNAL, tmpSetting)
-            r.ImGui_SameLine(ctx)
-            r.ImGui_Text(ctx,
-                ('Must collect %s when backing up'):format(COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL].label):lower())
-            COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL] = nil
-            -- Settings.collect = OD_BwSet(Settings.collect,COLLECT.EXTERNAL,true)
-            r.ImGui_EndDisabled(ctx)
+        for bwVal, option in OD_PairsByOrder(COLLECT_DESCRIPTIONS) do
+            -- disable external files when backup is selected and temporarily save its value to restore if unchecking backup
+            if Settings.backup and bwVal == COLLECT.EXTERNAL then
+                if App.temp.originalBackupValue == nil then
+                    App.temp.originalBackupValue = OD_BfCheck(Settings.collect,
+                        COLLECT.EXTERNAL)
+                end
+                r.ImGui_BeginDisabled(ctx)
+            elseif not Settings.backup and bwVal == COLLECT.EXTERNAL and App.temp.originalBackupValue ~= nil then
+                Settings.collect = OD_BfSet(Settings.collect, COLLECT.EXTERNAL, App.temp.originalBackupValue)
+                App.temp.originalBackupValue = nil
+            end
+            local op = Gui.setting('checkbox', option.label, option.hint,
+                (Settings.backup and bwVal == COLLECT.EXTERNAL) and true or OD_BfCheck(Settings.collect, bwVal))
+            Settings.collect = OD_BfSet(Settings.collect, bwVal, op)
+            if Settings.backup and bwVal == COLLECT.EXTERNAL then
+                if r.ImGui_IsItemHovered(ctx, r.ImGui_HoveredFlags_AllowWhenDisabled()) then
+                    r.ImGui_SetTooltip(ctx, ('Must collect when backing up'))
+                end
+                r.ImGui_EndDisabled(ctx)
+            end
+            if OD_BfCheck(Settings.collect, bwVal) then
+                Settings.targetPaths[option.targetPath] = OD_Trim(Gui.setting('text_with_hint', option.label .. ' path',
+                    option.textHelp, Settings.targetPaths[option.targetPath], { hint = option.textHint }, true))
+                if Settings.targetPaths[option.targetPath] == '' then Settings.targetPaths[option.targetPath] = nil end
+            end
         end
 
-
-        Settings.collect = Gui.bitwise_setting('checkbox', Settings.collect, COLLECT_DESCRIPTIONS)
-
-        if Settings.backup then COLLECT_DESCRIPTIONS[COLLECT.EXTERNAL] = tmpSetting[COLLECT.EXTERNAL] end
         r.ImGui_Unindent(ctx)
         if not Settings.backup then
             if Settings.cleanMediaFolder then
@@ -559,6 +567,7 @@ end
 -- ? test only active takes
 -- ? test (updated) cleaning media folder
 -- ? check project media folder at project root
+-- ? test project media folder in root project folder (or in external folder?)
 
 -- check project has a folder:
 --     local proj_name = r.GetProjectName( 0, '' )

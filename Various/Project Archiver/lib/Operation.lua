@@ -1,105 +1,6 @@
 -- @noindex
 
--- ! CONSTANTS
-
 YIELD_FREQUENCY = 50
-
-STATUS = {
-    IGNORE = 0,
-    SCANNED = 1,
-    MINIMIZING = 9,
-    MINIMIZED = 10,
-    MOVING = 50,
-    COPYING = 51,
-    DELETING = 52,
-    MOVING_TO_TRASH = 53,
-    COLLECTING = 69,
-    COLLECTED = 70,
-    DONE = 100,
-    ERROR = 1000
-}
-
-STATUS_DESCRIPTIONS = {
-    [STATUS.IGNORE] = 'Ignore',
-    [STATUS.SCANNED] = 'Scanned',
-    [STATUS.MINIMIZING] = 'Minimizing',
-    [STATUS.MINIMIZED] = 'Minimized',
-    [STATUS.MOVING] = 'Moving',
-    [STATUS.COPYING] = 'Copying',
-    [STATUS.DELETING] = 'Deleting Original',
-    [STATUS.MOVING_TO_TRASH] = 'Moving Orig. To Trash',
-    [STATUS.COLLECTING] = 'Collecting',
-    [STATUS.COLLECTED] = 'Collected',
-    [STATUS.DONE] = 'Done',
-    [STATUS.ERROR] = 'Error'
-}
-
-ALL_FORMATS = {
-    VORBIS = { type = 'COMPRESSED', extension = 'ogg' },
-    OGG = { type = 'COMPRESSED', extension = 'ogg' },
-    OPUS = { type = 'COMPRESSED', extension = 'opus' },
-    MOGG = { type = 'COMPRESSED', extension = 'mogg' },
-    MP3 = { type = 'COMPRESSED', extension = 'mp3' },
-    FLAC = { type = 'LOSSLESS', extension = 'flac' },
-    WAVPACK = { type = 'LOSSLESS', extension = 'wv' },
-    AIFF = { type = 'UNCOMPRESSED', extension = 'aiff' },
-    WAVE = { type = 'UNCOMPRESSED', extension = 'wav' },
-    BW64 = { type = 'UNCOMPRESSED', extension = 'bw64' },
-    BWF = { type = 'UNCOMPRESSED', extension = 'bwf' },
-    RF64 = { type = 'UNCOMPRESSED', extension = 'rf64' },
-    SD2 = { type = 'UNCOMPRESSED', extension = 'sd2' },
-    WAV = { type = 'UNCOMPRESSED', extension = 'wav' },
-    W64 = { type = 'UNCOMPRESSED', extension = 'w64' },
-    WMV = { type = 'INCOMPATIBLE', extension = 'wmv' },
-    AVI = { type = 'INCOMPATIBLE', extension = 'avi' },
-    MOV = { type = 'INCOMPATIBLE', extension = 'mov' },
-    EDL = { type = 'INCOMPATIBLE', extension = 'edl' },
-    MIDI = { type = 'INCOMPATIBLE', extension = 'midi' },
-    MUSICXML = { type = 'INCOMPATIBLE', extension = 'musicxml' },
-    MPEG = { type = 'INCOMPATIBLE', extension = 'mpeg' },
-    KAR = { type = 'INCOMPATIBLE', extension = 'kar' },
-    QT = { type = 'INCOMPATIBLE', extension = 'qt' },
-    SYX = { type = 'INCOMPATIBLE', extension = 'syx' },
-    REX2 = { type = 'SPECIAL', extension = 'rex2' },
-    CAF = { type = 'TO_TEST', extension = 'caf' },
-    ACID = { type = 'TO_TEST', extension = 'acid' },
-    CDDA = { type = 'TO_TEST', extension = 'cdda' },
-    ['RAW/PCM'] = { type = 'TO_TEST', extension = 'raw' },
-    RADAR = { type = 'TO_TEST', extension = 'radar' }
-}
-
-local function createTablesFromFormats(allFormats)
-    local mediaExtensions = {}
-    local mediaTypes = {} -- Initialize an empty table for mediaTypes
-
-    for format, data in pairs(allFormats) do
-        local extension = data.extension
-        local formatType = data.type
-
-        -- Add to mediaExtensions table
-        table.insert(mediaExtensions, extension)
-
-        -- Add to mediaTypes table dynamically
-        if not mediaTypes[formatType] then
-            mediaTypes[formatType] = {} -- Create a new empty table for the format type
-        end
-
-        table.insert(mediaTypes[formatType], format)
-    end
-
-    -- Add 'VIDEO' key to mediaTypes table
-    mediaTypes['VIDEO'] = { 'VIDEO' }
-
-    return mediaExtensions, mediaTypes
-end
-
-MEDIA_EXTENSIONS, MEDIA_TYPES = createTablesFromFormats(ALL_FORMATS)
-
-FILE_TYPES = {
-    AUDIO = 0,
-    VIDEO = 1,
-    RS5K = 2
-}
 
 -- * local
 local function reverseItem(item)
@@ -403,6 +304,7 @@ function CollectMedia()
                         ''):gsub(
                             '^/',
                             '')
+                if fileInfo.collectBackupTargetPath ~= '' then fileInfo.collectBackupTargetPath = fileInfo.collectBackupTargetPath..OD_FolderSep() end
                 local targetPath = App.projPath .. fileInfo.collectBackupTargetPath .. OD_FolderSep()
                 local targetFileName = targetPath ..
                     fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or '')
