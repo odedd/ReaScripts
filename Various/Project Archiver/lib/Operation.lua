@@ -283,6 +283,7 @@ function GetMediaFiles()
                         addMediaFile(file_src, FILE_TYPES.RS5K, true)
                         App.mediaFiles[file_src].instances = { { track = tr, fxIndex = fx - 1 } }
                     end
+                    App.mediaFiles[file_src].newFileSize = App.mediaFiles[file_src].sourceFileSize
                 end
             end
         end
@@ -388,7 +389,7 @@ function CollectMedia()
     App.perform.total = 0
     App.perform.pos = 0
     -- determine_total
-    for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
+    for filename, fileInfo in pairs(App.mediaFiles) do
         fileInfo.shouldCollect = shouldCollect(fileInfo)
         if fileInfo.shouldCollect then
             App.perform.total = App.perform.total + 1
@@ -409,15 +410,15 @@ function CollectMedia()
             -- to get correct relative file references in the RPP, and set them to later MOVE to the backup destination
             -- so they won't be left in the original folder.
             if (Settings.backup and not fileInfo.external) then
-                if fileInfo.fileType == FILE_TYPES.RS5K then 
+                if fileInfo.fileType == FILE_TYPES.RS5K then
                     -- the file's folder in the target folder should be the same as it is currently in relation to the project's path
                     fileInfo.collectBackupTargetPath = fileInfo.relOrAbsPath
-                    :gsub('\\', '/'):gsub('/$', ''):gsub('^/', '')
+                        :gsub('\\', '/'):gsub('/$', ''):gsub('^/', '')
                     if fileInfo.collectBackupTargetPath ~= '' then
                         fileInfo.collectBackupTargetPath = fileInfo
-                        .collectBackupTargetPath .. OD_FolderSep()
+                            .collectBackupTargetPath .. OD_FolderSep()
                     end
-                    applyToOriginal(filename, fileInfo.filenameWithPath) 
+                    applyToOriginal(filename, fileInfo.filenameWithPath)
                 end
                 fileInfo.collectBackupOperation = COLLECT_BACKUP_OPERATION.COPY
             else
@@ -865,9 +866,9 @@ end
 function Revert(cancel)
     -- restore temporary file saved before minimizing and open it
     OD_CopyFile(App.revert.tmpBackupFileName, App.fullProjPath)
-    r.reduce_open_files(2) -- windows won't delete/move files that are in use
+    -- r.reduce_open_files(1) -- windows won't delete/move files that are in use
     -- delete files created but not used
-    for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
+    for filename, fileInfo in pairs(App.mediaFiles) do
         if fileInfo.newfilename and fileInfo.status ~= STATUS.DONE then
             if OD_FileExists(fileInfo.newfilename) then
                 os.remove(fileInfo.newfilename)
@@ -1009,7 +1010,7 @@ end
 
 function NetworkedFilesExist()
     if OS_is.win then
-        for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
+        for filename, fileInfo in pairs(App.mediaFiles) do
             if string.sub(fileInfo.filenameWithPath, 1, 2) == '\\\\' then
                 return true
             end
@@ -1065,7 +1066,7 @@ function DeleteOriginals()
         if #filesToTrashWin > 0 then
             r.reduce_open_files(2)                                       -- windows won't delete/move files that are in use
             OD_MoveToTrash(filesToTrashWin)
-            for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do -- verify which files were and were not removed
+            for filename, fileInfo in pairs(App.mediaFiles) do -- verify which files were and were not removed
                 if not OD_FileExists(fileInfo.filenameWithPath) then
                     fileInfo.status = STATUS.DONE
                 else
@@ -1127,23 +1128,42 @@ function CleanMediaFolder()
             if OS_is.win then
                 if Settings.deleteMethod ~= DELETE_METHOD.MOVE_TO_TRASH then
                     r.reduce_open_files(2) -- windows won't delete/move files that are in use
-                    os.remove(file.filename)
-                else                       -- if on windows but set to move to trash, we need to first collect filenames and only then send to trash to avoid opening powershell for each file
+                    if os.remove(file.filename) then
+                        file.deleted = true
+                    else
+                        file.deleted = false
+                    end
+                else -- if on windows but set to move to trash, we need to first collect filenames and only then send to trash to avoid opening powershell for each file
                     table.insert(filesToTrashWin, file.filename)
                 end
             else
                 if Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH then
-                    OD_MoveToTrash(file.filename)
+                    if OD_MoveToTrash(file.filename) then
+                        file.deleted = true
+                    else
+                        file.deleted = false
+                    end
                 else
-                    os.remove(file.filename)
+                    if os.remove(file.filename) then
+                        file.deleted = true
+                    else
+                        file.deleted = false
+                    end
                 end
             end
         end
 
         -- if on windows, trash all files at once to avoid powershelling for each file seperately
         if #filesToTrashWin > 0 then
-            r.reduce_open_files(2) -- windows won't delete/move files that are in use
+            r.reduce_open_files(2)                                               -- windows won't delete/move files that are in use
             OD_MoveToTrash(filesToTrashWin)
+            for i, file in OD_PairsByOrder(App.ununsedFilesInRecordingFolder) do -- verify which files were and were not removed
+                if not OD_FileExists(file.filename) then
+                    file.deleted = true
+                else
+                    file.deleted = false
+                end
+            end
         end
     end
 
@@ -1156,10 +1176,10 @@ end
 function KeepActiveTakesOnly()
     -- Count the number of media items
     local itemCount = r.CountMediaItems(0)
-    
+
     -- Select all media items
     r.SelectAllMediaItems(0, true)
-    
+
     -- TODO: yield progress
     -- Deselect the items where "Play all takes" is enabled
     for i = 0, itemCount - 1 do
@@ -1171,4 +1191,28 @@ function KeepActiveTakesOnly()
         end
     end
     reaper.Main_OnCommand(40131, 0) -- Take: Crop to active take in items
+end
+
+function CalculateSavings() -- ? when backing up, total media folder size isn't calculated
+    App.totalSpace = {}
+    App.totalSpace.deleted = 0
+    App.totalSpace.totalOriginalSize = 0
+    App.totalSpace.usedFilesSizeBeforeMinimization = 0
+    App.totalSpace.newSize = 0
+    for i, file in ipairs(App.ununsedFilesInRecordingFolder or {}) do
+        if file.deleted then App.totalSpace.deleted = App.totalSpace.deleted + file.size end
+        App.totalSpace.totalOriginalSize = App.totalSpace.totalOriginalSize + file.size
+    end
+
+    for filename, fileInfo in pairs(App.mediaFiles) do
+        App.totalSpace.totalOriginalSize = App.totalSpace.totalOriginalSize + fileInfo.sourceFileSize
+        App.totalSpace.usedFilesSizeBeforeMinimization = App.totalSpace.usedFilesSizeBeforeMinimization + fileInfo.sourceFileSize
+        App.totalSpace.newSize = App.totalSpace.newSize + fileInfo.newFileSize
+    end
+
+    App.totalSpace.saved = App.totalSpace.totalOriginalSize - App.totalSpace.newSize
+    App.totalSpace.minimized = App.totalSpace.usedFilesSizeBeforeMinimization - App.totalSpace.newSize
+
+    reaper.ShowConsoleMsg(('\n\n-----------------------------\ntotal original size: %s\ntotal minimized:     %s\ntotal deleted:       %s\nnew size:            %s\n-----------------------------\ntotal saved:         %s\n-----------------------------\n\n')
+                            :format(OD_GetFormattedFileSize(App.totalSpace.totalOriginalSize),OD_GetFormattedFileSize(App.totalSpace.minimized), OD_GetFormattedFileSize(App.totalSpace.deleted), OD_GetFormattedFileSize(App.totalSpace.newSize), OD_GetFormattedFileSize(App.totalSpace.saved)))
 end

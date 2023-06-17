@@ -84,10 +84,10 @@ local function doPerform()
             if Settings.backup then
                 -- copy to a new project path (move glued files, copy others)
                 CreateBackupProject()
+                -- should happen here so that revert happens afterward
+                CalculateSavings()
                 -- revert back to temporary copy of project
                 Revert()
-                -- open backup project
-                r.Main_openProject("noprompt:" .. App.backupTargetProject)
             else
                 if Settings.minimize then
                     DeleteOriginals()
@@ -99,9 +99,15 @@ local function doPerform()
                 FinalizePeaksBuild()
                 -- if not creating a backup, save project
                 r.Main_SaveProject(-1)
+                CalculateSavings()
             end
             -- restore settings and other stuff saved at the beginning of the process
             Restore()
+
+            if Settings.backup then
+                -- open backup project
+                r.Main_openProject("noprompt:" .. App.backupTargetProject)
+            end
             coroutine.yield('Done', 0, 1)
         end
     end
@@ -146,7 +152,7 @@ function App.drawPerform(open)
             if r.ImGui_BeginTable(ctx, 'table_scrollx', 10, Gui.tables.horizontal.flags1) then
                 local parent_open, depth, open_depth = true, 0, 0
                 r.ImGui_TableSetupColumn(ctx, 'File', r.ImGui_TableColumnFlags_NoHide(), 250) -- Make the first column not hideable to match our use of TableSetupScrollFreeze()
-                r.ImGui_TableSetupColumn(ctx, 'Type', r.ImGui_TableColumnFlags_NoHide(), 50) -- Make the first column not hideable to match our use of TableSetupScrollFreeze()
+                r.ImGui_TableSetupColumn(ctx, 'Type', r.ImGui_TableColumnFlags_NoHide(), 50)  -- Make the first column not hideable to match our use of TableSetupScrollFreeze()
                 r.ImGui_TableSetupColumn(ctx, '#', nil, 30)
                 r.ImGui_TableSetupColumn(ctx, 'Overview', nil, overview_width)
                 r.ImGui_TableSetupColumn(ctx, 'Orig', nil, 65)
@@ -194,7 +200,7 @@ function App.drawPerform(open)
                         r.ImGui_TableNextColumn(ctx) -- keep size
                         if fileInfo.newFileSize and fileInfo.sourceFileSize then
                             r.ImGui_Text(ctx,
-                            string.format("%.f %%", fileInfo.newFileSize / fileInfo.sourceFileSize * 100))
+                                string.format("%.f %%", fileInfo.newFileSize / fileInfo.sourceFileSize * 100))
                         end
                         r.ImGui_TableNextColumn(ctx) -- status
                         if Gui.st.col.status[fileInfo.status] then
@@ -568,6 +574,7 @@ end
 -- TODO handle switching projects
 -- TODO (later): figure out section
 -- TODO check for "nothing to do" if no relevant setting was checked
+-- TODO don't minimize if file is 100% used
 -- ? check handling of missing files
 -- ? test (updated) cleaning media folder
 -- ? check project media folder at project root
@@ -576,4 +583,3 @@ end
 --     local proj_name = r.GetProjectName( 0, '' )
 --    if proj_name == '' then MB('Project has not any parent folder.', 'Collect RS5k samples into project folder', 0) return end
 -- local spls_path = r.GetProjectPathEx( 0, '' )..'/RS5K samples/'
-
