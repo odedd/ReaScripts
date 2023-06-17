@@ -103,6 +103,11 @@ FILE_TYPES = {
     RS5K = 2
 }
 
+FILE_TYPE_DESCRPTIONS = {
+    [FILE_TYPES.AUDIO] = 'Audio',
+    [FILE_TYPES.VIDEO] = 'Video',
+    [FILE_TYPES.RS5K] = 'RS5K',
+}
 -- * --------------------
 -- * settings -----------
 -- * --------------------

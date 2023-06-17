@@ -324,13 +324,15 @@ function CollectMedia()
                 fileInfo.external)
     end
 
-    local function collectFile(fileInfo)
+    local function getCollectBackupTargetPath(fileInfo)
         fileInfo.collectBackupTargetPath = (Settings.targetPaths[fileInfo.fileType] or App.relProjectRecordingPath)
             :gsub('\\', '/'):gsub('/$', ''):gsub('^/', '')
         if fileInfo.collectBackupTargetPath ~= '' then
             fileInfo.collectBackupTargetPath = fileInfo
                 .collectBackupTargetPath .. OD_FolderSep()
         end
+    end
+    local function collectFile(fileInfo)
         local targetPath = (App.projPath .. fileInfo.collectBackupTargetPath .. OD_FolderSep()):gsub('//$', '/')
         local targetFileName = targetPath ..
             fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or '')
@@ -348,13 +350,13 @@ function CollectMedia()
         return success, uniqueFilename
     end
 
-    local function applyToOriginal(filename, uniqueFilename)
+    local function applyToOriginal(filename, newFilename)
         local fileInfo = App.mediaFiles[filename]
         App.usedFiles[filename] = nil
-        App.usedFiles[uniqueFilename] = 1
-        fileInfo.newfilename = uniqueFilename
+        App.usedFiles[newFilename] = 1
+        fileInfo.newfilename = newFilename
         if fileInfo.fileType == FILE_TYPES.RS5K then
-            local _, unqBasename, unqExt = OD_DissectFilename(uniqueFilename)
+            local _, unqBasename, unqExt = OD_DissectFilename(newFilename)
             local uniqueFilenameInBackupDestination
             -- RS5K samples can be set as relative, however they are saved as absolute paths,
             -- so they need to already be set to the backup target location
@@ -366,17 +368,17 @@ function CollectMedia()
             end
             for i, instance in ipairs(fileInfo.instances) do
                 r.TrackFX_SetNamedConfigParm(instance.track, instance.fxIndex, 'FILE0',
-                    uniqueFilenameInBackupDestination or uniqueFilename)
+                    uniqueFilenameInBackupDestination or newFilename)
             end
         else
-            local newSrc = r.PCM_Source_CreateFromFile(uniqueFilename)
+            local newSrc = r.PCM_Source_CreateFromFile(newFilename)
             if not Settings.backup then
-                App.peakOperations[uniqueFilename] = newSrc
+                App.peakOperations[newFilename] = newSrc
                 r.PCM_Source_BuildPeaks(newSrc, 0)
             end
             for i, oc in ipairs(fileInfo.occurrences) do
                 r.SetMediaItemTake_Source(oc.take, newSrc)
-                if oc.rev then -- ? test if this is relevant
+                if oc.rev then
                     reverseItem(oc.item)
                 end
             end
@@ -401,13 +403,31 @@ function CollectMedia()
             if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then
                 coroutine.yield('Collecting Files')
             end
+
             -- if backing up, should later copy (not move) *internal* files to the backup (leaving originals untouched)
             -- otherwise, should first copy/move(according to setting) them to the current project folder, in order
             -- to get correct relative file references in the RPP, and set them to later MOVE to the backup destination
             -- so they won't be left in the original folder.
             if (Settings.backup and not fileInfo.external) then
+                if fileInfo.fileType == FILE_TYPES.RS5K then 
+                    -- the file's folder in the target folder should be the same as it is currently in relation to the project's path
+                    fileInfo.collectBackupTargetPath = fileInfo.relOrAbsPath
+                    :gsub('\\', '/'):gsub('/$', ''):gsub('^/', '')
+                    if fileInfo.collectBackupTargetPath ~= '' then
+                        fileInfo.collectBackupTargetPath = fileInfo
+                        .collectBackupTargetPath .. OD_FolderSep()
+                    end
+                    applyToOriginal(filename, fileInfo.filenameWithPath) 
+                end
                 fileInfo.collectBackupOperation = COLLECT_BACKUP_OPERATION.COPY
             else
+                -- the file's folder in the target folder should be according to the targetPath setting (or the recording path if targetPath is not set)
+                fileInfo.collectBackupTargetPath = (Settings.targetPaths[fileInfo.fileType] or App.relProjectRecordingPath)
+                    :gsub('\\', '/'):gsub('/$', ''):gsub('^/', '')
+                if fileInfo.collectBackupTargetPath ~= '' then
+                    fileInfo.collectBackupTargetPath = fileInfo
+                        .collectBackupTargetPath .. OD_FolderSep()
+                end
                 local success, newFileName = collectFile(fileInfo)
                 if success then
                     fileInfo.collectBackupOperation = COLLECT_BACKUP_OPERATION.MOVE
@@ -845,8 +865,7 @@ end
 function Revert(cancel)
     -- restore temporary file saved before minimizing and open it
     OD_CopyFile(App.revert.tmpBackupFileName, App.fullProjPath)
-    r.Main_openProject("noprompt:" .. App.fullProjPath)
-
+    r.reduce_open_files(2) -- windows won't delete/move files that are in use
     -- delete files created but not used
     for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
         if fileInfo.newfilename and fileInfo.status ~= STATUS.DONE then
@@ -856,6 +875,7 @@ function Revert(cancel)
         end
     end
     if cancel then
+        r.Main_openProject("noprompt:" .. App.fullProjPath)
         App.mediaFiles = {}
         App.usedFiles = {}
         App.mediaFileCount = 0
@@ -942,8 +962,8 @@ end
 function CreateBackupProject()
     r.Main_SaveProject(-1)
     local targetPath = Settings.backupDestination .. OD_FolderSep()
-    local targetProject = targetPath .. App.projFileName
-    OD_CopyFile(App.fullProjPath, targetProject)
+    App.backupTargetProject = targetPath .. App.projFileName
+    OD_CopyFile(App.fullProjPath, App.backupTargetProject)
     App.perform.total = App.mediaFileCount
     App.perform.pos = 0
 
@@ -1136,10 +1156,11 @@ end
 function KeepActiveTakesOnly()
     -- Count the number of media items
     local itemCount = r.CountMediaItems(0)
-
+    
     -- Select all media items
     r.SelectAllMediaItems(0, true)
-
+    
+    -- TODO: yield progress
     -- Deselect the items where "Play all takes" is enabled
     for i = 0, itemCount - 1 do
         local item = r.GetMediaItem(0, i)

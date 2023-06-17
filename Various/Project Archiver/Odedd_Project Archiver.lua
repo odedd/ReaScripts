@@ -86,6 +86,8 @@ local function doPerform()
                 CreateBackupProject()
                 -- revert back to temporary copy of project
                 Revert()
+                -- open backup project
+                r.Main_openProject("noprompt:" .. App.backupTargetProject)
             else
                 if Settings.minimize then
                     DeleteOriginals()
@@ -141,15 +143,16 @@ function App.drawPerform(open)
             (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines +
                 r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2)
         if r.ImGui_BeginChild(ctx, 'mediaFiles', 0, childHeight) then
-            if r.ImGui_BeginTable(ctx, 'table_scrollx', 9, Gui.tables.horizontal.flags1) then
+            if r.ImGui_BeginTable(ctx, 'table_scrollx', 10, Gui.tables.horizontal.flags1) then
                 local parent_open, depth, open_depth = true, 0, 0
                 r.ImGui_TableSetupColumn(ctx, 'File', r.ImGui_TableColumnFlags_NoHide(), 250) -- Make the first column not hideable to match our use of TableSetupScrollFreeze()
+                r.ImGui_TableSetupColumn(ctx, 'Type', r.ImGui_TableColumnFlags_NoHide(), 50) -- Make the first column not hideable to match our use of TableSetupScrollFreeze()
                 r.ImGui_TableSetupColumn(ctx, '#', nil, 30)
                 r.ImGui_TableSetupColumn(ctx, 'Overview', nil, overview_width)
-                r.ImGui_TableSetupColumn(ctx, 'Keep\nLength', nil, 45)
                 r.ImGui_TableSetupColumn(ctx, 'Orig', nil, 65)
                 r.ImGui_TableSetupColumn(ctx, 'New', nil, 65)
-                r.ImGui_TableSetupColumn(ctx, 'Keep\nSize', nil, 45)
+                r.ImGui_TableSetupColumn(ctx, 'Keep\nLength', nil, 50)
+                r.ImGui_TableSetupColumn(ctx, 'Keep\nSize', nil, 50)
                 r.ImGui_TableSetupColumn(ctx, 'Status', nil, 180)
                 r.ImGui_TableSetupColumn(ctx, 'Full Path', nil, 150)
                 r.ImGui_TableSetupScrollFreeze(ctx, 1, 1)
@@ -162,6 +165,8 @@ function App.drawPerform(open)
                     local skiprow = false
                     if not r.ImGui_IsItemVisible(ctx) then skiprow = true end
                     if not skiprow then
+                        r.ImGui_TableNextColumn(ctx) -- type
+                        r.ImGui_Text(ctx, FILE_TYPE_DESCRPTIONS[fileInfo.fileType])
                         r.ImGui_TableNextColumn(ctx) -- takes
                         r.ImGui_Text(ctx, #fileInfo.occurrences)
                         r.ImGui_TableNextColumn(ctx) -- status
@@ -180,16 +185,16 @@ function App.drawPerform(open)
                                 Gui.st.col.item_delete)
                         end
                         -- r.ImGui_ProgressBar(ctx, 0,nil, nil,string.format("%.2f", fileInfo.srclen))
-                        r.ImGui_TableNextColumn(ctx) -- keep length
-                        r.ImGui_Text(ctx, string.format("%.f %%", fileInfo.keep_length * 100))
                         r.ImGui_TableNextColumn(ctx) -- orig. size
                         r.ImGui_Text(ctx, OD_GetFormattedFileSize(fileInfo.sourceFileSize))
                         r.ImGui_TableNextColumn(ctx) -- new size
                         r.ImGui_Text(ctx, OD_GetFormattedFileSize(fileInfo.newFileSize))
+                        r.ImGui_TableNextColumn(ctx) -- keep length
+                        r.ImGui_Text(ctx, string.format("%.f %%", fileInfo.keep_length * 100))
                         r.ImGui_TableNextColumn(ctx) -- keep size
                         if fileInfo.newFileSize and fileInfo.sourceFileSize then
                             r.ImGui_Text(ctx,
-                                string.format("%.f %%", fileInfo.newFileSize / fileInfo.sourceFileSize * 100))
+                            string.format("%.f %%", fileInfo.newFileSize / fileInfo.sourceFileSize * 100))
                         end
                         r.ImGui_TableNextColumn(ctx) -- status
                         if Gui.st.col.status[fileInfo.status] then
@@ -564,10 +569,8 @@ end
 -- TODO (later): figure out section
 -- TODO check for "nothing to do" if no relevant setting was checked
 -- ? check handling of missing files
--- ? test only active takes
 -- ? test (updated) cleaning media folder
 -- ? check project media folder at project root
--- ? test project media folder in root project folder (or in external folder?)
 
 -- check project has a folder:
 --     local proj_name = r.GetProjectName( 0, '' )
