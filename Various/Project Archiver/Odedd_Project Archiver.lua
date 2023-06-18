@@ -85,7 +85,7 @@ local function doPerform()
                 -- copy to a new project path (move glued files, copy others)
                 CreateBackupProject()
                 -- should happen here so that revert happens afterward
-                CalculateSavings()
+            CalculateSavings()
                 -- revert back to temporary copy of project
                 Revert()
             else

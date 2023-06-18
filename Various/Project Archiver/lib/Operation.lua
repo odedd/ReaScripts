@@ -9,6 +9,37 @@ local function reverseItem(item)
     r.Main_OnCommand(41051, 0)
 end
 
+-- Scan project recording folder for media files. used by bode CleanMediaFolder() CalculateSavings()
+local function getUnusedFilesInRecordingFolder()
+    App.ununsedFilesInRecordingFolder = {}
+    local function isValidMediaFile(file)
+        -- Filter out specific file extensions
+        local _, _, extension = OD_DissectFilename(file)
+        return OD_HasValue(MEDIA_EXTENSIONS, extension, true)
+    end
+
+    -- Scan recording folder
+    local fileIndex = 0
+    local file = reaper.EnumerateFiles(App.projectRecordingPath, fileIndex)
+
+    App.perform.pos = 0
+    while file do
+        App.perform.pos = App.perform.pos + 1
+        App.perform.total = App.perform.pos
+        if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then
+            coroutine.yield('Scanning media folder)')
+        end
+        file = App.projectRecordingPath .. "/" .. file
+        if reaper.file_exists(file) then
+            if isValidMediaFile(file) and not App.usedFiles[file] and not App.usedFiles[file:gsub('.reapeaks$', '')] then
+                table.insert(App.ununsedFilesInRecordingFolder, { filename = file, size = OD_GetFileSize(file) })
+            end
+        end
+        fileIndex = fileIndex + 1
+        file = reaper.EnumerateFiles(App.projectRecordingPath, fileIndex)
+    end
+end
+
 -- * public
 -- Gather media files and occurrences
 function GetMediaFiles()
@@ -866,10 +897,11 @@ end
 function Revert(cancel)
     -- restore temporary file saved before minimizing and open it
     OD_CopyFile(App.revert.tmpBackupFileName, App.fullProjPath)
-    -- r.reduce_open_files(1) -- windows won't delete/move files that are in use
+    -- r.reduce_open_files(2) -- ? double check that. windows won't delete/move files that are in use
     -- delete files created but not used
     for filename, fileInfo in pairs(App.mediaFiles) do
         if fileInfo.newfilename and fileInfo.status ~= STATUS.DONE then
+            reaper.ShowConsoleMsg('deleting')
             if OD_FileExists(fileInfo.newfilename) then
                 os.remove(fileInfo.newfilename)
             end
@@ -1005,7 +1037,6 @@ function CreateBackupProject()
         end
         coroutine.yield('Creating backup project')
     end
-    -- r.Main_OnCommand(40101, 0)  -- All media media items online
 end
 
 function NetworkedFilesExist()
@@ -1064,7 +1095,7 @@ function DeleteOriginals()
 
         -- if on windows, trash all files at once to avoid powershelling for each file seperately
         if #filesToTrashWin > 0 then
-            r.reduce_open_files(2)                                       -- windows won't delete/move files that are in use
+            r.reduce_open_files(2)                             -- windows won't delete/move files that are in use
             OD_MoveToTrash(filesToTrashWin)
             for filename, fileInfo in pairs(App.mediaFiles) do -- verify which files were and were not removed
                 if not OD_FileExists(fileInfo.filenameWithPath) then
@@ -1080,39 +1111,6 @@ function DeleteOriginals()
 end
 
 function CleanMediaFolder()
-    -- Scan project recording folder for media files
-    local function getUnusedFilesInRecordingFolder()
-        App.ununsedFilesInRecordingFolder = {}
-        local function isValidMediaFile(file)
-            -- Filter out specific file extensions
-            local _, _, extension = OD_DissectFilename(file)
-            return OD_HasValue(MEDIA_EXTENSIONS, extension, true)
-        end
-
-        -- Scan recording folder
-        -- local iterator = reaper.DirItemsIterator_Create(App.projectRecordingPath)
-        -- local file = reaper.DirItemsIterator_GetNext(iterator)
-        local fileIndex = 0
-        local file = reaper.EnumerateFiles(App.projectRecordingPath, fileIndex)
-
-        App.perform.pos = 0
-        while file do
-            App.perform.pos = App.perform.pos + 1
-            App.perform.total = App.perform.pos
-            if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then
-                coroutine.yield('Cleaning media folder (scanning folder)')
-            end
-            file = App.projectRecordingPath .. "/" .. file
-            if reaper.file_exists(file) then
-                if isValidMediaFile(file) and not App.usedFiles[file] and not App.usedFiles[file:gsub('.reapeaks$', '')] then
-                    table.insert(App.ununsedFilesInRecordingFolder, { filename = file, size = OD_GetFileSize(file) })
-                end
-            end
-            fileIndex = fileIndex + 1
-            file = reaper.EnumerateFiles(App.projectRecordingPath, fileIndex)
-        end
-    end
-
     local function deleteUnusedFiles()
         local stat = Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and 'Moving unused files to trash' or
             'Deleting unused files'
@@ -1177,12 +1175,18 @@ function KeepActiveTakesOnly()
     -- Count the number of media items
     local itemCount = r.CountMediaItems(0)
 
+    App.perform.total = itemCount
+    App.perform.pos = 0
     -- Select all media items
     r.SelectAllMediaItems(0, true)
 
-    -- TODO: yield progress
     -- Deselect the items where "Play all takes" is enabled
     for i = 0, itemCount - 1 do
+        App.perform.pos = App.perform.pos + 1
+        App.perform.total = App.perform.pos
+        if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then
+            coroutine.yield('Scanning takes)')
+        end
         local item = r.GetMediaItem(0, i)
         local allTakesPlay = r.GetMediaItemInfo_Value(item, "B_ALLTAKESPLAY")
 
@@ -1193,26 +1197,36 @@ function KeepActiveTakesOnly()
     reaper.Main_OnCommand(40131, 0) -- Take: Crop to active take in items
 end
 
-function CalculateSavings() -- ? when backing up, total media folder size isn't calculated
+function CalculateSavings()
     App.totalSpace = {}
     App.totalSpace.deleted = 0
     App.totalSpace.totalOriginalSize = 0
     App.totalSpace.usedFilesSizeBeforeMinimization = 0
     App.totalSpace.newSize = 0
+    App.totalSpace.notMoved = 0
+
+    -- when backing up, media folder size isn't scanned, so it needs to be scanned now to calculate total size
+    if Settings.backup then getUnusedFilesInRecordingFolder() end
     for i, file in ipairs(App.ununsedFilesInRecordingFolder or {}) do
         if file.deleted then App.totalSpace.deleted = App.totalSpace.deleted + file.size end
-        App.totalSpace.totalOriginalSize = App.totalSpace.totalOriginalSize + file.size
+        if not App.mediaFiles[file.filename] then
+            App.totalSpace.totalOriginalSize = App.totalSpace.totalOriginalSize + file.size
+        end
     end
 
     for filename, fileInfo in pairs(App.mediaFiles) do
         App.totalSpace.totalOriginalSize = App.totalSpace.totalOriginalSize + fileInfo.sourceFileSize
-        App.totalSpace.usedFilesSizeBeforeMinimization = App.totalSpace.usedFilesSizeBeforeMinimization + fileInfo.sourceFileSize
+        App.totalSpace.usedFilesSizeBeforeMinimization = App.totalSpace.usedFilesSizeBeforeMinimization +
+            fileInfo.sourceFileSize
         App.totalSpace.newSize = App.totalSpace.newSize + fileInfo.newFileSize
     end
 
     App.totalSpace.saved = App.totalSpace.totalOriginalSize - App.totalSpace.newSize
     App.totalSpace.minimized = App.totalSpace.usedFilesSizeBeforeMinimization - App.totalSpace.newSize
-
-    reaper.ShowConsoleMsg(('\n\n-----------------------------\ntotal original size: %s\ntotal minimized:     %s\ntotal deleted:       %s\nnew size:            %s\n-----------------------------\ntotal saved:         %s\n-----------------------------\n\n')
-                            :format(OD_GetFormattedFileSize(App.totalSpace.totalOriginalSize),OD_GetFormattedFileSize(App.totalSpace.minimized), OD_GetFormattedFileSize(App.totalSpace.deleted), OD_GetFormattedFileSize(App.totalSpace.newSize), OD_GetFormattedFileSize(App.totalSpace.saved)))
+    if Settings.backup then App.totalSpace.notMoved = App.totalSpace.saved - App.totalSpace.minimized end
+    reaper.ShowConsoleMsg(('------------------------------\ntotal original size: %s\ntotal minimized:     %s\ntotal deleted:       %s\ntotal not moved:     %s\nnew size:            %s\n------------------------------\ntotal saved:         %s\n------------------------------\n\n')
+        :format(OD_GetFormattedFileSize(App.totalSpace.totalOriginalSize),
+            OD_GetFormattedFileSize(App.totalSpace.minimized), OD_GetFormattedFileSize(App.totalSpace.deleted), 
+            OD_GetFormattedFileSize(App.totalSpace.notMoved),
+            OD_GetFormattedFileSize(App.totalSpace.newSize), OD_GetFormattedFileSize(App.totalSpace.saved)))
 end
