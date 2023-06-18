@@ -15,7 +15,7 @@ local function getUnusedFilesInRecordingFolder()
     local function isValidMediaFile(file)
         -- Filter out specific file extensions
         local _, _, extension = OD_DissectFilename(file)
-        return OD_HasValue(MEDIA_EXTENSIONS, extension, true)
+        return OD_HasValue(MEDIA_EXTENSIONS, extension, true) or extension == 'reapeaks'
     end
 
     -- Scan recording folder
@@ -170,6 +170,7 @@ function GetMediaFiles()
             status_info = '',
             keep_length = 1
         }
+        App.scroll = filename
         App.mediaFileCount = App.mediaFileCount + 1
         -- Check if the media file entry exists in the usedFiles table
         if not App.usedFiles[filename] then
@@ -253,12 +254,23 @@ function GetMediaFiles()
                     end
                 end
             else
-                addMediaFile(filename,
-                    OD_HasValue(MEDIA_TYPES.VIDEO, sourceType) and FILE_TYPES.VIDEO or FILE_TYPES.AUDIO,
-                    not (OD_HasValue(MEDIA_TYPES.UNCOMPRESSED, sourceType) or
-                        OD_HasValue(MEDIA_TYPES.LOSSLESS, sourceType) or
-                        ((Settings.minimizeSourceTypes == MINIMIZE_SOURCE_TYPES.ALL) and
-                            OD_HasValue(MEDIA_TYPES.COMPRESSED, sourceType))), fileExists, oc)
+                local fileType = FILE_TYPES.AUDIO
+                if OD_HasValue(MEDIA_TYPES.VIDEO, sourceType) then
+                    fileType = FILE_TYPES.VIDEO
+                elseif OD_HasValue(MEDIA_TYPES.SUBPROJECT, sourceType) then
+                    fileType = FILE_TYPES.SUBPROJECT
+                end
+                local ignore = true
+                if OD_HasValue(MEDIA_TYPES.UNCOMPRESSED, sourceType) or
+                    OD_HasValue(MEDIA_TYPES.LOSSLESS, sourceType) or
+                    OD_HasValue(MEDIA_TYPES.SUBPROJECT, sourceType) then
+                    ignore = false
+                end
+                if (Settings.minimizeSourceTypes == MINIMIZE_SOURCE_TYPES.ALL) and
+                    OD_HasValue(MEDIA_TYPES.COMPRESSED, sourceType) then
+                    ignore = false
+                end
+                addMediaFile(filename, fileType, ignore, fileExists, oc)
                 App.mediaFiles[filename].srclen = srclen
             end
             if App.mediaFiles[filename].hasSection then
@@ -273,6 +285,8 @@ function GetMediaFiles()
             if App.mediaFiles[filename].missing then
                 App.mediaFiles[filename].status = STATUS.ERROR
                 App.mediaFiles[filename].status_info = 'file missing'
+                App.mediaFiles[filename].sourceFileSize = 0
+                App.mediaFiles[filename].newFileSize = 0
             end
         end
     end
@@ -427,9 +441,10 @@ function CollectMedia()
         if fileInfo.shouldCollect then
             App.perform.pos = App.perform.pos + 1
             App.mediaFiles[filename].status = STATUS.COLLECTING
-            if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then
-                coroutine.yield('Collecting Files')
-            end
+            -- if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then
+            App.scroll = filename
+            coroutine.yield('Collecting Files')
+            -- end
 
             -- if backing up, should later copy (not move) *internal* files to the backup (leaving originals untouched)
             -- otherwise, should first copy/move(according to setting) them to the current project folder, in order
@@ -781,50 +796,54 @@ function MinimizeAndApplyMedia()
             r.SelectAllMediaItems(0, false)
             r.SetMediaItemSelected(gluedItem, true)
 
-            r.Main_OnCommand(40440, 0)                              -- set selected media temporarily offline
-            local success = OD_MoveFile(sourceFilename, uniqueName) --? should probably check for success
-            r.Main_OnCommand(40439, 0)                              -- online
+            r.Main_OnCommand(40440, 0) -- set selected media temporarily offline
+            local success = OD_MoveFile(sourceFilename, uniqueName)
+            r.Main_OnCommand(40439, 0) -- online
+            if not success then
+                fileInfo.status = STATUS.ERROR
+                fileInfo.status_info = 'move minimized version failed'
+            else
+                -- Update the glued item with the new source file and rebuild peaks
 
-            -- Update the glued item with the new source file and rebuild peaks
+                newSrc = r.PCM_Source_CreateFromFile(uniqueName)
+                fileInfo.newfilename = uniqueName
+                -- update usedFiles table with the replaced file
+                App.usedFiles[originalFilename] = nil
+                App.usedFiles[uniqueName] = 1
 
-            newSrc = r.PCM_Source_CreateFromFile(uniqueName)
-            fileInfo.newfilename = uniqueName
-            -- update usedFiles table with the replaced file
-            App.usedFiles[originalFilename] = nil
-            App.usedFiles[uniqueName] = 1
-
-            if not Settings.backup then
-                App.peakOperations[uniqueName] = newSrc
-                r.PCM_Source_BuildPeaks(newSrc, 0)
-            end
-
-            -- update stretch markers and take markers
-            local newSrcLength = r.GetMediaSourceLength(newSrc)
-            for i, oc in ipairs(fileInfo.occurrences) do
-                oc.newsrclen = newSrcLength
-
-                -- reset C_BEATATTACHMODE items temporarily for fixing stretch markers
-                local tmpItemAutoStretch = r.GetMediaItemInfo_Value(oc.item, "C_AUTOSTRETCH")
-                local tmpBeatAttachMode = r.GetMediaItemInfo_Value(oc.item, "C_BEATATTACHMODE")
-                r.SetMediaItemInfo_Value(oc.item, "C_AUTOSTRETCH", 0)
-                r.SetMediaItemInfo_Value(oc.item, "C_BEATATTACHMODE", 0) -- ]]
-                local smrkrs = saveTakeStretchMarkers(oc)
-
-                r.SetMediaItemTake_Source(oc.take, newSrc)
-                r.SetMediaItemTakeInfo_Value(oc.take, "D_STARTOFFS", oc.newItemPosition)
-                applyTakeStretchMarkers(oc, smrkrs)
-                applyTakeMarkers(oc)
-
-                -- apply saved item timbase settings
-                r.SetMediaItemInfo_Value(oc.item, "C_AUTOSTRETCH", tmpItemAutoStretch)
-                r.SetMediaItemInfo_Value(oc.item, "C_BEATATTACHMODE", tmpBeatAttachMode)
-
-                -- save reverse info
-                if oc.rev then
-                    reverseItem(oc.item)
+                if not Settings.backup then
+                    App.peakOperations[uniqueName] = newSrc
+                    r.PCM_Source_BuildPeaks(newSrc, 0)
                 end
 
-                --
+                -- update stretch markers and take markers
+                local newSrcLength = r.GetMediaSourceLength(newSrc)
+                for i, oc in ipairs(fileInfo.occurrences) do
+                    oc.newsrclen = newSrcLength
+
+                    -- reset C_BEATATTACHMODE items temporarily for fixing stretch markers
+                    local tmpItemAutoStretch = r.GetMediaItemInfo_Value(oc.item, "C_AUTOSTRETCH")
+                    local tmpBeatAttachMode = r.GetMediaItemInfo_Value(oc.item, "C_BEATATTACHMODE")
+                    r.SetMediaItemInfo_Value(oc.item, "C_AUTOSTRETCH", 0)
+                    r.SetMediaItemInfo_Value(oc.item, "C_BEATATTACHMODE", 0) -- ]]
+                    local smrkrs = saveTakeStretchMarkers(oc)
+
+                    r.SetMediaItemTake_Source(oc.take, newSrc)
+                    r.SetMediaItemTakeInfo_Value(oc.take, "D_STARTOFFS", oc.newItemPosition)
+                    applyTakeStretchMarkers(oc, smrkrs)
+                    applyTakeMarkers(oc)
+
+                    -- apply saved item timbase settings
+                    r.SetMediaItemInfo_Value(oc.item, "C_AUTOSTRETCH", tmpItemAutoStretch)
+                    r.SetMediaItemInfo_Value(oc.item, "C_BEATATTACHMODE", tmpBeatAttachMode)
+
+                    -- save reverse info
+                    if oc.rev then
+                        reverseItem(oc.item)
+                    end
+
+                    --
+                end
             end
         end
     end
@@ -835,7 +854,8 @@ function MinimizeAndApplyMedia()
     coroutine.yield('Minimizing Files')
     for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
         if not fileInfo.ignore and not fileInfo.missing then
-            App.mediaFiles[filename].status = STATUS.MINIMIZING
+            App.scroll = filename
+            fileInfo.status = STATUS.MINIMIZING
             App.perform.pos = App.perform.pos + 1
             coroutine.yield('Minimizing Files')
             local track = createTrackForFilename(filename)
@@ -848,9 +868,9 @@ function MinimizeAndApplyMedia()
                 if gluedItem then
                     applyGluedSourceToOriginal(filename, gluedItem)
                 end
-                App.mediaFiles[filename].status = STATUS.MINIMIZED
+                if not fileInfo.status == STATUS.ERROR then fileInfo.status = STATUS.MINIMIZED end
             else
-                fileInfo.status = STATUS.NO_NEED_TO_MINIMIZE
+                fileInfo.status = STATUS.NOTHING_TO_MINIMIZE
                 fileInfo.ignore = true
                 fileInfo.newFileSize = fileInfo.sourceFileSize
             end
@@ -898,7 +918,7 @@ end
 function Revert(cancel)
     -- restore temporary file saved before minimizing and open it
     OD_CopyFile(App.revert.tmpBackupFileName, App.fullProjPath)
-    -- r.reduce_open_files(2) -- ? double check that. windows won't delete/move files that are in use
+    -- r.reduce_open_files(2) -- seems ok. might be needed for win, but I tested and I'm pretty sure it's not needed.
     -- delete files created but not used
     for filename, fileInfo in pairs(App.mediaFiles) do
         if fileInfo.newfilename and fileInfo.status ~= STATUS.DONE then
@@ -998,6 +1018,7 @@ function CreateBackupProject()
     App.perform.pos = 0
 
     for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
+        App.scroll = filename
         -- move processed files
         r.RecursiveCreateDirectory(
             targetPath ..
@@ -1039,10 +1060,15 @@ end
 function NetworkedFilesExist()
     if OS_is.win then
         for filename, fileInfo in pairs(App.mediaFiles) do
-            if string.sub(fileInfo.filenameWithPath, 1, 2) == '\\\\' then
-                return true
-            end
+            if string.sub(fileInfo.filenameWithPath, 1, 2) == '\\\\' then return true end
         end
+    end
+    return false
+end
+
+function SubProjectsExist()
+    for filename, fileInfo in pairs(App.mediaFiles) do
+        if fileInfo.fileType == FILE_TYPES.SUBPROJECT then return true end
     end
     return false
 end
@@ -1148,11 +1174,12 @@ function CleanMediaFolder()
             end
         end
 
+        coroutine.yield(stat)
         -- if on windows, trash all files at once to avoid powershelling for each file seperately
         if #filesToTrashWin > 0 then
             r.reduce_open_files(2)                                               -- windows won't delete/move files that are in use
             OD_MoveToTrash(filesToTrashWin)
-            for i, file in OD_PairsByOrder(App.ununsedFilesInRecordingFolder) do -- verify which files were and were not removed
+            for i, file in ipairs(App.ununsedFilesInRecordingFolder) do -- verify which files were and were not removed
                 if not OD_FileExists(file.filename) then
                     file.deleted = true
                 else
@@ -1222,19 +1249,18 @@ function CalculateSavings()
     App.totalSpace.saved = App.totalSpace.totalOriginalSize - App.totalSpace.newSize
     App.totalSpace.minimized = App.totalSpace.usedFilesSizeBeforeMinimization - App.totalSpace.newSize
     if Settings.backup then App.totalSpace.notMoved = App.totalSpace.saved - App.totalSpace.minimized end
-    
     local msg =
-        ('Original size:                %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.totalOriginalSize)) ..
+        ('Original media folder size:      %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.totalOriginalSize)) ..
         (Settings.minimize and
-            ('Minimized:                    %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.minimized).. (App.totalSpace.minimized<0 and '*' or '')) or '') ..
-        (Settings.cleanMediaFolder and
-            ('Deleted:                      %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.deleted)) or '') ..
+            ('Minimized files:                 %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.minimized) .. (App.totalSpace.minimized < 0 and '*' or '')) or '') ..
         (Settings.backup and
-            ('Remained in orignal location: %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.notMoved)) or '') ..
-        ('New size:                     %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.newSize)) ..
+            ('Unused audio in original folder: %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.notMoved)) or '') ..
+        ((Settings.cleanMediaFolder and not Settings.backup) and
+            ('Deleted:                         %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.deleted)) or '') ..
+        ('New size:                        %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.newSize)) ..
         '\n' ..
-        ('Total savings:                %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.saved))..
-        ((App.totalSpace.minimized<0) and ('\n\n* Minimzed size is negative since\ncompressed files were glued together\nas raw PCM files.\n\nTo avoid that, you may select\n"%s" under\n"File types to minimize"'):format(MINIMIZE_SOURCE_TYPES_DESCRIPTIONS[MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_AND_LOSSLESS]) or '')
+        ('Total savings:                   %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.saved)) ..
+        ((App.totalSpace.minimized < 0) and ('\n\n* Minimzed size is negative since\ncompressed files were glued together\nas raw PCM files.\n\nTo avoid that, you may select\n"%s" under\n"File types to minimize"'):format(MINIMIZE_SOURCE_TYPES_DESCRIPTIONS[MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_AND_LOSSLESS]) or '')
 
     App.msg(msg, 'Operation complete')
 end

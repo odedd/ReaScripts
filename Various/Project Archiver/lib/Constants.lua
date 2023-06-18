@@ -11,7 +11,7 @@ STATUS = {
     SCANNED = 1,
     MINIMIZING = 9,
     MINIMIZED = 10,
-    NO_NEED_TO_MINIMIZE = 11,
+    NOTHING_TO_MINIMIZE = 11,
     MOVING = 50,
     COPYING = 51,
     DELETING = 52,
@@ -27,7 +27,7 @@ STATUS_DESCRIPTIONS = {
     [STATUS.SCANNED] = 'Scanned',
     [STATUS.MINIMIZING] = 'Minimizing',
     [STATUS.MINIMIZED] = 'Minimized',
-    [STATUS.NO_NEED_TO_MINIMIZE] = 'Nothing to minimize',
+    [STATUS.NOTHING_TO_MINIMIZE] = 'Nothing to minimize',
     [STATUS.MOVING] = 'Moving',
     [STATUS.COPYING] = 'Copying',
     [STATUS.DELETING] = 'Deleting Original',
@@ -59,6 +59,7 @@ ALL_FORMATS = {
     MOV = { type = 'INCOMPATIBLE', extension = 'mov' },
     EDL = { type = 'INCOMPATIBLE', extension = 'edl' },
     MIDI = { type = 'INCOMPATIBLE', extension = 'midi' },
+    RPP_PROJECT = { type = 'SUBPROJECT', extension = 'rpp' },
     MUSICXML = { type = 'INCOMPATIBLE', extension = 'musicxml' },
     MPEG = { type = 'INCOMPATIBLE', extension = 'mpeg' },
     KAR = { type = 'INCOMPATIBLE', extension = 'kar' },
@@ -102,13 +103,15 @@ MEDIA_EXTENSIONS, MEDIA_TYPES = createTablesFromFormats(ALL_FORMATS)
 FILE_TYPES = {
     AUDIO = 0,
     VIDEO = 1,
-    RS5K = 2
+    RS5K = 2,
+    SUBPROJECT = 3
 }
 
 FILE_TYPE_DESCRPTIONS = {
     [FILE_TYPES.AUDIO] = 'Audio',
     [FILE_TYPES.VIDEO] = 'Video',
     [FILE_TYPES.RS5K] = 'RS5K',
+    [FILE_TYPES.SUBPROJECT] = 'RPP',
 }
 -- * --------------------
 -- * settings -----------
@@ -187,8 +190,8 @@ MINIMIZE_SOURCE_TYPES = {
     ALL = 1
 }
 MINIMIZE_SOURCE_TYPES_DESCRIPTIONS = {
-    [MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_AND_LOSSLESS] = 'Uncompressed & Lossless only',
-    [MINIMIZE_SOURCE_TYPES.ALL] = 'All audio source types'
+    [MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_AND_LOSSLESS] = 'Uncompressed & Lossless',
+    [MINIMIZE_SOURCE_TYPES.ALL] = 'Any audio file'
 }
 for i = 0, #MINIMIZE_SOURCE_TYPES_DESCRIPTIONS do
     MINIMIZE_SOURCE_TYPES_LIST = (MINIMIZE_SOURCE_TYPES_LIST or '') .. MINIMIZE_SOURCE_TYPES_DESCRIPTIONS[i] .. '\0'

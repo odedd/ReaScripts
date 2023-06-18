@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.0.1
+-- @version 0.1.0
 -- @donation: https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
@@ -44,7 +44,7 @@ Gui.st.col.status = {
     [STATUS.SCANNED] = nil,
     [STATUS.MINIMIZING] = 0x703d19ff,
     [STATUS.MINIMIZED] = 0xb06027ff,
-    [STATUS.NO_NEED_TO_MINIMIZE] = 0xb06027ff,
+    [STATUS.NOTHING_TO_MINIMIZE] = 0xb06027ff,
     [STATUS.MOVING] = 0xa67e23ff,
     [STATUS.COPYING] = 0xa67e23ff,
     [STATUS.DELETING] = 0xa67e23ff,
@@ -69,47 +69,51 @@ local function doPerform()
         if Settings.backup or Settings.keepActiveTakesOnly or Settings.minimize or Settings.collect ~= 0 or Settings.cleanMediaFolder then
             GetMediaFiles()
         end
-        -- if sources are networked, trashing may not be an option.
-        if (Settings.minimize and not Settings.backup) and (Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH) and
-            (NetworkedFilesExist()) then
-            Cancel(
-                'Networked files were found.\nMoving networkd files to the\ntrash is not supported.\nPlease select deleting files\nor consider backing up instead of\nminimizing.')
+        if SubProjectsExist() then
+            Cancel(TEXTS.ERROR_SUBPROJECTS_UNSPPORTED)
         else
-            -- minimize files and apply to original sources
-            if Settings.minimize then
-                MinimizeAndApplyMedia()
-            end
-            if Settings.backup or Settings.collect ~= 0 then
-                CollectMedia()
-            end
-            if Settings.backup then
-                -- copy to a new project path (move glued files, copy others)
-                CreateBackupProject()
-                -- should happen here so that revert happens afterward
-                CalculateSavings()
-                -- revert back to temporary copy of project
-                Revert()
+            -- if sources are networked, trashing may not be an option.
+            if (Settings.minimize and not Settings.backup) and (Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH) and
+                (NetworkedFilesExist()) then
+                Cancel(
+                    TEXTS.ERROR_NETWORKED_FILES_TRASH_UNSPPORTED)
             else
+                -- minimize files and apply to original sources
                 if Settings.minimize then
-                    DeleteOriginals()
+                    MinimizeAndApplyMedia()
                 end
-                if Settings.cleanMediaFolder then
-                    CleanMediaFolder()
+                if Settings.backup or Settings.collect ~= 0 then
+                    CollectMedia()
                 end
-                -- finish building peaks for new files
-                FinalizePeaksBuild()
-                -- if not creating a backup, save project
-                r.Main_SaveProject(-1)
-                CalculateSavings()
-            end
-            -- restore settings and other stuff saved at the beginning of the process
-            Restore()
+                if Settings.backup then
+                    -- copy to a new project path (move glued files, copy others)
+                    CreateBackupProject()
+                    -- should happen here so that revert happens afterward
+                    CalculateSavings()
+                    -- revert back to temporary copy of project
+                    Revert()
+                else
+                    if Settings.minimize then
+                        DeleteOriginals()
+                    end
+                    if Settings.cleanMediaFolder then
+                        CleanMediaFolder()
+                    end
+                    -- finish building peaks for new files
+                    FinalizePeaksBuild()
+                    -- if not creating a backup, save project
+                    r.Main_SaveProject(-1)
+                    CalculateSavings()
+                end
+                -- restore settings and other stuff saved at the beginning of the process
+                Restore()
 
-            if Settings.backup then
-                -- open backup project
-                r.Main_openProject("noprompt:" .. App.backupTargetProject)
+                if Settings.backup then
+                    -- open backup project
+                    r.Main_openProject("noprompt:" .. App.backupTargetProject)
+                end
+                coroutine.yield('Done', 0, 1)
             end
-            coroutine.yield('Done', 0, 1)
         end
     end
 
@@ -117,13 +121,6 @@ local function doPerform()
 end
 
 local function checkPerform()
-    if App.revertCancelOnNextFrame == true then
-        App.revertCancelOnNextFrame = 2 --wait one more frame for message box drawing
-    elseif
-        App.revertCancelOnNextFrame == 2 then
-        Revert(true)
-        App.revertCancelOnNextFrame = nil
-    end
     if App.coPerform then
         if coroutine.status(App.coPerform) == "suspended" then
             local retval
@@ -132,13 +129,22 @@ local function checkPerform()
                 if App.perform.status:sub(-17) == 'cancelled by glue' then
                     Cancel()
                 else
-                    -- r.ShowConsoleMsg(app.perform.status)
+                    r.ShowConsoleMsg(App.perform.status)
                     Cancel(('Error occured:\n%s'):format(App.perform.status))
                 end
             end
         elseif coroutine.status(App.coPerform) == "dead" then
             App.coPerform = nil
         end
+    end
+end
+local function waitForMessageBox()
+    if App.revertCancelOnNextFrame == true then
+        App.revertCancelOnNextFrame = 2 --wait one more frame for message box drawing
+    elseif
+        App.revertCancelOnNextFrame == 2 then
+        Revert(true)
+        App.revertCancelOnNextFrame = nil
     end
 end
 
@@ -176,6 +182,10 @@ function App.drawPerform(open)
                     r.ImGui_TableNextRow(ctx)
                     r.ImGui_TableNextColumn(ctx) -- file
                     r.ImGui_Text(ctx, fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or ''))
+                    if App.scroll == filename then
+                        reaper.ImGui_SetScrollHereY(ctx, 1)
+                        App.scroll = false
+                    end
                     local skiprow = false
                     if not r.ImGui_IsItemVisible(ctx) then skiprow = true end
                     if not skiprow then
@@ -388,7 +398,7 @@ function App.drawMainWindow()
     -- r.ShowConsoleMsg(viewPortWidth)
     r.ImGui_SetNextWindowSize(ctx, math.min(1197, max_w), math.min(800, max_h), r.ImGui_Cond_Appearing())
     r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
-    local visible, open = r.ImGui_Begin(ctx, Scr.name .. ' v' .. Scr.version .. "##mainWindow", not App.coPerform,
+    local visible, open = r.ImGui_Begin(ctx, Scr.name .. ' v' .. Scr.version .. " by ".. Scr.developer .."##mainWindow", not App.coPerform,
         r.ImGui_WindowFlags_NoDocking() | r.ImGui_WindowFlags_NoCollapse())
     Gui.mainWindow = {
         pos = { r.ImGui_GetWindowPos(ctx) },
@@ -437,14 +447,14 @@ function App.drawMainWindow()
             })
         if Settings.padding < 0 then Settings.padding = 0 end
 
-        Settings.minimizeSourceTypes = Gui.setting('combo', 'File types to minimize',
-            "Minimizing compressed files, such as MP3s, will result in larger (!) \"minimized\" files, since those will be uncompressed WAV files",
+        Settings.minimizeSourceTypes = Gui.setting('combo', 'Only minimize those file types',
+            "Minimizing compressed files, such as MP3s, may result in larger (!) \"minimized\" files, since those will be lossless files",
             Settings.minimizeSourceTypes, {
                 list = MINIMIZE_SOURCE_TYPES_LIST
             })
 
         Settings.glueFormat = Gui.setting('combo', 'Minimized files format',
-            "Lossless compression (FLAC and WAVPACK) will result in the smallest sizes without losing quality, but takes longer to create",
+            "Lossless compression (FLAC and WAVPACK) will result in the smallest size without losing quality, but takes longer to create.",
             Settings.glueFormat, {
                 list = GLUE_FORMATS_LIST
             })
@@ -458,15 +468,15 @@ function App.drawMainWindow()
                 r.ImGui_Bullet(ctx)
             end
 
-            Settings.collectOperation = Gui.setting('combo', 'Collect external files into proj. folder',
-                "When collecting external files, should they be copied or moved from their original location",
+            Settings.collectOperation = Gui.setting('combo', 'Collect external files',
+                "Copy or move external files into the project folder",
                 Settings.collectOperation, {
                     list = COLLECT_OPERATIONS_LIST
                 })
         else
             r.ImGui_Bullet(ctx)
             r.ImGui_AlignTextToFramePadding(ctx)
-            r.ImGui_Text(ctx, 'Collect Files into project folder')
+            r.ImGui_Text(ctx, 'Collect external files')
         end
 
 
@@ -545,7 +555,14 @@ function App.drawMainWindow()
     return open
 end
 
+function App.reset()
+    App.mediaFiles = {}
+    App.usedFiles = {} --keeps track of ALL files used in the session for cleaning the media folder
+end
+
 function App.loop()
+    if not App.coPerform and not App.popup.msg then App.checkProjectChange() end
+    waitForMessageBox()
     checkPerform()
     r.ImGui_PushFont(Gui.ctx, Gui.st.fonts.default)
     App.open = App.drawMainWindow()
@@ -570,14 +587,3 @@ if OD_PrereqsOK({
     -- app.coPerform = coroutine.create(doPerform)
     r.defer(App.loop)
 end
-
----------------------------------------
--- IDEAS and TODOS --------------------
----------------------------------------
-
--- TODO export current settings as action
--- TODO handle subprojects (collect? render?)
--- TODO handle switching projects
--- TODO (later): figure out section
--- ? check handling of missing files
--- ? check project media folder at project root

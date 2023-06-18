@@ -31,6 +31,7 @@ local function OD_GetScr()
     scr.dfsetfile = scr.dir..scr.no_ext..'.ini'
     scr.namespace = "Odedd"
     scr.name = scr.description
+    scr.developer = scr.author
     scr.context_name = scr.namespace:gsub(' ', '_') .. '_' .. scr.name:gsub(' ', '_')
     r.ver = tonumber(r.GetAppVersion():match("[%d%.]+"))
     return scr

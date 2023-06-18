@@ -18,6 +18,13 @@ App = {
     },
     popup = {}
 }
+function App.checkProjectChange()
+    App.current_project = r.GetProjectStateChangeCount(0) -- if project changed, force reset
+    if App.current_project ~= App.previous_project then
+        App.previous_project = App.current_project
+        App.reset()
+    end
+end
 
 function App.getStatus(window)
     if window == 'main' then

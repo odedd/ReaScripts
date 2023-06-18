@@ -3321,7 +3321,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
         r.ImGui_SetNextWindowSize(ctx, 700,
             math.min(1000, select(2, r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx)))), r.ImGui_Cond_Appearing())
         r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
-        local visible, open = r.ImGui_Begin(ctx, scr.name .. ' v' .. scr.version .. "##mainWindow", true,
+        local visible, open = r.ImGui_Begin(ctx, scr.name .. ' v' .. scr.version .. " by ".. scr.developer .."##mainWindow", true,
             r.ImGui_WindowFlags_MenuBar())
         gui.mainWindow = {
             pos = {r.ImGui_GetWindowPos(ctx)},

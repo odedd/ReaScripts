@@ -1,10 +1,12 @@
 -- @noindex
-function OD_GetProjectPaths() -- TODO what happens to this output if media folder is set to nothing?
-    local projectRecordingPath = r.GetProjectPath()
-    local proj, fullProjPath = r.EnumProjects(-1, '') -- full project name including path and RPP file
+function OD_GetProjectPaths()
+    local projectRecordingPath = r.GetProjectPath():gsub('\\','/')
+    local proj, fullProjPath = r.EnumProjects(-1, '')-- full project name including path and RPP file
+    fullProjPath = fullProjPath:gsub('\\','/') 
     local projFileName = r.GetProjectName(proj) -- just the RPP file
     local projPath = fullProjPath:gsub(projFileName .. '$', '') -- just the project path
     local relProjectRecordingPath = OD_GetRelativeOrAbsoluteFile(projectRecordingPath,projPath)
+    if relProjectRecordingPath == projectRecordingPath then relProjectRecordingPath = '' end
     return projPath, projFileName, fullProjPath, projectRecordingPath, relProjectRecordingPath
 end
 
