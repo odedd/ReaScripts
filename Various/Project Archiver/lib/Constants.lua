@@ -123,32 +123,6 @@ COLLECT = {
     VIDEO = 2,
     RS5K = 4
 }
-COLLECT_DESCRIPTIONS = {
-    [COLLECT.EXTERNAL] = {
-        order = 0,
-        label = "Unminimized audio files",
-        hint = 'Copy all external audio files which were have not been minimized to a subfolder within the project\'s main folder',
-        textHint = 'Project media folder',
-        textHelp = 'Folder to collect files into (eg. Audio Files). Leave empty for the project\'s media folder.',
-        targetPath = FILE_TYPES.AUDIO
-    },
-    [COLLECT.VIDEO] = {
-        order = 1,
-        label = "Video files",
-        hint = 'Copy all video files to a subfolder within the project\'s main folder',
-        textHint = 'Project media folder',
-        textHelp = 'Folder to collect files into (eg. Video Files). Leave empty for the project\'s media folder.',
-        targetPath = FILE_TYPES.VIDEO
-    },
-    [COLLECT.RS5K] = {
-        order = 2,
-        label = "RS5K samples",
-        hint = 'Copy all used ReaSamplOmatic5000 samples to a subfolder within the project\'s main folder',
-        textHint = 'Project media folder',
-        textHelp = 'Folder to collect files into (eg. RS5K Samples). Leave empty for the project\'s media folder.',
-        targetPath = FILE_TYPES.RS5K
-    }
-}
 
 COLLECT_OPERATION = {
     COPY = 0,
@@ -230,4 +204,3 @@ GLUE_FORMATS_DETAILS = {
 for i = 0, #GLUE_FORMATS_DETAILS do
     GLUE_FORMATS_LIST = (GLUE_FORMATS_LIST or '') .. GLUE_FORMATS_DETAILS[i].description .. '\0'
 end
-

@@ -5,14 +5,15 @@ dofile(p .. 'Helpers.lua')
 dofile(p .. 'ReaperHelpers.lua')
 
 r = reaper
-local scr = {}
+Scr = {}
+OS_is = nil
 
 local function OD_FindContentKey(content, key, self)
     if self then
         for match in content:gmatch("%-%- @(.-)\n") do
             local key, val = match:match("(.-) (.+)")
             if val then
-                scr[key:lower()] = val
+                Scr[key:lower()] = val
             end
         end
         return
@@ -23,29 +24,29 @@ local function OD_FindContentKey(content, key, self)
 end
 
 local function OD_GetScr()
-    scr.path, scr.secID, scr.cmdID = select(2, r.get_action_context())
-    scr.dir = scr.path:match(".+[\\/]")
-    scr.basename = scr.path:match("^.+[\\/](.+)$")
-    scr.no_ext = scr.basename:match("(.+)%.")
-    OD_FindContentKey(OD_GetContent(scr.path), "", true)
-    scr.dfsetfile = scr.dir..scr.no_ext..'.ini'
-    scr.namespace = "Odedd"
-    scr.name = scr.description
-    scr.developer = scr.author
-    scr.context_name = scr.namespace:gsub(' ', '_') .. '_' .. scr.name:gsub(' ', '_')
+    Scr.path, Scr.secID, Scr.cmdID = select(2, r.get_action_context())
+    Scr.dir = Scr.path:match(".+[\\/]")
+    Scr.basename = Scr.path:match("^.+[\\/](.+)$")
+    Scr.no_ext = Scr.basename:match("(.+)%.")
+    OD_FindContentKey(OD_GetContent(Scr.path), "", true)
+    Scr.major_version = tonumber(Scr.version:match('^(.-)%.'))
+    Scr.dfsetfile = Scr.dir..Scr.no_ext..'.ini'
+    Scr.namespace = "Odedd"
+    Scr.name = Scr.description
+    Scr.developer = Scr.author
+    Scr.context_name = Scr.namespace:gsub(' ', '_') .. '_' .. Scr.name:gsub(' ', '_')
     r.ver = tonumber(r.GetAppVersion():match("[%d%.]+"))
-    return scr
+    -- return Scr
 end
 
 local function OD_GetOS()
     local cur_os = reaper.GetOS()
-    local os_is = {
+    OS_is = {
         win = cur_os:lower():match("win") and true or false,
         mac = cur_os:lower():match("osx") or cur_os:lower():match("macos") and true or false,
         mac_arm = cur_os:lower():match("macos") and true or false,
         lin = cur_os:lower():match("other") and true or false
     }
-    return os_is
 end
 
 local function prereqCheck(args)
@@ -119,13 +120,14 @@ end
 -------------------------------------------
 
 function OD_Init()
-    return OD_GetScr(), OD_GetOS()
+    OD_GetScr()
+    OD_GetOS()
 end
 
 function OD_PrereqsOK(args)
     local errors = prereqCheck(args)
     if #errors > 0 then
-        r.MB(table.concat(errors, '\n------------\n'), scr.name, 0)
+        r.MB(table.concat(errors, '\n------------\n'), Scr.name, 0)
     end
 
     return (next(errors) == nil)

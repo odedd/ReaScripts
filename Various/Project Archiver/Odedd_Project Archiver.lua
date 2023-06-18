@@ -17,7 +17,7 @@ dofile(p .. '../../Resources/Common/Common.lua')
 
 r.ClearConsole()
 
-Scr, OS_is = OD_Init()
+OD_Init()
 
 dofile(p .. 'lib/Constants.lua')
 dofile(p .. 'lib/Settings.lua')
@@ -70,13 +70,13 @@ local function doPerform()
             GetMediaFiles()
         end
         if SubProjectsExist() then
-            Cancel(TEXTS.ERROR_SUBPROJECTS_UNSPPORTED)
+            Cancel(T.ERROR_SUBPROJECTS_UNSPPORTED)
         else
             -- if sources are networked, trashing may not be an option.
             if (Settings.minimize and not Settings.backup) and (Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH) and
                 (NetworkedFilesExist()) then
                 Cancel(
-                    TEXTS.ERROR_NETWORKED_FILES_TRASH_UNSPPORTED)
+                    T.ERROR_NETWORKED_FILES_TRASH_UNSPPORTED)
             else
                 -- minimize files and apply to original sources
                 if Settings.minimize then
@@ -127,10 +127,10 @@ local function checkPerform()
             retval, App.perform.status = coroutine.resume(App.coPerform)
             if not retval then
                 if App.perform.status:sub(-17) == 'cancelled by glue' then
-                    Cancel()
+                    Cancel(T.CANCELLED .. T.CANCEL_RELOAD)
                 else
                     r.ShowConsoleMsg(App.perform.status)
-                    Cancel(('Error occured:\n%s'):format(App.perform.status))
+                    Cancel(('Error occured:\n%s' .. T.CANCEL_RELOAD):format(App.perform.status))
                 end
             end
         elseif coroutine.status(App.coPerform) == "dead" then
@@ -249,7 +249,7 @@ function App.drawWarning()
     local cancelPressed = false
     local bottom_lines = 1
 
-    local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, TEXTS.WARNINGS_EXIST)
+    local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, T.WARNINGS_EXIST)
 
     r.ImGui_SetNextWindowSize(ctx,
         math.max(220, textWidth) + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4,
@@ -264,7 +264,7 @@ function App.drawWarning()
 
         local windowWidth, windowHeight = r.ImGui_GetWindowSize(ctx);
         r.ImGui_SetCursorPos(ctx, (windowWidth - textWidth) * .5, (windowHeight - textHeight) * .5);
-        r.ImGui_TextWrapped(ctx, TEXTS.WARNINGS_EXIST)
+        r.ImGui_TextWrapped(ctx, T.WARNINGS_EXIST)
 
         r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
@@ -278,7 +278,7 @@ function App.drawWarning()
         r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
         if r.ImGui_Button(ctx, okButtonLabel) then
-            if Settings.showMinimizeDoubleWarning and not App.popup.secondWarningShown then
+            if Scr.major_version < 1 and Settings.showBetaWarning and not App.popup.secondWarningShown then
                 r.ImGui_OpenPopup(ctx, 'Also...')
             else
                 App.popup.secondWarningShown = false
@@ -296,7 +296,7 @@ function App.drawWarning()
         end
 
         local buttonLabel = 'Got it'
-        local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, TEXTS.BETA_WARNING)
+        local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, T.BETA_WARNING)
         r.ImGui_SetNextWindowSize(ctx, math.max(220, textWidth) +
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4,
             textHeight + 90 + r.ImGui_GetTextLineHeightWithSpacing(ctx) * 2)
@@ -315,10 +315,10 @@ function App.drawWarning()
             if r.ImGui_BeginChild(ctx, 'msgBody', 0,
                     select(2, r.ImGui_GetContentRegionAvail(ctx)) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
                     r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())) then
-                r.ImGui_TextWrapped(ctx, TEXTS.BETA_WARNING)
+                r.ImGui_TextWrapped(ctx, T.BETA_WARNING)
                 local _, hideThis =
-                    r.ImGui_Checkbox(ctx, "Dont show this again", not Settings.showMinimizeDoubleWarning)
-                Settings.showMinimizeDoubleWarning = not hideThis
+                    r.ImGui_Checkbox(ctx, "Dont show this again", not Settings.showBetaWarning)
+                Settings.showBetaWarning = not hideThis
                 r.ImGui_EndChild(ctx)
             end
 
@@ -384,7 +384,7 @@ function App.drawBottom(ctx, bottom_lines)
         r.ImGui_SameLine(ctx)
         r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Button(), 0x444444ff)
         if r.ImGui_Button(ctx, 'Cancel', r.ImGui_GetContentRegionAvail(ctx)) then
-            Cancel()
+            Cancel(T.CANCELLED .. T.CANCEL_RELOAD)
         end
         r.ImGui_PopStyleColor(ctx)
     end
@@ -398,7 +398,8 @@ function App.drawMainWindow()
     -- r.ShowConsoleMsg(viewPortWidth)
     r.ImGui_SetNextWindowSize(ctx, math.min(1197, max_w), math.min(800, max_h), r.ImGui_Cond_Appearing())
     r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
-    local visible, open = r.ImGui_Begin(ctx, Scr.name .. ' v' .. Scr.version .. " by ".. Scr.developer .."##mainWindow", not App.coPerform,
+    local visible, open = r.ImGui_Begin(ctx, Scr.name .. ' v' .. Scr.version .. " by " .. Scr.developer .. "##mainWindow",
+        not App.coPerform,
         r.ImGui_WindowFlags_NoDocking() | r.ImGui_WindowFlags_NoCollapse())
     Gui.mainWindow = {
         pos = { r.ImGui_GetWindowPos(ctx) },
@@ -415,30 +416,46 @@ function App.drawMainWindow()
         r.ImGui_SeparatorText(ctx, 'Settings')
 
         r.ImGui_Bullet(ctx)
-        Settings.backup = Gui.setting('checkbox', 'Backup project to a new folder',
-            "Copy project to a new directory, along with used media only", Settings.backup)
+        Settings.backup = Gui.setting(
+            'checkbox',
+            T.SETTINGS.BACKUP.LABEL,
+            T.SETTINGS.BACKUP.HINT,
+            Settings.backup)
         if Settings.backup then
-            Settings.backupDestination = Gui.setting('folder', 'Destination', 'Select an empty folder',
-                Settings.backupDestination, {}, true)
+            Settings.backupDestination = Gui.setting(
+                'folder',
+                T.SETTINGS.BACKUP_DESTINATION.LABEL,
+                T.SETTINGS.BACKUP_DESTINATION.HINT,
+                Settings.backupDestination,
+                {},
+                true)
         end
 
         r.ImGui_Bullet(ctx)
-        Settings.keepActiveTakesOnly = Gui.setting('checkbox', 'Remove unused takes',
-            "Keep only selected takes", Settings.keepActiveTakesOnly)
+        Settings.keepActiveTakesOnly = Gui.setting(
+            'checkbox',
+            T.SETTINGS.KEEP_ACTIVE_TAKES_ONLY.LABEL,
+            T.SETTINGS.KEEP_ACTIVE_TAKES_ONLY.HINT,
+            Settings.keepActiveTakesOnly)
 
         if Settings.minimize and not Settings.backup then
-            Gui.settingIcon(Gui.icons.caution, TEXTS.CAUTION_MINIMIZE)
+            Gui.settingIcon(Gui.icons.caution, T.CAUTION_MINIMIZE)
             App.warningCount = App.warningCount + 1
         else
             r.ImGui_Bullet(ctx)
         end
-        Settings.minimize = Gui.setting('checkbox', 'Minimize audio files',
-            "Keep only the parts of the audio that are being used in the project", Settings.minimize)
+        Settings.minimize = Gui.setting(
+            'checkbox',
+            T.SETTINGS.MINIMIZE.LABEL,
+            T.SETTINGS.MINIMIZE.HINT,
+            Settings.minimize)
 
         r.ImGui_Indent(ctx)
         if not Settings.minimize then r.ImGui_BeginDisabled(ctx) end
-        Settings.padding = Gui.setting('dragdouble', 'padding (s)',
-            "How much unused audio, in seconds, to leave before and after items start and end positions",
+        Settings.padding = Gui.setting(
+            'dragdouble',
+            T.SETTINGS.PADDING.LABEL,
+            T.SETTINGS.PADDING.HINT,
             Settings.padding, {
                 speed = 0.1,
                 min = 0.0,
@@ -447,14 +464,18 @@ function App.drawMainWindow()
             })
         if Settings.padding < 0 then Settings.padding = 0 end
 
-        Settings.minimizeSourceTypes = Gui.setting('combo', 'Only minimize those file types',
-            "Minimizing compressed files, such as MP3s, may result in larger (!) \"minimized\" files, since those will be lossless files",
+        Settings.minimizeSourceTypes = Gui.setting(
+            'combo',
+            T.SETTINGS.MINIMIZE_SOURCE_TYPES.LABEL,
+            T.SETTINGS.MINIMIZE_SOURCE_TYPES.HINT,
             Settings.minimizeSourceTypes, {
                 list = MINIMIZE_SOURCE_TYPES_LIST
             })
 
-        Settings.glueFormat = Gui.setting('combo', 'Minimized files format',
-            "Lossless compression (FLAC and WAVPACK) will result in the smallest size without losing quality, but takes longer to create.",
+        Settings.glueFormat = Gui.setting(
+            'combo',
+            T.SETTINGS.GLUE_FORMAT.LABEL,
+            T.SETTINGS.GLUE_FORMAT.HINT,
             Settings.glueFormat, {
                 list = GLUE_FORMATS_LIST
             })
@@ -462,27 +483,28 @@ function App.drawMainWindow()
         r.ImGui_Unindent(ctx)
         if Settings.backup or Settings.collect ~= 0 then
             if Settings.collectOperation == COLLECT_OPERATION.MOVE then
-                Gui.settingIcon(Gui.icons.caution, TEXTS.CAUTION_COLLECT_MOVE)
+                Gui.settingIcon(Gui.icons.caution, T.CAUTION_COLLECT_MOVE)
                 App.warningCount = App.warningCount + 1
             else
                 r.ImGui_Bullet(ctx)
             end
-
-            Settings.collectOperation = Gui.setting('combo', 'Collect external files',
-                "Copy or move external files into the project folder",
+            Settings.collectOperation = Gui.setting(
+                'combo',
+                T.SETTINGS.COLLECT_OPERATION.LABEL,
+                T.SETTINGS.COLLECT_OPERATION.HINT,
                 Settings.collectOperation, {
                     list = COLLECT_OPERATIONS_LIST
                 })
         else
             r.ImGui_Bullet(ctx)
             r.ImGui_AlignTextToFramePadding(ctx)
-            r.ImGui_Text(ctx, 'Collect external files')
+            r.ImGui_Text(ctx, T.SETTINGS.COLLECT_OPERATION.LABEL)
         end
 
 
         r.ImGui_Indent(ctx)
 
-        for bwVal, option in OD_PairsByOrder(COLLECT_DESCRIPTIONS) do
+        for bwVal, option in OD_PairsByOrder(T.SETTINGS.COLLECT) do
             -- disable external files when backup is selected and temporarily save its value to restore if unchecking backup
             if Settings.backup and bwVal == COLLECT.EXTERNAL then
                 if App.temp.originalBackupValue == nil then
@@ -494,18 +516,18 @@ function App.drawMainWindow()
                 Settings.collect = OD_BfSet(Settings.collect, COLLECT.EXTERNAL, App.temp.originalBackupValue)
                 App.temp.originalBackupValue = nil
             end
-            local op = Gui.setting('checkbox', option.label, option.hint,
+            local op = Gui.setting('checkbox', option.LABEL, option.HINT,
                 (Settings.backup and bwVal == COLLECT.EXTERNAL) and true or OD_BfCheck(Settings.collect, bwVal))
             Settings.collect = OD_BfSet(Settings.collect, bwVal, op)
             if Settings.backup and bwVal == COLLECT.EXTERNAL then
                 if r.ImGui_IsItemHovered(ctx, r.ImGui_HoveredFlags_AllowWhenDisabled()) then
-                    r.ImGui_SetTooltip(ctx, ('Must collect when backing up'))
+                    r.ImGui_SetTooltip(ctx, (T.SETTINGS.COLLECT[COLLECT.EXTERNAL].mustCollectHint))
                 end
                 r.ImGui_EndDisabled(ctx)
             end
             if OD_BfCheck(Settings.collect, bwVal) then
-                Settings.targetPaths[option.targetPath] = OD_Trim(Gui.setting('text_with_hint', option.label .. ' path',
-                    option.textHelp, Settings.targetPaths[option.targetPath], { hint = option.textHint }, true))
+                Settings.targetPaths[option.targetPath] = OD_Trim(Gui.setting('text_with_hint', option.LABEL .. ' path',
+                    option.TEXT_HELP, Settings.targetPaths[option.targetPath], { hint = option.TEXT_HINT }, true))
                 if Settings.targetPaths[option.targetPath] == '' then Settings.targetPaths[option.targetPath] = nil end
             end
         end
@@ -513,28 +535,33 @@ function App.drawMainWindow()
         r.ImGui_Unindent(ctx)
         if not Settings.backup then
             if Settings.cleanMediaFolder then
-                Gui.settingIcon(Gui.icons.caution, TEXTS.CAUTION_CLEAN_MEDIA_FOLDER)
+                Gui.settingIcon(Gui.icons.caution, T.CAUTION_CLEAN_MEDIA_FOLDER)
                 App.warningCount = App.warningCount + 1
             else
                 r.ImGui_Bullet(ctx)
             end
-            Settings.cleanMediaFolder = Gui.setting('checkbox', 'Clean media folder',
-                "Keep only the files that are being used in the project in the media folder", Settings.cleanMediaFolder)
+            Settings.cleanMediaFolder = Gui.setting(
+                'checkbox',
+                T.SETTINGS.CLEAN_MEDIA_FOLDER.LABEL,
+                T.SETTINGS.CLEAN_MEDIA_FOLDER.HINT,
+                Settings.cleanMediaFolder)
         else
             Gui.settingSpacing()
         end
         if (Settings.minimize or Settings.cleanMediaFolder) and not Settings.backup then
             if Settings.cleanMediaFolder and Settings.deleteMethod == DELETE_METHOD.KEEP_IN_FOLDER then
-                Gui.settingIcon(Gui.icons.error, TEXTS.ERROR_KEEP_IN_FOLDER)
+                Gui.settingIcon(Gui.icons.error, T.ERROR_KEEP_IN_FOLDER)
                 App.warningCount = App.warningCount + 1
             elseif Settings.deleteMethod == DELETE_METHOD.DELETE_FROM_DISK then
-                Gui.settingIcon(Gui.icons.caution, TEXTS.CAUTION_DELETE)
+                Gui.settingIcon(Gui.icons.caution, T.CAUTION_DELETE)
                 App.warningCount = App.warningCount + 1
             else
                 r.ImGui_Bullet(ctx)
             end
-            Settings.deleteMethod = Gui.setting('combo', 'Deletion Method',
-                "When deleting files, which method should be used?",
+            Settings.deleteMethod = Gui.setting(
+                'combo', 
+                T.SETTINGS.DELETE_METHODS.LABEL,
+                T.SETTINGS.DELETE_METHODS.HINT,
                 Settings.deleteMethod, {
                     list = DELETE_METHODS_LIST
                 })
@@ -584,6 +611,5 @@ if OD_PrereqsOK({
         reaper_version = 6.76 -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
     }) then
     LoadSettings()
-    -- app.coPerform = coroutine.create(doPerform)
     r.defer(App.loop)
 end

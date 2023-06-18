@@ -23,7 +23,7 @@ dofile(p .. '../../Resources/Common/Common.lua')
 
 r.ClearConsole()
 
-local scr, os_is = OD_Init()
+OD_Init()
 
 local STATES = {
     SOLO_IN_PLACE = 'SIP',
@@ -157,11 +157,11 @@ if OD_PrereqsOK({
     local gui = {}
     do
         -- these needs to be temporarily created to be refered to from some of the gui vars
-        local ctx = r.ImGui_CreateContext(scr.context_name .. '_MAIN')
+        local ctx = r.ImGui_CreateContext(Scr.context_name .. '_MAIN')
         local cellSize = 25
-        local font_vertical = r.ImGui_CreateFont(scr.dir .. '../../Resources/Fonts/Cousine-90deg.otf', 11)
-        local font_default = r.ImGui_CreateFont(scr.dir .. '../../Resources/Fonts/Cousine-Regular.ttf', 16)
-        local font_bold = r.ImGui_CreateFont(scr.dir .. '../../Resources/Fonts/Cousine-Regular.ttf', 16,
+        local font_vertical = r.ImGui_CreateFont(Scr.dir .. '../../Resources/Fonts/Cousine-90deg.otf', 11)
+        local font_default = r.ImGui_CreateFont(Scr.dir .. '../../Resources/Fonts/Cousine-Regular.ttf', 16)
+        local font_bold = r.ImGui_CreateFont(Scr.dir .. '../../Resources/Fonts/Cousine-Regular.ttf', 16,
             r.ImGui_FontFlags_Bold())
 
         r.ImGui_Attach(ctx, font_default)
@@ -172,10 +172,10 @@ if OD_PrereqsOK({
             ctx = ctx,
             mainWindow = {},
             draw_list = r.ImGui_GetWindowDrawList(ctx),
-            keyModCtrlCmd = (os_is.mac or os_is.mac_arm) and r.ImGui_Mod_Super() or r.ImGui_Mod_Ctrl(),
-            notKeyModCtrlCmd = (os_is.mac or os_is.mac_arm) and r.ImGui_Mod_Ctrl() or r.ImGui_Mod_Super(),
-            descModCtrlCmd = (os_is.mac or os_is.mac_arm) and 'cmd' or 'control',
-            descModAlt = (os_is.mac or os_is.mac_arm) and 'opt' or 'alt',
+            keyModCtrlCmd = (OS_is.mac or OS_is.mac_arm) and r.ImGui_Mod_Super() or r.ImGui_Mod_Ctrl(),
+            notKeyModCtrlCmd = (OS_is.mac or OS_is.mac_arm) and r.ImGui_Mod_Ctrl() or r.ImGui_Mod_Super(),
+            descModCtrlCmd = (OS_is.mac or OS_is.mac_arm) and 'cmd' or 'control',
+            descModAlt = (OS_is.mac or OS_is.mac_arm) and 'opt' or 'alt',
             st = {
                 fonts = {
                     default = font_default,
@@ -653,15 +653,15 @@ if OD_PrereqsOK({
                     end
                 end
                 if foundTrackInfo.stemMatrix and not (foundTrackInfo.stemMatrix == '') then
-                    local retval = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. scr.context_name .. '_STEM_MATRIX',
+                    local retval = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. Scr.context_name .. '_STEM_MATRIX',
                         pickle(foundTrackInfo.stemMatrix), true)
                 else
-                    r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. scr.context_name .. '_STEM_MATRIX', '', true)
+                    r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. Scr.context_name .. '_STEM_MATRIX', '', true)
                 end
             end
-            OD_SaveLongProjExtState(scr.context_name, 'STEMS', pickle(self.stems or {}))
+            OD_SaveLongProjExtState(Scr.context_name, 'STEMS', pickle(self.stems or {}))
             for k, v in pairs(self.savedSoloStates) do
-                r.SetProjExtState(0, scr.context_name .. '_SAVED_SOLO_STATES', k, pickle(v))
+                r.SetProjExtState(0, Scr.context_name .. '_SAVED_SOLO_STATES', k, pickle(v))
             end
             r.MarkProjectDirty(0)
         end,
@@ -683,7 +683,7 @@ if OD_PrereqsOK({
                 if app.debug then
                     r.ShowConsoleMsg('FULL SYNC\n')
                 end
-                self.stems = unpickle(OD_LoadLongProjExtKey(scr.context_name, 'STEMS')) or {}
+                self.stems = unpickle(OD_LoadLongProjExtKey(Scr.context_name, 'STEMS')) or {}
                 self.prefSoloIP = select(2, r.get_config_var_string('soloip')) == '1'
             end
 
@@ -697,11 +697,11 @@ if OD_PrereqsOK({
             if full then
                 self.savedSoloStates = {}
                 i = 0
-                local retval, k, v = r.EnumProjExtState(0, scr.context_name .. '_SAVED_SOLO_STATES', i)
+                local retval, k, v = r.EnumProjExtState(0, Scr.context_name .. '_SAVED_SOLO_STATES', i)
                 while retval do
                     self.savedSoloStates[k] = unpickle(v)
                     i = i + 1
-                    retval, k, v = r.EnumProjExtState(0, scr.context_name .. '_SAVED_SOLO_STATES', i)
+                    retval, k, v = r.EnumProjExtState(0, Scr.context_name .. '_SAVED_SOLO_STATES', i)
                 end
                 self.savedSoloStates = self.savedSoloStates or {}
             end
@@ -725,7 +725,7 @@ if OD_PrereqsOK({
                     local folderDepth = r.GetMediaTrackInfo_Value(rTrack, "I_FOLDERDEPTH")
                     local hidden = (r.GetMediaTrackInfo_Value(rTrack, "B_SHOWINTCP") == 0)
                     local color = r.GetTrackColor(rTrack)
-                    local _, rawStemMatrix = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. scr.context_name ..
+                    local _, rawStemMatrix = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. Scr.context_name ..
                         '_STEM_MATRIX', "", false)
                     local stemMatrix = unpickle(rawStemMatrix)
                     local trackInfo = {
@@ -826,7 +826,7 @@ if OD_PrereqsOK({
         end
 
         if not factory then
-            local loaded_ext_settings = table.load(scr.dfsetfile) or {} -- unpickle(r.GetExtState(scr.context_name, 'DEFAULT SETTINGS') or '')
+            local loaded_ext_settings = table.load(Scr.dfsetfile) or {} -- unpickle(r.GetExtState(scr.context_name, 'DEFAULT SETTINGS') or '')
             -- merge default settings from extstates with script defaults
             for k, v in pairs(loaded_ext_settings or {}) do
                 if not (k == 'render_setting_groups') then
@@ -851,7 +851,7 @@ if OD_PrereqsOK({
     local function loadSettings()
         settings = getDefaultSettings()
         -- take merged updated default settings and merge project specific settings into them
-        local loaded_project_settings = unpickle(OD_LoadLongProjExtKey(scr.context_name, 'PROJECT SETTINGS'))
+        local loaded_project_settings = unpickle(OD_LoadLongProjExtKey(Scr.context_name, 'PROJECT SETTINGS'))
         settings.project = OD_DeepCopy(settings.default)
         for k, v in pairs(loaded_project_settings or {}) do
             if not (k == 'render_setting_groups') then
@@ -867,8 +867,8 @@ if OD_PrereqsOK({
     end
 
     local function saveSettings()
-        table.save(settings.default, scr.dfsetfile)
-        OD_SaveLongProjExtState(scr.context_name, 'PROJECT SETTINGS', pickle(settings.project))
+        table.save(settings.default, Scr.dfsetfile)
+        OD_SaveLongProjExtState(Scr.context_name, 'PROJECT SETTINGS', pickle(settings.project))
         r.MarkProjectDirty(0)
     end
 
@@ -901,9 +901,9 @@ if OD_PrereqsOK({
 
     local function createAction(actionName, cmd)
         local snActionName = sanitizeFilename(actionName)
-        local filename = ('%s - %s'):format(scr.no_ext, snActionName)
+        local filename = ('%s - %s'):format(Scr.no_ext, snActionName)
 
-        local outputFn = string.format('%s/%s.lua', scr.dir, filename)
+        local outputFn = string.format('%s/%s.lua', Scr.dir, filename)
         local code = ([[
 local r = reaper
 local context = '$context'
@@ -932,11 +932,11 @@ if cmdId then
 else 
   r.MB(script_name..' not installed', script_name,0) 
 end]]):gsub('$(%w+)', {
-            context = scr.context_name,
-            scriptname = scr.basename,
+            context = Scr.context_name,
+            scriptname = Scr.basename,
             cmd = cmd
         })
-        code = ('-- This file was created by %s on %s\n\n'):format(scr.name, os.date('%c')) .. code
+        code = ('-- This file was created by %s on %s\n\n'):format(Scr.name, os.date('%c')) .. code
         local file = assert(io.open(outputFn, 'w'))
         file:write(code)
         file:close()
@@ -1435,9 +1435,9 @@ end]]):gsub('$(%w+)', {
             local msg = (ceMsg and ceMsg or '') .. (eMsg and (ceMsg and '\n\n' or '') .. eMsg or '') ..
                             (skpMsg and ((ceMsg or eMsg) and '\n\n' or '') .. skpMsg or '')
             local error_message_closed = false
-            r.ImGui_OpenPopup(gui.ctx, scr.name .. '##error')
+            r.ImGui_OpenPopup(gui.ctx, Scr.name .. '##error')
             while not error_message_closed do
-                local ok = app.drawPopup(gui.ctx, 'msg', scr.name .. '##error', {
+                local ok = app.drawPopup(gui.ctx, 'msg', Scr.name .. '##error', {
                     msg = msg,
                     showCancelButton = true
                 })
@@ -1484,7 +1484,7 @@ end]]):gsub('$(%w+)', {
                                 app.render_count)
                             -- for some reason selecting in windows requires region manager window to remain open for some time
                             -- (this is a workaround until proper api support for selecting regions exists)
-                            if os_is.win then
+                            if OS_is.win then
                                 SelectMarkers(rsg.selected_markers, false)
                                 local t = os.clock()
                                 while (os.clock() - t < 0.5) do
@@ -1503,7 +1503,7 @@ end]]):gsub('$(%w+)', {
                                 app.render_count)
                             -- for some reason selecting in windows requires region manager window to remain open for some time
                             -- (this is a workaround until proper api support for selecting regions exists)
-                            if os_is.win then
+                            if OS_is.win then
                                 SelectRegions(rsg.selected_regions, false)
                                 local t = os.clock()
                                 while (os.clock() - t < 0.5) do
@@ -1567,13 +1567,13 @@ end]]):gsub('$(%w+)', {
                             end
                             local moreStemsInLine = idx < app.render_count
                             if moreStemsInLine then
-                                r.ImGui_OpenPopup(gui.ctx, scr.name .. '##wait')
+                                r.ImGui_OpenPopup(gui.ctx, Scr.name .. '##wait')
                             end
                             local t = os.clock()
                             while not app.render_cancelled and (os.clock() - t < settings.project.wait_time + 1) and
                                 moreStemsInLine do
                                 local wait_left = math.ceil(settings.project.wait_time - (os.clock() - t))
-                                if app.drawPopup(gui.ctx, 'msg', scr.name .. '##wait', {
+                                if app.drawPopup(gui.ctx, 'msg', Scr.name .. '##wait', {
                                     closeKey = r.ImGui_Key_Escape(),
                                     okButtonLabel = "Stop rendering",
                                     msg = ('Waiting for %d more second%s...'):format(wait_left,
@@ -1606,7 +1606,7 @@ end]]):gsub('$(%w+)', {
             if save_marker_selection and r.APIExists('JS_Localize') then
                 OpenAndGetRegionManagerWindow()
                 coroutine.yield('Restoring marker/region selection', 1, 1)
-                if os_is.win then
+                if OS_is.win then
                     -- for some reason selecting in windows requires region manager window to remain open for some time
                     -- (this is a workaround until proper api support for selecting regions exists)
                     SelectRegionsOrMarkers(saved_markeregion_selection, false)
@@ -1631,10 +1631,10 @@ end]]):gsub('$(%w+)', {
     end
 
     local function checkExternalCommand()
-        local raw_cmd = r.GetExtState(scr.context_name, 'EXTERNAL COMMAND')
+        local raw_cmd = r.GetExtState(Scr.context_name, 'EXTERNAL COMMAND')
         local cmd, arg = raw_cmd:match('^([%w_]+)%s*(.*)$')
         if cmd ~= '' and cmd ~= nil then
-            r.SetExtState(scr.context_name, 'EXTERNAL COMMAND', '', false)
+            r.SetExtState(Scr.context_name, 'EXTERNAL COMMAND', '', false)
             if cmd == 'sync' then
                 if arg then
                     stemName = db:findSimilarStem(arg, true)
@@ -2466,7 +2466,7 @@ end]]):gsub('$(%w+)', {
                         r.ImGui_SetNextItemWidth(ctx, widgetWidth)
                         if r.ImGui_BeginListBox(ctx, '##' .. text, 0, r.ImGui_GetTextLineHeightWithSpacing(ctx) * 4) then
                             for i, action in ipairs(retval_a) do
-                                local rv, name = OD_GetReaperActionCommandId(action)
+                                local rv, name = OD_GetReaperActionNameOrCommandId(action)
                                 if r.ImGui_Selectable(ctx, name .. '##' .. text .. i, gui.stWnd[cP][text] == i) then
                                     if gui.stWnd[cP][text] == i then
                                         gui.stWnd[cP][text] = nil
@@ -2598,7 +2598,7 @@ end]]):gsub('$(%w+)', {
             r.ImGui_Separator(ctx)
 
             gui.stWnd[cP].tS.renderaction = setting('combo', 'Render action',
-                ("What should the default rendering mode be."):format(scr.name), gui.stWnd[cP].tS.renderaction, {
+                ("What should the default rendering mode be."):format(Scr.name), gui.stWnd[cP].tS.renderaction, {
                     list = renderaction_list
                 })
             if gui.stWnd[cP].tS.renderaction == RENDERACTION_RENDER then
@@ -2800,7 +2800,7 @@ end]]):gsub('$(%w+)', {
                 r.PromptForAction(-1, 0, 0)
                 r.ImGui_CloseCurrentPopup(ctx)
             end
-            app.setHoveredHint('settings', ('Default settings for new projects where %s is used.'):format(scr.name))
+            app.setHoveredHint('settings', ('Default settings for new projects where %s is used.'):format(Scr.name))
 
             r.ImGui_SameLine(ctx)
             r.ImGui_SetCursorPosX(ctx,
@@ -2843,7 +2843,7 @@ end]]):gsub('$(%w+)', {
         local statuses = {}
         for k, v in pairs(actionList) do
             for i in ipairs(v.actions) do
-                local action_name = 'Custom: ' .. scr.no_ext .. ' - ' .. actionList[k].actions[i].title .. '.lua'
+                local action_name = 'Custom: ' .. Scr.no_ext .. ' - ' .. actionList[k].actions[i].title .. '.lua'
                 actionList[k].actions[i].exists = (content:find(OD_EscapePattern(action_name)) ~= nil)
             end
         end
@@ -2851,9 +2851,9 @@ end]]):gsub('$(%w+)', {
 
     function app.drawLoadWindow()
         local ctx = gui.ctx
-        r.ImGui_OpenPopup(gui.ctx, scr.name .. '##loadStems')
+        r.ImGui_OpenPopup(gui.ctx, Scr.name .. '##loadStems')
         local msg = "Load settings and stems, removing current stems\nor load settings only and keep current stems?"
-        local ok = app.drawPopup(gui.ctx, 'msg', scr.name .. '##loadStems', {
+        local ok = app.drawPopup(gui.ctx, 'msg', Scr.name .. '##loadStems', {
             msg = msg,
             showCancelButton = true,
             okButtonLabel = "Settings + Stems",
@@ -3162,7 +3162,7 @@ I'd like to personally thank X-Raym and thommazk for their great help and advice
 
 It is dependent on cfillion's work both on the incredible ReaImgui library, and his script 'cfilion_Apply render preset'.
 ]]):gsub('$([%w_]+)', {
-                script = scr.name,
+                script = Scr.name,
                 default_solo_state = STATE_DESCRIPTIONS[db.prefSoloIP and STATES.SOLO_IN_PLACE or
                     STATES.SOLO_IGNORE_ROUTING][1],
                 other_solo_state = STATE_DESCRIPTIONS[db.prefSoloIP and STATES.SOLO_IGNORE_ROUTING or
@@ -3211,18 +3211,18 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
             gui:pushColors(gui.st.col.render_setting_groups[3])
             if r.ImGui_SmallButton(ctx, 'donations') then
                 if r.APIExists('CF_ShellExecute') then
-                    r.CF_ShellExecute(scr.donation)
+                    r.CF_ShellExecute(Scr.donation)
                 else
                     local command
-                    if os_is.mac then
+                    if OS_is.mac then
                         command = 'open "%s"'
-                    elseif os_is.win then
+                    elseif OS_is.win then
                         command = 'start "URL" /B "%s"'
-                    elseif os_is.lin then
+                    elseif OS_is.lin then
                         command = 'xdg-open "%s"'
                     end
                     if command then
-                        os.execute(command:format(scr.donation))
+                        os.execute(command:format(Scr.donation))
                     end
                 end
             end
@@ -3241,7 +3241,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
 
     function msg(msg, title, ctx)
         local ctx = ctx or gui.ctx
-        local title = title or scr.name
+        local title = title or Scr.name
         r.ImGui_OpenPopup(gui.ctx, title .. "##msg")
         return app.drawPopup(gui.ctx, 'msg', title .. "##msg", {
             msg = msg
@@ -3321,7 +3321,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
         r.ImGui_SetNextWindowSize(ctx, 700,
             math.min(1000, select(2, r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx)))), r.ImGui_Cond_Appearing())
         r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
-        local visible, open = r.ImGui_Begin(ctx, scr.name .. ' v' .. scr.version .. " by ".. scr.developer .."##mainWindow", true,
+        local visible, open = r.ImGui_Begin(ctx, Scr.name .. ' v' .. Scr.version .. " by ".. Scr.developer .."##mainWindow", true,
             r.ImGui_WindowFlags_MenuBar())
         gui.mainWindow = {
             pos = {r.ImGui_GetWindowPos(ctx)},
@@ -3410,14 +3410,14 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
     end
 
     function app.loop()
-        r.DeleteExtState(scr.context_name, 'defer', false)
+        r.DeleteExtState(Scr.context_name, 'defer', false)
         checkPerform()
         r.ImGui_PushFont(gui.ctx, gui.st.fonts.default)
         app.open = app.drawMainWindow(open)
         r.ImGui_PopFont(gui.ctx)
         checkExternalCommand()
         if app.open then
-            r.SetExtState(scr.context_name, 'defer', '1', false)
+            r.SetExtState(Scr.context_name, 'defer', '1', false)
             r.defer(app.loop)
         else
             r.ImGui_DestroyContext(gui.ctx)
