@@ -11,6 +11,7 @@ STATUS = {
     SCANNED = 1,
     MINIMIZING = 9,
     MINIMIZED = 10,
+    NO_NEED_TO_MINIMIZE = 11,
     MOVING = 50,
     COPYING = 51,
     DELETING = 52,
@@ -22,10 +23,11 @@ STATUS = {
 }
 
 STATUS_DESCRIPTIONS = {
-    [STATUS.IGNORE] = 'Ignore',
+    [STATUS.IGNORE] = 'Not Minimizing',
     [STATUS.SCANNED] = 'Scanned',
     [STATUS.MINIMIZING] = 'Minimizing',
     [STATUS.MINIMIZED] = 'Minimized',
+    [STATUS.NO_NEED_TO_MINIMIZE] = 'Nothing to minimize',
     [STATUS.MOVING] = 'Moving',
     [STATUS.COPYING] = 'Copying',
     [STATUS.DELETING] = 'Deleting Original',
@@ -121,7 +123,7 @@ COLLECT = {
 COLLECT_DESCRIPTIONS = {
     [COLLECT.EXTERNAL] = {
         order = 0,
-        label = "External unminimized audio files",
+        label = "Unminimized audio files",
         hint = 'Copy all external audio files which were have not been minimized to a subfolder within the project\'s main folder',
         textHint = 'Project media folder',
         textHelp = 'Folder to collect files into (eg. Audio Files). Leave empty for the project\'s media folder.',
@@ -171,9 +173,9 @@ DELETE_METHOD = {
 }
 
 DELETE_METHOD_DESCRIPTIONS = {
-    [DELETE_METHOD.MOVE_TO_TRASH] = 'Move originals to trash',
-    [DELETE_METHOD.DELETE_FROM_DISK] = 'Delete originals immediately',
-    [DELETE_METHOD.KEEP_IN_FOLDER] = 'Keep originals'
+    [DELETE_METHOD.MOVE_TO_TRASH] = 'Move to trash',
+    [DELETE_METHOD.DELETE_FROM_DISK] = 'Delete immediately',
+    [DELETE_METHOD.KEEP_IN_FOLDER] = 'Do not delete'
 }
 
 for i = 0, #DELETE_METHOD_DESCRIPTIONS do

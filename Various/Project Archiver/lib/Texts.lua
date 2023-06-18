@@ -28,6 +28,18 @@ This is especially risky if your media folder is your project's root folder,
 as this will delete any media file which exists in this folder, which may be
 renders etc.]]
 
+TEXTS.ERROR_KEEP_IN_FOLDER = 'A deletion method must be selected if "Clean Media Folder" is checked'
+TEXTS.ERROR_NO_BACKUP_DESTINATION = 'Must select backup destination folder'
+TEXTS.ERROR_BACKUP_DESTINATION_MISSING = 'Backup destination folder does not exist'
+TEXTS.ERROR_BACKUP_DESTINATION_MUST_BE_EMPTY = 'Backup destination folder must be empty'
+TEXTS.ERROR_NOTHING_TO_DO = 
+[[            ¯\_('')_/¯
+    
+      Nothing for me to do.
+
+Please give me at least one task.
+]]
+
 TEXTS.WARNINGS_EXIST =
 [[There are several warnings (those yellow icons with the !s).
 You can hover over them to see each one.

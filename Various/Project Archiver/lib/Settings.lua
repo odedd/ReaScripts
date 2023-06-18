@@ -48,16 +48,34 @@ end
 
 function CheckSettings()
     local errors = {}
-    if r.GetPlayState() & 4 == 4 then
-        table.insert(errors, "Reaper cannot be recording while minimizing")
+    if not( Settings.backup or Settings.keepActiveTakesOnly or Settings.minimize or Settings.cleanMediaFolder or (Settings.collect ~= 0)) then
+        table.insert(errors, TEXTS.ERROR_NOTHING_TO_DO)
+        return false, errors
+    end
+    local projectName = r.GetProjectName( 0, '' )
+    if projectName  == '' then
+        table.insert(errors, 'Project must be saved')
+        return false, errors
+    end
+    if r.CountMediaItems(0) == 0 then
+        table.insert(errors, 'Project is empty')
+        return false, errors
+    end
+    if OD_BfCheck(r.GetPlayState(),1) then
+        table.insert(errors, "Reaper must be stopped while the script is running")
+        return false, errors
     end
     if Settings.backup then
         if Settings.backupDestination == nil then
-            table.insert(errors, 'Must select destination folder')
+            table.insert(errors, TEXTS.ERROR_NO_BACKUP_DESTINATION)
         elseif not OD_FolderExists(Settings.backupDestination) then
-            table.insert(errors, 'Destination folder does not exist')
+            table.insert(errors, TEXTS.ERROR_BACKUP_DESTINATION_MISSING)
         elseif not OD_IsFolderEmpty(Settings.backupDestination) then
-            table.insert(errors, 'Destination folder must be empty')
+            table.insert(errors, TEXTS.ERROR_BACKUP_DESTINATION_MUST_BE_EMPTY)
+        end
+    else
+        if Settings.cleanMediaFolder and Settings.deleteMethod == DELETE_METHOD.KEEP_IN_FOLDER then
+            table.insert(errors, TEXTS.ERROR_KEEP_IN_FOLDER)
         end
     end
     return #errors == 0, errors

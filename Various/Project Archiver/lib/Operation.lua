@@ -265,7 +265,7 @@ function GetMediaFiles()
                 App.mediaFiles[filename].status_info = 'Has sections'
                 App.mediaFiles[filename].ignore = true
             end
-            if App.mediaFiles[filename].ignore then
+            if App.mediaFiles[filename].ignore or not Settings.minimize then
                 App.mediaFiles[filename].newFileSize = App.mediaFiles[filename].sourceFileSize
                 App.mediaFiles[filename].status = STATUS.IGNORE
                 App.mediaFiles[filename].status_info = sourceType
@@ -319,11 +319,6 @@ function GetMediaFiles()
             end
         end
     end
-
-    -- ? check if commenting that out made any difference. Pretty sure it's just from back when I was copy/pasting
-    -- turn off ripple editing
-    -- r.Main_OnCommand(40310, 0) -- set ripple editing per track
-    -- r.Main_OnCommand(41990, 0) -- toggle ripple editing
 
     -- * init
     App.mediaFiles = {}
@@ -846,15 +841,21 @@ function MinimizeAndApplyMedia()
             local track = createTrackForFilename(filename)
             local splitItems = addItemsToTrackAndWrapAround(track, fileInfo)
             removeSpaces(track, filename)
-            saveNewPositions(fileInfo)
-            trimItems(fileInfo, splitItems)
-            local gluedItem = glueItems(track)
-            if gluedItem then
-                applyGluedSourceToOriginal(filename, gluedItem)
+            if fileInfo.keep_length ~= 1 then
+                saveNewPositions(fileInfo)
+                trimItems(fileInfo, splitItems)
+                local gluedItem = glueItems(track)
+                if gluedItem then
+                    applyGluedSourceToOriginal(filename, gluedItem)
+                end
+                App.mediaFiles[filename].status = STATUS.MINIMIZED
+            else
+                fileInfo.status = STATUS.NO_NEED_TO_MINIMIZE
+                fileInfo.ignore = true
+                fileInfo.newFileSize = fileInfo.sourceFileSize
             end
             r.DeleteTrack(track)
 
-            App.mediaFiles[filename].status = STATUS.MINIMIZED
             -- coroutine.yield('Minimizing Files')
         end
     end
@@ -919,14 +920,10 @@ end
 function Cancel(msg)
     if msg then
         App.msg(msg, 'Operation Cancelled')
-        if coroutine.isyieldable(App.coPerform) then
-            coroutine.yield('Cancelling', 0, 1)
-            coroutine.yield('Cancelling', 0, 1)
-        end
     end
     -- if app.coPerform then coroutine.close(app.coPerform) end
     App.coPerform = nil
-    Revert(true)
+    App.revertCancelOnNextFrame = true -- to allow for the message to appear before loading the project
 end
 
 function Prepare()
@@ -1221,12 +1218,23 @@ function CalculateSavings()
         App.totalSpace.newSize = App.totalSpace.newSize + fileInfo.newFileSize
     end
 
+
     App.totalSpace.saved = App.totalSpace.totalOriginalSize - App.totalSpace.newSize
     App.totalSpace.minimized = App.totalSpace.usedFilesSizeBeforeMinimization - App.totalSpace.newSize
     if Settings.backup then App.totalSpace.notMoved = App.totalSpace.saved - App.totalSpace.minimized end
-    reaper.ShowConsoleMsg(('------------------------------\ntotal original size: %s\ntotal minimized:     %s\ntotal deleted:       %s\ntotal not moved:     %s\nnew size:            %s\n------------------------------\ntotal saved:         %s\n------------------------------\n\n')
-        :format(OD_GetFormattedFileSize(App.totalSpace.totalOriginalSize),
-            OD_GetFormattedFileSize(App.totalSpace.minimized), OD_GetFormattedFileSize(App.totalSpace.deleted), 
-            OD_GetFormattedFileSize(App.totalSpace.notMoved),
-            OD_GetFormattedFileSize(App.totalSpace.newSize), OD_GetFormattedFileSize(App.totalSpace.saved)))
+    
+    local msg =
+        ('Original size:                %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.totalOriginalSize)) ..
+        (Settings.minimize and
+            ('Minimized:                    %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.minimized).. (App.totalSpace.minimized<0 and '*' or '')) or '') ..
+        (Settings.cleanMediaFolder and
+            ('Deleted:                      %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.deleted)) or '') ..
+        (Settings.backup and
+            ('Remained in orignal location: %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.notMoved)) or '') ..
+        ('New size:                     %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.newSize)) ..
+        '\n' ..
+        ('Total savings:                %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.saved))..
+        ((App.totalSpace.minimized<0) and ('\n\n* Minimzed size is negative since\ncompressed files were glued together\nas raw PCM files.\n\nTo avoid that, you may select\n"%s" under\n"File types to minimize"'):format(MINIMIZE_SOURCE_TYPES_DESCRIPTIONS[MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_AND_LOSSLESS]) or '')
+
+    App.msg(msg, 'Operation complete')
 end

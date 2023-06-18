@@ -185,11 +185,12 @@ function OD_GetFormattedFileSize(fileSize)
     end
     local suffixes = {"B", "KB", "MB", "GB", "TB"}
     local i = 1
-
-    while fileSize >= 1000 and i < #suffixes do
-        fileSize = fileSize / 1000
+    local negative = fileSize < 0
+    while math.abs(fileSize) >= 1000 and i < #suffixes do
+        fileSize = math.abs(fileSize) / 1000
         i = i + 1
     end
+    if negative and fileSize > 0 then fileSize = -1 * fileSize end
 
     return string.format("%.2f %s", fileSize, suffixes[i])
 end

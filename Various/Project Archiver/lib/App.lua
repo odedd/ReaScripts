@@ -171,6 +171,10 @@ end
 App.msg = function(msg, title)
     App.popup.msg = App.popup.msg or msg
     App.popup.title = App.popup.title or title or Scr.name
+    if coroutine.isyieldable(App.coPerform) then
+        coroutine.yield('', 0, 1)
+        coroutine.yield('', 0, 1)
+    end
 end
 
 App.drawMsg = function()

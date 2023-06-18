@@ -44,6 +44,7 @@ Gui.st.col.status = {
     [STATUS.SCANNED] = nil,
     [STATUS.MINIMIZING] = 0x703d19ff,
     [STATUS.MINIMIZED] = 0xb06027ff,
+    [STATUS.NO_NEED_TO_MINIMIZE] = 0xb06027ff,
     [STATUS.MOVING] = 0xa67e23ff,
     [STATUS.COPYING] = 0xa67e23ff,
     [STATUS.DELETING] = 0xa67e23ff,
@@ -85,7 +86,7 @@ local function doPerform()
                 -- copy to a new project path (move glued files, copy others)
                 CreateBackupProject()
                 -- should happen here so that revert happens afterward
-            CalculateSavings()
+                CalculateSavings()
                 -- revert back to temporary copy of project
                 Revert()
             else
@@ -116,6 +117,13 @@ local function doPerform()
 end
 
 local function checkPerform()
+    if App.revertCancelOnNextFrame == true then
+        App.revertCancelOnNextFrame = 2 --wait one more frame for message box drawing
+    elseif
+        App.revertCancelOnNextFrame == 2 then
+        Revert(true)
+        App.revertCancelOnNextFrame = nil
+    end
     if App.coPerform then
         if coroutine.status(App.coPerform) == "suspended" then
             local retval
@@ -240,7 +248,7 @@ function App.drawWarning()
     r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
     r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_WindowTitleAlign(), 0.5, 0.5)
     if r.ImGui_BeginPopupModal(ctx, 'Are you sure?', nil,
-            r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
+            r.ImGui_WindowFlags_NoResize()) then
         local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
         r.ImGui_PushItemWidth(ctx, width)
 
@@ -347,7 +355,7 @@ function App.drawBottom(ctx, bottom_lines)
 
             local ok, errors = CheckSettings()
             if not ok then
-                App.msg(table.concat(errors, '\n------------\n'))
+                App.msg(table.concat(errors, '\n\n'))
             else
                 if App.warningCount > 0 then
                     r.ImGui_OpenPopup(ctx, 'Are you sure?')
@@ -378,7 +386,7 @@ function App.drawMainWindow()
     App.warningCount = 0
 
     -- r.ShowConsoleMsg(viewPortWidth)
-    r.ImGui_SetNextWindowSize(ctx, math.min(1125, max_w), math.min(800, max_h), r.ImGui_Cond_Appearing())
+    r.ImGui_SetNextWindowSize(ctx, math.min(1197, max_w), math.min(800, max_h), r.ImGui_Cond_Appearing())
     r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
     local visible, open = r.ImGui_Begin(ctx, Scr.name .. ' v' .. Scr.version .. "##mainWindow", not App.coPerform,
         r.ImGui_WindowFlags_NoDocking() | r.ImGui_WindowFlags_NoCollapse())
@@ -409,7 +417,7 @@ function App.drawMainWindow()
             "Keep only selected takes", Settings.keepActiveTakesOnly)
 
         if Settings.minimize and not Settings.backup then
-            Gui.settingCaution(TEXTS.CAUTION_MINIMIZE)
+            Gui.settingIcon(Gui.icons.caution, TEXTS.CAUTION_MINIMIZE)
             App.warningCount = App.warningCount + 1
         else
             r.ImGui_Bullet(ctx)
@@ -444,13 +452,13 @@ function App.drawMainWindow()
         r.ImGui_Unindent(ctx)
         if Settings.backup or Settings.collect ~= 0 then
             if Settings.collectOperation == COLLECT_OPERATION.MOVE then
-                Gui.settingCaution(TEXTS.CAUTION_COLLECT_MOVE)
+                Gui.settingIcon(Gui.icons.caution, TEXTS.CAUTION_COLLECT_MOVE)
                 App.warningCount = App.warningCount + 1
             else
                 r.ImGui_Bullet(ctx)
             end
 
-            Settings.collectOperation = Gui.setting('combo', 'Collect Files into project folder',
+            Settings.collectOperation = Gui.setting('combo', 'Collect external files into proj. folder',
                 "When collecting external files, should they be copied or moved from their original location",
                 Settings.collectOperation, {
                     list = COLLECT_OPERATIONS_LIST
@@ -495,7 +503,7 @@ function App.drawMainWindow()
         r.ImGui_Unindent(ctx)
         if not Settings.backup then
             if Settings.cleanMediaFolder then
-                Gui.settingCaution(TEXTS.CAUTION_CLEAN_MEDIA_FOLDER)
+                Gui.settingIcon(Gui.icons.caution, TEXTS.CAUTION_CLEAN_MEDIA_FOLDER)
                 App.warningCount = App.warningCount + 1
             else
                 r.ImGui_Bullet(ctx)
@@ -506,8 +514,11 @@ function App.drawMainWindow()
             Gui.settingSpacing()
         end
         if (Settings.minimize or Settings.cleanMediaFolder) and not Settings.backup then
-            if Settings.deleteMethod == DELETE_METHOD.DELETE_FROM_DISK then
-                Gui.settingCaution(TEXTS.CAUTION_DELETE)
+            if Settings.cleanMediaFolder and Settings.deleteMethod == DELETE_METHOD.KEEP_IN_FOLDER then
+                Gui.settingIcon(Gui.icons.error, TEXTS.ERROR_KEEP_IN_FOLDER)
+                App.warningCount = App.warningCount + 1
+            elseif Settings.deleteMethod == DELETE_METHOD.DELETE_FROM_DISK then
+                Gui.settingIcon(Gui.icons.caution, TEXTS.CAUTION_DELETE)
                 App.warningCount = App.warningCount + 1
             else
                 r.ImGui_Bullet(ctx)
@@ -540,10 +551,8 @@ function App.loop()
     App.open = App.drawMainWindow()
     r.ImGui_PopFont(Gui.ctx)
     -- checkExternalCommand()
-    if App.open then
+    if App.coPerform or App.popup.msg or (App.open and not reaper.ImGui_IsKeyPressed(Gui.ctx, reaper.ImGui_Key_Escape())) then
         r.defer(App.loop)
-    else
-        r.ImGui_DestroyContext(Gui.ctx)
     end
 end
 
@@ -568,18 +577,7 @@ end
 
 -- TODO export current settings as action
 -- TODO handle subprojects (collect? render?)
--- TODO show total savings and close script upon completion
--- TODO handle unsaved project
--- TODO handle empty project
 -- TODO handle switching projects
 -- TODO (later): figure out section
--- TODO check for "nothing to do" if no relevant setting was checked
--- TODO don't minimize if file is 100% used
 -- ? check handling of missing files
--- ? test (updated) cleaning media folder
 -- ? check project media folder at project root
-
--- check project has a folder:
---     local proj_name = r.GetProjectName( 0, '' )
---    if proj_name == '' then MB('Project has not any parent folder.', 'Collect RS5k samples into project folder', 0) return end
--- local spls_path = r.GetProjectPathEx( 0, '' )..'/RS5K samples/'
