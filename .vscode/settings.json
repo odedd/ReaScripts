@@ -4,6 +4,7 @@
         "reaper",
         "r",
         "pickle",
-        "unpickle"
+        "unpickle",
+        "OD_Log"
     ]
 }

@@ -26,7 +26,8 @@ dofile(p .. 'lib/App.lua')
 dofile(p .. 'lib/Texts.lua')
 dofile(p .. 'lib/Gui.lua')
 
-App.debugLevel = DEBUG_LEVEL.INFO
+Log.level = LOG_LEVEL.NONE
+Log.output = LOG_OUTPUT.FILE
 
 Gui.tables = {
     horizontal = {
@@ -360,6 +361,7 @@ function App.drawBottom(ctx, bottom_lines)
         if r.ImGui_Button(ctx, Settings.backup and 'Create Backup' or 'Minimize Current Project',
                 r.ImGui_GetContentRegionAvail(ctx)) then
             -- don't save backupDestination into saved preferences, but save all other settings
+            OD_LogTable(LOG_LEVEL.DEBUG,'Settings', Settings, 1)
             local tmpDest = Settings.backupDestination
             Settings.backupDestination = nil
             SaveSettings()

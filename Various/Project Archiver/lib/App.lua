@@ -1,6 +1,6 @@
 -- @noindex
 App = {
-    debugLevel = DEBUG_LEVEL.NONE,
+    logLevel = LOG_LEVEL.NONE,
     open = true,
     coPerform = nil,
     mediaFiles = {},
@@ -21,6 +21,8 @@ App = {
 }
 function App.checkProjectChange()
     App.current_project = r.GetProjectStateChangeCount(0) -- if project changed, force reset
+    local projPath, projFileName = OD_GetProjectPaths()
+    Log.filename = projPath .. Scr.name..'_'..projFileName .. '.log'
     if App.current_project ~= App.previous_project then
         App.previous_project = App.current_project
         App.reset()
@@ -71,8 +73,8 @@ end
 App.drawPopup = function(popupType, title, data)
     local ctx = Gui.ctx
     local data = data or {}
-    local center = {Gui.mainWindow.pos[1] + Gui.mainWindow.size[1] / 2,
-                    Gui.mainWindow.pos[2] + Gui.mainWindow.size[2] / 2} -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
+    local center = { Gui.mainWindow.pos[1] + Gui.mainWindow.size[1] / 2,
+        Gui.mainWindow.pos[2] + Gui.mainWindow.size[2] / 2 }            -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
     if popupType == 'singleInput' then
         local okPressed = nil
         local initVal = data.initVal or ''
@@ -146,12 +148,12 @@ App.drawPopup = function(popupType, title, data)
                 r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
 
             local buttonTextWidth = r.ImGui_CalcTextSize(ctx, okButtonLabel) +
-                                        r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
+                r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
 
             if showCancelButton then
                 buttonTextWidth = buttonTextWidth + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) +
-                                      r.ImGui_CalcTextSize(ctx, cancelButtonLabel) +
-                                      r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
+                    r.ImGui_CalcTextSize(ctx, cancelButtonLabel) +
+                    r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
             end
             r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
