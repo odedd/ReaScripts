@@ -1,8 +1,8 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.5.5
+-- @version 0.5.6
 -- @donation https://paypal.me/odedda
--- @link Forum Thread https://forum.cockos.com/showthread.php?p=2686126
+-- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
 -- @provides
 --   [nomain] ../../Resources/Common/* > Resources/Common/
