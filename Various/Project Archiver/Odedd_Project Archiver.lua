@@ -26,6 +26,8 @@ dofile(p .. 'lib/App.lua')
 dofile(p .. 'lib/Texts.lua')
 dofile(p .. 'lib/Gui.lua')
 
+App.debugLevel = DEBUG_LEVEL.INFO
+
 Gui.tables = {
     horizontal = {
         flags1 = r.ImGui_TableFlags_NoSavedSettings() | r.ImGui_TableFlags_ScrollX() | r.ImGui_TableFlags_ScrollY() |
@@ -127,10 +129,10 @@ local function checkPerform()
             retval, App.perform.status = coroutine.resume(App.coPerform)
             if not retval then
                 if App.perform.status:sub(-17) == 'cancelled by glue' then
-                    Cancel(T.CANCELLED .. T.CANCEL_RELOAD)
+                    Cancel(T.CANCELLED)
                 else
-                    r.ShowConsoleMsg(App.perform.status)
-                    Cancel(('Error occured:\n%s' .. T.CANCEL_RELOAD):format(App.perform.status))
+                    -- r.ShowConsoleMsg(App.perform.status)
+                    Cancel(('Error occured:\n%s'):format(App.perform.status))
                 end
             end
         elseif coroutine.status(App.coPerform) == "dead" then
@@ -384,7 +386,7 @@ function App.drawBottom(ctx, bottom_lines)
         r.ImGui_SameLine(ctx)
         r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Button(), 0x444444ff)
         if r.ImGui_Button(ctx, 'Cancel', r.ImGui_GetContentRegionAvail(ctx)) then
-            Cancel(T.CANCELLED .. T.CANCEL_RELOAD)
+            Cancel(T.CANCELLED)
         end
         r.ImGui_PopStyleColor(ctx)
     end

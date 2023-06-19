@@ -1,5 +1,6 @@
 -- @noindex
 App = {
+    debugLevel = DEBUG_LEVEL.NONE,
     open = true,
     coPerform = nil,
     mediaFiles = {},

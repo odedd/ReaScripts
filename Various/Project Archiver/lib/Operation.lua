@@ -56,10 +56,7 @@ function GetMediaFiles()
         end
         local savedTake = r.GetActiveTake(item)
         r.SetActiveTake(take)
-
         -- restore
-        local track = r.GetMediaItem_Track(item)
-
         -- calculate source positions with regards to stretch markers, by creating "faux" take markers at take's start and end
         local itemLength = r.GetMediaItemInfo_Value(item, "D_LENGTH")
 
@@ -147,6 +144,7 @@ function GetMediaFiles()
         local relOrAbsFile, relOrAbsPath, pathIsRelative = OD_GetRelativeOrAbsoluteFile(filename,
             App.projPath)
         local sourceFileSize = OD_GetFileSize(filename)
+        OD_LogInfo('Adding source '..(filename or ''))
         if fileExists == nil then fileExists = OD_FileExists(filename) end
         App.mediaFiles[filename] = {
             order = App.mediaFileCount,
@@ -939,7 +937,7 @@ end
 
 function Cancel(msg)
     if msg then
-        App.msg(msg, 'Operation Cancelled')
+        App.msg(msg .. T.CANCEL_RELOAD, 'Operation Cancelled')
     end
     -- if app.coPerform then coroutine.close(app.coPerform) end
     App.coPerform = nil
@@ -1118,6 +1116,7 @@ function DeleteOriginals()
 
         -- if on windows, trash all files at once to avoid powershelling for each file seperately
         if #filesToTrashWin > 0 then
+            coroutine.yield(stat..' (might take some time...)')
             r.reduce_open_files(2)                             -- windows won't delete/move files that are in use
             OD_MoveToTrash(filesToTrashWin)
             for filename, fileInfo in pairs(App.mediaFiles) do -- verify which files were and were not removed
@@ -1174,9 +1173,9 @@ function CleanMediaFolder()
             end
         end
 
-        coroutine.yield(stat)
         -- if on windows, trash all files at once to avoid powershelling for each file seperately
         if #filesToTrashWin > 0 then
+            coroutine.yield(stat..' (might take some time...)')
             r.reduce_open_files(2)                                               -- windows won't delete/move files that are in use
             OD_MoveToTrash(filesToTrashWin)
             for i, file in ipairs(App.ununsedFilesInRecordingFolder) do -- verify which files were and were not removed

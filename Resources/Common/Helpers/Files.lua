@@ -99,6 +99,7 @@ end
 
 -- based on a function by amagalma. thanks!
 function OD_CopyFile(old_path, new_path)
+    local logmsg = ('Copying %s -> %s'):format(old_path, new_path)
     local old_file = io.open(old_path, "rb")
     local new_file = io.open(new_path, "wb")
     local old_file_sz, new_file_sz = 0, 0
@@ -109,6 +110,7 @@ function OD_CopyFile(old_path, new_path)
         if new_file then
             new_file:close()
         end
+        OD_LogInfo(logmsg,false,1)
         return false
     end
     while true do
@@ -122,7 +124,8 @@ function OD_CopyFile(old_path, new_path)
     old_file:close()
     new_file_sz = new_file:seek("end")
     new_file:close()
-    return new_file_sz == old_file_sz
+    return OD_LogInfo(logmsg,new_file_sz == old_file_sz,1)
+    -- return new_file_sz == old_file_sz
 end
 
 function OD_MoveFile(old_path, new_path)
