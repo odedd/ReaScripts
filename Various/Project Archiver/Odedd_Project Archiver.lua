@@ -4,10 +4,8 @@
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
---   [nomain] ../../Resources/Common/**
---   [nomain] ../../Resources/Fonts/**
---   [nomain] ../../Resources/Icons/**
---   [nomain] lib/**
+--   [nomain] ../../Resources/** > Resources/** 
+--   [nomain] lib/** > lib/**
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -15,7 +13,12 @@
 r = reaper
 
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
-dofile(p .. '../../Resources/Common/Common.lua')
+
+if r.file_exists('Resources/Common/Common.lua') then
+    dofile(p .. 'Resources/Common/Common.lua')
+else
+    dofile(p .. '../../Resources/Common/Common.lua')
+end
 
 r.ClearConsole()
 
