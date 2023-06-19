@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.5.3
+-- @version 0.5.4
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
