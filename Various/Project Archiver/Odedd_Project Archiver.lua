@@ -4,8 +4,8 @@
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
---   [nomain] ../../Resources/** > Resources/** 
---   [nomain] lib/** > lib/**
+--   [nomain] ../../Resources/** > Resources/ 
+--   [nomain] lib/**
 
 ---------------------------------------
 -- SETUP ------------------------------
