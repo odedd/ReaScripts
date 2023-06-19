@@ -1,10 +1,11 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.5.1
+-- @version 0.5.2
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
 --   [nomain] ../../Resources/Common/** > Resources/Common/
+--   [nomain] ../../Resources/Common/Helpers/** > Resources/Common/
 --   [nomain] ../../Resources/Fonts/** > Resources/Fonts/
 --   [nomain] ../../Resources/Icons/** > Resources/Icons/
 --   [nomain] lib/**
@@ -16,7 +17,7 @@ r = reaper
 
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
 
-if r.file_exists('Resources/Common/Common.lua') then
+if r.file_exists(p .. 'Resources/Common/Common.lua') then
     dofile(p .. 'Resources/Common/Common.lua')
 else
     dofile(p .. '../../Resources/Common/Common.lua')
