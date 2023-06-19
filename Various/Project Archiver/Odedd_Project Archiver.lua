@@ -1,7 +1,8 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.5.4
+-- @version 0.5.5
 -- @donation https://paypal.me/odedda
+-- @link Forum Thread https://forum.cockos.com/showthread.php?p=2686126
 -- @license GNU GPL v3
 -- @provides
 --   [nomain] ../../Resources/Common/* > Resources/Common/
@@ -424,8 +425,7 @@ function App.drawMainWindow()
         if r.ImGui_BeginMenuBar(ctx) then
             if r.ImGui_BeginMenu(ctx, 'Help') then
                 if r.ImGui_MenuItem(ctx, 'Forum Thread') then
-                    App.msg('Soon...')
-                    -- OD_OpenLink(Scr.link['Forum Thread'])
+                    OD_OpenLink(Scr.link['Forum Thread'])
                 end
                 if r.ImGui_MenuItem(ctx, 'Youtube Video') then
                     App.msg('Soon...')
