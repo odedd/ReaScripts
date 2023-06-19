@@ -11,5 +11,6 @@ run_scripts_www.sh
 .VSCodeCounter
 
 **/*.ini
-Rendering/Stem Manager/Presets/*
-Rendering/Stem Manager/Odedd_Stem Manager - *.lua
+
+Rendering/Stem Manager/*
+!Rendering/Stem Manager/Odedd_Stem Manager.lua

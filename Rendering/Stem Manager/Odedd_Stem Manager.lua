@@ -427,6 +427,17 @@ if OD_PrereqsOK({
             end
             file:close()
         end,
+        savePreset = function (self, fileName) 
+            local preset = {
+                version = Scr.version,
+                stems = OD_DeepCopy(self.stems),
+                settings = Settings.project
+            }
+            for k, stem in pairs(preset.stems) do
+                stem.sync = SYNCMODE_OFF
+            end
+            table.save(preset, fileName)
+        end,
         resetStem = function(self, stemName)
             for i, track in ipairs(self.tracks) do
                 self:setTrackStateInStem(track, stemName)
@@ -794,7 +805,7 @@ if OD_PrereqsOK({
         }
     }
 
-    local settings = {}
+    Settings = {}
 
     local function getDefaultSettings(factory)
         if factory == nil then
@@ -861,17 +872,17 @@ if OD_PrereqsOK({
     end
 
     local function loadSettings()
-        settings = getDefaultSettings()
+        Settings = getDefaultSettings()
         -- take merged updated default settings and merge project specific settings into them
         local loaded_project_settings = unpickle(OD_LoadLongProjExtKey(Scr.context_name, 'PROJECT SETTINGS'))
-        settings.project = OD_DeepCopy(settings.default)
+        Settings.project = OD_DeepCopy(Settings.default)
         for k, v in pairs(loaded_project_settings or {}) do
             if not (k == 'render_setting_groups') then
-                settings.project[k] = v
+                Settings.project[k] = v
             else
                 for rgIdx, val in ipairs(v) do
                     for rgSetting, rgV in pairs(val or {}) do
-                        settings.project.render_setting_groups[rgIdx][rgSetting] = rgV
+                        Settings.project.render_setting_groups[rgIdx][rgSetting] = rgV
                     end
                 end
             end
@@ -879,26 +890,26 @@ if OD_PrereqsOK({
     end
 
     local function saveSettings()
-        table.save(settings.default, Scr.dfsetfile)
-        OD_SaveLongProjExtState(Scr.context_name, 'PROJECT SETTINGS', pickle(settings.project))
+        table.save(Settings.default, Scr.dfsetfile)
+        OD_SaveLongProjExtState(Scr.context_name, 'PROJECT SETTINGS', pickle(Settings.project))
         r.MarkProjectDirty(0)
     end
 
     local function updateSettings()
-        for rgIdx, val in ipairs(settings.project.render_setting_groups) do
-            for rgAIdx, command_id in pairs(settings.project.render_setting_groups[rgIdx].actions_to_run or {}) do
+        for rgIdx, val in ipairs(Settings.project.render_setting_groups) do
+            for rgAIdx, command_id in pairs(Settings.project.render_setting_groups[rgIdx].actions_to_run or {}) do
                 if type(command_id) ~= "string" then
                     local named_command = r.ReverseNamedCommandLookup(command_id)
                     if named_command then
-                        settings.project.render_setting_groups[rgIdx].actions_to_run[rgAIdx] = named_command
+                        Settings.project.render_setting_groups[rgIdx].actions_to_run[rgAIdx] = named_command
                     end
                 end
             end
-            for rgAIdx, command_id in pairs(settings.project.render_setting_groups[rgIdx].actions_to_run_after or {}) do
+            for rgAIdx, command_id in pairs(Settings.project.render_setting_groups[rgIdx].actions_to_run_after or {}) do
                 if type(command_id) ~= "string" then
                     local named_command = r.ReverseNamedCommandLookup(command_id)
                     if named_command then
-                        settings.project.render_setting_groups[rgIdx].actions_to_run_after[rgAIdx] = named_command
+                        Settings.project.render_setting_groups[rgIdx].actions_to_run_after[rgAIdx] = named_command
                     end
                 end
             end
@@ -1316,7 +1327,7 @@ end]]):gsub('$(%w+)', {
         local criticalErrorFound = {}
 
         app.render_cancelled = false
-        app.current_renderaction = app.forceRenderAction or settings.project.renderaction
+        app.current_renderaction = app.forceRenderAction or Settings.project.renderaction
         app.perform.fullRender = (app.stem_to_render == nil) -- and app.renderGroupToRender == nil)
         -- determine stems to be rendered
         if app.stem_to_render then
@@ -1342,7 +1353,7 @@ end]]):gsub('$(%w+)', {
         local stem_names_to_skip = {} -- for message
         for stemName, stem in pairs(stems_to_render) do
             local stem = db.stems[stemName]
-            local rsg = settings.project.render_setting_groups[stem.render_setting_group]
+            local rsg = Settings.project.render_setting_groups[stem.render_setting_group]
             if rsg.select_markers or rsg.select_regions then
                 save_marker_selection = true
             end
@@ -1369,7 +1380,7 @@ end]]):gsub('$(%w+)', {
         local errors = {}
         local criticalErrors = {}
         for rsgIdx, v in pairs(included_render_groups) do
-            local rsg = settings.project.render_setting_groups[rsgIdx]
+            local rsg = Settings.project.render_setting_groups[rsgIdx]
             local ok, checks = checkRenderGroupSettings(rsg)
             criticalErrorFound[rsgIdx] = false
             criticalErrors[rsgIdx] = {}
@@ -1482,7 +1493,7 @@ end]]):gsub('$(%w+)', {
                     idx = idx + 1
                     -- TODO: CONSOLIDATE UNDO HISTORY?:
                     local stem = db.stems[stemName]
-                    local rsg = settings.project.render_setting_groups[stem.render_setting_group]
+                    local rsg = Settings.project.render_setting_groups[stem.render_setting_group]
                     if not criticalErrorFound[stem.render_setting_group] then
                         db:toggleStemSync(db.stems[stemName], SYNCMODE_SOLO)
                         coroutine.yield('Creating stem ' .. stemName, idx, app.render_count)
@@ -1552,7 +1563,7 @@ end]]):gsub('$(%w+)', {
                             end
                         end
                         if app.current_renderaction == RENDERACTION_RENDER then
-                            if settings.project.overwrite_without_asking and RENDERACTION_RENDER then
+                            if Settings.project.overwrite_without_asking and RENDERACTION_RENDER then
                                 local rv, target_list = r.GetSetProjectInfo_String(0, 'RENDER_TARGETS', '', false)
                                 if rv then
                                     local targets = OD_Split(target_list, ';')
@@ -1582,9 +1593,9 @@ end]]):gsub('$(%w+)', {
                                 r.ImGui_OpenPopup(gui.ctx, Scr.name .. '##wait')
                             end
                             local t = os.clock()
-                            while not app.render_cancelled and (os.clock() - t < settings.project.wait_time + 1) and
+                            while not app.render_cancelled and (os.clock() - t < Settings.project.wait_time + 1) and
                                 moreStemsInLine do
-                                local wait_left = math.ceil(settings.project.wait_time - (os.clock() - t))
+                                local wait_left = math.ceil(Settings.project.wait_time - (os.clock() - t))
                                 if app.drawPopup(gui.ctx, 'msg', Scr.name .. '##wait', {
                                         closeKey = r.ImGui_Key_Escape(),
                                         okButtonLabel = "Stop rendering",
@@ -1953,11 +1964,11 @@ end]]):gsub('$(%w+)', {
                 centerPosY + cellSize / 5, color, 2)
             if modKeys ~= "c" then
                 app.setHoveredHint('main', ('Click to create a new stem %s.'):format(
-                    REFLECT_ON_ADD_DESCRIPTIONS[settings.project.reflect_on_add]))
+                    REFLECT_ON_ADD_DESCRIPTIONS[Settings.project.reflect_on_add]))
             else
                 app.setHoveredHint('main',
                     ('%s+click to create a new stem %s.'):format(gui.descModCtrlCmd:gsub("^%l", string.upper),
-                        REFLECT_ON_ADD_DESCRIPTIONS[(settings.project.reflect_on_add == REFLECT_ON_ADD_TRUE) and
+                        REFLECT_ON_ADD_DESCRIPTIONS[(Settings.project.reflect_on_add == REFLECT_ON_ADD_TRUE) and
                         REFLECT_ON_ADD_FALSE or REFLECT_ON_ADD_TRUE]))
             end
         elseif btnType == 'renderGroupSelector' then
@@ -1977,7 +1988,7 @@ end]]):gsub('$(%w+)', {
             app.setHoveredHint('main',
                 'Stem to be rendered by settings group ' .. stGrp .. '. Click arrows to change group.')
             if r.ImGui_IsItemHovered(ctx) then
-                local description = settings.project.render_setting_groups[stGrp].description
+                local description = Settings.project.render_setting_groups[stGrp].description
                 if description ~= nil and description ~= '' then
                     r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(),
                         gui.st.col.render_setting_groups[stGrp][r.ImGui_Col_Button()])
@@ -2205,9 +2216,9 @@ end]]):gsub('$(%w+)', {
                 -- COL: ADD STEM BUTTON
                 if app.drawBtn('addStem') then
                     if modKeys ~= "c" then
-                        app.copyOnAddStem = (settings.project.reflect_on_add == REFLECT_ON_ADD_TRUE)
+                        app.copyOnAddStem = (Settings.project.reflect_on_add == REFLECT_ON_ADD_TRUE)
                     else
-                        app.copyOnAddStem = (settings.project.reflect_on_add == REFLECT_ON_ADD_FALSE)
+                        app.copyOnAddStem = (Settings.project.reflect_on_add == REFLECT_ON_ADD_FALSE)
                     end
                     r.ImGui_OpenPopup(ctx, 'Add Stem')
                 end
@@ -2255,8 +2266,8 @@ end]]):gsub('$(%w+)', {
                     r.ImGui_PushID(ctx, 'sync' .. k)
                     if r.ImGui_TableNextColumn(ctx) then
                         local syncMode = (modKeys == 'a') and
-                            ((settings.project.syncmode == SYNCMODE_MIRROR) and SYNCMODE_SOLO or
-                                SYNCMODE_MIRROR) or settings.project.syncmode
+                            ((Settings.project.syncmode == SYNCMODE_MIRROR) and SYNCMODE_SOLO or
+                                SYNCMODE_MIRROR) or Settings.project.syncmode
                         if app.drawBtn('stemSync', {
                                 stemSyncMode = stem.sync,
                                 generalSyncMode = syncMode
@@ -2275,7 +2286,7 @@ end]]):gsub('$(%w+)', {
                     local track = db.tracks[i]
                     local depth_delta = math.max(track.folderDepth, -depth) -- prevent depth + delta being < 0
                     local is_folder = depth_delta > 0
-                    local hide = (not settings.project.show_hidden_tracks) and track.hidden
+                    local hide = (not Settings.project.show_hidden_tracks) and track.hidden
 
                     if parent_open or depth <= open_depth then
                         if not hide then
@@ -2588,7 +2599,7 @@ end]]):gsub('$(%w+)', {
                 gui.stWnd[cP].frameCount = 0
                 if gui.stWnd[cP].tS == nil then
                     loadSettings()
-                    gui.stWnd[cP].tS = OD_DeepCopy(settings.project)
+                    gui.stWnd[cP].tS = OD_DeepCopy(Settings.project)
                 end
                 db:getRenderPresets()
                 if r.APIExists('JS_Localize') then
@@ -2807,8 +2818,8 @@ end]]):gsub('$(%w+)', {
 
             r.ImGui_SameLine(ctx)
             if r.ImGui_Button(ctx, "Save as default settings") then
-                settings.project = OD_DeepCopy(gui.stWnd[cP].tS)
-                settings.default = OD_DeepCopy(gui.stWnd[cP].tS)
+                Settings.project = OD_DeepCopy(gui.stWnd[cP].tS)
+                Settings.default = OD_DeepCopy(gui.stWnd[cP].tS)
                 saveSettings()
                 r.PromptForAction(-1, 0, 0)
                 r.ImGui_CloseCurrentPopup(ctx)
@@ -2823,7 +2834,7 @@ end]]):gsub('$(%w+)', {
                 r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 6)
 
             if r.ImGui_Button(ctx, "  OK  ") then
-                settings.project = OD_DeepCopy(gui.stWnd[cP].tS)
+                Settings.project = OD_DeepCopy(gui.stWnd[cP].tS)
                 saveSettings()
                 r.PromptForAction(-1, 0, 0)
                 r.ImGui_CloseCurrentPopup(ctx)
@@ -2839,7 +2850,7 @@ end]]):gsub('$(%w+)', {
             r.ImGui_SameLine(ctx)
 
             if r.ImGui_Button(ctx, "Apply") then
-                settings.project = OD_DeepCopy(gui.stWnd[cP].tS)
+                Settings.project = OD_DeepCopy(gui.stWnd[cP].tS)
                 saveSettings()
             end
             app.setHoveredHint('settings', ('Save settings for the current project.'):format(
@@ -3317,7 +3328,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
             r.ImGui_PopStyleColor(ctx)
         end
         if not app.coPerform then
-            if r.ImGui_Button(ctx, RENDERACTION_DESCRIPTIONS[settings.project.renderaction]:gsub("^%l", string.upper),
+            if r.ImGui_Button(ctx, RENDERACTION_DESCRIPTIONS[Settings.project.renderaction]:gsub("^%l", string.upper),
                     r.ImGui_GetContentRegionAvail(ctx)) then
                 app.forceRenderAction = nil
                 app.coPerform = coroutine.create(doPerform)
@@ -3355,7 +3366,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
                             '',
                             'smpreset')
                         if rv and fileName then
-                            table.save(settings.project, fileName)
+                            db:savePreset(fileName)
                         end
                     end
                     app.setHoveredHint('main', "Save current stems and settings")
