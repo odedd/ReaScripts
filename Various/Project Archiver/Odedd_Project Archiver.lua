@@ -1,11 +1,13 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.5.0
+-- @version 0.5.1
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
---   [nomain] ../../Resources/Common/*
---   [nomain] lib/*
+--   [nomain] ../../Resources/Common/**
+--   [nomain] ../../Resources/Fonts/**
+--   [nomain] ../../Resources/Icons/**
+--   [nomain] lib/**
 
 ---------------------------------------
 -- SETUP ------------------------------
