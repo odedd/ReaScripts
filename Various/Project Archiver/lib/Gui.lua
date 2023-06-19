@@ -4,7 +4,7 @@ Gui = {}
 do
     -- these needs to be temporarily created to be refered to from some of the gui vars
     local ctx = r.ImGui_CreateContext(Scr.context_name .. '_MAIN')--, reaper.ImGui_ConfigFlags_DockingEnable())
-    local font_default = r.ImGui_CreateFont(Scr.dir .. '../../Resources/Fonts/Cousine-Regular.ttf', 16)
+    local font_default = r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Regular.ttf', Scr.dir), 16)
     r.ImGui_Attach(ctx, font_default)
     
     Gui = {
@@ -62,8 +62,8 @@ do
     r.ImGui_PopFont(ctx)
 
     Gui.icons = {
-        caution = r.ImGui_CreateImage(Scr.dir .. '../../Resources/Icons/caution.png'),
-        error = r.ImGui_CreateImage(Scr.dir .. '../../Resources/Icons/error.png')
+        caution = r.ImGui_CreateImage(OD_LocalOrCommon('Resources/Icons/caution.png', Scr.dir)),
+        error = r.ImGui_CreateImage(OD_LocalOrCommon('Resources/Icons/error.png', Scr.dir))
     }
     r.ImGui_Attach(ctx, Gui.icons.caution)
     r.ImGui_Attach(ctx, Gui.icons.error)

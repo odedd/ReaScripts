@@ -1,11 +1,15 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.5.0
+-- @version 0.5.6
 -- @donation https://paypal.me/odedda
+-- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
 -- @provides
---   [nomain] ../../Resources/Common/*
---   [nomain] lib/*
+--   [nomain] ../../Resources/Common/* > Resources/Common/
+--   [nomain] ../../Resources/Common/Helpers/* > Resources/Common/Helpers/
+--   [nomain] ../../Resources/Fonts/* > Resources/Fonts/
+--   [nomain] ../../Resources/Icons/* > Resources/Icons/
+--   [nomain] lib/**
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -13,7 +17,12 @@
 r = reaper
 
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
-dofile(p .. '../../Resources/Common/Common.lua')
+
+if r.file_exists(p .. 'Resources/Common/Common.lua') then
+    dofile(p .. 'Resources/Common/Common.lua')
+else
+    dofile(p .. '../../Resources/Common/Common.lua')
+end
 
 r.ClearConsole()
 
@@ -416,8 +425,7 @@ function App.drawMainWindow()
         if r.ImGui_BeginMenuBar(ctx) then
             if r.ImGui_BeginMenu(ctx, 'Help') then
                 if r.ImGui_MenuItem(ctx, 'Forum Thread') then
-                    App.msg('Soon...')
-                    -- OD_OpenLink(Scr.link['Forum Thread'])
+                    OD_OpenLink(Scr.link['Forum Thread'])
                 end
                 if r.ImGui_MenuItem(ctx, 'Youtube Video') then
                     App.msg('Soon...')

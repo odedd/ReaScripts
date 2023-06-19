@@ -220,3 +220,12 @@ function OD_GetFileSize(fileName)
         return nil
     end
 end
+
+function OD_LocalOrCommon(file, basePath)
+    local p = basePath or debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
+    if r.file_exists(p .. file) then
+        return (p .. file)
+    else
+        return (p .. '../../'..file)
+    end
+end
