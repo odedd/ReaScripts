@@ -427,7 +427,7 @@ if OD_PrereqsOK({
             end
             file:close()
         end,
-        savePreset = function (self, fileName) 
+        savePreset = function(self, fileName)
             local preset = {
                 version = Scr.version,
                 stems = OD_DeepCopy(self.stems),
@@ -437,6 +437,25 @@ if OD_PrereqsOK({
                 stem.sync = SYNCMODE_OFF
             end
             table.save(preset, fileName)
+        end,
+        loadPreset = function(self, fileName, fullLoad)
+            local preset = table.load(fileName)
+            if preset == nil then
+                reaper.ShowConsoleMsg('Preset loading error\n')
+            elseif OD_GetMinorVersion(preset.version) > Scr.minor_version then
+                reaper.ShowConsoleMsg(('The preset was saved using a newer version of %s\n'):format(Scr.name))
+            else
+                for stemName, stem in pairs(self.stems) do
+                    self:removeStem(stemName)
+                end
+                -- reaper.ShowConsoleMsg(pickle(preset.settings))
+                Settings.project = OD_DeepCopy(preset.settings)
+                saveSettings()
+                if fullLoad then
+                    self.stems = OD_DeepCopy(preset.stems)
+                    self:sync()
+                end
+            end
         end,
         resetStem = function(self, stemName)
             for i, track in ipairs(self.tracks) do
@@ -889,7 +908,7 @@ if OD_PrereqsOK({
         end
     end
 
-    local function saveSettings()
+    function saveSettings()
         table.save(Settings.default, Scr.dfsetfile)
         OD_SaveLongProjExtState(Scr.context_name, 'PROJECT SETTINGS', pickle(Settings.project))
         r.MarkProjectDirty(0)
@@ -2595,7 +2614,11 @@ end]]):gsub('$(%w+)', {
         r.ImGui_SetNextWindowPos(ctx, center[1], gui.mainWindow.pos[2] + 100, r.ImGui_Cond_Appearing(), 0.5)
         if r.ImGui_BeginPopupModal(ctx, 'Settings', false, r.ImGui_WindowFlags_AlwaysAutoResize()) then
             r.ImGui_PushFont(ctx, gui.st.fonts.default)
-            if r.ImGui_IsWindowAppearing(ctx) or projectChanged then
+            local windowAppearing = r.ImGui_IsWindowAppearing(ctx)
+            if windowAppearing then
+                gui.stWnd[cP].tS = nil
+            end
+            if windowAppearing or projectChanged then
                 gui.stWnd[cP].frameCount = 0
                 if gui.stWnd[cP].tS == nil then
                     loadSettings()
@@ -2886,9 +2909,7 @@ end]]):gsub('$(%w+)', {
         if ok then
             local rv, filename = r.GetUserFileNameForRead('', 'Select a stem preset file', 'smpreset')
             if rv then
-                for stemName, stem in pairs(db.stems) do
-                    db:removeStem(stemName)
-                end
+                db:loadPreset(filename, true)
             end
             app.show_load_choice_popup = false
         elseif ok == false then
@@ -3364,7 +3385,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
                     if r.ImGui_MenuItem(ctx, 'Save...', nil, nil) then
                         local rv, fileName = reaper.JS_Dialog_BrowseForSaveFile('Select Preset File', Scr.presetFolder,
                             '',
-                            'smpreset')
+                            'Preset files (*.smpreset)\0*.smpreset\0\0')
                         if rv and fileName then
                             db:savePreset(fileName)
                         end

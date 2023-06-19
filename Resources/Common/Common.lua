@@ -47,8 +47,8 @@ local function OD_GetScr()
     Scr.basename = Scr.path:match("^.+[\\/](.+)$")
     Scr.no_ext = Scr.basename:match("(.+)%.")
     OD_FindContentKey(OD_GetContent(Scr.path), "", true)
-    Scr.major_version = tonumber(Scr.version:match('^(.-)%.'))
-    Scr.minor_version = tonumber(Scr.version:match('^(.+)%.'))
+    Scr.major_version = OD_GetMajorVersion(Scr.version)
+    Scr.minor_version = OD_GetMinorVersion(Scr.version)
     Scr.dfsetfile = Scr.dir..Scr.no_ext..'.ini'
     Scr.namespace = "Odedd"
     Scr.name = Scr.description
