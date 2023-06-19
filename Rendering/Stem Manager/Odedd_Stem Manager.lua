@@ -1,13 +1,14 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 1.5
+-- @version 1.5.0
 -- @donation https://paypal.me/odedda
 -- @link https://forum.cockos.com/showthread.php?t=268512
 -- @license GNU GPL v3
 -- @provides
---   [nomain]../../Resources/Fonts/Cousine-90deg.otf
---   [nomain]../../Resources/Fonts/Cousine-Regular.ttf
---   [nomain]../../Resources/Common/*
+--   [nomain] ../../Resources/Common/* > Resources/Common/
+--   [nomain] ../../Resources/Common/Helpers/* > Resources/Common/Helpers/
+--   [nomain] ../../Resources/Fonts/* > Resources/Fonts/
+--   [nomain] ../../Resources/Icons/* > Resources/Icons/
 -- @about
 --   # Stem Manager
 --   Advanced stem rendering automator.
@@ -20,7 +21,11 @@
 
 local r = reaper
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
-dofile(p .. '../../Resources/Common/Common.lua')
+if r.file_exists(p .. 'Resources/Common/Common.lua') then
+    dofile(p .. 'Resources/Common/Common.lua')
+else
+    dofile(p .. '../../Resources/Common/Common.lua')
+end
 
 r.ClearConsole()
 
@@ -160,9 +165,10 @@ if OD_PrereqsOK({
         -- these needs to be temporarily created to be refered to from some of the gui vars
         local ctx = r.ImGui_CreateContext(Scr.context_name .. '_MAIN')
         local cellSize = 25
-        local font_vertical = r.ImGui_CreateFont(Scr.dir .. '../../Resources/Fonts/Cousine-90deg.otf', 11)
-        local font_default = r.ImGui_CreateFont(Scr.dir .. '../../Resources/Fonts/Cousine-Regular.ttf', 16)
-        local font_bold = r.ImGui_CreateFont(Scr.dir .. '../../Resources/Fonts/Cousine-Regular.ttf', 16,
+
+        local font_vertical = r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-90deg.otf', Scr.dir), 11)
+        local font_default = r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Regular.ttf', Scr.dir), 16)
+        local font_bold = r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Regular.ttf', Scr.dir), 16,
             r.ImGui_FontFlags_Bold())
 
         r.ImGui_Attach(ctx, font_default)
