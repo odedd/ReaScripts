@@ -8,3 +8,6 @@ run_scripts_www.sh
 !.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/*.code-snippets
+.VSCodeCounter
+
+**/*.ini
