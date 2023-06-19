@@ -4,10 +4,9 @@
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
---   [nomain] ../../Resources/Common/** > Resources/Common/
---   [nomain] ../../Resources/Common/Helpers/** > Resources/Common/Helpers
---   [nomain] ../../Resources/Fonts/** > Resources/Fonts/
---   [nomain] ../../Resources/Icons/** > Resources/Icons/
+--   [nomain] ../../Resources/Common/**/* > Resources/Common/
+--   [nomain] ../../Resources/Fonts/* > Resources/Fonts/
+--   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 
 ---------------------------------------
