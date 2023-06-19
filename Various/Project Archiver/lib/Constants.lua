@@ -182,23 +182,28 @@ GLUE_FORMATS = {
 GLUE_FORMATS_DETAILS = {
     [GLUE_FORMATS.WAV24] = {
         description = 'WAV 24bit',
-        formatString = 'ZXZhdxgAAA=='
+        formatString = 'ZXZhdxgAAA==',
+        type = MEDIA_TYPES.UNCOMPRESSED
     },
     [GLUE_FORMATS.WAV32F] = {
         description = 'WAV 32bit fp',
-        formatString = 'ZXZhdyAAAA=='
+        formatString = 'ZXZhdyAAAA==',
+        type = MEDIA_TYPES.UNCOMPRESSED
     },
     [GLUE_FORMATS.FLAC24] = {
         description = 'FLAC 24bit',
-        formatString = 'Y2FsZhgAAAAIAAAA'
+        formatString = 'Y2FsZhgAAAAIAAAA',
+        type = MEDIA_TYPES.LOSSLESS
     },
     [GLUE_FORMATS.WAVPACK24] = {
         description = 'WAVPACK 24bit',
-        formatString = 'a3B2dwAAAAABAAAAAAAAAAEAAAA='
+        formatString = 'a3B2dwAAAAABAAAAAAAAAAEAAAA=',
+        type = MEDIA_TYPES.LOSSLESS
     },
     [GLUE_FORMATS.WAVPACK32F] = {
         description = 'WAVPACK 32bit fp',
-        formatString = 'a3B2dwAAAAADAAAAAAAAAAEAAAA='
+        formatString = 'a3B2dwAAAAADAAAAAAAAAAEAAAA=',
+        type = MEDIA_TYPES.LOSSLESS
     }
 }
 for i = 0, #GLUE_FORMATS_DETAILS do

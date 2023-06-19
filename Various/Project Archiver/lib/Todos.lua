@@ -12,4 +12,6 @@
 --  let the user deal with this manually)
 
 -- TODO export current settings as action
+-- TODO delete peaks file peaks folder if relative
+-- TODO option to delete session backups
 -- TODO (later) figure out section

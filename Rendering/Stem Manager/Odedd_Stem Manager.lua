@@ -1,7 +1,8 @@
 -- @description Stem Manager
 -- @author Oded Davidov
 -- @version 1.5
--- @donation: https://paypal.me/odedda
+-- @donation https://paypal.me/odedda
+-- @link https://forum.cockos.com/showthread.php?t=268512
 -- @license GNU GPL v3
 -- @provides
 --   [nomain]../../Resources/Fonts/Cousine-90deg.otf

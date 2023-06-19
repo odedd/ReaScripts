@@ -8,12 +8,30 @@ r = reaper
 Scr = {}
 OS_is = nil
 
+local function matchUrlInString(str)
+    local preString, url = string.match(str, "(.-)(https?://[%w-_%.%?%.:/%+=&]+)")
+    return url, OD_Trim(preString or '')
+end
 local function OD_FindContentKey(content, key, self)
     if self then
         for match in content:gmatch("%-%- @(.-)\n") do
             local key, val = match:match("(.-) (.+)")
             if val then
-                Scr[key:lower()] = val
+                local url, description = matchUrlInString(val)
+                if url and description then
+                    Scr[key:lower()] = Scr[key:lower()] or {} 
+                    -- val = {[description] = url}
+                    Scr[key:lower()][description] = url
+                else
+                    Scr[key:lower()] = val
+                end
+                -- if Scr[key:lower()] then
+                    -- if type(Scr[key:lower()]) ~= 'table' then
+                        -- Scr[key:lower()] = { Scr[key:lower()] }
+                    -- end
+                    -- table.insert(Scr[key:lower()], val)
+                -- else
+                -- end 
             end
         end
         return

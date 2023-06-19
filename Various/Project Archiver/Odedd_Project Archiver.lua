@@ -1,7 +1,7 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.1.0
--- @donation: https://paypal.me/odedda
+-- @version 0.5.0
+-- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @provides
 --   [nomain] ../../Resources/Common/*
@@ -119,7 +119,7 @@ local function doPerform()
             end
         end
     end
-
+    OD_FlushLog()
     return
 end
 
@@ -361,7 +361,8 @@ function App.drawBottom(ctx, bottom_lines)
         if r.ImGui_Button(ctx, Settings.backup and 'Create Backup' or 'Minimize Current Project',
                 r.ImGui_GetContentRegionAvail(ctx)) then
             -- don't save backupDestination into saved preferences, but save all other settings
-            OD_LogTable(LOG_LEVEL.DEBUG,'Settings', Settings, 1)
+            OD_LogInfo('** Started')
+            OD_LogTable(LOG_LEVEL.INFO,'Settings', Settings, 1)
             local tmpDest = Settings.backupDestination
             Settings.backupDestination = nil
             SaveSettings()
@@ -404,7 +405,7 @@ function App.drawMainWindow()
     r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
     local visible, open = r.ImGui_Begin(ctx, Scr.name .. ' v' .. Scr.version .. " by " .. Scr.developer .. "##mainWindow",
         not App.coPerform,
-        r.ImGui_WindowFlags_NoDocking() | r.ImGui_WindowFlags_NoCollapse())
+        r.ImGui_WindowFlags_NoDocking() | r.ImGui_WindowFlags_NoCollapse() | r.ImGui_WindowFlags_MenuBar())
     Gui.mainWindow = {
         pos = { r.ImGui_GetWindowPos(ctx) },
         size = { r.ImGui_GetWindowSize(ctx) }
@@ -412,6 +413,35 @@ function App.drawMainWindow()
 
     if visible then
         local bottom_lines = 2
+        if r.ImGui_BeginMenuBar(ctx) then
+            if r.ImGui_BeginMenu(ctx, 'Help') then
+                if r.ImGui_MenuItem(ctx, 'Forum Thread') then
+                    App.msg('Soon...')
+                    -- OD_OpenLink(Scr.link['Forum Thread'])
+                end
+                if r.ImGui_MenuItem(ctx, 'Youtube Video') then
+                    App.msg('Soon...')
+                    -- OD_OpenLink(Scr.link['YouTube'])
+                end
+                if r.ImGui_BeginMenu(ctx, 'Log Level') then
+                    for i, level in OD_PairsByOrder(LOG_LEVEL_INFO) do
+                        if r.ImGui_MenuItem(ctx, level.description, nil, Log.level == i) then
+                            Log.level = i
+                        end
+                    end
+                    r.ImGui_Separator(ctx)
+                    r.ImGui_TextDisabled(ctx, "If anything other than \"None\"\nis selected, a log file will be\ncreated at the current project's\nfolder.\n\nThis setting defaults to NONE\neverytime the script restarts\nto avoid logging for no reason\nwhich could hinder performance.")
+                    r.ImGui_EndMenu(ctx)
+                end
+                r.ImGui_Separator(ctx)
+                if r.ImGui_MenuItem(ctx, 'Donations are welcome :)') then
+                    OD_OpenLink(Scr.donation)
+                end    
+                r.ImGui_EndMenu(ctx)
+            end
+        r.ImGui_EndMenuBar(ctx)
+        end
+
         r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_IndentSpacing(), 35)
         if App.coPerform and coroutine.status(App.coPerform) == 'suspended' then
             r.ImGui_BeginDisabled(ctx)

@@ -278,6 +278,7 @@ function GetMediaFiles()
                 end
                 addMediaFile(filename, fileType, ignore, fileExists, oc)
                 App.mediaFiles[filename].srclen = srclen
+                App.mediaFiles[filename].sourceType = sourceType
             end
             if App.mediaFiles[filename].hasSection then
                 App.mediaFiles[filename].status_info = 'Has sections'
@@ -446,7 +447,7 @@ function CollectMedia()
     for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
         if fileInfo.shouldCollect then
             App.perform.pos = App.perform.pos + 1
-            App.mediaFiles[filename].status = STATUS.COLLECTING
+            fileInfo.status = STATUS.COLLECTING
             -- if (App.perform.pos - 1) % YIELD_FREQUENCY == 0 then
             App.scroll = filename
             coroutine.yield('Collecting Files')
@@ -488,7 +489,7 @@ function CollectMedia()
                 end
             end
 
-            App.mediaFiles[filename].status = STATUS.COLLECTED
+            fileInfo.status = STATUS.COLLECTED
         end
     end
 end
@@ -699,6 +700,7 @@ function MinimizeAndApplyMedia()
         local _, newName = r.GetSetMediaItemTakeInfo_String(r.GetMediaItemTake(r.GetSelectedMediaItem(0, 0), 0),
             "P_NAME", "", false)
         if newName == oldName then
+            OD_LogInfo('Detected unsuccessful gluing (probably due to user cancelling)')
             error('cancelled by glue')
         end
         return r.GetTrackMediaItem(track, 0)
@@ -881,7 +883,16 @@ function MinimizeAndApplyMedia()
             local track = createTrackForFilename(filename)
             local splitItems = addItemsToTrackAndWrapAround(track, fileInfo)
             removeSpaces(track, filename)
-            if fileInfo.keep_length ~= 1 then
+            local glueIsSmallerThanOriginal = false
+            if OD_HasValue(MEDIA_TYPES.UNCOMPRESSED, fileInfo.sourceType) and GLUE_FORMATS_DETAILS[Settings.glueFormat].type == MEDIA_TYPES.LOSSLESS then
+                glueIsSmallerThanOriginal = true
+            end
+            -- if nothing to remove from original file and the glue format will not result in a smaller file size, so there's no need to minimize
+            if fileInfo.keep_length > 0.99 and not glueIsSmallerThanOriginal then
+                fileInfo.status = STATUS.NOTHING_TO_MINIMIZE
+                fileInfo.ignore = true
+                fileInfo.newFileSize = fileInfo.sourceFileSize
+            else
                 saveNewPositions(fileInfo)
                 trimItems(fileInfo, splitItems)
                 local gluedItem = glueItems(track)
@@ -889,10 +900,6 @@ function MinimizeAndApplyMedia()
                     applyGluedSourceToOriginal(filename, gluedItem)
                 end
                 if not fileInfo.status == STATUS.ERROR then fileInfo.status = STATUS.MINIMIZED end
-            else
-                fileInfo.status = STATUS.NOTHING_TO_MINIMIZE
-                fileInfo.ignore = true
-                fileInfo.newFileSize = fileInfo.sourceFileSize
             end
             r.DeleteTrack(track)
 
@@ -964,7 +971,7 @@ function Revert(cancel)
 end
 
 function Cancel(msg)
-    OD_LogDebug('-- Cancel()',nil)
+    OD_LogInfo('-- Cancel(msg)',msg)
     if msg then
         App.msg(msg .. T.CANCEL_RELOAD, 'Operation Cancelled')
     end
@@ -1131,6 +1138,7 @@ function DeleteOriginals()
         for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
             -- delete original files which were replaced by minimized versions
             App.perform.pos = App.perform.pos + 1
+            App.scroll = filename
             if not fileInfo.external and not fileInfo.ignore and not fileInfo.missing then
                 fileInfo.status = Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and STATUS.MOVING_TO_TRASH or
                     STATUS.DELETING

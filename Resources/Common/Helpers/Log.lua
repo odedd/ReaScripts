@@ -1,10 +1,17 @@
 -- @noindex
 
 LOG_LEVEL = {
-    NONE = { level = 0, name = "NONE" },
-    ERROR = { level = 1, name = "ERROR" },
-    INFO = { level = 2, name = "INFO" },
-    DEBUG = { level = 3, name = "DEBUG" }
+    NONE = 0,
+    ERROR = 1,
+    INFO = 2,
+    DEBUG = 3
+}
+
+LOG_LEVEL_INFO = {
+    [LOG_LEVEL.NONE] = {order = LOG_LEVEL.NONE, name = "NONE", description = "None"},
+    [LOG_LEVEL.ERROR] = {order = LOG_LEVEL.ERROR, name = "ERROR", description = "Errors only"},
+    [LOG_LEVEL.INFO] = {order = LOG_LEVEL.INFO, name = "INFO", description = "Information & Errors"},
+    [LOG_LEVEL.DEBUG] = {order = LOG_LEVEL.DEBUG, name = "DEBUG", description = "Everything (A lot!)"},
 }
 
 LOG_OUTPUT = {
@@ -32,7 +39,16 @@ local function getLogFile()
 end
 local function closeLogFile()
     if Log.file then
+        Log.file:flush()
         Log.file:close()
+        return true
+    else
+        return false
+    end
+end
+local function flushLog()
+    if Log.file then
+        Log.file:flush()
         return true
     else
         return false
@@ -56,9 +72,9 @@ local function getLogCodePosition(depth)
 end
 
 function OD_Log(level, msg, msg_val, depth_offset)
-    if level.level <= Log.level.level then
+    if level <= Log.level then
         local fullMsg =
-            level.name..' '..os.date("%c") .. ' ' .. getLogCodePosition(4+(depth_offset or 0)) .. ": " ..
+            LOG_LEVEL_INFO[Log.level].name..' '..os.date("%c") .. ' ' .. getLogCodePosition(4+(depth_offset or 0)) .. ": " ..
             msg .. (msg_val and (' (' .. tostring(msg_val) .. ')') or '')
             sendToLog(fullMsg)
     end
@@ -84,6 +100,10 @@ function OD_LogTable(level, tableName, table, depth_offset)
         end
     end
 
+end
+
+function OD_FlushLog()
+    flushLog()
 end
 local function exit()
     closeLogFile()
