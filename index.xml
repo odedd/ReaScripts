@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="653814d21c6ff95841992e8ee1d33fd51bf728b8">
+<index version="1" name="Odedd ReaScripts" commit="30bd7e39532373c97aa6681cdb04beac26edfa3d">
   <category name="Rendering/Stem Manager">
     <reapack name="Odedd_Stem Manager.lua" type="script" desc="Stem Manager">
       <metadata>
@@ -8,11 +8,12 @@
 \widowctrl\hyphauto
 
 {\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Stem Manager\par}
-{\pard \ql \f0 \sa180 \li0 \fi0 Advanced stem rendering automator. Stem Manager was designed with the goal of simplifying the process of stem creation with REAPER. While REAPER's flexibility is unmatched, it is still quite cumbersome to create and render sets of tracks independently of signal flow, with emphasis on easy cross-project portability (do it once, then use it everywhere!).\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Advanced stem rendering automator. Stem Manager was designed with the goal of simplifying the process of stem creation with reaper. While REAPER's flexibility is unmatched, it is still quite cumbersome to create and render sets of tracks independently of signal flow, with emphasis on easy cross-project portability (do it once, then use it everywhere!).\par}
 {\pard \ql \f0 \sa180 \li0 \fi0 This is where Stem Manager comes in.\par}
 }
 ]]></description>
-        <link rel="donation" href="https://paypal.me/odedda">:</link>
+        <link rel="website">https://forum.cockos.com/showthread.php?t=268512</link>
+        <link rel="donation">https://paypal.me/odedda</link>
       </metadata>
       <version name="0.1.0" author="Oded Davidov" time="2022-07-04T19:50:00Z">
         <source main="main">https://github.com/odedd/ReaScripts/raw/ce475d928126248ae80e921eeeb9cb9c17398e81/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
@@ -247,6 +248,30 @@ Added multiple selection of stems?]]></changelog>
         <source main="main">https://github.com/odedd/ReaScripts/raw/510880f5417f327e82cc8463cd9bb740dbe5432c/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
         <source file="../../Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/510880f5417f327e82cc8463cd9bb740dbe5432c/Resources/Fonts/Cousine-90deg.otf</source>
         <source file="../../Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/510880f5417f327e82cc8463cd9bb740dbe5432c/Resources/Fonts/Cousine-Regular.ttf</source>
+      </version>
+      <version name="1.5.0" author="Oded Davidov" time="2023-06-20T09:06:08Z">
+        <changelog><![CDATA[Added loading and saving of presets
+Can now render groups directly from the stem context menu]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Rendering/Stem%20Manager/Odedd_Stem%20Manager.lua</source>
+        <source file="Resources/Common/Common.lua">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Common/Common.lua</source>
+        <source file="Resources/Common/Helpers.lua">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Common/Helpers.lua</source>
+        <source file="Resources/Common/ReaperHelpers.lua">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Common/ReaperHelpers.lua</source>
+        <source file="Resources/Common/Helpers/Bitwise.lua">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Common/Helpers/Bitwise.lua</source>
+        <source file="Resources/Common/Helpers/Colors.lua">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Common/Helpers/Colors.lua</source>
+        <source file="Resources/Common/Helpers/Files.lua">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Common/Helpers/Files.lua</source>
+        <source file="Resources/Common/Helpers/Links.lua">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Common/Helpers/Links.lua</source>
+        <source file="Resources/Common/Helpers/Log.lua">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Common/Helpers/Log.lua</source>
+        <source file="Resources/Common/Helpers/Math.lua">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Common/Helpers/Math.lua</source>
+        <source file="Resources/Common/Helpers/Strings.lua">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Common/Helpers/Strings.lua</source>
+        <source file="Resources/Common/Helpers/Tables.lua">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Common/Helpers/Tables.lua</source>
+        <source file="Resources/Common/Helpers/Versions.lua">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Common/Helpers/Versions.lua</source>
+        <source file="Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Fonts/Cousine-Regular.ttf</source>
+        <source file="Resources/Icons/caution.png">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Icons/caution.png</source>
+        <source file="Resources/Icons/error.png">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Resources/Icons/error.png</source>
+        <source file="lib/Constants.lua">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Rendering/Stem%20Manager/lib/Constants.lua</source>
+        <source file="lib/Db.lua">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Rendering/Stem%20Manager/lib/Db.lua</source>
+        <source file="lib/Gui.lua">https://github.com/odedd/ReaScripts/raw/30bd7e39532373c97aa6681cdb04beac26edfa3d/Rendering/Stem%20Manager/lib/Gui.lua</source>
       </version>
     </reapack>
   </category>
