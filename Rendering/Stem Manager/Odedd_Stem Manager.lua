@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 1.5.1
+-- @version 1.6.0
 -- @donation https://paypal.me/odedda
 -- @link https://forum.cockos.com/showthread.php?t=268512
 -- @license GNU GPL v3
@@ -20,9 +20,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Project GUID change detection
---   Fix for how settings are saved and loaded
---   Internal code refactoring
+--   Small fixes
 
 local r = reaper
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
