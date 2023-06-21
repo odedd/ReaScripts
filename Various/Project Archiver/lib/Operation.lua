@@ -19,7 +19,9 @@ local function getUnusedFilesInRecordingFolder()
         OD_LogDebug('-- getUnusedFilesInRecordingFolder() -> isValidMediaFile',file,1)
         -- Filter out specific file extensions
         local _, _, extension = OD_DissectFilename(file)
-        return OD_HasValue(MEDIA_EXTENSIONS, extension, true) or extension == 'reapeaks'
+        local valid = OD_HasValue(MEDIA_EXTENSIONS, extension, true) or extension == 'reapeaks'
+        OD_LogDebug('isValidMediaFile', valid)
+        return valid
     end
 
     -- Scan recording folder
@@ -47,7 +49,7 @@ end
 -- * public
 -- Gather media files and occurrences
 function GetMediaFiles()
-    OD_LogDebug('-- GetMediaFiles()',nil)
+    OD_LogInfo('-- GetMediaFiles()',nil)
     local function getTakeSourcePositions(take, srclen)
         OD_LogDebug('-- GetMediaFiles() -> getTakeSourcePositions()',nil,1)
         -- copy item to new track
@@ -357,7 +359,7 @@ function GetMediaFiles()
 end
 
 function CollectMedia()
-    OD_LogDebug('-- CollectMedia()',nil)
+    OD_LogInfo('-- CollectMedia()',nil)
     -- determine which files should be collected:
     local function shouldCollect(fileInfo)
         OD_LogDebug('-- CollectMedia() -> shouldCollect()',fileInfo.filenameWithPath,1)
@@ -378,7 +380,7 @@ function CollectMedia()
     end
 
     local function collectFile(fileInfo)
-        OD_LogDebug('-- CollectMedia() -> collectFile()',1)
+        OD_LogDebug('-- CollectMedia() -> collectFile()',nil,1)
         local targetPath = (App.projPath .. fileInfo.collectBackupTargetPath .. OD_FolderSep()):gsub('//$', '/')
         local targetFileName = targetPath ..
             fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or '')
@@ -397,7 +399,7 @@ function CollectMedia()
     end
 
     local function applyToOriginal(filename, newFilename)
-        OD_LogDebug('-- CollectMedia() -> applyToOriginal()',1)
+        OD_LogDebug('-- CollectMedia() -> applyToOriginal()',nil, 1)
         OD_LogDebug('filename', filename)
         OD_LogDebug('newFilename', newFilename)
         local fileInfo = App.mediaFiles[filename]
@@ -480,11 +482,11 @@ function CollectMedia()
                 end
                 local success, newFileName = collectFile(fileInfo)
                 if success then
-                    OD_LogInfo('Collection succeeded',newFileName)
+                    OD_LogInfo('Collected succesfully',(tostring(fileInfo.filenameWithPath) .. ' to '.. tostring(newFileName)))
                     fileInfo.collectBackupOperation = COLLECT_BACKUP_OPERATION.MOVE
                     applyToOriginal(filename, newFileName)
                 else
-                    OD_LogError('Collection failed', newFileName)
+                    OD_LogError('Collection failed', (tostring(fileInfo.filenameWithPath) .. ' to '.. tostring(newFileName)))
                     fileInfo.status = STATUS.ERROR
                     fileInfo.status_info = 'collection failed'
                 end
@@ -497,7 +499,7 @@ end
 
 -- Create new items to reflect the new occurrences
 function MinimizeAndApplyMedia()
-    OD_LogDebug('-- MinimizeAndApplyMedia()',nil)
+    OD_LogInfo('-- MinimizeAndApplyMedia()',nil)
     local function createTrackForFilename(filename)
         OD_LogDebug('-- MinimizeAndApplyMedia() -> createTrackForFilename()',filename,1)
         local trackIndex = r.GetNumTracks()
@@ -701,7 +703,7 @@ function MinimizeAndApplyMedia()
         local _, newName = r.GetSetMediaItemTakeInfo_String(r.GetMediaItemTake(r.GetSelectedMediaItem(0, 0), 0),
             "P_NAME", "", false)
         if newName == oldName then
-            OD_LogInfo('Detected unsuccessful gluing (probably due to user cancelling)')
+            OD_LogError('Detected unsuccessful gluing (probably due to user cancelling)')
             error('cancelled by glue')
         end
         return r.GetTrackMediaItem(track, 0)
@@ -876,7 +878,7 @@ function MinimizeAndApplyMedia()
     coroutine.yield('Minimizing Files')
     for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
         if not fileInfo.ignore and not fileInfo.missing then
-            OD_LogInfo('Processing file',filename)
+            OD_LogDebug('Processing file',filename)
             App.scroll = filename
             fileInfo.status = STATUS.MINIMIZING
             App.perform.pos = App.perform.pos + 1
@@ -890,6 +892,7 @@ function MinimizeAndApplyMedia()
             end
             -- if nothing to remove from original file and the glue format will not result in a smaller file size, so there's no need to minimize
             if fileInfo.keep_length > 0.99 and not glueIsSmallerThanOriginal then
+                OD_LogInfo('Nothing to minimize', filename)
                 fileInfo.status = STATUS.NOTHING_TO_MINIMIZE
                 fileInfo.ignore = true
                 fileInfo.newFileSize = fileInfo.sourceFileSize
@@ -900,15 +903,20 @@ function MinimizeAndApplyMedia()
                 if gluedItem then
                     applyGluedSourceToOriginal(filename, gluedItem)
                 end
-                if not fileInfo.status == STATUS.ERROR then fileInfo.status = STATUS.MINIMIZED end
+                if not fileInfo.status == STATUS.ERROR then 
+                    OD_LogInfo('Minimized Successfully', filename)
+                    fileInfo.status = STATUS.MINIMIZED
+                else
+                    OD_LogError('Minimize error', filename)
+                end
             end
             r.DeleteTrack(track)
 
             -- coroutine.yield('Minimizing Files')
         else
             OD_LogInfo('Ignoring file',filename)
-            OD_LogDebug('fileInfo.ignore',fileInfo.ignore)
-            OD_LogDebug('fileInfo.missing',fileInfo.missing)
+            OD_LogDebug('fileInfo.ignore',(fileInfo.ignore or false))
+            OD_LogDebug('fileInfo.missing',(fileInfo.missing or false))
         end
     end
 end
@@ -950,7 +958,7 @@ function Restore()
 end
 
 function Revert(cancel)
-    OD_LogDebug('-- Revert(cancel)',cancel)
+    OD_LogDebug('-- Revert() cancel=',cancel or (false))
     -- restore temporary file saved before minimizing and open it
     OD_CopyFile(App.revert.tmpBackupFileName, App.fullProjPath)
     -- r.reduce_open_files(2) -- seems ok. might be needed for win, but I tested and I'm pretty sure it's not needed.
@@ -1058,7 +1066,7 @@ end
 function CreateBackupProject()
     OD_LogDebug('-- CreateBackupProject()',nil)
     r.Main_SaveProject(-1)
-    local targetPath = settings.backupDestination .. OD_FolderSep()
+    local targetPath = (settings.backupDestination .. OD_FolderSep()):gsub('\\\\','\\')
     App.backupTargetProject = targetPath .. App.projFileName
     OD_CopyFile(App.fullProjPath, App.backupTargetProject)
     App.perform.total = App.mediaFileCount
@@ -1076,9 +1084,9 @@ function CreateBackupProject()
             fileInfo.status = STATUS.MOVING
             coroutine.yield('Creating backup project')
             local _, newFN, newExt = OD_DissectFilename(fileInfo.newfilename)
-            local target = targetPath ..
+            local target = (targetPath ..
                 (fileInfo.collectBackupTargetPath or App.relProjectRecordingPath) ..
-                OD_FolderSep() .. newFN .. (newExt and ('.' .. newExt) or '')
+                OD_FolderSep() .. newFN .. (newExt and ('.' .. newExt) or '')):gsub('\\\\','\\')
             if OD_MoveFile(fileInfo.newfilename, target) then
                 fileInfo.status = STATUS.DONE
             else
@@ -1089,7 +1097,7 @@ function CreateBackupProject()
             if fileInfo.pathIsRelative then
                 fileInfo.status = STATUS.COPYING
                 coroutine.yield('Creating backup project')
-                local target = targetPath .. fileInfo.relOrAbsFile
+                local target = (targetPath .. fileInfo.relOrAbsFile):gsub('\\\\','\\')
                 if OD_CopyFile(fileInfo.filenameWithPath, target) then
                     fileInfo.status = STATUS.DONE
                 else
@@ -1254,7 +1262,7 @@ function CleanMediaFolder()
 end
 
 function KeepActiveTakesOnly()
-    OD_LogDebug('-- KeepActiveTakesOnly()',nil)
+    OD_LogInfo('-- KeepActiveTakesOnly()',nil)
     -- Count the number of media items
     local itemCount = r.CountMediaItems(0)
 

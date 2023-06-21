@@ -45,7 +45,7 @@ App.gui = Gui
 App:init()
 local settings = PA_Settings.settings
 Log.level = LOG_LEVEL.NONE
-Log.output = LOG_OUTPUT.FILE
+Log.output = LOG_OUTPUT.CONSOLE
 
 Gui.tables = {
     horizontal = {
@@ -380,6 +380,10 @@ function App.drawBottom(ctx, bottom_lines)
                 r.ImGui_GetContentRegionAvail(ctx)) then
             -- don't save backupDestination into saved preferences, but save all other settings
             OD_LogInfo('** Started')
+            OD_LogInfo('Script file: ', Scr.path)
+            OD_LogInfo('Script version: ', tostring(Scr.version))
+            OD_LogInfo('Reaper version: ', tostring(r.ver))
+            OD_LogInfo('JS_ReaScriptAPI version: ', tostring(r.APIExists('JS_ReaScriptAPI_Version')))
             OD_LogTable(LOG_LEVEL.INFO,'Settings', settings, 1)
             local tmpDest = settings.backupDestination
             settings.backupDestination = nil
@@ -663,5 +667,16 @@ if OD_PrereqsOK({
         reaper_version = 6.76 -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
     }) then
         PA_Settings:Load()
-       r.defer(App.loop)
+       
+        App.projPath, App.projFileName, App.fullProjPath, App.projectRecordingPath, App.relProjectRecordingPath =
+        OD_GetProjectPaths()
+        Log.level = LOG_LEVEL.DEBUG
+        OD_LogDebug('App.projPath', App.projPath)
+        OD_LogDebug('App.projFileName', App.projFileName)
+        OD_LogDebug('App.fullProjPath', App.fullProjPath)
+        OD_LogDebug('App.projectRecordingPath', App.projectRecordingPath)
+        OD_LogDebug('App.relProjectRecordingPath', App.relProjectRecordingPath)
+       
+       
+        --r.defer(App.loop)
 end

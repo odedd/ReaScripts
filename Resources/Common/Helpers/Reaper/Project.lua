@@ -5,7 +5,7 @@ function OD_GetProjectPaths()
     local proj, fullProjPath = r.EnumProjects(-1, '')           -- full project name including path and RPP file
     fullProjPath = fullProjPath:gsub('\\', '/')
     local projFileName = r.GetProjectName(proj)                 -- just the RPP file
-    local projPath = fullProjPath:gsub(projFileName .. '$', '') -- just the project path
+    local projPath = fullProjPath:gsub(OD_EscapePattern(projFileName) .. '$', '') -- just the project path
     local relProjectRecordingPath = OD_GetRelativeOrAbsoluteFile(projectRecordingPath, projPath)
     if relProjectRecordingPath == projectRecordingPath then relProjectRecordingPath = '' end
     return projPath, projFileName, fullProjPath, projectRecordingPath, relProjectRecordingPath
