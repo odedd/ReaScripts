@@ -1,15 +1,18 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.5.6
+-- @version 0.5.7
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
 -- @provides
 --   [nomain] ../../Resources/Common/* > Resources/Common/
 --   [nomain] ../../Resources/Common/Helpers/* > Resources/Common/Helpers/
+--   [nomain] ../../Resources/Common/ReaperHelpers/* > Resources/Common/ReaperHelpers/
 --   [nomain] ../../Resources/Fonts/* > Resources/Fonts/
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
+-- @changelog
+--   Internal Changes
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -32,8 +35,11 @@ dofile(p .. 'lib/Constants.lua')
 dofile(p .. 'lib/Settings.lua')
 dofile(p .. 'lib/Operation.lua')
 dofile(p .. 'lib/App.lua')
-dofile(p .. 'lib/Texts.lua')
 dofile(p .. 'lib/Gui.lua')
+dofile(p .. 'lib/Texts.lua')
+
+App.gui = Gui
+App:init()
 
 Log.level = LOG_LEVEL.NONE
 Log.output = LOG_OUTPUT.FILE
@@ -359,11 +365,11 @@ function App.drawBottom(ctx, bottom_lines)
     r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) -
         (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines +
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2))
-    local status, col = App.getStatus('main')
+    local status, col = App:getStatus('main')
     if col then r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col[col]) end
     r.ImGui_Spacing(ctx)
     r.ImGui_Text(ctx, status)
-    App.setHint('main', '')
+    App:setHint('main', '')
     r.ImGui_Spacing(ctx)
     if col then r.ImGui_PopStyleColor(ctx) end
     if not App.coPerform then
@@ -379,7 +385,7 @@ function App.drawBottom(ctx, bottom_lines)
 
             local ok, errors = CheckSettings()
             if not ok then
-                App.msg(table.concat(errors, '\n\n'))
+                App:msg(table.concat(errors, '\n\n'))
             else
                 if App.warningCount > 0 then
                     r.ImGui_OpenPopup(ctx, 'Are you sure?')
@@ -428,7 +434,7 @@ function App.drawMainWindow()
                     OD_OpenLink(Scr.link['Forum Thread'])
                 end
                 if r.ImGui_MenuItem(ctx, 'Youtube Video') then
-                    App.msg('Soon...')
+                    App:msg('Soon...')
                     -- OD_OpenLink(Scr.link['YouTube'])
                 end
                 if r.ImGui_BeginMenu(ctx, 'Log Level') then
@@ -618,7 +624,7 @@ function App.drawMainWindow()
 
         App.drawPerform(true)
         App.drawBottom(ctx, bottom_lines)
-        App.drawMsg()
+        App:drawMsg()
         r.ImGui_End(ctx)
     end
     return open
@@ -629,8 +635,8 @@ function App.reset()
     App.usedFiles = {} --keeps track of ALL files used in the session for cleaning the media folder
 end
 
-function App.loop()
-    if not App.coPerform and not App.popup.msg then App.checkProjectChange() end
+function loop()
+    if not App.coPerform and not App.popup.msg then App:checkProjectChange() end
     waitForMessageBox()
     checkPerform()
     r.ImGui_PushFont(Gui.ctx, Gui.st.fonts.default)
@@ -638,7 +644,7 @@ function App.loop()
     r.ImGui_PopFont(Gui.ctx)
     -- checkExternalCommand()
     if App.coPerform or App.popup.msg or (App.open and not reaper.ImGui_IsKeyPressed(Gui.ctx, reaper.ImGui_Key_Escape())) then
-        r.defer(App.loop)
+        r.defer(loop)
     end
 end
 

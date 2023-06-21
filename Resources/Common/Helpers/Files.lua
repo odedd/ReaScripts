@@ -68,6 +68,12 @@ function OD_GetRelativeOrAbsoluteFile(fileName, rootPath)
     return (relFile and relFile or fileName), relPath, (relFile ~= fileName)
 end
 
+function OD_SanitizeFilename(name)
+    -- replace special characters that are reserved on Windows
+    return name:gsub('[*\\:<>?/|"%c]+', '-')
+end
+
+
 function OD_GetSubfolders(folder)
     local folders = {}
     local i = 0

@@ -1,4 +1,7 @@
 -- @noindex
+local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
+dofile(p .. 'ReaperHelpers/Regions.lua')
+
 function OD_GetProjectPaths()
     local projectRecordingPath = r.GetProjectPath():gsub('\\','/')
     local proj, fullProjPath = r.EnumProjects(-1, '')-- full project name including path and RPP file
