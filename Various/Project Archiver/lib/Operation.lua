@@ -1,5 +1,6 @@
 -- @noindex
 
+local settings = PA_Settings.settings
 YIELD_FREQUENCY = 50
 
 -- * local
@@ -55,7 +56,7 @@ function GetMediaFiles()
 
         local tmpItemAutoStretch = r.GetMediaItemInfo_Value(item, "C_AUTOSTRETCH")
         local tmpBeatAttachMode = r.GetMediaItemInfo_Value(item, "C_BEATATTACHMODE")
-        if Settings.minimize then                                 -- no need to do it if not minimizing (wasteful)
+        if settings.minimize then                                 -- no need to do it if not minimizing (wasteful)
             r.SetMediaItemInfo_Value(item, "C_AUTOSTRETCH", 0)
             r.SetMediaItemInfo_Value(item, "C_BEATATTACHMODE", 0) -- ]]
         end
@@ -81,7 +82,7 @@ function GetMediaFiles()
         local foundStart, foundEnd
         -- check if there are markers at start and end of item. if not, add them.
         local beforeStartSlope, beforeEndSlope
-        if Settings.minimize then -- no need to do it if not minimizing (wasteful)
+        if settings.minimize then -- no need to do it if not minimizing (wasteful)
             for j = 0, numStrtchMarkers - 1 do
                 local rv, pos, srcpos = r.GetTakeStretchMarker(take, j)
                 if pos < startPos then
@@ -121,7 +122,7 @@ function GetMediaFiles()
             end
         end
         r.SetActiveTake(savedTake)
-        if Settings.minimize then -- no need to do it if not minimizing (wasteful)
+        if settings.minimize then -- no need to do it if not minimizing (wasteful)
             r.SetMediaItemInfo_Value(item, "C_AUTOSTRETCH", tmpItemAutoStretch)
             r.SetMediaItemInfo_Value(item, "C_BEATATTACHMODE", tmpBeatAttachMode)
         end
@@ -223,7 +224,7 @@ function GetMediaFiles()
             -- log occurance if it's to be minimized
             if fileExists and mediaSource then
                 local sp, ep
-                if Settings.minimize then -- no need to do it if not minimizing (wasteful)
+                if settings.minimize then -- no need to do it if not minimizing (wasteful)
                     sp, ep = getTakeSourcePositions(take, srclen)
                 end
                 -- Create a table to store the occurrence information
@@ -272,7 +273,7 @@ function GetMediaFiles()
                     OD_HasValue(MEDIA_TYPES.SUBPROJECT, sourceType) then
                     ignore = false
                 end
-                if (Settings.minimizeSourceTypes == MINIMIZE_SOURCE_TYPES.ALL) and
+                if (settings.minimizeSourceTypes == MINIMIZE_SOURCE_TYPES.ALL) and
                     OD_HasValue(MEDIA_TYPES.COMPRESSED, sourceType) then
                     ignore = false
                 end
@@ -284,7 +285,7 @@ function GetMediaFiles()
                 App.mediaFiles[filename].status_info = 'Has sections'
                 App.mediaFiles[filename].ignore = true
             end
-            if App.mediaFiles[filename].ignore or not Settings.minimize then
+            if App.mediaFiles[filename].ignore or not settings.minimize then
                 App.mediaFiles[filename].newFileSize = App.mediaFiles[filename].sourceFileSize
                 App.mediaFiles[filename].status = STATUS.IGNORE
                 App.mediaFiles[filename].status_info = sourceType
@@ -361,18 +362,18 @@ function CollectMedia()
     local function shouldCollect(fileInfo)
         OD_LogDebug('-- CollectMedia() -> shouldCollect()',fileInfo.filenameWithPath,1)
         --       only if backup, collect all audio files which were ignored
-        return (Settings.backup and fileInfo.fileType == FILE_TYPES.AUDIO and fileInfo.ignore) or
+        return (settings.backup and fileInfo.fileType == FILE_TYPES.AUDIO and fileInfo.ignore) or
             -- + if set to collect external audio files, collect them
-            (OD_BfCheck(Settings.collect, COLLECT.EXTERNAL) and fileInfo.fileType == FILE_TYPES.AUDIO and
+            (OD_BfCheck(settings.collect, COLLECT.EXTERNAL) and fileInfo.fileType == FILE_TYPES.AUDIO and
                 fileInfo.external and fileInfo.ignore)
             -- + if set to collect external video files, collect them (if backup, collect all of them, if not, only collect those that are external)
-            or (OD_BfCheck(Settings.collect, COLLECT.VIDEO) and fileInfo.fileType == FILE_TYPES.VIDEO and
-                (Settings.backup or fileInfo.external))
+            or (OD_BfCheck(settings.collect, COLLECT.VIDEO) and fileInfo.fileType == FILE_TYPES.VIDEO and
+                (settings.backup or fileInfo.external))
             -- + if set to collect external rs5k files, collect them (if backup, collect all of them, if not, only collect those that are external)
-            or (OD_BfCheck(Settings.collect, COLLECT.RS5K) and fileInfo.fileType == FILE_TYPES.RS5K and
-                (Settings.backup or fileInfo.external)) or
+            or (OD_BfCheck(settings.collect, COLLECT.RS5K) and fileInfo.fileType == FILE_TYPES.RS5K and
+                (settings.backup or fileInfo.external)) or
             -- + if not minimizing, collect all external audio files, regardless of their "ignore" status
-            ((not Settings.minimize) and OD_BfCheck(Settings.collect, COLLECT.EXTERNAL) and fileInfo.fileType == FILE_TYPES.AUDIO and
+            ((not settings.minimize) and OD_BfCheck(settings.collect, COLLECT.EXTERNAL) and fileInfo.fileType == FILE_TYPES.AUDIO and
                 fileInfo.external)
     end
 
@@ -388,7 +389,7 @@ function CollectMedia()
             table.insert(App.restore.foldersToDelete, targetPath)
         end
         r.RecursiveCreateDirectory(targetPath, 0)
-        local success = Settings.collectOperation == COLLECT_OPERATION.COPY and
+        local success = settings.collectOperation == COLLECT_OPERATION.COPY and
             OD_CopyFile(fileInfo.filenameWithPath, uniqueFilename) or
             OD_MoveFile(fileInfo.filenameWithPath, uniqueFilename)
 
@@ -408,8 +409,8 @@ function CollectMedia()
             local uniqueFilenameInBackupDestination
             -- RS5K samples can be set as relative, however they are saved as absolute paths,
             -- so they need to already be set to the backup target location
-            if Settings.backup then
-                local targetPathInBackupDestination = (Settings.backupDestination:gsub('\\', '/'):gsub('/$', '') .. OD_FolderSep() .. fileInfo.collectBackupTargetPath .. OD_FolderSep())
+            if settings.backup then
+                local targetPathInBackupDestination = (settings.backupDestination:gsub('\\', '/'):gsub('/$', '') .. OD_FolderSep() .. fileInfo.collectBackupTargetPath .. OD_FolderSep())
                     :gsub('//$', '/')
                 uniqueFilenameInBackupDestination = targetPathInBackupDestination ..
                     unqBasename .. (unqExt and ('.' .. unqExt) or '')
@@ -420,7 +421,7 @@ function CollectMedia()
             end
         else
             local newSrc = r.PCM_Source_CreateFromFile(newFilename)
-            if not Settings.backup then
+            if not settings.backup then
                 App.peakOperations[newFilename] = newSrc
                 r.PCM_Source_BuildPeaks(newSrc, 0)
             end
@@ -457,7 +458,7 @@ function CollectMedia()
             -- otherwise, should first copy/move(according to setting) them to the current project folder, in order
             -- to get correct relative file references in the RPP, and set them to later MOVE to the backup destination
             -- so they won't be left in the original folder.
-            if (Settings.backup and not fileInfo.external) then
+            if (settings.backup and not fileInfo.external) then
                 if fileInfo.fileType == FILE_TYPES.RS5K then
                     -- the file's folder in the target folder should be the same as it is currently in relation to the project's path
                     fileInfo.collectBackupTargetPath = fileInfo.relOrAbsPath
@@ -471,7 +472,7 @@ function CollectMedia()
                 fileInfo.collectBackupOperation = COLLECT_BACKUP_OPERATION.COPY
             else
                 -- the file's folder in the target folder should be according to the targetPath setting (or the recording path if targetPath is not set)
-                fileInfo.collectBackupTargetPath = (Settings.targetPaths[fileInfo.fileType] or App.relProjectRecordingPath)
+                fileInfo.collectBackupTargetPath = (settings.targetPaths[fileInfo.fileType] or App.relProjectRecordingPath)
                     :gsub('\\', '/'):gsub('/$', ''):gsub('^/', '')
                 if fileInfo.collectBackupTargetPath ~= '' then
                     fileInfo.collectBackupTargetPath = fileInfo
@@ -504,7 +505,7 @@ function MinimizeAndApplyMedia()
         local track = r.GetTrack(0, trackIndex)
         local basename = filename:match("^.+[\\/](.+)$")
         local no_ext = basename:match("(.+)%.")
-        App.mediaFiles[filename].trackName = no_ext .. Settings.suffix
+        App.mediaFiles[filename].trackName = no_ext .. settings.suffix
         r.GetSetMediaTrackInfo_String(track, "P_NAME", App.mediaFiles[filename].trackName, true)
         return track
     end
@@ -518,10 +519,10 @@ function MinimizeAndApplyMedia()
         r.Main_OnCommand(41990, 0) -- toggle ripple editing
 
         for i, oc in ipairs(fileInfo.occurrences) do
-            oc.startpadding = math.min(Settings.padding, oc.startTime)
+            oc.startpadding = math.min(settings.padding, oc.startTime)
             local ocLength = oc.endTime - oc.startTime + oc.startpadding
 
-            oc.endpadding = math.min(oc.srclen - (oc.startTime + ocLength - oc.startpadding), Settings.padding)
+            oc.endpadding = math.min(oc.srclen - (oc.startTime + ocLength - oc.startpadding), settings.padding)
             oc.endpadding = math.max(oc.endpadding, 0)
             local ocLength = ocLength + oc.endpadding
 
@@ -832,7 +833,7 @@ function MinimizeAndApplyMedia()
                 App.usedFiles[originalFilename] = nil
                 App.usedFiles[uniqueName] = 1
 
-                if not Settings.backup then
+                if not settings.backup then
                     App.peakOperations[uniqueName] = newSrc
                     r.PCM_Source_BuildPeaks(newSrc, 0)
                 end
@@ -884,7 +885,7 @@ function MinimizeAndApplyMedia()
             local splitItems = addItemsToTrackAndWrapAround(track, fileInfo)
             removeSpaces(track, filename)
             local glueIsSmallerThanOriginal = false
-            if OD_HasValue(MEDIA_TYPES.UNCOMPRESSED, fileInfo.sourceType) and GLUE_FORMATS_DETAILS[Settings.glueFormat].type == MEDIA_TYPES.LOSSLESS then
+            if OD_HasValue(MEDIA_TYPES.UNCOMPRESSED, fileInfo.sourceType) and GLUE_FORMATS_DETAILS[settings.glueFormat].type == MEDIA_TYPES.LOSSLESS then
                 glueIsSmallerThanOriginal = true
             end
             -- if nothing to remove from original file and the glue format will not result in a smaller file size, so there's no need to minimize
@@ -973,7 +974,7 @@ end
 function Cancel(msg)
     OD_LogInfo('-- Cancel(msg)',msg)
     if msg then
-        App.msg(msg .. T.CANCEL_RELOAD, 'Operation Cancelled')
+        App:msg(msg .. T.CANCEL_RELOAD, 'Operation Cancelled')
     end
     -- if app.coPerform then coroutine.close(app.coPerform) end
     App.coPerform = nil
@@ -1034,7 +1035,7 @@ function Prepare()
     local function setQuality()
         OD_LogDebug('-- Prepare() -> setQuality()',nil,1)
         r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", 1, true)                                                     -- use custom format
-        r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", GLUE_FORMATS_DETAILS[Settings.glueFormat].formatString, true) -- set format to selected format from the settings
+        r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", GLUE_FORMATS_DETAILS[settings.glueFormat].formatString, true) -- set format to selected format from the settings
         r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, true)                                                          -- turn off 'use sample rate', which makes the glue operation use the item's sample rate (that's good!)
     end
 
@@ -1057,7 +1058,7 @@ end
 function CreateBackupProject()
     OD_LogDebug('-- CreateBackupProject()',nil)
     r.Main_SaveProject(-1)
-    local targetPath = Settings.backupDestination .. OD_FolderSep()
+    local targetPath = settings.backupDestination .. OD_FolderSep()
     App.backupTargetProject = targetPath .. App.projFileName
     OD_CopyFile(App.fullProjPath, App.backupTargetProject)
     App.perform.total = App.mediaFileCount
@@ -1071,7 +1072,7 @@ function CreateBackupProject()
             (fileInfo.collectBackupTargetPath or (fileInfo.pathIsRelative and fileInfo.relOrAbsPath or App.relProjectRecordingPath)),
             0)
         App.perform.pos = App.perform.pos + 1
-        if fileInfo.collectBackupOperation == COLLECT_BACKUP_OPERATION.MOVE or (Settings.minimize and not fileInfo.ignore and not fileInfo.missing) then
+        if fileInfo.collectBackupOperation == COLLECT_BACKUP_OPERATION.MOVE or (settings.minimize and not fileInfo.ignore and not fileInfo.missing) then
             fileInfo.status = STATUS.MOVING
             coroutine.yield('Creating backup project')
             local _, newFN, newExt = OD_DissectFilename(fileInfo.newfilename)
@@ -1084,7 +1085,7 @@ function CreateBackupProject()
                 fileInfo.status = STATUS.ERROR
                 fileInfo.status_info = 'move failed'
             end
-        elseif Settings.minimize or fileInfo.collectBackupOperation == COLLECT_BACKUP_OPERATION.COPY or (not fileInfo.ignore) then -- copy all other files, if in media folder
+        elseif settings.minimize or fileInfo.collectBackupOperation == COLLECT_BACKUP_OPERATION.COPY or (not fileInfo.ignore) then -- copy all other files, if in media folder
             if fileInfo.pathIsRelative then
                 fileInfo.status = STATUS.COPYING
                 coroutine.yield('Creating backup project')
@@ -1127,11 +1128,11 @@ end
 
 function DeleteOriginals()
     OD_LogDebug('-- DeleteOriginals()',nil)
-    if Settings.minimize and Settings.deleteMethod ~= DELETE_METHOD.KEEP_IN_FOLDER then
+    if settings.minimize and settings.deleteMethod ~= DELETE_METHOD.KEEP_IN_FOLDER then
         App.perform.total = App.mediaFileCount
 
         App.perform.pos = 0
-        local stat = Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and 'Moving originals to trash' or
+        local stat = settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and 'Moving originals to trash' or
             'Deleting originals'
         local filesToTrashWin = {}
         coroutine.yield(stat)
@@ -1140,11 +1141,11 @@ function DeleteOriginals()
             App.perform.pos = App.perform.pos + 1
             App.scroll = filename
             if not fileInfo.external and not fileInfo.ignore and not fileInfo.missing then
-                fileInfo.status = Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and STATUS.MOVING_TO_TRASH or
+                fileInfo.status = settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and STATUS.MOVING_TO_TRASH or
                     STATUS.DELETING
                 coroutine.yield(stat)
                 if OS_is.win then
-                    if Settings.deleteMethod ~= DELETE_METHOD.MOVE_TO_TRASH then
+                    if settings.deleteMethod ~= DELETE_METHOD.MOVE_TO_TRASH then
                         r.reduce_open_files(2) -- windows won't delete/move files that are in use
                         if os.remove(fileInfo.filenameWithPath) then
                             fileInfo.status = STATUS.DONE
@@ -1156,7 +1157,7 @@ function DeleteOriginals()
                         table.insert(filesToTrashWin, fileInfo.filenameWithPath)
                     end
                 else
-                    if (Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and
+                    if (settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and
                             OD_MoveToTrash(fileInfo.filenameWithPath) or os.remove(fileInfo.filenameWithPath)) then
                         fileInfo.status = STATUS.DONE
                     else
@@ -1192,7 +1193,7 @@ function CleanMediaFolder()
     OD_LogDebug('-- CleanMediaFolder()',nil)
     local function deleteUnusedFiles()
         OD_LogDebug('-- CleanMediaFolder() -> deleteUnusedFiles()',nil,1)
-        local stat = Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and 'Moving unused files to trash' or
+        local stat = settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and 'Moving unused files to trash' or
             'Deleting unused files'
 
         local filesToTrashWin = {}
@@ -1204,7 +1205,7 @@ function CleanMediaFolder()
                 coroutine.yield(stat)
             end
             if OS_is.win then
-                if Settings.deleteMethod ~= DELETE_METHOD.MOVE_TO_TRASH then
+                if settings.deleteMethod ~= DELETE_METHOD.MOVE_TO_TRASH then
                     r.reduce_open_files(2) -- windows won't delete/move files that are in use
                     if os.remove(file.filename) then
                         file.deleted = true
@@ -1215,7 +1216,7 @@ function CleanMediaFolder()
                     table.insert(filesToTrashWin, file.filename)
                 end
             else
-                if Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH then
+                if settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH then
                     if OD_MoveToTrash(file.filename) then
                         file.deleted = true
                     else
@@ -1246,7 +1247,7 @@ function CleanMediaFolder()
         end
     end
 
-    if not Settings.backup and Settings.cleanMediaFolder then
+    if not settings.backup and settings.cleanMediaFolder then
         getUnusedFilesInRecordingFolder()
         deleteUnusedFiles()
     end
@@ -1289,7 +1290,7 @@ function CalculateSavings()
     App.totalSpace.notMoved = 0
 
     -- when backing up, media folder size isn't scanned, so it needs to be scanned now to calculate total size
-    if Settings.backup then getUnusedFilesInRecordingFolder() end
+    if settings.backup then getUnusedFilesInRecordingFolder() end
     for i, file in ipairs(App.ununsedFilesInRecordingFolder or {}) do
         if file.deleted then App.totalSpace.deleted = App.totalSpace.deleted + file.size end
         if not App.mediaFiles[file.filename] then
@@ -1307,19 +1308,19 @@ function CalculateSavings()
 
     App.totalSpace.saved = App.totalSpace.totalOriginalSize - App.totalSpace.newSize
     App.totalSpace.minimized = App.totalSpace.usedFilesSizeBeforeMinimization - App.totalSpace.newSize
-    if Settings.backup then App.totalSpace.notMoved = App.totalSpace.saved - App.totalSpace.minimized end
+    if settings.backup then App.totalSpace.notMoved = App.totalSpace.saved - App.totalSpace.minimized end
     local msg =
         ('Original media folder size:      %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.totalOriginalSize)) ..
-        (Settings.minimize and
+        (settings.minimize and
             ('Minimized files:                 %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.minimized) .. (App.totalSpace.minimized < 0 and '*' or '')) or '') ..
-        (Settings.backup and
+        (settings.backup and
             ('Unused audio in original folder: %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.notMoved)) or '') ..
-        ((Settings.cleanMediaFolder and not Settings.backup) and
+        ((settings.cleanMediaFolder and not settings.backup) and
             ('Deleted:                         %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.deleted)) or '') ..
         ('New size:                        %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.newSize)) ..
         '\n' ..
         ('Total savings:                   %s\n'):format(OD_GetFormattedFileSize(App.totalSpace.saved)) ..
         ((App.totalSpace.minimized < 0) and ('\n\n* Minimzed size is negative since\ncompressed files were glued together\nas raw PCM files.\n\nTo avoid that, you may select\n"%s" under\n"File types to minimize"'):format(MINIMIZE_SOURCE_TYPES_DESCRIPTIONS[MINIMIZE_SOURCE_TYPES.UNCOMPRESSED_AND_LOSSLESS]) or '')
 
-    App.msg(msg, 'Operation complete')
+    App:msg(msg, 'Operation complete')
 end

@@ -306,6 +306,7 @@ do
 end
 
 -- Save copied tables in `copies`, indexed by original table.
+-- returnes a copy of the original table
 function OD_DeepCopy(orig, copies)
     copies = copies or {}
     local orig_type = type(orig)
@@ -325,6 +326,18 @@ function OD_DeepCopy(orig, copies)
         copy = orig
     end
     return copy
+end
+
+-- alters the first table with the second
+function OD_MergeTables(t1, t2)
+    for k, v in pairs(t2) do
+        if (type(v) == "table") and (type(t1[k] or false) == "table") then
+            OD_MergeTables(t1[k], t2[k])
+        else
+            t1[k] = v
+        end
+    end
+    return t1
 end
 
 function OD_PairsByOrder(t, f)

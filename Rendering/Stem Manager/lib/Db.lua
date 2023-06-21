@@ -53,7 +53,7 @@ DB = {
             reaper.ShowConsoleMsg(('The preset was saved using a newer version of %s\n'):format(Scr.name))
         else
             Settings.project = OD_DeepCopy(preset.settings)
-            saveSettings()
+            SaveSettings()
             if fullLoad then
                 for stemName, stem in pairs(self.stems) do
                     self:removeStem(stemName)

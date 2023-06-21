@@ -102,6 +102,10 @@ function OD_LogTable(level, tableName, table, depth_offset)
 
 end
 
+function OD_SetLogFile(filename)
+    if filename ~= Log.filename then closeLogFile() end
+    Log.filename = filename
+end
 function OD_FlushLog()
     flushLog()
 end

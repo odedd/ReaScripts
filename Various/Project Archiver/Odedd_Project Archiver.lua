@@ -1,15 +1,21 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.5.6
+-- @version 0.5.7
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
 -- @provides
 --   [nomain] ../../Resources/Common/* > Resources/Common/
 --   [nomain] ../../Resources/Common/Helpers/* > Resources/Common/Helpers/
+--   [nomain] ../../Resources/Common/Helpers/App* > Resources/Common/Helpers/App/
+--   [nomain] ../../Resources/Common/Helpers/Reaper* > Resources/Common/Helpers/Reaper/
 --   [nomain] ../../Resources/Fonts/* > Resources/Fonts/
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
+-- @changelog
+-- @changelog
+--   Project GUID change detection
+--   Internal code refactoring
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -32,9 +38,12 @@ dofile(p .. 'lib/Constants.lua')
 dofile(p .. 'lib/Settings.lua')
 dofile(p .. 'lib/Operation.lua')
 dofile(p .. 'lib/App.lua')
-dofile(p .. 'lib/Texts.lua')
 dofile(p .. 'lib/Gui.lua')
+dofile(p .. 'lib/Texts.lua')
 
+App.gui = Gui
+App:init()
+local settings = PA_Settings.settings
 Log.level = LOG_LEVEL.NONE
 Log.output = LOG_OUTPUT.FILE
 
@@ -72,32 +81,32 @@ Gui.st.col.status = {
 ---------------------------------------
 
 local function doPerform()
-    if CheckSettings() then
+    if PA_Settings:Check() then
         Prepare()
-        if Settings.keepActiveTakesOnly then
+        if settings.keepActiveTakesOnly then
             KeepActiveTakesOnly()
         end
         -- get information on all takes, separated by media source file
-        if Settings.backup or Settings.keepActiveTakesOnly or Settings.minimize or Settings.collect ~= 0 or Settings.cleanMediaFolder then
+        if settings.backup or settings.keepActiveTakesOnly or settings.minimize or settings.collect ~= 0 or settings.cleanMediaFolder then
             GetMediaFiles()
         end
         if SubProjectsExist() then
             Cancel(T.ERROR_SUBPROJECTS_UNSPPORTED)
         else
             -- if sources are networked, trashing may not be an option.
-            if (Settings.minimize and not Settings.backup) and (Settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH) and
+            if (settings.minimize and not settings.backup) and (settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH) and
                 (NetworkedFilesExist()) then
                 Cancel(
                     T.ERROR_NETWORKED_FILES_TRASH_UNSPPORTED)
             else
                 -- minimize files and apply to original sources
-                if Settings.minimize then
+                if settings.minimize then
                     MinimizeAndApplyMedia()
                 end
-                if Settings.backup or Settings.collect ~= 0 then
+                if settings.backup or settings.collect ~= 0 then
                     CollectMedia()
                 end
-                if Settings.backup then
+                if settings.backup then
                     -- copy to a new project path (move glued files, copy others)
                     CreateBackupProject()
                     -- should happen here so that revert happens afterward
@@ -105,10 +114,10 @@ local function doPerform()
                     -- revert back to temporary copy of project
                     Revert()
                 else
-                    if Settings.minimize then
+                    if settings.minimize then
                         DeleteOriginals()
                     end
-                    if Settings.cleanMediaFolder then
+                    if settings.cleanMediaFolder then
                         CleanMediaFolder()
                     end
                     -- finish building peaks for new files
@@ -120,7 +129,7 @@ local function doPerform()
                 -- restore settings and other stuff saved at the beginning of the process
                 Restore()
 
-                if Settings.backup then
+                if settings.backup then
                     -- open backup project
                     r.Main_openProject("noprompt:" .. App.backupTargetProject)
                 end
@@ -290,7 +299,7 @@ function App.drawWarning()
         r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
         if r.ImGui_Button(ctx, okButtonLabel) then
-            if Scr.major_version < 1 and Settings.showBetaWarning and not App.popup.secondWarningShown then
+            if Scr.major_version < 1 and settings.showBetaWarning and not App.popup.secondWarningShown then
                 r.ImGui_OpenPopup(ctx, 'Also...')
             else
                 App.popup.secondWarningShown = false
@@ -329,8 +338,8 @@ function App.drawWarning()
                     r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())) then
                 r.ImGui_TextWrapped(ctx, T.BETA_WARNING)
                 local _, hideThis =
-                    r.ImGui_Checkbox(ctx, "Dont show this again", not Settings.showBetaWarning)
-                Settings.showBetaWarning = not hideThis
+                    r.ImGui_Checkbox(ctx, "Dont show this again", not settings.showBetaWarning)
+                settings.showBetaWarning = not hideThis
                 r.ImGui_EndChild(ctx)
             end
 
@@ -341,7 +350,7 @@ function App.drawWarning()
             r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
             if r.ImGui_Button(ctx, 'Got it') then
-                SaveSettings()
+                PA_Settings:Save()
                 r.ImGui_CloseCurrentPopup(ctx)
             end
             r.ImGui_EndPopup(ctx)
@@ -359,27 +368,27 @@ function App.drawBottom(ctx, bottom_lines)
     r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) -
         (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines +
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2))
-    local status, col = App.getStatus('main')
+    local status, col = App:getStatus('main')
     if col then r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col[col]) end
     r.ImGui_Spacing(ctx)
     r.ImGui_Text(ctx, status)
-    App.setHint('main', '')
+    App:setHint('main', '')
     r.ImGui_Spacing(ctx)
     if col then r.ImGui_PopStyleColor(ctx) end
     if not App.coPerform then
-        if r.ImGui_Button(ctx, Settings.backup and 'Create Backup' or 'Minimize Current Project',
+        if r.ImGui_Button(ctx, settings.backup and 'Create Backup' or 'Minimize Current Project',
                 r.ImGui_GetContentRegionAvail(ctx)) then
             -- don't save backupDestination into saved preferences, but save all other settings
             OD_LogInfo('** Started')
-            OD_LogTable(LOG_LEVEL.INFO,'Settings', Settings, 1)
-            local tmpDest = Settings.backupDestination
-            Settings.backupDestination = nil
-            SaveSettings()
-            Settings.backupDestination = tmpDest
+            OD_LogTable(LOG_LEVEL.INFO,'Settings', settings, 1)
+            local tmpDest = settings.backupDestination
+            settings.backupDestination = nil
+            PA_Settings:Save()
+            settings.backupDestination = tmpDest
 
-            local ok, errors = CheckSettings()
+            local ok, errors = PA_Settings:Check()
             if not ok then
-                App.msg(table.concat(errors, '\n\n'))
+                App:msg(table.concat(errors, '\n\n'))
             else
                 if App.warningCount > 0 then
                     r.ImGui_OpenPopup(ctx, 'Are you sure?')
@@ -428,7 +437,7 @@ function App.drawMainWindow()
                     OD_OpenLink(Scr.link['Forum Thread'])
                 end
                 if r.ImGui_MenuItem(ctx, 'Youtube Video') then
-                    App.msg('Soon...')
+                    App:msg('Soon...')
                     -- OD_OpenLink(Scr.link['YouTube'])
                 end
                 if r.ImGui_BeginMenu(ctx, 'Log Level') then
@@ -458,83 +467,83 @@ function App.drawMainWindow()
         r.ImGui_SeparatorText(ctx, 'Settings')
 
         r.ImGui_Bullet(ctx)
-        Settings.backup = Gui.setting(
+        settings.backup = Gui.setting(
             'checkbox',
             T.SETTINGS.BACKUP.LABEL,
             T.SETTINGS.BACKUP.HINT,
-            Settings.backup)
-        if Settings.backup then
-            Settings.backupDestination = Gui.setting(
+            settings.backup)
+        if settings.backup then
+            settings.backupDestination = Gui.setting(
                 'folder',
                 T.SETTINGS.BACKUP_DESTINATION.LABEL,
                 T.SETTINGS.BACKUP_DESTINATION.HINT,
-                Settings.backupDestination,
+                settings.backupDestination,
                 {},
                 true)
         end
 
         r.ImGui_Bullet(ctx)
-        Settings.keepActiveTakesOnly = Gui.setting(
+        settings.keepActiveTakesOnly = Gui.setting(
             'checkbox',
             T.SETTINGS.KEEP_ACTIVE_TAKES_ONLY.LABEL,
             T.SETTINGS.KEEP_ACTIVE_TAKES_ONLY.HINT,
-            Settings.keepActiveTakesOnly)
+            settings.keepActiveTakesOnly)
 
-        if Settings.minimize and not Settings.backup then
+        if settings.minimize and not settings.backup then
             Gui.settingIcon(Gui.icons.caution, T.CAUTION_MINIMIZE)
             App.warningCount = App.warningCount + 1
         else
             r.ImGui_Bullet(ctx)
         end
-        Settings.minimize = Gui.setting(
+        settings.minimize = Gui.setting(
             'checkbox',
             T.SETTINGS.MINIMIZE.LABEL,
             T.SETTINGS.MINIMIZE.HINT,
-            Settings.minimize)
+            settings.minimize)
 
         r.ImGui_Indent(ctx)
-        if not Settings.minimize then r.ImGui_BeginDisabled(ctx) end
-        Settings.padding = Gui.setting(
+        if not settings.minimize then r.ImGui_BeginDisabled(ctx) end
+        settings.padding = Gui.setting(
             'dragdouble',
             T.SETTINGS.PADDING.LABEL,
             T.SETTINGS.PADDING.HINT,
-            Settings.padding, {
+            settings.padding, {
                 speed = 0.1,
                 min = 0.0,
                 max = 10.0,
                 format = "%.1f"
             })
-        if Settings.padding < 0 then Settings.padding = 0 end
+        if settings.padding < 0 then settings.padding = 0 end
 
-        Settings.minimizeSourceTypes = Gui.setting(
+        settings.minimizeSourceTypes = Gui.setting(
             'combo',
             T.SETTINGS.MINIMIZE_SOURCE_TYPES.LABEL,
             T.SETTINGS.MINIMIZE_SOURCE_TYPES.HINT,
-            Settings.minimizeSourceTypes, {
+            settings.minimizeSourceTypes, {
                 list = MINIMIZE_SOURCE_TYPES_LIST
             })
 
-        Settings.glueFormat = Gui.setting(
+        settings.glueFormat = Gui.setting(
             'combo',
             T.SETTINGS.GLUE_FORMAT.LABEL,
             T.SETTINGS.GLUE_FORMAT.HINT,
-            Settings.glueFormat, {
+            settings.glueFormat, {
                 list = GLUE_FORMATS_LIST
             })
-        if not Settings.minimize then r.ImGui_EndDisabled(ctx) end
+        if not settings.minimize then r.ImGui_EndDisabled(ctx) end
         r.ImGui_Unindent(ctx)
-        if Settings.backup or Settings.collect ~= 0 then
-            if Settings.collectOperation == COLLECT_OPERATION.MOVE then
+        if settings.backup or settings.collect ~= 0 then
+            if settings.collectOperation == COLLECT_OPERATION.MOVE then
                 Gui.settingIcon(Gui.icons.caution, T.CAUTION_COLLECT_MOVE)
                 App.warningCount = App.warningCount + 1
             else
                 r.ImGui_Bullet(ctx)
             end
-            Settings.collectOperation = Gui.setting(
+            settings.collectOperation = Gui.setting(
                 'combo',
                 T.SETTINGS.COLLECT_OPERATION.LABEL,
                 T.SETTINGS.COLLECT_OPERATION.HINT,
-                Settings.collectOperation, {
+                settings.collectOperation, {
                     list = COLLECT_OPERATIONS_LIST
                 })
         else
@@ -548,63 +557,63 @@ function App.drawMainWindow()
 
         for bwVal, option in OD_PairsByOrder(T.SETTINGS.COLLECT) do
             -- disable external files when backup is selected and temporarily save its value to restore if unchecking backup
-            if Settings.backup and bwVal == COLLECT.EXTERNAL then
+            if settings.backup and bwVal == COLLECT.EXTERNAL then
                 if App.temp.originalBackupValue == nil then
-                    App.temp.originalBackupValue = OD_BfCheck(Settings.collect,
+                    App.temp.originalBackupValue = OD_BfCheck(settings.collect,
                         COLLECT.EXTERNAL)
                 end
                 r.ImGui_BeginDisabled(ctx)
-            elseif not Settings.backup and bwVal == COLLECT.EXTERNAL and App.temp.originalBackupValue ~= nil then
-                Settings.collect = OD_BfSet(Settings.collect, COLLECT.EXTERNAL, App.temp.originalBackupValue)
+            elseif not settings.backup and bwVal == COLLECT.EXTERNAL and App.temp.originalBackupValue ~= nil then
+                settings.collect = OD_BfSet(settings.collect, COLLECT.EXTERNAL, App.temp.originalBackupValue)
                 App.temp.originalBackupValue = nil
             end
             local op = Gui.setting('checkbox', option.LABEL, option.HINT,
-                (Settings.backup and bwVal == COLLECT.EXTERNAL) and true or OD_BfCheck(Settings.collect, bwVal))
-            Settings.collect = OD_BfSet(Settings.collect, bwVal, op)
-            if Settings.backup and bwVal == COLLECT.EXTERNAL then
+                (settings.backup and bwVal == COLLECT.EXTERNAL) and true or OD_BfCheck(settings.collect, bwVal))
+            settings.collect = OD_BfSet(settings.collect, bwVal, op)
+            if settings.backup and bwVal == COLLECT.EXTERNAL then
                 if r.ImGui_IsItemHovered(ctx, r.ImGui_HoveredFlags_AllowWhenDisabled()) then
                     r.ImGui_SetTooltip(ctx, (T.SETTINGS.COLLECT[COLLECT.EXTERNAL].mustCollectHint))
                 end
                 r.ImGui_EndDisabled(ctx)
             end
-            if OD_BfCheck(Settings.collect, bwVal) then
-                Settings.targetPaths[option.targetPath] = OD_Trim(Gui.setting('text_with_hint', option.LABEL .. ' path',
-                    option.TEXT_HELP, Settings.targetPaths[option.targetPath], { hint = option.TEXT_HINT }, true))
-                if Settings.targetPaths[option.targetPath] == '' then Settings.targetPaths[option.targetPath] = nil end
+            if OD_BfCheck(settings.collect, bwVal) then
+                settings.targetPaths[option.targetPath] = OD_Trim(Gui.setting('text_with_hint', option.LABEL .. ' path',
+                    option.TEXT_HELP, settings.targetPaths[option.targetPath], { hint = option.TEXT_HINT }, true))
+                if settings.targetPaths[option.targetPath] == '' then settings.targetPaths[option.targetPath] = nil end
             end
         end
 
         r.ImGui_Unindent(ctx)
-        if not Settings.backup then
-            if Settings.cleanMediaFolder then
+        if not settings.backup then
+            if settings.cleanMediaFolder then
                 Gui.settingIcon(Gui.icons.caution, T.CAUTION_CLEAN_MEDIA_FOLDER)
                 App.warningCount = App.warningCount + 1
             else
                 r.ImGui_Bullet(ctx)
             end
-            Settings.cleanMediaFolder = Gui.setting(
+            settings.cleanMediaFolder = Gui.setting(
                 'checkbox',
                 T.SETTINGS.CLEAN_MEDIA_FOLDER.LABEL,
                 T.SETTINGS.CLEAN_MEDIA_FOLDER.HINT,
-                Settings.cleanMediaFolder)
+                settings.cleanMediaFolder)
         else
             Gui.settingSpacing()
         end
-        if (Settings.minimize or Settings.cleanMediaFolder) and not Settings.backup then
-            if Settings.cleanMediaFolder and Settings.deleteMethod == DELETE_METHOD.KEEP_IN_FOLDER then
+        if (settings.minimize or settings.cleanMediaFolder) and not settings.backup then
+            if settings.cleanMediaFolder and settings.deleteMethod == DELETE_METHOD.KEEP_IN_FOLDER then
                 Gui.settingIcon(Gui.icons.error, T.ERROR_KEEP_IN_FOLDER)
                 App.warningCount = App.warningCount + 1
-            elseif Settings.deleteMethod == DELETE_METHOD.DELETE_FROM_DISK then
+            elseif settings.deleteMethod == DELETE_METHOD.DELETE_FROM_DISK then
                 Gui.settingIcon(Gui.icons.caution, T.CAUTION_DELETE)
                 App.warningCount = App.warningCount + 1
             else
                 r.ImGui_Bullet(ctx)
             end
-            Settings.deleteMethod = Gui.setting(
+            settings.deleteMethod = Gui.setting(
                 'combo', 
                 T.SETTINGS.DELETE_METHODS.LABEL,
                 T.SETTINGS.DELETE_METHODS.HINT,
-                Settings.deleteMethod, {
+                settings.deleteMethod, {
                     list = DELETE_METHODS_LIST
                 })
         else
@@ -618,7 +627,7 @@ function App.drawMainWindow()
 
         App.drawPerform(true)
         App.drawBottom(ctx, bottom_lines)
-        App.drawMsg()
+        App:drawMsg()
         r.ImGui_End(ctx)
     end
     return open
@@ -630,9 +639,10 @@ function App.reset()
 end
 
 function App.loop()
-    if not App.coPerform and not App.popup.msg then App.checkProjectChange() end
+    if not App.coPerform and not App.popup.msg then App:checkProjectChange() end
     waitForMessageBox()
     checkPerform()
+
     r.ImGui_PushFont(Gui.ctx, Gui.st.fonts.default)
     App.open = App.drawMainWindow()
     r.ImGui_PopFont(Gui.ctx)
@@ -652,6 +662,6 @@ if OD_PrereqsOK({
         js_version = 1.310,   -- required for JS_Dialog_BrowseForFolder
         reaper_version = 6.76 -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
     }) then
-    LoadSettings()
-    r.defer(App.loop)
+        PA_Settings:Load()
+       r.defer(App.loop)
 end

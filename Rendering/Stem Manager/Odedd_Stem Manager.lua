@@ -1,12 +1,14 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 1.5.0
+-- @version 1.5.1
 -- @donation https://paypal.me/odedda
 -- @link https://forum.cockos.com/showthread.php?t=268512
 -- @license GNU GPL v3
 -- @provides
 --   [nomain] ../../Resources/Common/* > Resources/Common/
 --   [nomain] ../../Resources/Common/Helpers/* > Resources/Common/Helpers/
+--   [nomain] ../../Resources/Common/Helpers/App* > Resources/Common/Helpers/App/
+--   [nomain] ../../Resources/Common/Helpers/Reaper* > Resources/Common/Helpers/Reaper/
 --   [nomain] ../../Resources/Fonts/* > Resources/Fonts/
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
@@ -18,8 +20,9 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Added loading and saving of presets
---   Can now render groups directly from the stem context menu
+--   Project GUID change detection
+--   Fix for how settings are saved and loaded
+--   Internal code refactoring
 
 local r = reaper
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
@@ -35,7 +38,9 @@ OD_Init()
 
 dofile(p .. 'lib/Constants.lua')
 dofile(p .. 'lib/Db.lua')
+dofile(p .. 'lib/Settings.lua')
 dofile(p .. 'lib/Gui.lua')
+dofile(p .. 'lib/App.lua')
 
 Scr.presetFolder = Scr.dir .. 'Presets'
 r.RecursiveCreateDirectory(Scr.presetFolder, 0)
@@ -50,19 +55,9 @@ if OD_PrereqsOK({
     local frameCount = 0
     local applyPresetScript = loadfile(r.GetResourcePath() ..
         "/Scripts/ReaTeam Scripts/Rendering/cfillion_Apply render preset.lua")
-    App = {
-        open = true,
-        coPerform = nil,
-        perform = {
-            status = nil,
-            pos = nil,
-            total = nil
-        },
-        hint = {
-            main = {},
-            settings = {}
-        }
-    }
+
+    App.gui = Gui
+    App:init()
 
     local validators = {
         stem = {
@@ -82,125 +77,8 @@ if OD_PrereqsOK({
         }
     }
 
-    Settings = {}
-
-    local function getDefaultSettings(factory)
-        if factory == nil then
-            factory = false
-        end
-        local settings = {
-            default = {
-                renderaction = RENDERACTION_RENDER,
-                overwrite_without_asking = false,
-                wait_time = 5,
-                reflect_on_add = REFLECT_ON_ADD_TRUE,
-                syncmode = SYNCMODE_MIRROR,
-                render_setting_groups = {},
-                show_hidden_tracks = false
-            }
-        }
-
-        local default_render_settings = {
-            description = '',
-            render_preset = nil,
-            skip_empty_stems = true,
-            put_in_folder = false,
-            folder = '',
-            override_filename = false,
-            filename = '',
-            make_timeSel = false,
-            timeSelStart = 0,
-            timeSelEnd = 0,
-            select_regions = false,
-            selected_regions = {},
-            select_markers = false,
-            selected_markers = {},
-            run_actions = false,
-            actions_to_run = {},
-            run_actions_after = false,
-            actions_to_run_after = {},
-            ignore_warnings = false
-        }
-        for i = 1, RENDER_SETTING_GROUPS_SLOTS do
-            table.insert(settings.default.render_setting_groups, OD_DeepCopy(default_render_settings))
-        end
-
-        if not factory then
-            local loaded_ext_settings = table.load(Scr.dfsetfile) or
-                {} -- unpickle(r.GetExtState(scr.context_name, 'DEFAULT SETTINGS') or '')
-            -- merge default settings from extstates with script defaults
-            for k, v in pairs(loaded_ext_settings or {}) do
-                if not (k == 'render_setting_groups') then
-                    settings.default[k] = v
-                else
-                    for rgIdx, val in ipairs(v) do
-                        for rgSetting, rgV in pairs(val or {}) do
-                            if not settings.default.render_setting_groups[rgIdx] then -- if more render were saved than there are by default, create them by loading default vaules first
-                                settings.default.render_setting_groups[rgIdx] = OD_DeepCopy(default_render_settings)
-                            end
-                            settings.default.render_setting_groups[rgIdx][rgSetting] = rgV
-                        end
-                    end
-                end
-            end
-        end
-
-        return settings
-    end
-
-    local function loadSettings()
-        Settings = getDefaultSettings()
-        -- take merged updated default settings and merge project specific settings into them
-        local loaded_project_settings = unpickle(OD_LoadLongProjExtKey(Scr.context_name, 'PROJECT SETTINGS'))
-        Settings.project = OD_DeepCopy(Settings.default)
-        for k, v in pairs(loaded_project_settings or {}) do
-            if not (k == 'render_setting_groups') then
-                Settings.project[k] = v
-            else
-                for rgIdx, val in ipairs(v) do
-                    for rgSetting, rgV in pairs(val or {}) do
-                        Settings.project.render_setting_groups[rgIdx][rgSetting] = rgV
-                    end
-                end
-            end
-        end
-    end
-
-    function saveSettings()
-        table.save(Settings.default, Scr.dfsetfile)
-        OD_SaveLongProjExtState(Scr.context_name, 'PROJECT SETTINGS', pickle(Settings.project))
-        r.MarkProjectDirty(0)
-    end
-
-    local function updateSettings()
-        for rgIdx, val in ipairs(Settings.project.render_setting_groups) do
-            for rgAIdx, command_id in pairs(Settings.project.render_setting_groups[rgIdx].actions_to_run or {}) do
-                if type(command_id) ~= "string" then
-                    local named_command = r.ReverseNamedCommandLookup(command_id)
-                    if named_command then
-                        Settings.project.render_setting_groups[rgIdx].actions_to_run[rgAIdx] = named_command
-                    end
-                end
-            end
-            for rgAIdx, command_id in pairs(Settings.project.render_setting_groups[rgIdx].actions_to_run_after or {}) do
-                if type(command_id) ~= "string" then
-                    local named_command = r.ReverseNamedCommandLookup(command_id)
-                    if named_command then
-                        Settings.project.render_setting_groups[rgIdx].actions_to_run_after[rgAIdx] = named_command
-                    end
-                end
-            end
-        end
-        saveSettings()
-    end
-
-    local function sanitizeFilename(name)
-        -- replace special characters that are reserved on Windows
-        return name:gsub('[*\\:<>?/|"%c]+', '-')
-    end
-
     local function createAction(actionName, cmd)
-        local snActionName = sanitizeFilename(actionName)
+        local snActionName = OD_SanitizeFilename(actionName)
         local filename = ('%s - %s'):format(Scr.no_ext, snActionName)
 
         local outputFn = string.format('%s/%s.lua', Scr.dir, filename)
@@ -285,106 +163,10 @@ end]]):gsub('$(%w+)', {
     -- MAIN APP --------------------------------------------------------------------
     --------------------------------------------------------------------------------
 
-    local function GetRegionManagerWindow()
-        local title = r.JS_Localize('Region/Marker Manager', 'common')
-        return r.JS_Window_Find(title, true)
-    end
-
-    local function OpenAndGetRegionManagerWindow()
-        local title = r.JS_Localize('Region/Marker Manager', 'common')
-        local manager = GetRegionManagerWindow()
-        if not manager then
-            r.Main_OnCommand(40326, 0) -- View: Show region/marker manager window
-            manager = r.JS_Window_Find(title, true)
-        end
-        return manager
-    end
-
-    local function GetAllRegionsOrMarkers(m_type, close)
-        if close == nil then
-            close = true
-        end
-        local manager = OpenAndGetRegionManagerWindow()
-        local lv = r.JS_Window_FindChildByID(manager, 1071)
-        local cnt = r.JS_ListView_GetItemCount(lv)
-        local t = {}
-        if m_type == '' then
-            m_type = nil
-        end
-        for i = 0, cnt - 1 do
-            local matchstring = ("%s%%d+"):format(m_type and (m_type:upper()) or ".")
-            for rId in r.JS_ListView_GetItemText(lv, i, 1):gmatch(matchstring) do
-                t[#t + 1] = {
-                    is_rgn = rId:sub(1, 1) == 'R',
-                    id = rId,
-                    name = r.JS_ListView_GetItemText(lv, i, 2),
-                    selected = (r.JS_ListView_GetItemState(lv, i) ~= 0)
-                }
-            end
-        end
-        if close then
-            r.Main_OnCommand(40326, 0)
-        end -- View: Show region/marker manager window
-        return t, lv
-    end
-
-    local function GetSelectedRegionsOrMarkers(m_type)
-        local markeregions = GetAllRegionsOrMarkers(m_type)
-        local selected_markeregions = {}
-        for i, markeregion in ipairs(markeregions) do
-            if markeregion.selected then
-                table.insert(selected_markeregions, markeregion)
-            end
-        end
-        return selected_markeregions
-    end
-
-    local function SelectRegionsOrMarkers(selection, close)
-        if close == nil then
-            close = true
-        end
-        local markeregions, lv = GetAllRegionsOrMarkers(nil, false)
-        r.JS_ListView_SetItemState(lv, -1, 0x0, 0x2) -- unselect all items
-        for _, markeregion_to_select in ipairs(selection) do
-            for i, markeregion in ipairs(markeregions) do
-                if markeregion.id == tostring(markeregion_to_select.id) then
-                    r.JS_ListView_SetItemState(lv, i - 1, 0xF, 0x2) -- select item @ index
-                end
-            end
-        end
-        if close then
-            r.Main_OnCommand(40326, 0)
-        end -- View: Show region/marker manager window
-    end
-
-    local function GetAllRegions(close)
-        return GetAllRegionsOrMarkers('R', close)
-    end
-
-    local function GetAllMarkers(close)
-        return GetAllRegionsOrMarkers('M', close)
-    end
-
-    local function GetSelectedRegions()
-        return GetSelectedRegionsOrMarkers('R')
-    end
-
-    local function GetSelectedMarkers()
-        return GetSelectedRegionsOrMarkers('M')
-    end
-
-    local function SelectRegions(selection, close)
-        SelectRegionsOrMarkers(selection, close)
-    end
-
-    local function SelectMarkers(selection, close)
-        SelectRegionsOrMarkers(selection, close)
-    end
-
     local function checkRenderGroupSettings(rsg)
         local checks = {}
         local ok = true
-        presetName = rsg.render_preset
+        local presetName = rsg.render_preset
         if presetName and not DB.renderPresets[presetName] then
             table.insert(checks, {
                 passed = false,
@@ -392,7 +174,7 @@ end]]):gsub('$(%w+)', {
                 severity = 'critical',
                 hint = ("There's no render preset with the name '%s'."):format(presetName)
             })
-            ok = ok and test
+            ok = false
         elseif not presetName then
             table.insert(checks, {
                 passed = false,
@@ -412,9 +194,12 @@ end]]):gsub('$(%w+)', {
                     "For the stems to be rendered correctly, the source must be set to 'Master mix'."
             })
             ok = ok and test
+            if rsg.override_filename and rsg.filename ~= '' then
+                test = string.match(rsg.filename, "$stem") ~= nil
+            else
+                test = string.match(preset.filepattern, "$stem") ~= nil
+            end
 
-            test = ((rsg.override_filename == true) and string.find(rsg.filename, "$stem")) or
-                string.find(preset.filepattern, "$stem")
             table.insert(checks, {
                 passed = test,
                 status = ("$stem %s filename"):format(test and 'in' or "not in"),
@@ -737,7 +522,7 @@ end]]):gsub('$(%w+)', {
             local error_message_closed = false
             r.ImGui_OpenPopup(Gui.ctx, Scr.name .. '##error')
             while not error_message_closed do
-                local ok = App.drawPopup(Gui.ctx, 'msg', Scr.name .. '##error', {
+                local ok = App:drawPopup(Gui.ctx, 'msg', Scr.name .. '##error', {
                     msg = msg,
                     showCancelButton = true
                 })
@@ -754,9 +539,9 @@ end]]):gsub('$(%w+)', {
         if App.render_count > 0 then
             -- save marker selection, so that it can be restored later
             if save_marker_selection and r.APIExists('JS_Localize') then
-                OpenAndGetRegionManagerWindow()
+                OD_OpenAndGetRegionManagerWindow()
                 coroutine.yield('Saving marker/region selection', 0, 1)
-                saved_markeregion_selection = GetSelectedRegionsOrMarkers()
+                saved_markeregion_selection = OD_GetSelectedRegionsOrMarkers()
                 r.Main_OnCommand(40326, 0) -- close region/marker manager
             end
             if save_time_selection then
@@ -776,10 +561,10 @@ end]]):gsub('$(%w+)', {
                         coroutine.yield('Creating stem ' .. stemName, idx, App.render_count)
                         local render_preset = DB.renderPresets[rsg.render_preset]
                         ApplyPresetByName = render_preset.name
-                        applyPresetScript()
+                        if applyPresetScript ~= nil then applyPresetScript() end
                         if render_preset.boundsflag == RB_SELECTED_MARKERS and rsg.select_markers then
                             -- window must be given an opportunity to open (therefore yielded) for the selection to work
-                            OpenAndGetRegionManagerWindow()
+                            OD_OpenAndGetRegionManagerWindow()
                             coroutine.yield('Creating stem ' .. stemName .. ' (selecting markers)', idx,
                                 App.render_count)
                             -- for some reason selecting in windows requires region manager window to remain open for some time
@@ -798,7 +583,7 @@ end]]):gsub('$(%w+)', {
                         elseif render_preset.boundsflag == RB_SELECTED_REGIONS and rsg.select_regions then
                             -- window must be given an opportunity to open (therefore yielded) for the selection to work
 
-                            OpenAndGetRegionManagerWindow()
+                            OD_OpenAndGetRegionManagerWindow()
                             coroutine.yield('Creating stem ' .. stemName .. ' (selecting regions)', idx,
                                 App.render_count)
                             -- for some reason selecting in windows requires region manager window to remain open for some time
@@ -873,7 +658,7 @@ end]]):gsub('$(%w+)', {
                             while not App.render_cancelled and (os.clock() - t < Settings.project.wait_time + 1) and
                                 moreStemsInLine do
                                 local wait_left = math.ceil(Settings.project.wait_time - (os.clock() - t))
-                                if App.drawPopup(Gui.ctx, 'msg', Scr.name .. '##wait', {
+                                if App:drawPopup(Gui.ctx, 'msg', Scr.name .. '##wait', {
                                         closeKey = r.ImGui_Key_Escape(),
                                         okButtonLabel = "Stop rendering",
                                         msg = ('Waiting for %d more second%s...'):format(wait_left,
@@ -904,19 +689,19 @@ end]]):gsub('$(%w+)', {
             DB:toggleStemSync(DB.stems[laststemName], SYNCMODE_OFF)
             -- restore marker/region selection if it was saved
             if save_marker_selection and r.APIExists('JS_Localize') then
-                OpenAndGetRegionManagerWindow()
+                OD_OpenAndGetRegionManagerWindow()
                 coroutine.yield('Restoring marker/region selection', 1, 1)
                 if OS_is.win then
                     -- for some reason selecting in windows requires region manager window to remain open for some time
                     -- (this is a workaround until proper api support for selecting regions exists)
-                    SelectRegionsOrMarkers(saved_markeregion_selection, false)
+                    OD_SelectRegionsOrMarkers(saved_markeregion_selection, false)
                     local t = os.clock()
                     while (os.clock() - t < 0.5) do
                         coroutine.yield('Restoring marker/region selection', idx, App.render_count)
                     end
                     r.Main_OnCommand(40326, 0) -- close region/marker manager
                 else
-                    SelectRegionsOrMarkers(saved_markeregion_selection)
+                    OD_SelectRegionsOrMarkers(saved_markeregion_selection)
                 end
             end
             if save_time_selection then
@@ -973,201 +758,6 @@ end]]):gsub('$(%w+)', {
         end
     end
 
-    function App.drawPopup(ctx, popupType, title, data)
-        local data = data or {}
-        local center = { Gui.mainWindow.pos[1] + Gui.mainWindow.size[1] / 2,
-            Gui.mainWindow.pos[2] + Gui.mainWindow.size[2] / 2 } -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
-        if popupType == 'singleInput' then
-            local okPressed = nil
-            local initVal = data.initVal or ''
-            local okButtonLabel = data.okButtonLabel or 'OK'
-            local validation = data.validation or function(origVal, val)
-                return true
-            end
-            local bottom_lines = 2
-
-            r.ImGui_SetNextWindowSize(ctx, 350, 110)
-            r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
-            if r.ImGui_BeginPopupModal(ctx, title, false, r.ImGui_WindowFlags_AlwaysAutoResize()) then
-                Gui.popups.title = title
-
-                if r.ImGui_IsWindowAppearing(ctx) then
-                    r.ImGui_SetKeyboardFocusHere(ctx)
-                    Gui.popups.singleInput.value = initVal -- gui.popups.singleInput.stem.name
-                    Gui.popups.singleInput.status = ""
-                end
-                local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
-                r.ImGui_PushItemWidth(ctx, width)
-                retval, Gui.popups.singleInput.value = r.ImGui_InputText(ctx, '##singleInput',
-                    Gui.popups.singleInput.value)
-
-                r.ImGui_SetItemDefaultFocus(ctx)
-                r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
-                    r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
-                r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col.error)
-                r.ImGui_Text(ctx, Gui.popups.singleInput.status)
-                r.ImGui_PopStyleColor(ctx)
-                if r.ImGui_Button(ctx, okButtonLabel) or r.ImGui_IsKeyPressed(ctx, r.ImGui_Key_Enter()) then
-                    Gui.popups.singleInput.status = validation(initVal, Gui.popups.singleInput.value)
-                    if Gui.popups.singleInput.status == true then
-                        okPressed = true
-                        r.ImGui_CloseCurrentPopup(ctx)
-                    end
-                end
-                r.ImGui_SameLine(ctx)
-                if r.ImGui_Button(ctx, 'Cancel') or r.ImGui_IsKeyPressed(ctx, r.ImGui_Key_Escape()) then
-                    okPressed = false
-                    r.ImGui_CloseCurrentPopup(ctx)
-                end
-                r.ImGui_EndPopup(ctx)
-            end
-            return okPressed, Gui.popups.singleInput.value
-        elseif popupType == 'msg' then
-            local okPressed = nil
-            local msg = data.msg or ''
-            local showCancelButton = data.showCancelButton or false
-            local textWidth, textHeight = r.ImGui_CalcTextSize(ctx, msg)
-            local okButtonLabel = data.okButtonLabel or 'OK'
-            local cancelButtonLabel = data.cancelButtonLabel or 'Cancel'
-            local bottom_lines = 1
-            local closeKey = data.closeKey or r.ImGui_Key_Enter()
-            local cancelKey = data.cancelKey or r.ImGui_Key_Escape()
-
-            r.ImGui_SetNextWindowSize(ctx, math.max(220, textWidth) +
-                r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4, textHeight + 90)
-            r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
-
-            if r.ImGui_BeginPopupModal(ctx, title, false,
-                    r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
-                Gui.popups.title = title
-
-                local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
-                r.ImGui_PushItemWidth(ctx, width)
-
-                local windowWidth, windowHeight = r.ImGui_GetWindowSize(ctx);
-                r.ImGui_SetCursorPos(ctx, (windowWidth - textWidth) * .5, (windowHeight - textHeight) * .5);
-
-                r.ImGui_TextWrapped(ctx, msg)
-                r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
-                    r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
-
-                local buttonTextWidth = r.ImGui_CalcTextSize(ctx, okButtonLabel) +
-                    r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
-
-                if showCancelButton then
-                    buttonTextWidth = buttonTextWidth + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) +
-                        r.ImGui_CalcTextSize(ctx, cancelButtonLabel) +
-                        r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
-                end
-                r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
-
-                if r.ImGui_Button(ctx, okButtonLabel) or r.ImGui_IsKeyPressed(ctx, closeKey) then
-                    okPressed = true
-                    r.ImGui_CloseCurrentPopup(ctx)
-                end
-
-                if showCancelButton then
-                    r.ImGui_SameLine(ctx)
-                    if r.ImGui_Button(ctx, cancelButtonLabel) or r.ImGui_IsKeyPressed(ctx, cancelKey) then
-                        okPressed = false
-                        r.ImGui_CloseCurrentPopup(ctx)
-                    end
-                end
-
-                r.ImGui_EndPopup(ctx)
-            end
-            return okPressed
-        elseif popupType == 'stemActionsMenu' then
-            if r.ImGui_BeginPopup(ctx, title) then
-                if r.ImGui_Selectable(ctx, 'Rename', false, r.ImGui_SelectableFlags_DontClosePopups()) then
-                    Gui.popups.object = data.stemName;
-                    r.ImGui_OpenPopup(ctx, 'Rename Stem')
-                end
-                local retval, newval = App.drawPopup(ctx, 'singleInput', 'Rename Stem', {
-                    initVal = data.stemName,
-                    okButtonLabel = 'Rename',
-                    validation = validators.stem.name
-                })
-                if retval == true then
-                    DB:renameStem(data.stemName, newval)
-                end
-                if retval ~= nil then
-                    Gui.popups.object = nil;
-                    r.ImGui_CloseCurrentPopup(ctx)
-                end -- could be true (ok) or false (cancel)
-                App.setHoveredHint('main', 'Rename stem')
-                if r.ImGui_Selectable(ctx, 'Add stem to render queue', false) then
-                    App.stem_to_render = data.stemName;
-                    App.forceRenderAction = RENDERACTION_RENDERQUEUE_OPEN;
-                    App.coPerform = coroutine.create(doPerform)
-                end
-                App.setHoveredHint('main', "Add this stem only to the render queue")
-                if r.ImGui_Selectable(ctx, 'Render stem now', false) then
-                    App.stem_to_render = data.stemName
-                    App.forceRenderAction = RENDERACTION_RENDER
-                    App.coPerform = coroutine.create(doPerform)
-                end
-                App.setHoveredHint('main', "Render this stem only")
-                if r.ImGui_Selectable(ctx, ('Add group %s to queue'):format(data.renderSettingGroup), false) then
-                    App.renderGroupToRender = data.renderSettingGroup
-                    App.forceRenderAction = RENDERACTION_RENDERQUEUE_OPEN;
-                    App.coPerform = coroutine.create(doPerform)
-                end
-                App.setHoveredHint('main', ("Add all stems belonging to render group %s only to the render queue"):format(data.renderSettingGroup))
-                if r.ImGui_Selectable(ctx, ("Render group %s now"):format(data.renderSettingGroup), false) then
-                    App.renderGroupToRender = data.renderSettingGroup
-                    App.forceRenderAction = RENDERACTION_RENDER
-                    App.coPerform = coroutine.create(doPerform)
-                end
-                App.setHoveredHint('main', ("Render all stems belonging render group %s"):format(data.renderSettingGroup))
-                if r.ImGui_Selectable(ctx, 'Get states from tracks', false) then
-                    DB:reflectAllTracksOnStem(data.stemName)
-                end
-                App.setHoveredHint('main', "Get current solo/mute states from the project's tracks.")
-                if r.ImGui_Selectable(ctx, 'Set states on tracks', false) then
-                    DB:reflectStemOnAllTracks(data.stemName)
-                end
-                App.setHoveredHint('main', "Set this stem's solo/mute states on the project's tracks.")
-                if r.ImGui_Selectable(ctx, 'Clear states', false) then
-                    DB:resetStem(data.stemName)
-                end
-                App.setHoveredHint('main', "Clear current stem solo/mute states.")
-                r.ImGui_Separator(ctx)
-                r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col.critical)
-                if r.ImGui_Selectable(ctx, 'Delete', false) then
-                    DB:removeStem(data.stemName)
-                end
-                r.ImGui_PopStyleColor(ctx)
-                App.setHoveredHint('main', 'Delete stem')
-                if r.ImGui_IsKeyPressed(ctx, r.ImGui_Key_Escape()) then
-                    r.ImGui_CloseCurrentPopup(ctx)
-                end
-                r.ImGui_EndPopup(ctx)
-            end
-        elseif popupType == 'renderPresetSelector' then
-            local selectedPreset = nil
-            -- r.ImGui_SetNextWindowSize(ctx,0,100)
-            r.ImGui_SetNextWindowSizeConstraints(ctx, 0, 100, 1000, 250)
-            if r.ImGui_BeginPopup(ctx, title) then
-                Gui.popups.title = title
-                local presetCount = 0
-                for i, preset in pairs(DB.renderPresets) do
-                    presetCount = presetCount + 1
-                    if r.ImGui_Selectable(ctx, preset.name, false) then
-                        selectedPreset = preset.name
-                    end
-                end
-                if presetCount == 0 then
-                    r.ImGui_Text(ctx,
-                        "No render presets found.\nPlease create and add presets using\nREAPER's render window preset button.")
-                end
-                r.ImGui_EndPopup(ctx)
-            end
-            return not (selectedPreset == nil), selectedPreset
-        end
-        return false
-    end
-
     -- only works with monospace (90 degree) fonts
     function verticalText(ctx, text)
         r.ImGui_PushFont(ctx, Gui.st.fonts.vertical)
@@ -1179,230 +769,6 @@ end]]):gsub('$(%w+)', {
             r.ImGui_Text(ctx, text:sub(ci, ci))
         end
         r.ImGui_PopFont(ctx)
-    end
-
-    function App.drawBtn(btnType, data)
-        local ctx = Gui.ctx
-        local cellSize = Gui.st.vars.mtrx.cellSize
-        local headerRowHeight = Gui.st.vars.mtrx.headerRowHeight
-        local modKeys = Gui.modKeys
-        local clicked = false
-        if btnType == 'stemSync' then
-            local stemSyncMode = data.stemSyncMode
-            local generalSyncMode = data.generalSyncMode
-            local isSyncing = ((stemSyncMode ~= SYNCMODE_OFF) and (stemSyncMode ~= nil))
-            local displayedSyncMode = isSyncing and stemSyncMode or
-                generalSyncMode -- if stem is syncing, show its mode, otherwise, show mode based on preferences+alt key
-            local altSyncMode = (displayedSyncMode == SYNCMODE_SOLO) and SYNCMODE_SOLO or SYNCMODE_MIRROR
-            local btnColor = isSyncing and Gui.st.col.stemSyncBtn[displayedSyncMode].active or
-                Gui.st.col.stemSyncBtn[displayedSyncMode].inactive
-            local circleColor = isSyncing and Gui.st.col.stemSyncBtn[displayedSyncMode].active[r.ImGui_Col_Text()] or
-                Gui.st.col.stemSyncBtn[displayedSyncMode].active[r.ImGui_Col_Button()]
-            local centerPosX, centerPosY = select(1, r.ImGui_GetCursorScreenPos(ctx)) + cellSize / 2,
-                select(2, r.ImGui_GetCursorScreenPos(ctx)) + cellSize / 2
-            r.ImGui_SetCursorPosY(ctx, r.ImGui_GetCursorPosY(ctx) + 1)
-            Gui:pushColors(btnColor)
-            if r.ImGui_Button(ctx, " ", cellSize, cellSize) then
-                clicked = true
-            end
-            if r.ImGui_IsItemHovered(ctx) then
-                r.ImGui_SetMouseCursor(ctx, 7)
-            end
-            r.ImGui_DrawList_AddCircle(Gui.draw_list, centerPosX, centerPosY, 5, circleColor, 0, 2)
-            Gui:popColors(btnColor)
-            if isSyncing then
-                App.setHoveredHint('main', ("Stem is mirrored (%s). Click to stop mirroring."):format(
-                    SYNCMODE_DESCRIPTIONS[displayedSyncMode]))
-            else
-                if modKeys == 'a' then
-                    App.setHoveredHint('main', ("%s+click to mirror stem (%s)."):format(
-                        Gui.descModAlt:gsub("^%l", string.upper), SYNCMODE_DESCRIPTIONS[altSyncMode]))
-                else
-                    App.setHoveredHint('main',
-                        ("Click to mirror stem (%s)."):format(SYNCMODE_DESCRIPTIONS[displayedSyncMode]))
-                end
-            end
-        elseif btnType == 'stemActions' then
-            local topLeftX, topLeftY = data.topLeftX, data.topLeftY
-            local centerPosX, centerPosY = topLeftX + cellSize / 2, topLeftY + cellSize / 2
-            local sz, radius = 4.5, 1.5
-            local color = Gui.st.col.button[r.ImGui_Col_Text()]
-            Gui:pushColors(Gui.st.col.button)
-            if r.ImGui_Button(ctx, '##stemActions', cellSize, cellSize) then
-                r.ImGui_OpenPopup(ctx, '##stemActions')
-            end
-            Gui:popColors(Gui.st.col.button)
-            r.ImGui_DrawList_AddCircleFilled(Gui.draw_list, centerPosX - sz, centerPosY, radius, color, 8)
-            r.ImGui_DrawList_AddCircleFilled(Gui.draw_list, centerPosX, centerPosY, radius, color, 8)
-            r.ImGui_DrawList_AddCircleFilled(Gui.draw_list, centerPosX + sz, centerPosY, radius, color, 8)
-            App.setHoveredHint('main', 'Stem actions')
-        elseif btnType == 'addStem' then
-            Gui:pushColors(Gui.st.col.button)
-            r.ImGui_SetCursorPosY(ctx, r.ImGui_GetCursorPosY(ctx) + 1)
-            if r.ImGui_Button(ctx, '##addStem', cellSize, headerRowHeight) then
-                clicked = true
-            end
-            Gui:popColors(Gui.st.col.button)
-            local centerPosX = select(1, r.ImGui_GetCursorScreenPos(ctx)) + cellSize / 2
-            local centerPosY = select(2, r.ImGui_GetCursorScreenPos(ctx)) - headerRowHeight / 2
-            local color = Gui.st.col.button
-                [r.ImGui_Col_Text()] -- gui.st.col.stemSyncBtn.active[r.ImGui_Col_Text()] or gui.st.col.stemSyncBtn.active[r.ImGui_Col_Button()]
-            r.ImGui_DrawList_AddLine(Gui.draw_list, centerPosX - cellSize / 5, centerPosY, centerPosX + cellSize / 5,
-                centerPosY, color, 2)
-            r.ImGui_DrawList_AddLine(Gui.draw_list, centerPosX, centerPosY - cellSize / 5, centerPosX,
-                centerPosY + cellSize / 5, color, 2)
-            if modKeys ~= "c" then
-                App.setHoveredHint('main', ('Click to create a new stem %s.'):format(
-                    REFLECT_ON_ADD_DESCRIPTIONS[Settings.project.reflect_on_add]))
-            else
-                App.setHoveredHint('main',
-                    ('%s+click to create a new stem %s.'):format(Gui.descModCtrlCmd:gsub("^%l", string.upper),
-                        REFLECT_ON_ADD_DESCRIPTIONS[(Settings.project.reflect_on_add == REFLECT_ON_ADD_TRUE) and
-                        REFLECT_ON_ADD_FALSE or REFLECT_ON_ADD_TRUE]))
-            end
-        elseif btnType == 'renderGroupSelector' then
-            local stemName = data.stemName
-            local stGrp = data.stGrp
-            Gui:pushColors(Gui.st.col.render_setting_groups[stGrp])
-            Gui:pushStyles(Gui.st.vars.mtrx.stemState)
-            local origPosX, origPosY = r.ImGui_GetCursorPos(ctx)
-            origPosY = origPosY + 1
-            r.ImGui_SetCursorPosY(ctx, origPosY)
-            local color = Gui.st.col.render_setting_groups[stGrp][r.ImGui_Col_Button()]
-            local topLeftX, topLeftY = r.ImGui_GetCursorScreenPos(ctx)
-            r.ImGui_DrawList_AddRectFilled(Gui.draw_list, topLeftX, topLeftY, topLeftX + cellSize, topLeftY + cellSize,
-                color)
-            r.ImGui_SetCursorPosY(ctx, origPosY)
-            r.ImGui_Dummy(ctx, cellSize, cellSize)
-            App.setHoveredHint('main',
-                'Stem to be rendered by settings group ' .. stGrp .. '. Click arrows to change group.')
-            if r.ImGui_IsItemHovered(ctx) then
-                local description = Settings.project.render_setting_groups[stGrp].description
-                if description ~= nil and description ~= '' then
-                    r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(),
-                        Gui.st.col.render_setting_groups[stGrp][r.ImGui_Col_Button()])
-                    r.ImGui_SetTooltip(ctx, description)
-                    r.ImGui_PopStyleColor(ctx)
-                end
-                local centerX = r.ImGui_GetCursorScreenPos(ctx) + cellSize / 2
-                local color = Gui.st.col.render_setting_groups[stGrp][r.ImGui_Col_Text()]
-                local sz = 5
-                r.ImGui_SetCursorPosY(ctx, r.ImGui_GetCursorPosY(ctx) - cellSize)
-                local startY = select(2, r.ImGui_GetCursorScreenPos(ctx))
-                r.ImGui_Button(ctx, '###up' .. stemName, cellSize, cellSize / 3)
-                if r.ImGui_IsItemClicked(ctx) then
-                    DB.stems[stemName].render_setting_group = (stGrp == RENDER_SETTING_GROUPS_SLOTS) and 1 or stGrp + 1
-                    DB:save()
-                end
-                if r.ImGui_IsItemHovered(ctx) then
-                    r.ImGui_SetMouseCursor(ctx, 7)
-                end
-                r.ImGui_DrawList_AddTriangleFilled(Gui.draw_list, centerX, startY, centerX - sz * .5, startY + sz,
-                    centerX + sz * .5, startY + sz, color)
-                App.setHoveredHint('main', ('Change to setting group %d.'):format(
-                    (stGrp == RENDER_SETTING_GROUPS_SLOTS) and 1 or stGrp + 1))
-                sz = sz + 1
-                r.ImGui_SetCursorPosY(ctx, r.ImGui_GetCursorPosY(ctx) + cellSize / 3)
-                local startY = select(2, r.ImGui_GetCursorScreenPos(ctx)) + cellSize / 3 - sz
-                r.ImGui_Button(ctx, '###down' .. stemName, cellSize, cellSize / 3)
-                if r.ImGui_IsItemClicked(ctx) then
-                    DB.stems[stemName].render_setting_group = (stGrp == 1) and RENDER_SETTING_GROUPS_SLOTS or stGrp - 1
-                    DB:save()
-                end
-                if r.ImGui_IsItemHovered(ctx) then
-                    r.ImGui_SetMouseCursor(ctx, 7)
-                end
-                r.ImGui_DrawList_AddTriangleFilled(Gui.draw_list, centerX - sz * .5, startY, centerX + sz * .5, startY,
-                    centerX, startY + sz, color)
-                App.setHoveredHint('main', ('Change to setting group %d.'):format(
-                    (stGrp == 1) and RENDER_SETTING_GROUPS_SLOTS or stGrp - 1))
-            end
-            local textSizeX, textSizeY = r.ImGui_CalcTextSize(ctx, tostring(stGrp))
-            r.ImGui_SetCursorPos(ctx, origPosX + (cellSize - textSizeX) / 2, origPosY + (cellSize - textSizeY) / 2)
-            r.ImGui_Text(ctx, stGrp)
-            Gui:popColors(Gui.st.col.render_setting_groups[stGrp])
-            Gui:popStyles(Gui.st.vars.mtrx.stemState)
-        elseif btnType == 'stemState' then
-            local state = data.state
-            local track = data.track
-            local stemName = data.stemName
-            local stem = DB.stems[stemName]
-            local color_state = ((state == ' ') and (stem.sync ~= SYNCMODE_OFF) and (stem.sync ~= nil)) and
-                { 'sync_' .. stem.sync, 'sync_' .. stem.sync } or STATE_COLORS[state]
-            local curScrPos = { r.ImGui_GetCursorScreenPos(ctx) }
-            curScrPos[2] = curScrPos[2] + 1
-            local text_size = { r.ImGui_CalcTextSize(ctx, STATE_LABELS[state]) }
-            r.ImGui_SetCursorScreenPos(ctx, curScrPos[1], curScrPos[2])
-            r.ImGui_Dummy(ctx, cellSize, cellSize)
-            local col_a, col_b
-            if r.ImGui_IsItemHovered(ctx, r.ImGui_HoveredFlags_AllowWhenBlockedByActiveItem()) then
-                col_a = Gui.st.col.stemState[color_state[1]][r.ImGui_Col_ButtonHovered()]
-                col_b = Gui.st.col.stemState[color_state[2]][r.ImGui_Col_ButtonHovered()]
-            else
-                col_a = Gui.st.col.stemState[color_state[1]][r.ImGui_Col_Button()]
-                col_b = Gui.st.col.stemState[color_state[2]][r.ImGui_Col_Button()]
-            end
-            r.ImGui_DrawList_AddRectFilled(Gui.draw_list, curScrPos[1], curScrPos[2], curScrPos[1] + cellSize / 2,
-                curScrPos[2] + cellSize, col_a)
-            r.ImGui_DrawList_AddRectFilled(Gui.draw_list, curScrPos[1] + cellSize / 2, curScrPos[2],
-                curScrPos[1] + cellSize, curScrPos[2] + cellSize, col_b)
-            r.ImGui_SetCursorScreenPos(ctx, curScrPos[1] + (cellSize - text_size[1]) / 2,
-                curScrPos[2] + (cellSize - text_size[2]) / 2)
-            r.ImGui_TextColored(ctx, Gui.st.col.stemState[color_state[1]][r.ImGui_Col_Text()], STATE_LABELS[state])
-            r.ImGui_SetCursorScreenPos(ctx, curScrPos[1], curScrPos[2])
-            r.ImGui_InvisibleButton(ctx, '##' .. track.name .. state .. stemName, cellSize, cellSize)
-            if r.ImGui_IsItemHovered(ctx, r.ImGui_HoveredFlags_AllowWhenBlockedByActiveItem()) then
-                r.ImGui_SetMouseCursor(ctx, 7)
-                local defaultSolo = DB.prefSoloIP and STATES.SOLO_IN_PLACE or STATES.SOLO_IGNORE_ROUTING
-                local otherSolo = DB.prefSoloIP and STATES.SOLO_IGNORE_ROUTING or STATES.SOLO_IN_PLACE
-                local defaultMSolo = DB.prefSoloIP and STATES.MUTE_SOLO_IN_PLACE or STATES.MUTE_SOLO_IGNORE_ROUTING
-                local otherMSolo = DB.prefSoloIP and STATES.MUTE_SOLO_IGNORE_ROUTING or STATES.MUTE_SOLO_IN_PLACE
-                local currentStateDesc = (state ~= ' ') and ('Track is %s. '):format(STATE_DESCRIPTIONS[state][2]) or ''
-                local stateSwitches = {
-                    [''] = {
-                        state = defaultSolo,
-                        hint = ('%sClick to %s.'):format(currentStateDesc, (state == defaultSolo) and 'clear' or
-                            STATE_DESCRIPTIONS[defaultSolo][1])
-                    },
-                    ['s'] = {
-                        state = STATES.MUTE,
-                        hint = ('%sShift+click to %s.'):format(currentStateDesc, (state == STATES.MUTE) and 'clear' or
-                            STATE_DESCRIPTIONS[STATES.MUTE][1])
-                    },
-                    ['c'] = {
-                        state = otherSolo,
-                        hint = ('%s%s+click to %s.'):format(currentStateDesc,
-                            Gui.descModCtrlCmd:gsub("^%l", string.upper), (state == otherSolo) and 'clear' or
-                            STATE_DESCRIPTIONS[otherSolo][1])
-                    },
-                    ['sa'] = {
-                        state = defaultMSolo,
-                        hint = ('%sShift+%s+click to %s.'):format(currentStateDesc, Gui.descModAlt, (state ==
-                            defaultMSolo) and 'clear' or STATE_DESCRIPTIONS[defaultMSolo][1])
-                    },
-                    ['sc'] = {
-                        state = otherMSolo,
-                        hint = ('%sShift+%s+click to %s.'):format(currentStateDesc, Gui.descModCtrlCmd, (state ==
-                            otherMSolo) and 'clear' or STATE_DESCRIPTIONS[otherMSolo][1])
-                    },
-                    ['a'] = {
-                        state = ' ',
-                        hint = ('%s%s'):format(currentStateDesc,
-                            ('%s+click to clear.'):format(Gui.descModAlt:gsub("^%l", string.upper)))
-                    }
-                }
-                if stateSwitches[modKeys] then
-                    App.setHint('main', stateSwitches[modKeys].hint)
-                    if Gui.mtrxTbl.drgState == nil and r.ImGui_IsMouseClicked(ctx, r.ImGui_MouseButton_Left()) then
-                        Gui.mtrxTbl.drgState = (state == stateSwitches[modKeys]['state']) and ' ' or
-                            stateSwitches[modKeys]['state']
-                    elseif Gui.mtrxTbl.drgState and Gui.mtrxTbl.drgState ~= state then
-                        DB:setTrackStateInStem(track, stemName, Gui.mtrxTbl.drgState)
-                    end
-                end
-            end
-        end
-        return clicked
     end
 
     App.drawCols = {}
@@ -1422,11 +788,11 @@ end]]):gsub('$(%w+)', {
             not r.ImGui_IsPopupOpen(ctx, '', r.ImGui_PopupFlags_AnyPopup()) or r.ImGui_IsPopupOpen(ctx, '##stemActions') then
             r.ImGui_SetCursorScreenPos(ctx, topLeftX, topLeftY + 1)
             Gui:popStyles(Gui.st.vars.mtrx.table)
-            App.drawBtn('stemActions', {
+            App:drawBtn('stemActions', {
                 topLeftX = topLeftX,
                 topLeftY = topLeftY
             })
-            App.drawPopup(ctx, 'stemActionsMenu', '##stemActions', {
+            App:drawPopup(ctx, 'stemActionsMenu', '##stemActions', {
                 stemName = stemName,
                 renderSettingGroup = stem.render_setting_group
             })
@@ -1472,7 +838,7 @@ end]]):gsub('$(%w+)', {
                 --- SETUP MATRIX TABLE
                 local parent_open, depth, open_depth = true, 0, 0
                 r.ImGui_TableSetupScrollFreeze(ctx, 1, 3)
-                r.ImGui_TableSetupColumn(ctx, 'Track', r.ImGui_TableColumnFlags_NoHide(), width) -- Make the first column not hideable to match our use of TableSetupScrollFreeze()
+                r.ImGui_TableSetupColumn(ctx, 'Track', r.ImGui_TableColumnFlags_NoHide()) -- Make the first column not hideable to match our use of TableSetupScrollFreeze()
                 for stemName, tracks in OD_PairsByOrder(DB.stems) do
                     r.ImGui_TableSetupColumn(ctx, stemName, nil, cellSize)
                 end
@@ -1504,7 +870,7 @@ end]]):gsub('$(%w+)', {
                 end
                 r.ImGui_TableNextColumn(ctx)
                 -- COL: ADD STEM BUTTON
-                if App.drawBtn('addStem') then
+                if App:drawBtn('addStem') then
                     if modKeys ~= "c" then
                         App.copyOnAddStem = (Settings.project.reflect_on_add == REFLECT_ON_ADD_TRUE)
                     else
@@ -1513,7 +879,7 @@ end]]):gsub('$(%w+)', {
                     r.ImGui_OpenPopup(ctx, 'Add Stem')
                 end
                 Gui:popStyles(Gui.st.vars.mtrx.table)
-                local retval, newval = App.drawPopup(ctx, 'singleInput', 'Add Stem', {
+                local retval, newval = App:drawPopup(ctx, 'singleInput', 'Add Stem', {
                     okButtonLabel = 'Add',
                     validation = validators.stem.name
                 })
@@ -1533,7 +899,7 @@ end]]):gsub('$(%w+)', {
                 -- COL: STEM RENDER GROUP
                 for k, stem in OD_PairsByOrder(DB.stems) do
                     if r.ImGui_TableNextColumn(ctx) then
-                        App.drawBtn('renderGroupSelector', {
+                        App:drawBtn('renderGroupSelector', {
                             stemName = k,
                             stGrp = stem.render_setting_group or 1
                         })
@@ -1558,7 +924,7 @@ end]]):gsub('$(%w+)', {
                         local syncMode = (modKeys == 'a') and
                             ((Settings.project.syncmode == SYNCMODE_MIRROR) and SYNCMODE_SOLO or
                                 SYNCMODE_MIRROR) or Settings.project.syncmode
-                        if App.drawBtn('stemSync', {
+                        if App:drawBtn('stemSync', {
                                 stemSyncMode = stem.sync,
                                 generalSyncMode = syncMode
                             }) then
@@ -1607,7 +973,7 @@ end]]):gsub('$(%w+)', {
                             for k, stem in OD_PairsByOrder(DB.stems) do
                                 if r.ImGui_TableNextColumn(ctx) then
                                     -- COL: STEM STATE
-                                    App.drawBtn('stemState', {
+                                    App:drawBtn('stemState', {
                                         track = track,
                                         stemName = k,
                                         state = track.stemMatrix[k] or ' '
@@ -1637,7 +1003,7 @@ end]]):gsub('$(%w+)', {
                                         r.ImGui_DrawList_AddRectFilled(Gui.draw_list, posX, posY, posX + cellSize,
                                             posY + sz, color)
                                         if r.ImGui_IsMouseHoveringRect(ctx, posX, posY, posX + cellSize, posY + sz) then
-                                            App.setHint('main',
+                                            App:setHint('main',
                                                 'This folder track has hidden children tracks that are soloed/muted.')
                                         end
                                         arrow_drawn[k] = true
@@ -1664,7 +1030,7 @@ end]]):gsub('$(%w+)', {
     end
 
     function App.drawSettings()
-        local ctx = Gui.ctx
+        local ctx = App.gui.ctx
         local bottom_lines = 2
         local rv
         local x, y = r.ImGui_GetMousePos(ctx)
@@ -1674,12 +1040,8 @@ end]]):gsub('$(%w+)', {
         local halfWidth = 230
         local itemWidth = halfWidth * 2
         local renderaction_list = ''
-        local cP = r.EnumProjects(-1)
-        local projectChanged
-        if oldcP ~= cP then
-            oldcP = cP
-            projectChanged = true
-        end
+        local cP = OD_GetProjGUID()
+        local projectChanged = OD_DidProjectGUIDChange()
         Gui.stWnd[cP] = Gui.stWnd[cP] or {}
         for i = 0, #RENDERACTION_DESCRIPTIONS do
             renderaction_list = renderaction_list .. RENDERACTION_DESCRIPTIONS[i] .. '\0'
@@ -1733,8 +1095,8 @@ end]]):gsub('$(%w+)', {
             if not sameline then
                 r.ImGui_EndGroup(ctx)
             end
-            App.setHoveredHint('settings', hint)
-            return retval, retval_b
+            App:setHoveredHint('settings', hint)
+            return retval, nil
         end
 
         local function setting_special(text, main_hint, stType, valA, valB, valC)
@@ -1753,7 +1115,7 @@ end]]):gsub('$(%w+)', {
                         r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
                     if stType == 'time_sel' then
                         local clicked = r.ImGui_Button(ctx, 'Capture time selection', widgetWidth)
-                        App.setHoveredHint('settings',
+                        App:setHoveredHint('settings',
                             'Make a time selection and click to capture its start and end positions.')
 
                         if clicked then
@@ -1766,7 +1128,7 @@ end]]):gsub('$(%w+)', {
                             r.ImGui_Text(ctx, r.format_timestr_pos(retval_a, '', 5))
                             r.ImGui_EndChildFrame(ctx)
                         end
-                        App.setHoveredHint('settings', "Time seleciton start.")
+                        App:setHoveredHint('settings', "Time seleciton start.")
                         r.ImGui_SameLine(ctx)
                         r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx) -
                             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemInnerSpacing()))
@@ -1775,7 +1137,7 @@ end]]):gsub('$(%w+)', {
                             r.ImGui_Text(ctx, r.format_timestr_pos(retval_b, '', 5))
                             r.ImGui_EndChildFrame(ctx)
                         end
-                        App.setHoveredHint('settings', "Time seleciton end.")
+                        App:setHoveredHint('settings', "Time seleciton end.")
                     elseif stType == 'actions' then
                         retval_a = retval_a or {}
                         r.ImGui_SetNextItemWidth(ctx, widgetWidth)
@@ -1790,7 +1152,7 @@ end]]):gsub('$(%w+)', {
                                     end
                                 end
                                 if not rv then
-                                    App.setHoveredHint('settings',
+                                    App:setHoveredHint('settings',
                                         'SWS not installed: showing Command ID instead of action names.')
                                 end
                             end
@@ -1804,7 +1166,7 @@ end]]):gsub('$(%w+)', {
                             Gui.stWnd[cP].action_target = text
                             r.PromptForAction(1, 0, 0)
                         end
-                        App.setHoveredHint('settings',
+                        App:setHoveredHint('settings',
                             "Add an action by highlighting it in REAPER's action window and clicking 'Select'.")
                         if Gui.stWnd[cP].action_target == text then
                             local curAction = r.PromptForAction(0, 0, 0)
@@ -1824,7 +1186,7 @@ end]]):gsub('$(%w+)', {
                                 table.remove(retval_a, Gui.stWnd[cP][text])
                             end
                         end
-                        App.setHoveredHint('settings', "Remove selected action.")
+                        App:setHoveredHint('settings', "Remove selected action.")
                     elseif stType == 'region' or stType == 'marker' then
                         if not r.APIExists('JS_Localize') then
                             r.ImGui_TextColored(ctx, Gui.st.col.error,
@@ -1832,7 +1194,7 @@ end]]):gsub('$(%w+)', {
                         else
                             -- GetRegionManagerWindow is not very performant, so only do it once every 6 frames
                             if Gui.stWnd[cP].frameCount % 10 == 0 then
-                                App.rm_window_open = GetRegionManagerWindow() ~= nil
+                                App.rm_window_open = OD_GetRegionManagerWindow() ~= nil
                             end
                             if not App.rm_window_open then
                                 local title = (('%s selected'):format((#retval_a > 0) and
@@ -1847,7 +1209,7 @@ end]]):gsub('$(%w+)', {
                                     end
                                 end
                                 if r.ImGui_IsItemHovered(ctx) and #retval_a > 0 then
-                                    App.setHoveredHint('settings',
+                                    App:setHoveredHint('settings',
                                         ("Click to update selection. %s+click to clear."):format(
                                             Gui.descModAlt:gsub("^%l", string.upper)))
                                     local markeregion_names = ''
@@ -1862,13 +1224,13 @@ end]]):gsub('$(%w+)', {
                                     r.ImGui_Text(ctx, markeregion_names)
                                     r.ImGui_EndTooltip(ctx)
                                 else
-                                    App.setHoveredHint('settings', ("Click to select %ss."):format(stType))
+                                    App:setHoveredHint('settings', ("Click to select %ss."):format(stType))
                                 end
                             else
                                 if r.ImGui_Button(ctx, ('Capture selected %ss'):format(stType), widgetWidth) then
-                                    retval_a = GetSelectedRegionsOrMarkers(stType:sub(1, 1):upper())
+                                    retval_a = OD_GetSelectedRegionsOrMarkers(stType:sub(1, 1):upper())
                                 end
-                                App.setHint('settings',
+                                App:setHint('settings',
                                     ("Select %s(s) in the %s manager and click button to capture the selection."):format(
                                         stType, stType))
                             end
@@ -1883,21 +1245,19 @@ end]]):gsub('$(%w+)', {
         --    r.ImGui_SetNextWindowSize(ctx, halfWidth*3+r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemSpacing())*1.5+r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_WindowPadding()),0)
         r.ImGui_SetNextWindowSize(ctx, halfWidth * 3 + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()), 0)
         r.ImGui_SetNextWindowPos(ctx, center[1], Gui.mainWindow.pos[2] + 100, r.ImGui_Cond_Appearing(), 0.5)
-        if r.ImGui_BeginPopupModal(ctx, 'Settings', false, r.ImGui_WindowFlags_AlwaysAutoResize()) then
+        -- if r.ImGui_BeginPopupModal(ctx, 'Settings', false, r.ImGui_WindowFlags_AlwaysAutoResize()) then
+        if r.ImGui_Begin(ctx, 'Settings', false, r.ImGui_WindowFlags_AlwaysAutoResize() | r.ImGui_WindowFlags_TopMost()) then
             r.ImGui_PushFont(ctx, Gui.st.fonts.default)
             local windowAppearing = r.ImGui_IsWindowAppearing(ctx)
-            if windowAppearing then
-                Gui.stWnd[cP].tS = nil
-            end
             if windowAppearing or projectChanged then
                 Gui.stWnd[cP].frameCount = 0
                 if Gui.stWnd[cP].tS == nil then
-                    loadSettings()
+                    LoadSettings()
                     Gui.stWnd[cP].tS = OD_DeepCopy(Settings.project)
                 end
                 DB:getRenderPresets()
                 if r.APIExists('JS_Localize') then
-                    local manager = GetRegionManagerWindow()
+                    local manager = OD_GetRegionManagerWindow()
                     if manager then
                         r.Main_OnCommand(40326, 0)
                     end
@@ -1909,7 +1269,6 @@ end]]):gsub('$(%w+)', {
                 Gui.stWnd[cP].action_target = nil
             end
 
-            local buttonsX = itemWidth + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
             r.ImGui_PushFont(ctx, Gui.st.fonts.bold)
             r.ImGui_Text(ctx, 'Project global settings')
             r.ImGui_PopFont(ctx)
@@ -1948,7 +1307,7 @@ end]]):gsub('$(%w+)', {
             r.ImGui_PushFont(ctx, Gui.st.fonts.bold)
             r.ImGui_Text(ctx, 'Project render groups')
             r.ImGui_PopFont(ctx)
-            App.setHoveredHint('settings',
+            App:setHoveredHint('settings',
                 ("Each stem is associated to one of %d render groups with its own set of settings."):format(
                     RENDER_SETTING_GROUPS_SLOTS))
             r.ImGui_Separator(ctx)
@@ -1966,7 +1325,7 @@ end]]):gsub('$(%w+)', {
                             Gui.stWnd[cP].action_target = nil
                             Gui.stWnd[cP].activeRSG = stGrp
                         end
-                        App.setHoveredHint('settings', ("Settings for render group %d."):format(stGrp))
+                        App:setHoveredHint('settings', ("Settings for render group %d."):format(stGrp))
                         local rsg = Gui.stWnd[cP].tS.render_setting_groups[stGrp]
 
                         rsg.description = setting('text', 'Description',
@@ -1987,7 +1346,7 @@ end]]):gsub('$(%w+)', {
                                 r.ImGui_OpenPopup(ctx, 'Stem Render Presets##stemRenderPresets')
                             end
                         end
-                        local rv, presetName = App.drawPopup(ctx, 'renderPresetSelector',
+                        local rv, presetName = App:drawPopup(ctx, 'renderPresetSelector',
                             'Stem Render Presets##stemRenderPresets')
                         if rv then
                             rsg.render_preset = presetName
@@ -2030,7 +1389,6 @@ end]]):gsub('$(%w+)', {
                         r.ImGui_Spacing(ctx)
 
                         -- ignore_warnings
-                        -- r.ShowConsoleMsg(gui.stWnd[cP].frameCount)
                         if Gui.stWnd[cP].frameCount % 10 == 0 then
                             _, Gui.stWnd[cP].checks = checkRenderGroupSettings(rsg)
                         end
@@ -2053,7 +1411,7 @@ end]]):gsub('$(%w+)', {
                             r.ImGui_SameLine(ctx)
                             rv, rsg.ignore_warnings = r.ImGui_Checkbox(ctx,
                                 "Don't show non critical (orange) errors before rendering", rsg.ignore_warnings)
-                            App.setHoveredHint('settings',
+                            App:setHoveredHint('settings',
                                 "This means you're aware of the warnings and are OK with them :)")
                         end
 
@@ -2072,7 +1430,7 @@ end]]):gsub('$(%w+)', {
                             -- r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx)+itemWidth+r.ImGui_GetStyleVar(ctx,r.ImGui_StyleVar_ItemInnerSpacing()))
                             r.ImGui_Checkbox(ctx, check.status, check.passed)
                             r.ImGui_PopStyleColor(ctx)
-                            App.setHoveredHint('settings', check.hint)
+                            App:setHoveredHint('settings', check.hint)
                         end
                         r.ImGui_EndDisabled(ctx)
                         r.ImGui_PopStyleVar(ctx)
@@ -2080,7 +1438,7 @@ end]]):gsub('$(%w+)', {
                         r.ImGui_EndTabItem(ctx)
                     end
                     if stGrp ~= Gui.stWnd[cP].activeRSG then
-                        App.setHoveredHint('settings', ("Settings for render group %d."):format(stGrp))
+                        App:setHoveredHint('settings', ("Settings for render group %d."):format(stGrp))
                     end
                 end
                 r.ImGui_EndTabBar(ctx)
@@ -2091,34 +1449,38 @@ end]]):gsub('$(%w+)', {
             -- bottom
 
             -- r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines))
-            local status, col = App.getStatus('settings')
+            local status, col = App:getStatus('settings')
             if col then
                 r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col[col])
             end
             r.ImGui_Spacing(ctx)
             r.ImGui_Text(ctx, status)
-            App.setHint('settings', '')
+            App:setHint('settings', '')
             r.ImGui_Spacing(ctx)
             if col then
                 r.ImGui_PopStyleColor(ctx)
             end
 
             if r.ImGui_Button(ctx, "Load default settings") then
-                Gui.stWnd[cP].tS = OD_DeepCopy(getDefaultSettings(Gui.modKeys == 'a').default)
+                Gui.stWnd[cP].tS = OD_DeepCopy(GetDefaultSettings(Gui.modKeys == 'a').default)
             end
-            App.setHoveredHint('settings',
+            App:setHoveredHint('settings',
                 ('Revert to saved default settings. %s+click to load factory settings.'):format(
                     Gui.descModAlt:gsub("^%l", string.upper)))
 
             r.ImGui_SameLine(ctx)
             if r.ImGui_Button(ctx, "Save as default settings") then
-                Settings.project = OD_DeepCopy(Gui.stWnd[cP].tS)
-                Settings.default = OD_DeepCopy(Gui.stWnd[cP].tS)
-                saveSettings()
+                -- Settings.project = OD_DeepCopy(Gui.stWnd[cP].tS)
+                -- Settings.default = OD_DeepCopy(Gui.stWnd[cP].tS)
+                OD_MergeTables(Settings.project, Gui.stWnd[cP].tS)
+                OD_MergeTables(Settings.default, Gui.stWnd[cP].tS)
+                SaveSettings()
                 r.PromptForAction(-1, 0, 0)
-                r.ImGui_CloseCurrentPopup(ctx)
+                App.show_settings_window = false
+                
+                -- r.ImGui_CloseCurrentPopup(ctx)
             end
-            App.setHoveredHint('settings', ('Default settings for new projects where %s is used.'):format(Scr.name))
+            App:setHoveredHint('settings', ('Default settings for new projects where %s is used.'):format(Scr.name))
 
             r.ImGui_SameLine(ctx)
             r.ImGui_SetCursorPosX(ctx,
@@ -2128,31 +1490,36 @@ end]]):gsub('$(%w+)', {
                 r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 6)
 
             if r.ImGui_Button(ctx, "  OK  ") then
-                Settings.project = OD_DeepCopy(Gui.stWnd[cP].tS)
-                saveSettings()
+                -- Settings.project = OD_DeepCopy(Gui.stWnd[cP].tS)
+                OD_MergeTables(Settings.project,Gui.stWnd[cP].tS)
+                SaveSettings()
                 r.PromptForAction(-1, 0, 0)
-                r.ImGui_CloseCurrentPopup(ctx)
+                App.show_settings_window = false
+                -- r.ImGui_CloseCurrentPopup(ctx)
             end
-            App.setHoveredHint('settings', ('Save settings for the current project and close the window.'):format(
+            App:setHoveredHint('settings', ('Save settings for the current project and close the window.'):format(
                 Gui.descModAlt:gsub("^%l", string.upper)))
             r.ImGui_SameLine(ctx)
             if r.ImGui_Button(ctx, "Cancel") or r.ImGui_IsKeyPressed(ctx, r.ImGui_Key_Escape()) then
                 r.PromptForAction(-1, 0, 0)
-                r.ImGui_CloseCurrentPopup(ctx)
+                App.show_settings_window = false
+                -- r.ImGui_CloseCurrentPopup(ctx)
             end
-            App.setHoveredHint('settings', ('Close without saving.'):format(Gui.descModAlt:gsub("^%l", string.upper)))
+            App:setHoveredHint('settings', ('Close without saving.'):format(Gui.descModAlt:gsub("^%l", string.upper)))
             r.ImGui_SameLine(ctx)
 
             if r.ImGui_Button(ctx, "Apply") then
-                Settings.project = OD_DeepCopy(Gui.stWnd[cP].tS)
-                saveSettings()
+                -- Settings.project = OD_DeepCopy(Gui.stWnd[cP].tS)
+                OD_MergeTables(Settings.project,Gui.stWnd[cP].tS)
+                SaveSettings()
             end
-            App.setHoveredHint('settings', ('Save settings for the current project.'):format(
+            App:setHoveredHint('settings', ('Save settings for the current project.'):format(
                 Gui.descModAlt:gsub("^%l", string.upper)))
             Gui.stWnd[cP].frameCount = (Gui.stWnd[cP].frameCount == 120) and 0 or (Gui.stWnd[cP].frameCount + 1)
 
             r.ImGui_PopFont(ctx)
-            r.ImGui_EndPopup(ctx)
+            -- r.ImGui_EndPopup(ctx)
+            r.ImGui_End(ctx)
         end
     end
 
@@ -2171,14 +1538,13 @@ end]]):gsub('$(%w+)', {
         local ctx = Gui.ctx
         r.ImGui_OpenPopup(Gui.ctx, Scr.name .. '##loadStems')
         local msg = "Load settings and stems (removing current stems)\nor load settings only (keeping current stems)?"
-        local ok = App.drawPopup(Gui.ctx, 'msg', Scr.name .. '##loadStems', {
+        local ok = App:drawPopup(Gui.ctx, 'msg', Scr.name .. '##loadStems', {
             msg = msg,
             showCancelButton = true,
             okButtonLabel = "Settings and Stems",
             cancelButtonLabel = "Settings Only"
         })
         if ok then
-            reaper.ShowConsoleMsg(App.load_preset_filename)
             DB:loadPreset(App.load_preset_filename, true)
             App.load_preset_filename = nil
         elseif ok == false then
@@ -2557,63 +1923,22 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
         local ctx = ctx or Gui.ctx
         local title = title or Scr.name
         r.ImGui_OpenPopup(Gui.ctx, title .. "##msg")
-        return App.drawPopup(Gui.ctx, 'msg', title .. "##msg", {
+        return App:drawPopup(Gui.ctx, 'msg', title .. "##msg", {
             msg = msg
         })
-    end
-
-    function App.getStatus(window)
-        if window == 'main' then
-            --  if db.error == 'no stemsFolder' then return "Stems folder not defined", 'error' end
-            if App.coPerform then
-                return App.perform.status
-            end
-            return App.hint.main.text, App.hint.main.color
-        elseif window == 'settings' then
-            return App.hint.settings.text, App.hint.settings.color
-        end
-    end
-
-    function App.setHoveredHint(window, text, color, ctx)
-        local ctx = ctx or Gui.ctx
-        if r.ImGui_IsItemHovered(ctx, r.ImGui_HoveredFlags_AllowWhenDisabled()) then
-            App.setHint(window, text, color, ctx)
-        end
-    end
-
-    function App.setHint(window, text, color, ctx)
-        local ctx = ctx or Gui.ctx
-        color = color or 'hint'
-        if (DB.error or App.coPerform) and not (text == '') and text then
-            App.hint[window] = {
-                window = {}
-            }
-            if color then
-                r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col[color])
-            end
-            r.ImGui_SetTooltip(ctx, text)
-            if color then
-                r.ImGui_PopStyleColor(ctx)
-            end
-        else
-            App.hint[window] = {
-                text = text,
-                color = color
-            }
-        end
     end
 
     function App.drawBottom(ctx, bottom_lines)
         r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) -
             (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines +
                 r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2))
-        local status, col = App.getStatus('main')
+        local status, col = App:getStatus('main')
         if col then
             r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col[col])
         end
         r.ImGui_Spacing(ctx)
         r.ImGui_Text(ctx, status)
-        App.setHint('main', '')
+        App:setHint('main', '')
         r.ImGui_Spacing(ctx)
         if col then
             r.ImGui_PopStyleColor(ctx)
@@ -2630,7 +1955,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
         end
     end
 
-    function App.drawMainWindow(open)
+    function App.drawMainWindow()
         local ctx = Gui.ctx
         r.ImGui_SetNextWindowSize(ctx, 700,
             math.min(1000, select(2, r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx)))), r.ImGui_Cond_Appearing())
@@ -2660,7 +1985,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
                             DB:savePreset(fileName)
                         end
                     end
-                    App.setHoveredHint('main', "Save current stems and settings")
+                    App:setHoveredHint('main', "Save current stems and settings")
 
                     if r.ImGui_MenuItem(ctx, 'Load...', nil, nil) then
                         local rv, filename = r.GetUserFileNameForRead('', 'Select a stem preset file', 'smpreset')
@@ -2668,12 +1993,12 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
                             App.load_preset_filename = filename
                         end
                     end
-                    App.setHoveredHint('main', "Load stems and settings")
+                    App:setHoveredHint('main', "Load stems and settings")
                     r.ImGui_EndMenu(ctx)
                 end
 
                 if r.ImGui_MenuItem(ctx, 'Settings') then
-                    r.ImGui_OpenPopup(ctx, 'Settings')
+                    App.show_settings_window = true --r.ImGui_OpenPopup(ctx, 'Settings')
                 end
                 r.ImGui_SameLine(ctx)
                 if r.ImGui_MenuItem(ctx, 'Create Actions') then
@@ -2682,7 +2007,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
                 if r.ImGui_MenuItem(ctx, 'Help') then
                     App.show_help = not (App.show_help or false)
                 end
-                if r.ImGui_IsPopupOpen(ctx, 'Settings') then
+                if App.show_settings_window then --r.ImGui_IsPopupOpen(ctx, 'Settings') then
                     App.drawSettings()
                 end
                 if App.show_help then
@@ -2710,14 +2035,13 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
         return open
     end
 
-    function checkPerform()
+    local function checkPerform()
         if App.coPerform then
             if coroutine.status(App.coPerform) == "suspended" then
                 local rv
                 rv, App.perform.status, App.perform.pos, App.perform.total =
                     coroutine.resume(App.coPerform, App.stem_to_render)
                 if not rv then
-                    r.ShowConsoleMsg(App.perform.status)
                 end
             elseif coroutine.status(App.coPerform) == "dead" then
                 App.stem_to_render = nil
@@ -2735,22 +2059,22 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
         end
     end
 
-    function App.loop()
+    local function loop()
         r.DeleteExtState(Scr.context_name, 'defer', false)
         checkPerform()
         r.ImGui_PushFont(Gui.ctx, Gui.st.fonts.default)
-        App.open = App.drawMainWindow(open)
+        App.open = App.drawMainWindow()
         r.ImGui_PopFont(Gui.ctx)
         checkExternalCommand()
         if App.open then
             r.SetExtState(Scr.context_name, 'defer', '1', false)
-            r.defer(App.loop)
+            r.defer(loop)
         else
             r.ImGui_DestroyContext(Gui.ctx)
         end
     end
 
-    loadSettings()
-    updateSettings() -- fix format of actions saved pre v1.1.0
-    r.defer(App.loop)
+    LoadSettings()
+    UpdateSettings() -- fix format of actions saved pre v1.1.0
+    r.defer(loop)
 end

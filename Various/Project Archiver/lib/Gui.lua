@@ -134,7 +134,7 @@ Gui.setting = function(stType, text, hint, val, data, sameline)
     if not sameline then
         r.ImGui_EndGroup(ctx)
     end
-    App.setHoveredHint('main', hint)
+    App:setHoveredHint('main', hint)
     return retval
 end
 
