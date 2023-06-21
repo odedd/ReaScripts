@@ -74,7 +74,7 @@ end
 function OD_Log(level, msg, msg_val, depth_offset)
     if level <= Log.level then
         local fullMsg =
-            LOG_LEVEL_INFO[Log.level].name..' '..os.date("%c") .. ' ' .. getLogCodePosition(4+(depth_offset or 0)) .. ": " ..
+            LOG_LEVEL_INFO[level].name..' '..os.date("%c") .. ' ' .. getLogCodePosition(4+(depth_offset or 0)) .. ": " ..
             msg .. (msg_val and (' (' .. tostring(msg_val) .. ')') or '')
             sendToLog(fullMsg)
     end
