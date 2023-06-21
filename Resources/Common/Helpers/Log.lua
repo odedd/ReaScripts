@@ -69,7 +69,7 @@ local function getLogCodePosition(depth)
     depth = depth or 2
     local funcDepth = __FUNC__(depth)
     local _, file, ext = OD_DissectFilename(tostring(__FILE__(depth)))
-    return (file .. (ext and ('.' .. ext) or '') .. "#" .. tostring(__LINE__(depth)) .. (__FUNC__(depth) and " (" .. tostring(__FUNC__(depth)) .. ")" or ""))
+    return (file .. (ext and ('.' .. ext) or '') .. "#" .. tostring(__LINE__(depth)) .. (funcDepth and " (" .. tostring(__FUNC__(depth)) .. ")" or ""))
 end
 
 function OD_Log(level, msg, msg_val, depth_offset)
