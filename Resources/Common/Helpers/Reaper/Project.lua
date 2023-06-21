@@ -61,7 +61,7 @@ end
 -- a function by binbinhfr:
 -- https://forum.cockos.com/showpost.php?p=2610343&postcount=5
 local proj_guid_last = ""
-function OD_TestProjectGUIDChange()
+function OD_DidProjectGUIDChange()
     local changed = false
     local proj_guid = OD_GetProjGUID()
 
