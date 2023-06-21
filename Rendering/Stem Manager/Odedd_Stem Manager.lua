@@ -7,8 +7,8 @@
 -- @provides
 --   [nomain] ../../Resources/Common/* > Resources/Common/
 --   [nomain] ../../Resources/Common/Helpers/* > Resources/Common/Helpers/
---   [nomain] ../../Resources/Common/Helpers/App* > Resources/Common/Helpers/App/
---   [nomain] ../../Resources/Common/Helpers/Reaper* > Resources/Common/Helpers/Reaper/
+--   [nomain] ../../Resources/Common/Helpers/App/* > Resources/Common/Helpers/App/
+--   [nomain] ../../Resources/Common/Helpers/Reaper/* > Resources/Common/Helpers/Reaper/
 --   [nomain] ../../Resources/Fonts/* > Resources/Fonts/
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
