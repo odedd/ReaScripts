@@ -69,7 +69,9 @@ function LoadSettings()
     Settings = GetDefaultSettings()
     -- take merged updated default settings and merge project specific settings into them
     local loaded_project_settings = unpickle(OD_LoadLongProjExtKey(Scr.context_name, 'PROJECT SETTINGS'))
+    -- Settings.project = Settings.project or {}
     Settings.project = OD_DeepCopy(Settings.default)
+    -- OD_MergeTables(Settings.project,Settings.default)
     for k, v in pairs(loaded_project_settings or {}) do
         if not (k == 'render_setting_groups') then
             Settings.project[k] = v

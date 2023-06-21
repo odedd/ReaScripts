@@ -7,7 +7,8 @@
 -- @provides
 --   [nomain] ../../Resources/Common/* > Resources/Common/
 --   [nomain] ../../Resources/Common/Helpers/* > Resources/Common/Helpers/
---   [nomain] ../../Resources/Common/ReaperHelpers/* > Resources/Common/ReaperHelpers/
+--   [nomain] ../../Resources/Common/Helpers/App* > Resources/Common/Helpers/App/
+--   [nomain] ../../Resources/Common/Helpers/Reaper* > Resources/Common/Helpers/Reaper/
 --   [nomain] ../../Resources/Fonts/* > Resources/Fonts/
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
@@ -19,9 +20,9 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Added loading and saving of presets
---   Can now render groups directly from the stem context menu
---   Multiple internal improvements
+--   Project GUID change detection
+--   Fix for how settings are saved and loaded
+--   Internal code refactoring
 
 local r = reaper
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
@@ -1039,12 +1040,8 @@ end]]):gsub('$(%w+)', {
         local halfWidth = 230
         local itemWidth = halfWidth * 2
         local renderaction_list = ''
-        local cP = r.EnumProjects(-1)
-        local projectChanged
-        if oldcP ~= cP then
-            oldcP = cP
-            projectChanged = true
-        end
+        local cP = OD_GetProjGUID()
+        local projectChanged = OD_DidProjectGUIDChange()
         Gui.stWnd[cP] = Gui.stWnd[cP] or {}
         for i = 0, #RENDERACTION_DESCRIPTIONS do
             renderaction_list = renderaction_list .. RENDERACTION_DESCRIPTIONS[i] .. '\0'
@@ -1252,9 +1249,6 @@ end]]):gsub('$(%w+)', {
         if r.ImGui_Begin(ctx, 'Settings', false, r.ImGui_WindowFlags_AlwaysAutoResize() | r.ImGui_WindowFlags_TopMost()) then
             r.ImGui_PushFont(ctx, Gui.st.fonts.default)
             local windowAppearing = r.ImGui_IsWindowAppearing(ctx)
-            if windowAppearing then
-                Gui.stWnd[cP].tS = nil
-            end
             if windowAppearing or projectChanged then
                 Gui.stWnd[cP].frameCount = 0
                 if Gui.stWnd[cP].tS == nil then
@@ -1476,8 +1470,10 @@ end]]):gsub('$(%w+)', {
 
             r.ImGui_SameLine(ctx)
             if r.ImGui_Button(ctx, "Save as default settings") then
-                Settings.project = OD_DeepCopy(Gui.stWnd[cP].tS)
-                Settings.default = OD_DeepCopy(Gui.stWnd[cP].tS)
+                -- Settings.project = OD_DeepCopy(Gui.stWnd[cP].tS)
+                -- Settings.default = OD_DeepCopy(Gui.stWnd[cP].tS)
+                OD_MergeTables(Settings.project, Gui.stWnd[cP].tS)
+                OD_MergeTables(Settings.default, Gui.stWnd[cP].tS)
                 SaveSettings()
                 r.PromptForAction(-1, 0, 0)
                 App.show_settings_window = false
@@ -1494,7 +1490,8 @@ end]]):gsub('$(%w+)', {
                 r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 6)
 
             if r.ImGui_Button(ctx, "  OK  ") then
-                Settings.project = OD_DeepCopy(Gui.stWnd[cP].tS)
+                -- Settings.project = OD_DeepCopy(Gui.stWnd[cP].tS)
+                OD_MergeTables(Settings.project,Gui.stWnd[cP].tS)
                 SaveSettings()
                 r.PromptForAction(-1, 0, 0)
                 App.show_settings_window = false
@@ -1512,7 +1509,8 @@ end]]):gsub('$(%w+)', {
             r.ImGui_SameLine(ctx)
 
             if r.ImGui_Button(ctx, "Apply") then
-                Settings.project = OD_DeepCopy(Gui.stWnd[cP].tS)
+                -- Settings.project = OD_DeepCopy(Gui.stWnd[cP].tS)
+                OD_MergeTables(Settings.project,Gui.stWnd[cP].tS)
                 SaveSettings()
             end
             App:setHoveredHint('settings', ('Save settings for the current project.'):format(

@@ -2,8 +2,8 @@
 
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
 dofile(p .. 'Helpers.lua')
-dofile(p .. 'App.lua')
 dofile(p .. 'ReaperHelpers.lua')
+dofile(p .. 'AppHelpers.lua')
 
 r = reaper
 Scr = {}
