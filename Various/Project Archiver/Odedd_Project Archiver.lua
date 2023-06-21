@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.5.7
+-- @version 0.5.8
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -14,8 +14,8 @@
 --   [nomain] lib/**
 -- @changelog
 -- @changelog
---   Project GUID change detection
---   Internal code refactoring
+--   Bug fixes
+--   Internal logging changes
 
 ---------------------------------------
 -- SETUP ------------------------------
