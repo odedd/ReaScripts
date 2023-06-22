@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.5.8
+-- @version 0.5.9
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -37,12 +37,30 @@ OD_Init()
 dofile(p .. 'lib/Constants.lua')
 dofile(p .. 'lib/Settings.lua')
 dofile(p .. 'lib/Operation.lua')
-dofile(p .. 'lib/App.lua')
 dofile(p .. 'lib/Gui.lua')
 dofile(p .. 'lib/Texts.lua')
 
-App.gui = Gui
-App:init()
+-- @noindex
+
+local app = OD_Perform_App:new({
+    mediaFiles = {},
+    revert = {},
+    restore = {},
+    popup = {}
+})
+
+app:connect('gui', Gui)
+app:connect('op', Op)
+app:init()
+
+function app:checkProjectChange(force)
+    if force or OD_DidProjectGUIDChange() then
+        local projPath, projFileName = OD_GetProjectPaths()
+        OD_SetLogFile(projPath .. Scr.name .. '_' .. projFileName .. '.log')
+        self.reset()
+    end
+end
+
 local settings = PA_Settings.settings
 Log.level = LOG_LEVEL.NONE
 Log.output = LOG_OUTPUT.FILE
@@ -82,6 +100,17 @@ Gui.st.col.status = {
 
 local function doPerform()
     if PA_Settings:Check() then
+        -- force checkProjectChange to reset the app, set log file, etc.
+        app:checkProjectChange(true)
+
+        OD_LogInfo('** Process Started')
+        OD_LogInfo('OS: ', reaper.GetOS())
+        OD_LogInfo('Reaper version: ', tostring(r.ver))
+        OD_LogInfo('Script file: ', Scr.path)
+        OD_LogInfo('Script version: ', tostring(Scr.version))
+        OD_LogInfo('JS_ReaScriptAPI version: ', tostring(r.APIExists('JS_ReaScriptAPI_Version')))
+        OD_LogTable(LOG_LEVEL.INFO, 'Settings', settings, 1)
+
         Prepare()
         if settings.keepActiveTakesOnly then
             KeepActiveTakesOnly()
@@ -131,8 +160,9 @@ local function doPerform()
 
                 if settings.backup then
                     -- open backup project
-                    r.Main_openProject("noprompt:" .. App.backupTargetProject)
+                    r.Main_openProject("noprompt:" .. app.backupTargetProject)
                 end
+                OD_LogInfo('** Process Completed')
                 coroutine.yield('Done', 0, 1)
             end
         end
@@ -142,30 +172,30 @@ local function doPerform()
 end
 
 local function checkPerform()
-    if App.coPerform then
-        if coroutine.status(App.coPerform) == "suspended" then
+    if app.coPerform then
+        if coroutine.status(app.coPerform) == "suspended" then
             local retval
-            retval, App.perform.status = coroutine.resume(App.coPerform)
+            retval, app.perform.status = coroutine.resume(app.coPerform)
             if not retval then
-                if App.perform.status:sub(-17) == 'cancelled by glue' then
+                if app.perform.status:sub(-17) == 'cancelled by glue' then
                     Cancel(T.CANCELLED)
                 else
-                    -- r.ShowConsoleMsg(App.perform.status)
-                    Cancel(('Error occured:\n%s'):format(App.perform.status))
+                    -- r.ShowConsoleMsg(app.perform.status)
+                    Cancel(('Error occured:\n%s'):format(app.perform.status))
                 end
             end
-        elseif coroutine.status(App.coPerform) == "dead" then
-            App.coPerform = nil
+        elseif coroutine.status(app.coPerform) == "dead" then
+            app.coPerform = nil
         end
     end
 end
 local function waitForMessageBox()
-    if App.revertCancelOnNextFrame == true then
-        App.revertCancelOnNextFrame = 2 --wait one more frame for message box drawing
+    if app.revertCancelOnNextFrame == true then
+        app.revertCancelOnNextFrame = 2 --wait one more frame for message box drawing
     elseif
-        App.revertCancelOnNextFrame == 2 then
+        app.revertCancelOnNextFrame == 2 then
         Revert(true)
-        App.revertCancelOnNextFrame = nil
+        app.revertCancelOnNextFrame = nil
     end
 end
 
@@ -173,7 +203,7 @@ end
 -- UI ---------------------------------
 ---------------------------------------
 
-function App.drawPerform(open)
+function app.drawPerform(open)
     local ctx = Gui.ctx
     local bottom_lines = 2
     local overview_width = 200
@@ -199,13 +229,13 @@ function App.drawPerform(open)
                 r.ImGui_TableSetupScrollFreeze(ctx, 1, 1)
 
                 r.ImGui_TableHeadersRow(ctx)
-                for filename, fileInfo in OD_PairsByOrder(App.mediaFiles) do
+                for filename, fileInfo in OD_PairsByOrder(app.mediaFiles) do
                     r.ImGui_TableNextRow(ctx)
                     r.ImGui_TableNextColumn(ctx) -- file
                     r.ImGui_Text(ctx, fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or ''))
-                    if App.scroll == filename then
+                    if app.scroll == filename then
                         reaper.ImGui_SetScrollHereY(ctx, 1)
-                        App.scroll = false
+                        app.scroll = false
                     end
                     local skiprow = false
                     if not r.ImGui_IsItemVisible(ctx) then skiprow = true end
@@ -260,11 +290,11 @@ function App.drawPerform(open)
     end
 end
 
-function App.drawWarning()
+function app.drawWarning()
     local ctx = Gui.ctx
     local center = { Gui.mainWindow.pos[1] + Gui.mainWindow.size[1] / 2,
         Gui.mainWindow.pos[2] + Gui.mainWindow.size[2] / 2 } -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
-    local okButtonLabel = App.popup.secondWarningShown and 'Come on already let\'s do it!' or 'I do'
+    local okButtonLabel = app.popup.secondWarningShown and 'Come on already let\'s do it!' or 'I do'
     local cancelButtonLabel = 'Nope'
     local okPressed = false
     local cancelPressed = false
@@ -299,10 +329,10 @@ function App.drawWarning()
         r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
         if r.ImGui_Button(ctx, okButtonLabel) then
-            if Scr.major_version < 1 and settings.showBetaWarning and not App.popup.secondWarningShown then
+            if Scr.major_version < 1 and settings.showBetaWarning and not app.popup.secondWarningShown then
                 r.ImGui_OpenPopup(ctx, 'Also...')
             else
-                App.popup.secondWarningShown = false
+                app.popup.secondWarningShown = false
                 okPressed = true
                 r.ImGui_CloseCurrentPopup(ctx)
             end
@@ -310,7 +340,7 @@ function App.drawWarning()
 
         r.ImGui_SameLine(ctx)
         if r.ImGui_Button(ctx, cancelButtonLabel) then
-            App.popup.secondWarningShown = false
+            app.popup.secondWarningShown = false
             okPressed = false
             cancelPressed = true
             r.ImGui_CloseCurrentPopup(ctx)
@@ -325,7 +355,7 @@ function App.drawWarning()
         r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
 
         if r.ImGui_BeginPopupModal(ctx, 'Also...', nil, r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
-            App.popup.secondWarningShown = true
+            app.popup.secondWarningShown = true
 
             local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
             r.ImGui_PushItemWidth(ctx, width)
@@ -360,31 +390,25 @@ function App.drawWarning()
     end
     r.ImGui_PopStyleVar(ctx)
     if okPressed then
-        App.coPerform = coroutine.create(doPerform)
+        app.coPerform = coroutine.create(doPerform)
     end
 end
 
-function App.drawBottom(ctx, bottom_lines)
+function app.drawBottom(ctx, bottom_lines)
     r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) -
         (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines +
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2))
-    local status, col = App:getStatus('main')
+    local status, col = app:getStatus('main')
     if col then r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col[col]) end
     r.ImGui_Spacing(ctx)
     r.ImGui_Text(ctx, status)
-    App:setHint('main', '')
+    app:setHint('main', '')
     r.ImGui_Spacing(ctx)
     if col then r.ImGui_PopStyleColor(ctx) end
-    if not App.coPerform then
+    if not app.coPerform then
         if r.ImGui_Button(ctx, settings.backup and 'Create Backup' or 'Minimize Current Project',
                 r.ImGui_GetContentRegionAvail(ctx)) then
             -- don't save backupDestination into saved preferences, but save all other settings
-            OD_LogInfo('** Started')
-            OD_LogInfo('Script file: ', Scr.path)
-            OD_LogInfo('Script version: ', tostring(Scr.version))
-            OD_LogInfo('Reaper version: ', tostring(r.ver))
-            OD_LogInfo('JS_ReaScriptAPI version: ', tostring(r.APIExists('JS_ReaScriptAPI_Version')))
-            OD_LogTable(LOG_LEVEL.INFO,'Settings', settings, 1)
             local tmpDest = settings.backupDestination
             settings.backupDestination = nil
             PA_Settings:Save()
@@ -392,22 +416,22 @@ function App.drawBottom(ctx, bottom_lines)
 
             local ok, errors = PA_Settings:Check()
             if not ok then
-                App:msg(table.concat(errors, '\n\n'))
+                app:msg(table.concat(errors, '\n\n'))
             else
-                if App.warningCount > 0 then
+                if app.warningCount > 0 then
                     r.ImGui_OpenPopup(ctx, 'Are you sure?')
                 else
-                    App.coPerform = coroutine.create(doPerform)
+                    app.coPerform = coroutine.create(doPerform)
                 end
             end
         end
 
-        App.drawWarning()
+        app.drawWarning()
     else
         local w, h = r.ImGui_GetContentRegionAvail(ctx)
         local btnWidth = 150
-        r.ImGui_ProgressBar(ctx, (App.perform.pos or 0) / (App.perform.total or 1), w - 150, h,
-            ("%s/%s"):format(App.perform.pos, App.perform.total))
+        r.ImGui_ProgressBar(ctx, (app.perform.pos or 0) / (app.perform.total or 1), w - 150, h,
+            ("%s/%s"):format(app.perform.pos, app.perform.total))
         r.ImGui_SameLine(ctx)
         r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Button(), 0x444444ff)
         if r.ImGui_Button(ctx, 'Cancel', r.ImGui_GetContentRegionAvail(ctx)) then
@@ -417,16 +441,16 @@ function App.drawBottom(ctx, bottom_lines)
     end
 end
 
-function App.drawMainWindow()
+function app.drawMainWindow()
     local ctx = Gui.ctx
     local max_w, max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx))
-    App.warningCount = 0
+    app.warningCount = 0
 
     -- r.ShowConsoleMsg(viewPortWidth)
     r.ImGui_SetNextWindowSize(ctx, math.min(1197, max_w), math.min(800, max_h), r.ImGui_Cond_Appearing())
     r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
     local visible, open = r.ImGui_Begin(ctx, Scr.name .. ' v' .. Scr.version .. " by " .. Scr.developer .. "##mainWindow",
-        not App.coPerform,
+        not app.coPerform,
         r.ImGui_WindowFlags_NoDocking() | r.ImGui_WindowFlags_NoCollapse() | r.ImGui_WindowFlags_MenuBar())
     Gui.mainWindow = {
         pos = { r.ImGui_GetWindowPos(ctx) },
@@ -435,13 +459,17 @@ function App.drawMainWindow()
 
     if visible then
         local bottom_lines = 2
+        if app.coPerform and coroutine.status(app.coPerform) == 'suspended' then
+            r.ImGui_BeginDisabled(ctx)
+        end
+
         if r.ImGui_BeginMenuBar(ctx) then
             if r.ImGui_BeginMenu(ctx, 'Help') then
                 if r.ImGui_MenuItem(ctx, 'Forum Thread') then
                     OD_OpenLink(Scr.link['Forum Thread'])
                 end
                 if r.ImGui_MenuItem(ctx, 'Youtube Video') then
-                    App:msg('Soon...')
+                    app:msg('Soon...')
                     -- OD_OpenLink(Scr.link['YouTube'])
                 end
                 if r.ImGui_BeginMenu(ctx, 'Log Level') then
@@ -451,22 +479,20 @@ function App.drawMainWindow()
                         end
                     end
                     r.ImGui_Separator(ctx)
-                    r.ImGui_TextDisabled(ctx, "If anything other than \"None\"\nis selected, a log file will be\ncreated at the current project's\nfolder.\n\nThis setting defaults to NONE\neverytime the script restarts\nto avoid logging for no reason\nwhich could hinder performance.")
+                    r.ImGui_TextDisabled(ctx,
+                        "If anything other than \"None\"\nis selected, a log file will be\ncreated at the current project's\nfolder.\n\nThis setting defaults to NONE\neverytime the script restarts\nto avoid logging for no reason\nwhich could hinder performance.")
                     r.ImGui_EndMenu(ctx)
                 end
                 r.ImGui_Separator(ctx)
                 if r.ImGui_MenuItem(ctx, 'Donations are welcome :)') then
                     OD_OpenLink(Scr.donation)
-                end    
+                end
                 r.ImGui_EndMenu(ctx)
             end
-        r.ImGui_EndMenuBar(ctx)
+            r.ImGui_EndMenuBar(ctx)
         end
 
         r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_IndentSpacing(), 35)
-        if App.coPerform and coroutine.status(App.coPerform) == 'suspended' then
-            r.ImGui_BeginDisabled(ctx)
-        end
 
         r.ImGui_SeparatorText(ctx, 'Settings')
 
@@ -495,7 +521,7 @@ function App.drawMainWindow()
 
         if settings.minimize and not settings.backup then
             Gui.settingIcon(Gui.icons.caution, T.CAUTION_MINIMIZE)
-            App.warningCount = App.warningCount + 1
+            app.warningCount = app.warningCount + 1
         else
             r.ImGui_Bullet(ctx)
         end
@@ -539,7 +565,7 @@ function App.drawMainWindow()
         if settings.backup or settings.collect ~= 0 then
             if settings.collectOperation == COLLECT_OPERATION.MOVE then
                 Gui.settingIcon(Gui.icons.caution, T.CAUTION_COLLECT_MOVE)
-                App.warningCount = App.warningCount + 1
+                app.warningCount = app.warningCount + 1
             else
                 r.ImGui_Bullet(ctx)
             end
@@ -562,14 +588,14 @@ function App.drawMainWindow()
         for bwVal, option in OD_PairsByOrder(T.SETTINGS.COLLECT) do
             -- disable external files when backup is selected and temporarily save its value to restore if unchecking backup
             if settings.backup and bwVal == COLLECT.EXTERNAL then
-                if App.temp.originalBackupValue == nil then
-                    App.temp.originalBackupValue = OD_BfCheck(settings.collect,
+                if app.temp.originalBackupValue == nil then
+                    app.temp.originalBackupValue = OD_BfCheck(settings.collect,
                         COLLECT.EXTERNAL)
                 end
                 r.ImGui_BeginDisabled(ctx)
-            elseif not settings.backup and bwVal == COLLECT.EXTERNAL and App.temp.originalBackupValue ~= nil then
-                settings.collect = OD_BfSet(settings.collect, COLLECT.EXTERNAL, App.temp.originalBackupValue)
-                App.temp.originalBackupValue = nil
+            elseif not settings.backup and bwVal == COLLECT.EXTERNAL and app.temp.originalBackupValue ~= nil then
+                settings.collect = OD_BfSet(settings.collect, COLLECT.EXTERNAL, app.temp.originalBackupValue)
+                app.temp.originalBackupValue = nil
             end
             local op = Gui.setting('checkbox', option.LABEL, option.HINT,
                 (settings.backup and bwVal == COLLECT.EXTERNAL) and true or OD_BfCheck(settings.collect, bwVal))
@@ -591,7 +617,7 @@ function App.drawMainWindow()
         if not settings.backup then
             if settings.cleanMediaFolder then
                 Gui.settingIcon(Gui.icons.caution, T.CAUTION_CLEAN_MEDIA_FOLDER)
-                App.warningCount = App.warningCount + 1
+                app.warningCount = app.warningCount + 1
             else
                 r.ImGui_Bullet(ctx)
             end
@@ -606,15 +632,15 @@ function App.drawMainWindow()
         if (settings.minimize or settings.cleanMediaFolder) and not settings.backup then
             if settings.cleanMediaFolder and settings.deleteMethod == DELETE_METHOD.KEEP_IN_FOLDER then
                 Gui.settingIcon(Gui.icons.error, T.ERROR_KEEP_IN_FOLDER)
-                App.warningCount = App.warningCount + 1
+                app.warningCount = app.warningCount + 1
             elseif settings.deleteMethod == DELETE_METHOD.DELETE_FROM_DISK then
                 Gui.settingIcon(Gui.icons.caution, T.CAUTION_DELETE)
-                App.warningCount = App.warningCount + 1
+                app.warningCount = app.warningCount + 1
             else
                 r.ImGui_Bullet(ctx)
             end
             settings.deleteMethod = Gui.setting(
-                'combo', 
+                'combo',
                 T.SETTINGS.DELETE_METHODS.LABEL,
                 T.SETTINGS.DELETE_METHODS.HINT,
                 settings.deleteMethod, {
@@ -624,35 +650,35 @@ function App.drawMainWindow()
             Gui.settingSpacing()
         end
 
-        if App.coPerform and coroutine.status(App.coPerform) == 'suspended' then r.ImGui_EndDisabled(ctx) end
+        if app.coPerform and coroutine.status(app.coPerform) == 'suspended' then r.ImGui_EndDisabled(ctx) end
         r.ImGui_PopStyleVar(ctx)
 
         r.ImGui_SeparatorText(ctx, 'Overview')
 
-        App.drawPerform(true)
-        App.drawBottom(ctx, bottom_lines)
-        App:drawMsg()
+        app.drawPerform(true)
+        app.drawBottom(ctx, bottom_lines)
+        app:drawMsg()
         r.ImGui_End(ctx)
     end
     return open
 end
 
-function App.reset()
-    App.mediaFiles = {}
-    App.usedFiles = {} --keeps track of ALL files used in the session for cleaning the media folder
+function app.reset()
+    app.mediaFiles = {}
+    app.usedFiles = {} --keeps track of ALL files used in the session for cleaning the media folder
 end
 
-function App.loop()
-    if not App.coPerform and not App.popup.msg then App:checkProjectChange() end
+function app.loop()
+    if not app.coPerform and not app.popup.msg then app:checkProjectChange() end
     waitForMessageBox()
     checkPerform()
 
     r.ImGui_PushFont(Gui.ctx, Gui.st.fonts.default)
-    App.open = App.drawMainWindow()
+    app.open = app.drawMainWindow()
     r.ImGui_PopFont(Gui.ctx)
     -- checkExternalCommand()
-    if App.coPerform or App.popup.msg or (App.open and not reaper.ImGui_IsKeyPressed(Gui.ctx, reaper.ImGui_Key_Escape())) then
-        r.defer(App.loop)
+    if app.coPerform or app.popup.msg or (app.open and not reaper.ImGui_IsKeyPressed(Gui.ctx, reaper.ImGui_Key_Escape())) then
+        r.defer(app.loop)
     end
 end
 
@@ -666,6 +692,6 @@ if OD_PrereqsOK({
         js_version = 1.310,   -- required for JS_Dialog_BrowseForFolder
         reaper_version = 6.76 -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
     }) then
-        PA_Settings:Load()
-        r.defer(App.loop)
+    PA_Settings:Load()
+    r.defer(app.loop)
 end

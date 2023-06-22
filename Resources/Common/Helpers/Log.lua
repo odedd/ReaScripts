@@ -28,7 +28,7 @@ local function __LINE__(depth) return debug.getinfo(depth, 'l').currentline end
 local function __FUNC__(depth) return debug.getinfo(depth, 'n').name end
 
 local function getLogFile()
-    if Log.file then return Log.file end
+    if Log.file and OD_FileExists(Log.filename) then return Log.file end
     if Log.filename == nil then 
         Log.output = LOG_OUTPUT.CONSOLE
         OD_LogError('No log filename defined. resorting to console')
@@ -41,6 +41,7 @@ local function closeLogFile()
     if Log.file then
         Log.file:flush()
         Log.file:close()
+        Log.file = nil
         return true
     else
         return false
@@ -76,7 +77,7 @@ function OD_Log(level, msg, msg_val, depth_offset)
     if level <= Log.level then
         local fullMsg =
             LOG_LEVEL_INFO[level].name..' '..os.date("%c") .. ' ' .. getLogCodePosition(4+(depth_offset or 0)) .. ": " ..
-            msg .. (msg_val and (' (' .. tostring(msg_val) .. ')') or '')
+            msg .. ((msg_val ~= nil) and (' (' .. tostring(msg_val) .. ')') or '')
             sendToLog(fullMsg)
     end
     return msg_val
@@ -105,7 +106,12 @@ end
 
 function OD_SetLogFile(filename)
     if filename ~= Log.filename then closeLogFile() end
-    Log.filename = filename
+    local path, basename, ext = OD_DissectFilename(filename)
+    if basename ~= nil and ext ~= nil then
+        Log.filename = filename
+    else
+        Log.filename = nil
+    end
 end
 function OD_FlushLog()
     flushLog()

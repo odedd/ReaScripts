@@ -3,6 +3,15 @@
 OD_App = {
     logLevel = LOG_LEVEL.NONE,
     temp = {},
+    connect = function(self, objectname, o)
+        for k,v in pairs(self) do
+            if k == objectname then
+                error('OD_App:connect: object with name '..objectname..' already exists')
+            end
+        end
+        self[objectname] = o
+        o.app = self
+    end
 }
 
 function OD_App:new(o)

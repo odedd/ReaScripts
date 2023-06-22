@@ -73,7 +73,6 @@ function OD_SanitizeFilename(name)
     return name:gsub('[*\\:<>?/|"%c]+', '-')
 end
 
-
 function OD_GetSubfolders(folder)
     local folders = {}
     local i = 0
@@ -116,7 +115,7 @@ function OD_CopyFile(old_path, new_path)
         if new_file then
             new_file:close()
         end
-        OD_LogError(logmsg,false,1)
+        OD_LogError(logmsg, false, 1)
         return false
     end
     while true do
@@ -131,20 +130,21 @@ function OD_CopyFile(old_path, new_path)
     new_file_sz = new_file:seek("end")
     new_file:close()
     local success = (new_file_sz == old_file_sz)
-    return OD_Log(success and LOG_LEVEL.INFO or LOG_LEVEL.ERROR, logmsg,success)
+    return OD_Log(success and LOG_LEVEL.DEBUG or LOG_LEVEL.ERROR, logmsg, success)
 end
 
 function OD_MoveFile(old_path, new_path)
     local logmsg = ('OD_MoveFile %s -> %s'):format(old_path, new_path)
     local success = os.rename(old_path, new_path)
     if success then
-        OD_LogInfo(logmsg,true,1)
+        OD_LogDebug(logmsg, true, 1)
         return true
     else -- if moving using rename failed, resort to copy + delete
-        OD_LogInfo(('OD_MoveFile - Move failed, resorting to copy+delete'),true,1)
+        OD_LogDebug(('OD_MoveFile - Move failed, resorting to copy+delete'), true, 1)
         if OD_CopyFile(old_path, new_path) then
             local success = os.remove(old_path)
-            return OD_Log(success and LOG_LEVEL.INFO or LOG_LEVEL.ERROR,('OD_MoveFile - Delete %s'):format(old_path),success,1)
+            return OD_Log(success and LOG_LEVEL.DEBUG or LOG_LEVEL.ERROR, ('OD_MoveFile - Delete %s'):format(old_path),
+                success, 1)
         else
             return false
         end
@@ -162,23 +162,23 @@ function OD_MoveToTrash(filename)
         local escaped_filenames = {}
         local filenames
         if type(filename) == "string" then
-            filenames = {filename}
+            filenames = { filename }
         else
             filenames = filename
         end
         for i, fn in ipairs(filenames) do
-            OD_LogInfo('OD_MoveToTrash (powershell) adding to list',filename,1)
+            OD_LogDebug('OD_MoveToTrash (powershell) adding to list', filename, 1)
             table.insert(escaped_filenames, "'" .. fn:gsub('\'', '\'\'') .. "'") -- escape for powershell and engulf in '
         end
         local cmd =
-        'powershell.exe -nologo -noprofile -Command "& {Add-Type -AssemblyName \'Microsoft.VisualBasic\'; Get-ChildItem -Path ' ..
-        table.concat(escaped_filenames, ' , ') ..
-        '| ForEach-Object { if ($_ -is [System.IO.DirectoryInfo]) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($_.FullName,\'OnlyErrorDialogs\',\'SendToRecycleBin\') } else { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($_.FullName,\'OnlyErrorDialogs\',\'SendToRecycleBin\') } } }"'
-        OD_LogInfo('OD_MoveToTrash->ExecProcess: %s',cmd,1)
+            'powershell.exe -nologo -noprofile -Command "& {Add-Type -AssemblyName \'Microsoft.VisualBasic\'; Get-ChildItem -Path ' ..
+            table.concat(escaped_filenames, ' , ') ..
+            '| ForEach-Object { if ($_ -is [System.IO.DirectoryInfo]) { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($_.FullName,\'OnlyErrorDialogs\',\'SendToRecycleBin\') } else { [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($_.FullName,\'OnlyErrorDialogs\',\'SendToRecycleBin\') } } }"'
+        OD_LogDebug('OD_MoveToTrash->ExecProcess: %s', cmd, 1)
         r.ExecProcess(cmd, 0)
         -- check if the files were indeed moved away from the original place
         for i, fn in ipairs(filenames) do
-            if OD_FileExists(fn) then 
+            if OD_FileExists(fn) then
                 OD_LogError('OD_MoveToTrash - file still exists', fn, 1)
                 return false
             end
@@ -191,12 +191,12 @@ function OD_MoveToTrash(filename)
 
     local _, Fn, ext = OD_DissectFilename(filename)
     if not OD_FolderExists(trashPath) then
-        OD_LogError('OD_MoveToTrash %s - trash folder does not exist', trashPath,1):format(filename)
+        OD_LogError('OD_MoveToTrash %s - trash folder does not exist', trashPath, 1):format(filename)
         return false
     end
 
     local fileInTrashPath = trashPath .. Fn .. (ext and ('.' .. ext) or '')
-    OD_LogInfo(('OD_MoveToTrash %s'):format(filename),nil,1)
+    OD_LogDebug(('OD_MoveToTrash %s'):format(filename), nil, 1)
     return OD_MoveFile(filename, fileInTrashPath)
 end
 
@@ -204,7 +204,7 @@ function OD_GetFormattedFileSize(fileSize)
     if fileSize == nil then
         return ''
     end
-    local suffixes = {"B", "KB", "MB", "GB", "TB"}
+    local suffixes = { "B", "KB", "MB", "GB", "TB" }
     local i = 1
     local negative = fileSize < 0
     while math.abs(fileSize) >= 1000 and i < #suffixes do
@@ -232,6 +232,6 @@ function OD_LocalOrCommon(file, basePath)
     if r.file_exists(p .. file) then
         return (p .. file)
     else
-        return (p .. '../../'..file)
+        return (p .. '../../' .. file)
     end
 end
