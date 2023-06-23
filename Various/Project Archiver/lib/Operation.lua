@@ -1221,7 +1221,7 @@ function DeleteOriginals()
                             fileInfo.status = STATUS.ERROR
                             fileInfo.error = 'delete original failed'
                         end
-                    elseif settings.deleteMethod == DELETE_METHOD.DELETE then
+                    elseif settings.deleteMethod == DELETE_METHOD.DELETE_FROM_DISK then
                         if os.remove(fileInfo.filenameWithPath) then
                             OD_LogInfo('Delete successful', fileInfo.filenameWithPath)
                             fileInfo.status = STATUS.DONE

@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.5.9
+-- @version 0.6.0
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -14,8 +14,7 @@
 --   [nomain] lib/**
 -- @changelog
 -- @changelog
---   Bug fixes
---   Internal logging changes
+--   Fix - did not delete when minimizing and selecting "delete immediately"
 
 ---------------------------------------
 -- SETUP ------------------------------
