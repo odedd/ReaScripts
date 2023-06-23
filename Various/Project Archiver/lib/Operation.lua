@@ -1202,6 +1202,7 @@ function DeleteOriginals()
                         r.reduce_open_files(2) -- windows won't delete/move files that are in use
                         if os.remove(fileInfo.filenameWithPath) then
                             OD_LogInfo('Delete successful', fileInfo.filenameWithPath)
+                            Op.app.usedFiles[fileInfo.filenameWithPath] = nil
                             fileInfo.status = STATUS.DONE
                         else
                             OD_LogError('Delete failed', fileInfo.filenameWithPath)
@@ -1215,6 +1216,7 @@ function DeleteOriginals()
                     if settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH then
                         if OD_MoveToTrash(fileInfo.filenameWithPath) then
                             OD_LogInfo('Move to trash successful', fileInfo.filenameWithPath)
+                            Op.app.usedFiles[fileInfo.filenameWithPath] = nil
                             fileInfo.status = STATUS.DONE
                         else
                             OD_LogError('Move to trash failed', fileInfo.filenameWithPath)
@@ -1224,6 +1226,7 @@ function DeleteOriginals()
                     elseif settings.deleteMethod == DELETE_METHOD.DELETE_FROM_DISK then
                         if os.remove(fileInfo.filenameWithPath) then
                             OD_LogInfo('Delete successful', fileInfo.filenameWithPath)
+                            Op.app.usedFiles[fileInfo.filenameWithPath] = nil
                             fileInfo.status = STATUS.DONE
                         else
                             OD_LogError('Delete failed', fileInfo.filenameWithPath)
@@ -1249,6 +1252,7 @@ function DeleteOriginals()
             OD_MoveToTrash(filesToTrashWin)
             for filename, fileInfo in pairs(Op.app.mediaFiles) do -- verify which files were and were not removed
                 if not OD_FileExists(fileInfo.filenameWithPath) then
+                    Op.app.usedFiles[fileInfo.filenameWithPath] = nil
                     fileInfo.status = STATUS.DONE
                 else
                     fileInfo.status = STATUS.ERROR
@@ -1297,7 +1301,7 @@ function CleanMediaFolder()
                         OD_LogError('Move to trash failed', file.filename)
                         file.deleted = false
                     end
-                else
+                elseif settings.deleteMethod == DELETE_METHOD.DELETE_FROM_DISK then
                     if os.remove(file.filename) then
                         OD_LogInfo('Delete successful', file.filename)
                         file.deleted = true
