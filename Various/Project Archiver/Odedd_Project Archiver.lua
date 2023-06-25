@@ -48,21 +48,26 @@ local app = OD_Perform_App:new({
     popup = {}
 })
 
+local logger = OD_Logger:new({
+    level = OD_Logger.LOG_LEVEL.NONE,
+    output = OD_Logger.LOG_OUTPUT.FILE
+})
+
 app:connect('gui', Gui)
 app:connect('op', Op)
+app:connect('logger', logger)
 app:init()
+logger:init()
 
 function app:checkProjectChange(force)
     if force or OD_DidProjectGUIDChange() then
         local projPath, projFileName = OD_GetProjectPaths()
-        OD_SetLogFile(projPath .. Scr.name .. '_' .. projFileName .. '.log')
+        logger:setLogFile(projPath .. Scr.name .. '_' .. projFileName .. '.log')
         self.reset()
     end
 end
 
 local settings = PA_Settings.settings
-Log.level = LOG_LEVEL.NONE
-Log.output = LOG_OUTPUT.FILE
 
 Gui.tables = {
     horizontal = {
@@ -102,13 +107,13 @@ local function doPerform()
         -- force checkProjectChange to reset the app, set log file, etc.
         app:checkProjectChange(true)
 
-        OD_LogInfo('** Process Started')
-        OD_LogInfo('OS: ', reaper.GetOS())
-        OD_LogInfo('Reaper version: ', tostring(r.ver))
-        OD_LogInfo('Script file: ', Scr.path)
-        OD_LogInfo('Script version: ', tostring(Scr.version))
-        OD_LogInfo('JS_ReaScriptAPI version: ', tostring(r.APIExists('JS_ReaScriptAPI_Version')))
-        OD_LogTable(LOG_LEVEL.INFO, 'Settings', settings, 1)
+        logger:logInfo('** Process Started')
+        logger:logInfo('OS: ', reaper.GetOS())
+        logger:logInfo('Reaper version: ', tostring(r.ver))
+        logger:logInfo('Script file: ', Scr.path)
+        logger:logInfo('Script version: ', tostring(Scr.version))
+        logger:logInfo('JS_ReaScriptAPI version: ', tostring(r.APIExists('JS_ReaScriptAPI_Version')))
+        logger:logTable(logger.LOG_LEVEL.INFO, 'Settings', settings, 1)
 
         Prepare()
         if settings.keepActiveTakesOnly then
@@ -161,12 +166,12 @@ local function doPerform()
                     -- open backup project
                     r.Main_openProject("noprompt:" .. app.backupTargetProject)
                 end
-                OD_LogInfo('** Process Completed')
+                logger:logInfo('** Process Completed')
                 coroutine.yield('Done', 0, 1)
             end
         end
     end
-    OD_FlushLog()
+    logger:flush()
     return
 end
 
@@ -472,9 +477,9 @@ function app.drawMainWindow()
                     -- OD_OpenLink(Scr.link['YouTube'])
                 end
                 if r.ImGui_BeginMenu(ctx, 'Log Level') then
-                    for i, level in OD_PairsByOrder(LOG_LEVEL_INFO) do
-                        if r.ImGui_MenuItem(ctx, level.description, nil, Log.level == i) then
-                            Log.level = i
+                    for i, level in OD_PairsByOrder(logger.LOG_LEVEL_INFO) do
+                        if r.ImGui_MenuItem(ctx, level.description, nil, logger.level == i) then
+                            logger.level = i
                         end
                     end
                     r.ImGui_Separator(ctx)

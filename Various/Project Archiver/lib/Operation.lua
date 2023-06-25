@@ -5,7 +5,7 @@ YIELD_FREQUENCY = 50
 Op = {}
 -- * local
 local function reverseItem(item)
-    OD_LogDebug('-- reverseItem()', nil, 1)
+    Op.app.logger:logDebug('-- reverseItem()', nil, 1)
     r.SelectAllMediaItems(0, false)
     r.SetMediaItemSelected(item, true)
     r.Main_OnCommand(41051, 0)
@@ -13,14 +13,14 @@ end
 
 -- Scan project recording folder for media files. used by bode CleanMediaFolder() CalculateSavings()
 local function getUnusedFilesInRecordingFolder()
-    OD_LogDebug('-- getUnusedFilesInRecordingFolder()', nil, 1)
+    Op.app.logger:logDebug('-- getUnusedFilesInRecordingFolder()', nil, 1)
     Op.app.ununsedFilesInRecordingFolder = {}
     local function isValidMediaFile(file)
-        OD_LogDebug('-- getUnusedFilesInRecordingFolder() -> isValidMediaFile', file, 1)
+        Op.app.logger:logDebug('-- getUnusedFilesInRecordingFolder() -> isValidMediaFile', file, 1)
         -- Filter out specific file extensions
         local _, _, extension = OD_DissectFilename(file)
         local valid = OD_HasValue(MEDIA_EXTENSIONS, extension, true) or extension == 'reapeaks'
-        OD_LogDebug('isValidMediaFile', valid)
+        Op.app.logger:logDebug('isValidMediaFile', valid)
         return valid
     end
 
@@ -49,9 +49,9 @@ end
 -- * public
 -- Gather media files and occurrences
 function GetMediaFiles()
-    OD_LogInfo('-- GetMediaFiles()', nil)
+    Op.app.logger:logInfo('-- GetMediaFiles()', nil)
     local function getTakeSourcePositions(take, srclen)
-        OD_LogDebug('-- GetMediaFiles() -> getTakeSourcePositions()', nil, 1)
+        Op.app.logger:logDebug('-- GetMediaFiles() -> getTakeSourcePositions()', nil, 1)
         -- copy item to new track
         local item = r.GetMediaItemTake_Item(take)
         -- reset item timebase to time, because it screws up taking, but save current setting to re-apply them after copying
@@ -148,12 +148,12 @@ function GetMediaFiles()
     end
 
     local function addMediaFile(filename, fileType, ignore, fileExists, oc)
-        OD_LogDebug('-- GetMediaFiles() -> addMediaFile()', nil, 1)
+        Op.app.logger:logDebug('-- GetMediaFiles() -> addMediaFile()', nil, 1)
         local fullpath, basename, ext = OD_DissectFilename(filename)
         local relOrAbsFile, relOrAbsPath, pathIsRelative = OD_GetRelativeOrAbsoluteFile(filename,
             Op.app.projPath)
         local sourceFileSize = OD_GetFileSize(filename)
-        OD_LogInfo('Adding source ' .. (filename or ''))
+        Op.app.logger:logInfo('Adding source ' .. (filename or ''))
         if fileExists == nil then fileExists = OD_FileExists(filename) end
         Op.app.mediaFiles[filename] = {
             order = Op.app.mediaFileCount,
@@ -187,7 +187,7 @@ function GetMediaFiles()
 
     -- function by MPL
     local function IsRS5K(tr, fxnumber)
-        OD_LogDebug('-- GetMediaFiles() -> IsRS5K()', nil, 1)
+        Op.app.logger:logDebug('-- GetMediaFiles() -> IsRS5K()', nil, 1)
         if not tr then
             return
         end
@@ -203,7 +203,7 @@ function GetMediaFiles()
     end
 
     local function getMediaFileFromTake(mediaItem, take) -- Check if the take is valid and not a MIDI take
-        OD_LogDebug('-- GetMediaFiles() -> getMediaFileFromTake()', nil, 1)
+        Op.app.logger:logDebug('-- GetMediaFiles() -> getMediaFileFromTake()', nil, 1)
         if take and not r.TakeIsMIDI(take) then
             local mediaSource = r.GetMediaItemTake_Source(take)
             local section = false
@@ -303,7 +303,7 @@ function GetMediaFiles()
     end
 
     local function getFilesFromItems(numMediaItems)
-        OD_LogDebug('-- GetMediaFiles() -> getFilesFromItems()', nil, 1)
+        Op.app.logger:logDebug('-- GetMediaFiles() -> getFilesFromItems()', nil, 1)
         local YIELD_FREQUENCY = math.min(OD_Round(Op.app.perform.total / 50), YIELD_FREQUENCY)
         numMediaItems = numMediaItems or r.CountMediaItems(0)
         for i = 0, numMediaItems - 1 do
@@ -329,7 +329,7 @@ function GetMediaFiles()
 
     -- based on funciton by MPL
     local function getFilesFromRS5K()
-        OD_LogDebug('-- GetMediaFiles() -> getFilesFromRS5K()', nil, 1)
+        Op.app.logger:logDebug('-- GetMediaFiles() -> getFilesFromRS5K()', nil, 1)
         for i = 1, r.GetNumTracks(0) do
             local tr = r.GetTrack(0, i - 1)
             for fx = 1, r.TrackFX_GetCount(tr) do
@@ -360,10 +360,10 @@ function GetMediaFiles()
 end
 
 function CollectMedia()
-    OD_LogInfo('-- CollectMedia()', nil)
+    Op.app.logger:logInfo('-- CollectMedia()', nil)
     -- determine which files should be collected:
     local function shouldCollect(fileInfo)
-        OD_LogDebug('-- CollectMedia() -> shouldCollect()', fileInfo.filenameWithPath, 1)
+        Op.app.logger:logDebug('-- CollectMedia() -> shouldCollect()', fileInfo.filenameWithPath, 1)
         --       only if backup, collect all audio files which were ignored
         return (settings.backup and fileInfo.fileType == FILE_TYPES.AUDIO and fileInfo.ignore) or
             -- + if set to collect external audio files, collect them
@@ -381,7 +381,7 @@ function CollectMedia()
     end
 
     local function collectFile(fileInfo)
-        OD_LogDebug('-- CollectMedia() -> collectFile()', nil, 1)
+        Op.app.logger:logDebug('-- CollectMedia() -> collectFile()', nil, 1)
         local targetPath = (Op.app.projPath .. fileInfo.collectBackupTargetPath .. OD_FolderSep()):gsub('//$', '/')
         local targetFileName = targetPath ..
             fileInfo.basename .. (fileInfo.ext and ('.' .. fileInfo.ext) or '')
@@ -393,14 +393,14 @@ function CollectMedia()
         end
         r.RecursiveCreateDirectory(targetPath, 0)
         local success = settings.collectOperation == COLLECT_OPERATION.COPY and
-            OD_CopyFile(fileInfo.filenameWithPath, uniqueFilename) or
-            OD_MoveFile(fileInfo.filenameWithPath, uniqueFilename)
+            OD_CopyFile(fileInfo.filenameWithPath, uniqueFilename, Op.app.logger) or
+            OD_MoveFile(fileInfo.filenameWithPath, uniqueFilename, Op.app.logger)
 
         return success, uniqueFilename
     end
 
     local function applyToOriginal(filename, newFilename)
-        OD_LogDebug('-- CollectMedia() -> applyToOriginal()', tostring(filename) .. ' -> ' .. tostring(newFilename), 1)
+        Op.app.logger:logDebug('-- CollectMedia() -> applyToOriginal()', tostring(filename) .. ' -> ' .. tostring(newFilename), 1)
         local fileInfo = Op.app.mediaFiles[filename]
         Op.app.usedFiles[filename] = nil
         Op.app.usedFiles[newFilename] = 1
@@ -422,7 +422,7 @@ function CollectMedia()
                 r.TrackFX_SetNamedConfigParm(instance.track, instance.fxIndex, 'FILE0',
                     uniqueFilenameInBackupDestination or newFilename)
             end
-            OD_LogDebug(('Absolute target file reference set for %s instances of a RS5K sample'):format(instanceCount),
+            Op.app.logger:logDebug(('Absolute target file reference set for %s instances of a RS5K sample'):format(instanceCount),
                 uniqueFilenameInBackupDestination or newFilename)
         else
             local newSrc = r.PCM_Source_CreateFromFile(newFilename)
@@ -448,7 +448,7 @@ function CollectMedia()
             Op.app.perform.total = Op.app.perform.total + 1
         end
     end
-    OD_LogInfo(tostring(Op.app.perform.total) .. ' files to collect', nil)
+    Op.app.logger:logInfo(tostring(Op.app.perform.total) .. ' files to collect', nil)
     coroutine.yield('Collecting Files')
     for filename, fileInfo in OD_PairsByOrder(Op.app.mediaFiles) do
         if fileInfo.shouldCollect then
@@ -464,7 +464,7 @@ function CollectMedia()
             -- to get correct relative file references in the RPP, and set them to later MOVE to the backup destination
             -- so they won't be left in the original folder.
             if (settings.backup and not fileInfo.external) then
-                OD_LogInfo('Internal file - Set to copy', (fileInfo.filenameWithPath))
+                Op.app.logger:logInfo('Internal file - Set to copy', (fileInfo.filenameWithPath))
                 if fileInfo.fileType == FILE_TYPES.RS5K then
                     -- the file's folder in the target folder should be the same as it is currently in relation to the project's path
                     fileInfo.collectBackupTargetPath = fileInfo.relOrAbsPath
@@ -487,13 +487,13 @@ function CollectMedia()
                 end
                 local success, newFileName = collectFile(fileInfo)
                 if success then
-                    OD_LogInfo('Collected succesfully & Set to move',
+                    Op.app.logger:logInfo('Collected succesfully & Set to move',
                         (tostring(fileInfo.filenameWithPath) .. ' to ' .. tostring(newFileName)))
                     fileInfo.collectBackupOperation = COLLECT_BACKUP_OPERATION.MOVE
                     applyToOriginal(filename, newFileName)
                     fileInfo.status = STATUS.COLLECTED
                 else
-                    OD_LogError('Collection failed',
+                    Op.app.logger:logError('Collection failed',
                         (tostring(fileInfo.filenameWithPath) .. ' to ' .. tostring(newFileName)))
                     fileInfo.status = STATUS.ERROR
                     fileInfo.status_info = 'collection failed'
@@ -505,9 +505,9 @@ end
 
 -- Create new items to reflect the new occurrences
 function MinimizeAndApplyMedia()
-    OD_LogInfo('-- MinimizeAndApplyMedia()', nil)
+    Op.app.logger:logInfo('-- MinimizeAndApplyMedia()', nil)
     local function createTrackForFilename(filename)
-        OD_LogDebug('-- MinimizeAndApplyMedia() -> createTrackForFilename()', filename, 1)
+        Op.app.logger:logDebug('-- MinimizeAndApplyMedia() -> createTrackForFilename()', filename, 1)
         local trackIndex = r.GetNumTracks()
         r.InsertTrackAtIndex(trackIndex, false)
         local track = r.GetTrack(0, trackIndex)
@@ -519,7 +519,7 @@ function MinimizeAndApplyMedia()
     end
 
     local function addItemsToTrackAndWrapAround(track, fileInfo)
-        OD_LogDebug('-- MinimizeAndApplyMedia() -> addItemsToTrackAndWrapAround()', nil, 1)
+        Op.app.logger:logDebug('-- MinimizeAndApplyMedia() -> addItemsToTrackAndWrapAround()', nil, 1)
         local splitItems = {}
 
         -- turn off ripple editing
@@ -563,7 +563,7 @@ function MinimizeAndApplyMedia()
     end
 
     local function removeSpaces(track, filename)
-        OD_LogDebug('-- MinimizeAndApplyMedia() -> removeSpaces()', nil, 1)
+        Op.app.logger:logDebug('-- MinimizeAndApplyMedia() -> removeSpaces()', nil, 1)
         local sections = {}
         local counter = 0
         local currentPos = 0
@@ -654,14 +654,14 @@ function MinimizeAndApplyMedia()
     end
 
     local function saveNewPositions(fileInfo)
-        OD_LogDebug('-- MinimizeAndApplyMedia() -> saveNewPositions()', nil, 1)
+        Op.app.logger:logDebug('-- MinimizeAndApplyMedia() -> saveNewPositions()', nil, 1)
         for i, oc in ipairs(fileInfo.occurrences) do
             oc.newItemPosition = r.GetMediaItemInfo_Value(oc.newItem, "D_POSITION") + oc.startpadding
         end
     end
 
     local function trimItems(fileInfo, splitItems)
-        OD_LogDebug('-- MinimizeAndApplyMedia() -> trimItems()', nil, 1)
+        Op.app.logger:logDebug('-- MinimizeAndApplyMedia() -> trimItems()', nil, 1)
         -- then trim each object...
         for i, oc in ipairs(fileInfo.occurrences) do
             -- if item was deleted on the vious '40930' action, it is no longer valid
@@ -688,7 +688,7 @@ function MinimizeAndApplyMedia()
     end
 
     local function glueItems(track)
-        OD_LogDebug('-- MinimizeAndApplyMedia() -> glueItems()', nil, 1)
+        Op.app.logger:logDebug('-- MinimizeAndApplyMedia() -> glueItems()', nil, 1)
         -- temporarily remove max file size limitation, if it exists, otherwise glue operation will split every X time
         local maxrecsize_use = select(2, r.get_config_var_string('maxrecsize_use'))
         if maxrecsize_use & 1 == 1 then
@@ -709,14 +709,14 @@ function MinimizeAndApplyMedia()
         local _, newName = r.GetSetMediaItemTakeInfo_String(r.GetMediaItemTake(r.GetSelectedMediaItem(0, 0), 0),
             "P_NAME", "", false)
         if newName == oldName then
-            OD_LogError('Detected unsuccessful gluing (probably due to user cancelling)')
+            Op.app.logger:logError('Detected unsuccessful gluing (probably due to user cancelling)')
             error('cancelled by glue')
         end
         return r.GetTrackMediaItem(track, 0)
     end
 
     local function saveTakeStretchMarkers(oc)
-        OD_LogDebug('-- MinimizeAndApplyMedia() -> saveTakeStretchMarkers()', nil, 1)
+        Op.app.logger:logDebug('-- MinimizeAndApplyMedia() -> saveTakeStretchMarkers()', nil, 1)
         local smrkrs = {}
         local numTakeStretchMarkers = r.GetTakeNumStretchMarkers(oc.take)
         if numTakeStretchMarkers > 0 then
@@ -780,7 +780,7 @@ function MinimizeAndApplyMedia()
     end
 
     local function applyTakeStretchMarkers(oc, smrkrs)
-        OD_LogDebug('-- MinimizeAndApplyMedia() -> applyTakeStretchMarkers()', nil, 1)
+        Op.app.logger:logDebug('-- MinimizeAndApplyMedia() -> applyTakeStretchMarkers()', nil, 1)
         local delta = oc.newItemPosition - oc.startTime
         if #smrkrs > 0 then
             -- recreate stretch markers
@@ -796,7 +796,7 @@ function MinimizeAndApplyMedia()
     end
 
     local function applyTakeMarkers(oc)
-        OD_LogDebug('-- MinimizeAndApplyMedia() -> applyTakeMarkers()', nil, 1)
+        Op.app.logger:logDebug('-- MinimizeAndApplyMedia() -> applyTakeMarkers()', nil, 1)
         local delta = oc.newItemPosition - oc.startTime
         local numTakeMarkers = r.GetNumTakeMarkers(oc.take)
         for i = 0, numTakeMarkers - 1 do
@@ -810,7 +810,7 @@ function MinimizeAndApplyMedia()
     end
 
     local function applyGluedSourceToOriginal(originalFilename, gluedItem)
-        OD_LogDebug('-- MinimizeAndApplyMedia() -> applyGluedSourceToOriginal()', nil, 1)
+        Op.app.logger:logDebug('-- MinimizeAndApplyMedia() -> applyGluedSourceToOriginal()', nil, 1)
         local fileInfo = Op.app.mediaFiles[originalFilename]
         local gluedTake = r.GetTake(gluedItem, 0)
         if gluedTake then
@@ -827,7 +827,7 @@ function MinimizeAndApplyMedia()
             r.SetMediaItemSelected(gluedItem, true)
 
             r.Main_OnCommand(40440, 0) -- set selected media temporarily offline
-            local success = OD_MoveFile(sourceFilename, uniqueName)
+            local success = OD_MoveFile(sourceFilename, uniqueName, Op.app.logger)
             r.Main_OnCommand(40439, 0) -- online
             if not success then
                 fileInfo.status = STATUS.ERROR
@@ -884,7 +884,7 @@ function MinimizeAndApplyMedia()
     coroutine.yield('Minimizing Files')
     for filename, fileInfo in OD_PairsByOrder(Op.app.mediaFiles) do
         if not fileInfo.ignore and not fileInfo.missing then
-            OD_LogDebug('Processing file', filename)
+            Op.app.logger:logDebug('Processing file', filename)
             Op.app.scroll = filename
             fileInfo.status = STATUS.MINIMIZING
             Op.app.perform.pos = Op.app.perform.pos + 1
@@ -898,7 +898,7 @@ function MinimizeAndApplyMedia()
             end
             -- if nothing to remove from original file and the glue format will not result in a smaller file size, so there's no need to minimize
             if fileInfo.keep_length > 0.99 and not glueIsSmallerThanOriginal then
-                OD_LogInfo('Nothing to minimize', filename)
+                Op.app.logger:logInfo('Nothing to minimize', filename)
                 fileInfo.status = STATUS.NOTHING_TO_MINIMIZE
                 fileInfo.ignore = true
                 fileInfo.newFileSize = fileInfo.sourceFileSize
@@ -910,9 +910,9 @@ function MinimizeAndApplyMedia()
                     applyGluedSourceToOriginal(filename, gluedItem)
                 end
                 if fileInfo.status == STATUS.ERROR then
-                    OD_LogError('Minimize error', (filename .. ' -> ' .. tostring(fileInfo.newfilename)))
+                    Op.app.logger:logError('Minimize error', (filename .. ' -> ' .. tostring(fileInfo.newfilename)))
                 else
-                    OD_LogInfo('Minimized Successfully', (filename .. ' -> ' .. tostring(fileInfo.newfilename)))
+                    Op.app.logger:logInfo('Minimized Successfully', (filename .. ' -> ' .. tostring(fileInfo.newfilename)))
                     fileInfo.status = STATUS.MINIMIZED
                 end
             end
@@ -920,15 +920,15 @@ function MinimizeAndApplyMedia()
 
             -- coroutine.yield('Minimizing Files')
         else
-            OD_LogInfo('Ignoring file', filename)
-            OD_LogDebug('fileInfo.ignore', (fileInfo.ignore or false))
-            OD_LogDebug('fileInfo.missing', (fileInfo.missing or false))
+            Op.app.logger:logInfo('Ignoring file', filename)
+            Op.app.logger:logDebug('fileInfo.ignore', (fileInfo.ignore or false))
+            Op.app.logger:logDebug('fileInfo.missing', (fileInfo.missing or false))
         end
     end
 end
 
 function FinalizePeaksBuild(count)
-    OD_LogDebug('-- FinalizePeaksBuild()', count)
+    Op.app.logger:logDebug('-- FinalizePeaksBuild()', count)
     local count = count or 0
     local total = 0
     for k, src in pairs(Op.app.peakOperations or {}) do
@@ -944,7 +944,7 @@ function FinalizePeaksBuild(count)
 end
 
 function Restore()
-    OD_LogInfo('-- Restore()', nil)
+    Op.app.logger:logInfo('-- Restore()', nil)
     -- restore edit cursor position
     r.SetEditCurPos(Op.app.restore.pos, true, false)
     -- restore saved saving options
@@ -959,28 +959,28 @@ function Restore()
     for i, folder in ipairs(Op.app.restore.foldersToDelete or {}) do
         local success, error = os.remove(folder)
         if success then
-            OD_LogInfo('Temporary folder deleted', folder)
+            Op.app.logger:logInfo('Temporary folder deleted', folder)
         else
-            OD_LogError(('Temporary folder not deleted (%s)'):format(error), folder)
+            Op.app.logger:logError(('Temporary folder not deleted (%s)'):format(error), folder)
         end
     end
     -- delete temporary RPP backup file
     local success, error = os.remove(Op.app.revert.tmpBackupFileName)
     if success then
-        OD_LogInfo('Temporary RPP backup file deleted', Op.app.revert.tmpBackupFileName)
+        Op.app.logger:logInfo('Temporary RPP backup file deleted', Op.app.revert.tmpBackupFileName)
     else
-        OD_LogError(('Temporary RPP backup file not deleted (%s)'):format(error), Op.app.revert.tmpBackupFileName)
+        Op.app.logger:logError(('Temporary RPP backup file not deleted (%s)'):format(error), Op.app.revert.tmpBackupFileName)
     end
 end
 
 function Revert(cancel)
-    OD_LogInfo('-- Revert() cancel=', cancel or (false))
+    Op.app.logger:logInfo('-- Revert() cancel=', cancel or (false))
     -- restore temporary file saved before minimizing and open it
-    local success = OD_CopyFile(Op.app.revert.tmpBackupFileName, Op.app.fullProjPath)
+    local success = OD_CopyFile(Op.app.revert.tmpBackupFileName, Op.app.fullProjPath, Op.app.logger)
     if success then
-        OD_LogInfo('Temporary RPP backup file restored', Op.app.revert.tmpBackupFileName)
+        Op.app.logger:logInfo('Temporary RPP backup file restored', Op.app.revert.tmpBackupFileName)
     else
-        OD_LogError('Temporary RPP backup file not restored', Op.app.revert.tmpBackupFileName)
+        Op.app.logger:logError('Temporary RPP backup file not restored', Op.app.revert.tmpBackupFileName)
     end
     -- r.reduce_open_files(2) -- seems ok. might be needed for win, but I tested and I'm pretty sure it's not needed.
     -- delete files created but not used
@@ -989,9 +989,9 @@ function Revert(cancel)
             if OD_FileExists(fileInfo.newfilename) then
                 local success = os.remove(fileInfo.newfilename)
                 if success then
-                    OD_LogInfo('Temporary file deleted', fileInfo.newfilename)
+                    Op.app.logger:logInfo('Temporary file deleted', fileInfo.newfilename)
                 else
-                    OD_LogError('Temporary file not deleted', fileInfo.newfilename)
+                    Op.app.logger:logError('Temporary file not deleted', fileInfo.newfilename)
                 end
             end
         end
@@ -1002,13 +1002,13 @@ function Revert(cancel)
         Op.app.usedFiles = {}
         Op.app.mediaFileCount = 0
         Restore() -- if not cancelled, restore will be called anyway
-        OD_LogInfo('** Process Completed') 
-        OD_FlushLog()
+        Op.app.logger:logInfo('** Process Completed') 
+        Op.app.logger:flush()
     end
 end
 
 function Cancel(msg)
-    OD_LogError('-- Cancel(msg)', msg)
+    Op.app.logger:logError('-- Cancel(msg)', msg)
     if msg then
         Op.app:msg(msg .. T.CANCEL_RELOAD, 'Operation Cancelled')
     end
@@ -1018,49 +1018,49 @@ function Cancel(msg)
 end
 
 function Prepare()
-    OD_LogInfo('-- Prepare()', nil)
+    Op.app.logger:logInfo('-- Prepare()', nil)
     local function setProjPaths()
-        OD_LogDebug('-- Prepare() -> setProjPaths()', nil, 1)
+        Op.app.logger:logDebug('-- Prepare() -> setProjPaths()', nil, 1)
         Op.app.projPath, Op.app.projFileName, Op.app.fullProjPath, Op.app.projectRecordingPath, Op.app.relProjectRecordingPath =
             OD_GetProjectPaths()
-        OD_LogInfo('Op.app.projPath', Op.app.projPath)
-        OD_LogInfo('Op.app.projFileName', Op.app.projFileName)
-        OD_LogInfo('Op.app.fullProjPath', Op.app.fullProjPath)
-        OD_LogInfo('Op.app.projectRecordingPath', Op.app.projectRecordingPath)
-        OD_LogInfo('Op.app.relProjectRecordingPath', Op.app.relProjectRecordingPath)
+        Op.app.logger:logInfo('Op.app.projPath', Op.app.projPath)
+        Op.app.logger:logInfo('Op.app.projFileName', Op.app.projFileName)
+        Op.app.logger:logInfo('Op.app.fullProjPath', Op.app.fullProjPath)
+        Op.app.logger:logInfo('Op.app.projectRecordingPath', Op.app.projectRecordingPath)
+        Op.app.logger:logInfo('Op.app.relProjectRecordingPath', Op.app.relProjectRecordingPath)
     end
     local function prepareRestore()
-        OD_LogDebug('-- Prepare() -> prepareRestore()', nil, 1)
-        OD_LogDebug('Saving project and global settings')
+        Op.app.logger:logDebug('-- Prepare() -> prepareRestore()', nil, 1)
+        Op.app.logger:logDebug('Saving project and global settings')
         -- save current edit cursor position
         Op.app.restore.pos = r.GetCursorPosition()
         -- save current autosave options
         Op.app.restore.saveopts = select(2, r.get_config_var_string('saveopts'))
-        OD_LogDebug('Op.app.restore.saveopts', Op.app.restore.saveopts)
+        Op.app.logger:logDebug('Op.app.restore.saveopts', Op.app.restore.saveopts)
         -- save current "Save project file references with relative pathnames" setting
         Op.app.restore.projrelpath = select(2, r.get_config_var_string('projrelpath'))
-        OD_LogDebug('Op.app.restore.projrelpath', Op.app.restore.projrelpath)
+        Op.app.logger:logDebug('Op.app.restore.projrelpath', Op.app.restore.projrelpath)
         -- save current glue settings
         _, Op.app.restore.opencopy_cfgidx = r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", 0, false)
-        OD_LogDebug('Op.app.restore.opencopy_cfgidx', Op.app.restore.opencopy_cfgidx)
+        Op.app.logger:logDebug('Op.app.restore.opencopy_cfgidx', Op.app.restore.opencopy_cfgidx)
         _, Op.app.restore.afxfrmt = r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", "", false)
-        OD_LogDebug('Op.app.restore.afxfrmt', Op.app.restore.afxfrmt)
+        Op.app.logger:logDebug('Op.app.restore.afxfrmt', Op.app.restore.afxfrmt)
         Op.app.restore.useprjsrate = r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, false)
-        OD_LogDebug('Op.app.restore.useprjsrate', Op.app.restore.useprjsrate)
+        Op.app.logger:logDebug('Op.app.restore.useprjsrate', Op.app.restore.useprjsrate)
     end
     local function prepareRevert()
-        OD_LogDebug('-- Prepare() -> prepareRevert()', nil, 1)
+        Op.app.logger:logDebug('-- Prepare() -> prepareRevert()', nil, 1)
         Op.app.revert.tmpBackupFileName = Op.app.projPath .. select(2, OD_DissectFilename(Op.app.projFileName)) .. '_' ..
             r.time_precise() .. '.RPP'
-        local success = OD_CopyFile(Op.app.fullProjPath, Op.app.revert.tmpBackupFileName)
+        local success = OD_CopyFile(Op.app.fullProjPath, Op.app.revert.tmpBackupFileName, Op.app.logger)
         if success then
-            OD_LogInfo('Temporary RPP backup file created', Op.app.revert.tmpBackupFileName)
+            Op.app.logger:logInfo('Temporary RPP backup file created', Op.app.revert.tmpBackupFileName)
         else
-            OD_LogError('Temporary RPP backup file not created', Op.app.revert.tmpBackupFileName)
+            Op.app.logger:logError('Temporary RPP backup file not created', Op.app.revert.tmpBackupFileName)
         end
     end
     local function prepareSettings()
-        OD_LogDebug('-- Prepare() -> prepareSettings()', nil, 1)
+        Op.app.logger:logDebug('-- Prepare() -> prepareSettings()', nil, 1)
         local tmpOpts = Op.app.restore.saveopts
 
         -- disable autosave during operation
@@ -1080,7 +1080,7 @@ function Prepare()
         r.SNM_SetIntConfigVar('projrelpath', 1)
     end
     local function setQuality()
-        OD_LogDebug('-- Prepare() -> setQuality()', nil, 1)
+        Op.app.logger:logDebug('-- Prepare() -> setQuality()', nil, 1)
         r.GetSetProjectInfo_String(0, "OPENCOPY_CFGIDX", 1, true)                                                     -- use custom format
         r.GetSetProjectInfo_String(0, "APPLYFX_FORMAT", GLUE_FORMATS_DETAILS[settings.glueFormat].formatString, true) -- set format to selected format from the settings
         r.GetSetProjectInfo(0, "PROJECT_SRATE_USE", 0, true)                                                          -- turn off 'use sample rate', which makes the glue operation use the item's sample rate (that's good!)
@@ -1103,11 +1103,11 @@ function Prepare()
 end
 
 function CreateBackupProject()
-    OD_LogInfo('-- CreateBackupProject()', nil)
+    Op.app.logger:logInfo('-- CreateBackupProject()', nil)
     r.Main_SaveProject(-1)
     local targetPath = (settings.backupDestination .. OD_FolderSep()):gsub('\\\\', '\\')
     Op.app.backupTargetProject = targetPath .. Op.app.projFileName
-    OD_CopyFile(Op.app.fullProjPath, Op.app.backupTargetProject)
+    OD_CopyFile(Op.app.fullProjPath, Op.app.backupTargetProject, Op.app.logger)
     Op.app.perform.total = Op.app.mediaFileCount
     Op.app.perform.pos = 0
 
@@ -1126,11 +1126,11 @@ function CreateBackupProject()
             local target = (targetPath ..
                 (fileInfo.collectBackupTargetPath or Op.app.relProjectRecordingPath) ..
                 OD_FolderSep() .. newFN .. (newExt and ('.' .. newExt) or '')):gsub('\\\\', '\\')
-            if OD_MoveFile(fileInfo.newfilename, target) then
-                OD_LogInfo('File backup (Move) successful', (fileInfo.newfilename .. ' -> ' .. target))
+            if OD_MoveFile(fileInfo.newfilename, target, Op.app.logger) then
+                Op.app.logger:logInfo('File backup (Move) successful', (fileInfo.newfilename .. ' -> ' .. target))
                 fileInfo.status = STATUS.DONE
             else
-                OD_LogError('File backup (Move) failed', (tostring(fileInfo.newfilename) .. ' -> ' .. tostring(target)))
+                Op.app.logger:logError('File backup (Move) failed', (tostring(fileInfo.newfilename) .. ' -> ' .. tostring(target)))
                 fileInfo.status = STATUS.ERROR
                 fileInfo.status_info = 'move failed'
             end
@@ -1139,17 +1139,17 @@ function CreateBackupProject()
                 fileInfo.status = STATUS.COPYING
                 coroutine.yield('Creating backup project')
                 local target = (targetPath .. fileInfo.relOrAbsFile):gsub('\\\\', '\\')
-                if OD_CopyFile(fileInfo.filenameWithPath, target) then
-                    OD_LogInfo('File backup (Copy) successful', (fileInfo.filenameWithPath .. ' -> ' .. target))
+                if OD_CopyFile(fileInfo.filenameWithPath, target, Op.app.logger) then
+                    Op.app.logger:logInfo('File backup (Copy) successful', (fileInfo.filenameWithPath .. ' -> ' .. target))
                     fileInfo.status = STATUS.DONE
                 else
-                    OD_LogError('File backup (Copy) failed',
+                    Op.app.logger:logError('File backup (Copy) failed',
                         (tostring(fileInfo.filenameWithPath) .. ' -> ' .. tostring(target)))
                     fileInfo.status = STATUS.ERROR
                     fileInfo.status_info = 'copy failed'
                 end
             else
-                OD_LogInfo('Not backing up. File path is absolute', (tostring(fileInfo.filenameWithPath)))
+                Op.app.logger:logInfo('Not backing up. File path is absolute', (tostring(fileInfo.filenameWithPath)))
                 fileInfo.status = STATUS.DONE
             end
         end
@@ -1158,29 +1158,29 @@ function CreateBackupProject()
 end
 
 function NetworkedFilesExist()
-    OD_LogDebug('-- NetworkedFilesExist()', nil)
+    Op.app.logger:logDebug('-- NetworkedFilesExist()', nil)
     if OS_is.win then
         for filename, fileInfo in pairs(Op.app.mediaFiles) do
             if string.sub(fileInfo.filenameWithPath, 1, 2) == '\\\\' then
-                return OD_LogError('Networked files exist', true)
+                return Op.app.logger:logError('Networked files exist', true)
             end
         end
     end
-    return OD_LogDebug('No networked files exist', false)
+    return Op.app.logger:logDebug('No networked files exist', false)
 end
 
 function SubProjectsExist()
-    OD_LogDebug('-- SubProjectsExist()', nil)
+    Op.app.logger:logDebug('-- SubProjectsExist()', nil)
     for filename, fileInfo in pairs(Op.app.mediaFiles) do
         if fileInfo.fileType == FILE_TYPES.SUBPROJECT then
-            return OD_LogError('Subprojects exist', true)
+            return Op.app.logger:logError('Subprojects exist', true)
         end
     end
-    return OD_LogDebug('No subprojects exist', false)
+    return Op.app.logger:logDebug('No subprojects exist', false)
 end
 
 function DeleteOriginals()
-    OD_LogInfo('-- DeleteOriginals()', nil)
+    Op.app.logger:logInfo('-- DeleteOriginals()', nil)
     if settings.minimize and settings.deleteMethod ~= DELETE_METHOD.KEEP_IN_FOLDER then
         Op.app.perform.total = Op.app.mediaFileCount
 
@@ -1201,11 +1201,11 @@ function DeleteOriginals()
                     if settings.deleteMethod ~= DELETE_METHOD.MOVE_TO_TRASH then
                         r.reduce_open_files(2) -- windows won't delete/move files that are in use
                         if os.remove(fileInfo.filenameWithPath) then
-                            OD_LogInfo('Delete successful', fileInfo.filenameWithPath)
+                            Op.app.logger:logInfo('Delete successful', fileInfo.filenameWithPath)
                             Op.app.usedFiles[fileInfo.filenameWithPath] = nil
                             fileInfo.status = STATUS.DONE
                         else
-                            OD_LogError('Delete failed', fileInfo.filenameWithPath)
+                            Op.app.logger:logError('Delete failed', fileInfo.filenameWithPath)
                             fileInfo.status = STATUS.ERROR
                             fileInfo.error = 'delete original failed'
                         end
@@ -1214,27 +1214,27 @@ function DeleteOriginals()
                     end
                 else
                     if settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH then
-                        if OD_MoveToTrash(fileInfo.filenameWithPath) then
-                            OD_LogInfo('Move to trash successful', fileInfo.filenameWithPath)
+                        if OD_MoveToTrash(fileInfo.filenameWithPath, Op.app.logger) then
+                            Op.app.logger:logInfo('Move to trash successful', fileInfo.filenameWithPath)
                             Op.app.usedFiles[fileInfo.filenameWithPath] = nil
                             fileInfo.status = STATUS.DONE
                         else
-                            OD_LogError('Move to trash failed', fileInfo.filenameWithPath)
+                            Op.app.logger:logError('Move to trash failed', fileInfo.filenameWithPath)
                             fileInfo.status = STATUS.ERROR
                             fileInfo.error = 'delete original failed'
                         end
                     elseif settings.deleteMethod == DELETE_METHOD.DELETE_FROM_DISK then
                         if os.remove(fileInfo.filenameWithPath) then
-                            OD_LogInfo('Delete successful', fileInfo.filenameWithPath)
+                            Op.app.logger:logInfo('Delete successful', fileInfo.filenameWithPath)
                             Op.app.usedFiles[fileInfo.filenameWithPath] = nil
                             fileInfo.status = STATUS.DONE
                         else
-                            OD_LogError('Delete failed', fileInfo.filenameWithPath)
+                            Op.app.logger:logError('Delete failed', fileInfo.filenameWithPath)
                             fileInfo.status = STATUS.ERROR
                             fileInfo.error = 'delete original failed'
                         end
                     elseif settings.deleteMethod == DELETE_METHOD.KEEP_IN_FOLDER then
-                        OD_LogInfo('deleteMethod is set to "Keep In Folder". Leaving file intact.',
+                        Op.app.logger:logInfo('deleteMethod is set to "Keep In Folder". Leaving file intact.',
                             fileInfo.filenameWithPath)
                         fileInfo.status = STATUS.DONE
                     end
@@ -1249,7 +1249,7 @@ function DeleteOriginals()
         if #filesToTrashWin > 0 then
             coroutine.yield(stat .. ' (might take some time...)')
             r.reduce_open_files(2)                                -- windows won't delete/move files that are in use
-            OD_MoveToTrash(filesToTrashWin)
+            OD_MoveToTrash(filesToTrashWin, Op.app.logger)
             for filename, fileInfo in pairs(Op.app.mediaFiles) do -- verify which files were and were not removed
                 if not OD_FileExists(fileInfo.filenameWithPath) then
                     Op.app.usedFiles[fileInfo.filenameWithPath] = nil
@@ -1265,9 +1265,9 @@ function DeleteOriginals()
 end
 
 function CleanMediaFolder()
-    OD_LogInfo('-- CleanMediaFolder()', nil)
+    Op.app.logger:logInfo('-- CleanMediaFolder()', nil)
     local function deleteUnusedFiles()
-        OD_LogDebug('-- CleanMediaFolder() -> deleteUnusedFiles()', nil, 1)
+        Op.app.logger:logDebug('-- CleanMediaFolder() -> deleteUnusedFiles()', nil, 1)
         local stat = settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH and 'Moving unused files to trash' or
             'Deleting unused files'
 
@@ -1283,10 +1283,10 @@ function CleanMediaFolder()
                 if settings.deleteMethod ~= DELETE_METHOD.MOVE_TO_TRASH then
                     r.reduce_open_files(2) -- windows won't delete/move files that are in use
                     if os.remove(file.filename) then
-                        OD_LogInfo('Delete successful', file.filename)
+                        Op.app.logger:logInfo('Delete successful', file.filename)
                         file.deleted = true
                     else
-                        OD_LogError('Delete failed', file.filename)
+                        Op.app.logger:logError('Delete failed', file.filename)
                         file.deleted = false
                     end
                 else -- if on windows but set to move to trash, we need to first collect filenames and only then send to trash to avoid opening powershell for each file
@@ -1294,19 +1294,19 @@ function CleanMediaFolder()
                 end
             else
                 if settings.deleteMethod == DELETE_METHOD.MOVE_TO_TRASH then
-                    if OD_MoveToTrash(file.filename) then
-                        OD_LogInfo('Move to trash successful', file.filename)
+                    if OD_MoveToTrash(file.filename, Op.app.logger) then
+                        Op.app.logger:logInfo('Move to trash successful', file.filename)
                         file.deleted = true
                     else
-                        OD_LogError('Move to trash failed', file.filename)
+                        Op.app.logger:logError('Move to trash failed', file.filename)
                         file.deleted = false
                     end
                 elseif settings.deleteMethod == DELETE_METHOD.DELETE_FROM_DISK then
                     if os.remove(file.filename) then
-                        OD_LogInfo('Delete successful', file.filename)
+                        Op.app.logger:logInfo('Delete successful', file.filename)
                         file.deleted = true
                     else
-                        OD_LogError('Move to trash failed', file.filename)
+                        Op.app.logger:logError('Move to trash failed', file.filename)
                         file.deleted = false
                     end
                 end
@@ -1317,13 +1317,13 @@ function CleanMediaFolder()
         if #filesToTrashWin > 0 then
             coroutine.yield(stat .. ' (might take some time...)')
             r.reduce_open_files(2)                                         -- windows won't delete/move files that are in use
-            OD_MoveToTrash(filesToTrashWin)
+            OD_MoveToTrash(filesToTrashWin, Op.app.logger)
             for i, file in ipairs(Op.app.ununsedFilesInRecordingFolder) do -- verify which files were and were not removed
                 if not OD_FileExists(file.filename) then
-                    OD_LogInfo('Move to trash successful', file.filename)
+                    Op.app.logger:logInfo('Move to trash successful', file.filename)
                     file.deleted = true
                 else
-                    OD_LogError('Move to trash failed', file.filename)
+                    Op.app.logger:logError('Move to trash failed', file.filename)
                     file.deleted = false
                 end
             end
@@ -1337,7 +1337,7 @@ function CleanMediaFolder()
 end
 
 function KeepActiveTakesOnly()
-    OD_LogInfo('-- KeepActiveTakesOnly()', nil)
+    Op.app.logger:logInfo('-- KeepActiveTakesOnly()', nil)
     -- Count the number of media items
     local itemCount = r.CountMediaItems(0)
 
@@ -1364,7 +1364,7 @@ function KeepActiveTakesOnly()
 end
 
 function CalculateSavings()
-    OD_LogDebug('-- CalculateSavings()', nil)
+    Op.app.logger:logDebug('-- CalculateSavings()', nil)
     Op.app.totalSpace = {}
     Op.app.totalSpace.deleted = 0
     Op.app.totalSpace.totalOriginalSize = 0

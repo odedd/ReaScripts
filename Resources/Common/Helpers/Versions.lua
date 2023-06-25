@@ -1,7 +1,7 @@
 -- @noindex
 function OD_GetMajorVersion(v)
-    return tonumber(v:match('^(.-)%.'))
+    return v and tonumber(v:match('^(.-)%.')) or 0
 end
 function OD_GetMinorVersion(v)
-    return tonumber(v:match('^(.+)%.'))
+    return v and tonumber(v:match('^(.+)%.')) or 0
 end
