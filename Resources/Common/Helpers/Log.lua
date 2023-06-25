@@ -30,7 +30,7 @@ function OD_Logger:init()
     self.level = self.level or self.LOG_LEVEL.INFO
     self.output = self.output or self.LOG_OUTPUT.CONSOLE
 
-    reaper.atexit(self.exit)
+    reaper.atexit(function () self:exit() end)
 end
 
 function OD_Logger:__FILE__(depth) return debug.getinfo(depth, 'S').source end
