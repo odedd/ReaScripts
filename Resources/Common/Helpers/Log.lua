@@ -41,7 +41,7 @@ function OD_Logger:getLogFile()
     if self.file and OD_FileExists(self.filename) then return self.file end
     if self.filename == nil then 
         self.output = self.LOG_OUTPUT.CONSOLE
-        OD_LogError('No log filename defined. resorting to console')
+        self:logError('No log filename defined. resorting to console')
         return false
     end
     self.file = io.open(self.filename, "a")
