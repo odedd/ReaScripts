@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.6.1
+-- @version 0.6.2
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -14,7 +14,7 @@
 --   [nomain] lib/**
 -- @changelog
 -- @changelog
---   Optimize cleaning media folder
+--   Internal changes to logger
 
 ---------------------------------------
 -- SETUP ------------------------------
