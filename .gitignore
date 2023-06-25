@@ -12,7 +12,12 @@ run_scripts_www.sh
 
 **/*.ini
 
+FX/Visual Plugin Selector/*
+!FX/Visual Plugin Selector/Odedd_Visual Plugin Selector.lua
+!FX/Visual Plugin Selector/lib
+!FX/Visual Plugin Selector/lib/*
+
 Rendering/Stem Manager/*
 !Rendering/Stem Manager/Odedd_Stem Manager.lua
-!Rendering/Stem Manager/Lib
-!Rendering/Stem Manager/Lib/*
+!Rendering/Stem Manager/lib
+!Rendering/Stem Manager/lib/*

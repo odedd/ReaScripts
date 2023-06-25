@@ -15,3 +15,8 @@ end
 function OD_Trim(s)
     return s:match'^()%s*$' and '' or s:match'^%s*(.*%S)'
 end
+
+-- function magicFix(str)
+--     return str:gsub("[%(%)%.%+%-%*%?%[%]%^%$%%]", "%%%1")
+--   end
+  

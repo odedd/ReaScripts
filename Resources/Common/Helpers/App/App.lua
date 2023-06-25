@@ -1,7 +1,7 @@
 -- @noindex
 -- ! OD_App
 OD_App = {
-    logLevel = LOG_LEVEL.NONE,
+    logLevel = OD_Logger.LOG_LEVEL.NONE,
     temp = {},
     connect = function(self, objectname, o)
         for k,v in pairs(self) do
@@ -214,3 +214,18 @@ function OD_Perform_App:getStatus(window)
         return self.hint[window].text, self.hint[window].color
     end
 end
+
+function OD_Perform_App:checkPerform()
+    if self.coPerform then
+        if coroutine.status(self.coPerform) == "suspended" then
+            local retval
+            retval, self.perform.status = coroutine.resume(self.coPerform)
+            if not retval then
+                if type(self.onCancel) == 'function' then self.onCancel() end 
+            end
+        elseif coroutine.status(self.coPerform) == "dead" then
+            if type(self.onDone) == 'function' then self.onDone() end 
+            self.coPerform = nil
+        end
+    end
+  end

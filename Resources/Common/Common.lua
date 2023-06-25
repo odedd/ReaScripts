@@ -48,6 +48,7 @@ local function OD_GetScr()
     Scr.basename = Scr.path:match("^.+[\\/](.+)$")
     Scr.no_ext = Scr.basename:match("(.+)%.")
     OD_FindContentKey(OD_GetContent(Scr.path), "", true)
+    Scr.version = Scr.version or "0.0.0"
     Scr.major_version = OD_GetMajorVersion(Scr.version)
     Scr.minor_version = OD_GetMinorVersion(Scr.version)
     Scr.dfsetfile = Scr.dir..Scr.no_ext..'.ini'
@@ -134,12 +135,17 @@ local function prereqCheck(args)
     return errors
 end
 
+local function OD_GetReaperInfo()
+    r.x64 = reaper.GetAppVersion():match(".*(64)") and true or nil
+    r.path = reaper.GetResourcePath():gsub("\\", "/")
+end
 
 -------------------------------------------
 -- Public Stuff
 -------------------------------------------
 
 function OD_Init()
+    OD_GetReaperInfo()
     OD_GetScr()
     OD_GetOS()
 end
