@@ -1,7 +1,7 @@
 -- @noindex
 -- ! OD_Settings
 OD_Settings = {
-    settings = {},
+    current = {},
     default = {},
     dfsetfile = nil
 }
@@ -13,6 +13,11 @@ function OD_Settings:new(o)
     return o
 end
 
+function OD_Settings:init()
+    if self.dfsetfile == nil then
+        error('OD_Settings: dfsetfile not set')
+    end
+end
 function OD_Settings:getDefault(factory)
     if factory == nil then factory = false end
     local st = {
@@ -31,11 +36,11 @@ end
 
 function OD_Settings:load()
     local st = self:getDefault()
-    OD_MergeTables(self.settings, st.default)
+    OD_MergeTables(self.current, st.default)
 end
 
 function OD_Settings:save()
-    table.save(self.settings, self.dfsetfile)
+    table.save(self.current, self.dfsetfile)
 end
 
 function OD_Settings:check()
