@@ -25,7 +25,7 @@ PA_Settings = OD_Settings:new({
 
 -- * local
 
-function PA_Settings:Check()
+function PA_Settings:check()
     local errors = {}
     if not (self.settings.backup or self.settings.keepActiveTakesOnly or self.settings.minimize or self.settings.cleanMediaFolder or (self.settings.collect ~= 0)) then
         table.insert(errors, T.ERROR_NOTHING_TO_DO)
