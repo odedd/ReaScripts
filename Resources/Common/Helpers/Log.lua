@@ -106,7 +106,7 @@ end
 function OD_Logger:logTable(level, tableName, table, depth_offset)
     for k,v in pairs(table) do
         if type(v) ~= 'table' then
-            self:log(level, (tableName..'.%s'):format(k), v, depth_offset)
+            self:log(level, (tableName..'.%s'):format(k), v, (depth_offset or 0)+1)
         else
             self:logTable(level,tableName..'.'..tostring(k),v, (depth_offset or 0) + 1)
         end
