@@ -1,6 +1,6 @@
 -- @noindex
 
-local settings = PA_Settings.settings
+local settings = PA_Settings.current
 YIELD_FREQUENCY = 50
 Op = {}
 -- * local
