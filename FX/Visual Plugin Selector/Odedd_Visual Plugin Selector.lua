@@ -110,12 +110,15 @@ if OD_PrereqsOK({
   app.onDone = function()
     reaper.ShowConsoleMsg('I\'m done\n')
     table.save(db.items, p .. Scr.no_ext .. '.db')
+    logger.flush()
   end
-  -- db.items = table.load(p .. Scr.basename .. '.db')
-  -- reaper.ShowConsoleMsg(('loaded %s items\n'):format(#db.items.plugins))
-  -- app.coPerform = coroutine.create(function() db:scan() end)
-  -- r.defer(app.loop)
-  reaper.ShowConsoleMsg(r.get_ini_file()..'\n')
+  logger.level = logger.LOG_LEVEL.INFO
+  logger.output = logger.LOG_OUTPUT.FILE
+  logger:setLogFile(p .. Scr.name .. '_' .. os.date("%c") .. '.log')
+  app.coPerform = coroutine.create(function() db:scan() end)
+  r.defer(app.loop)
+
   -- logger.level = OD_Logger.LOG_LEVEL.DEBUG
-  -- db:addPlugin('JJP-Bass Mono/Stereo (Waves)')
+  -- db:addPlugin('Universal Audio, Inc.: PS22 Spread(10) (m->s)','AU')
+  -- reaper.ShowConsoleMsg(('OneKnob Phatter (s)'):match('%([ms]%)'))
 end
