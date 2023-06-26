@@ -29,16 +29,16 @@ function OD_Settings:getDefault(factory)
     return st
 end
 
-function OD_Settings:Load()
+function OD_Settings:load()
     local st = self:getDefault()
     OD_MergeTables(self.settings, st.default)
 end
 
-function OD_Settings:Save()
+function OD_Settings:save()
     table.save(self.settings, self.dfsetfile)
 end
 
-function OD_Settings:Check()
+function OD_Settings:check()
     local errors = {}
     if false then
         table.insert(errors, 'no settings check implemented')
