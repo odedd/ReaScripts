@@ -34,14 +34,17 @@ local app = OD_Perform_App:new({
 })
 
 local gui = OD_Gui:new()
+local logger = OD_Logger:new({level = OD_Logger.LOG_LEVEL.ERROR})
 local db = OD_VPS_DB:new()
 
 app:connect('gui', gui)
 app:connect('db', db)
+app:connect('logger', logger)
 app:connect('scr', Scr)
 -- app:connect('op', Op)
 app:init()
 gui:init()
+logger:init()
 db:init()
 
 local ctx = gui.ctx
@@ -106,15 +109,13 @@ if OD_PrereqsOK({
 
   app.onDone = function()
     reaper.ShowConsoleMsg('I\'m done\n')
-    table.save(db.items, p .. Scr.basename .. '.db')
+    table.save(db.items, p .. Scr.no_ext .. '.db')
   end
-  local vst_name = 'Absynth 5 (Native Instruments GmbH) (2->6ch)!!!VSTi'
-  vst_name = vst_name:gsub("!!!VSTi", "") 
-  -- db:addPlugin(vst_name, 1, 1,1,true,1)
-  -- db:addPlugin("Absynth 5 (Native Instruments GmbH) (2->6ch)")
-  app.coPerform = coroutine.create(function() db:scan() end)
   -- db.items = table.load(p .. Scr.basename .. '.db')
-
   -- reaper.ShowConsoleMsg(('loaded %s items\n'):format(#db.items.plugins))
-  r.defer(app.loop)
+  -- app.coPerform = coroutine.create(function() db:scan() end)
+  -- r.defer(app.loop)
+  reaper.ShowConsoleMsg(r.get_ini_file()..'\n')
+  -- logger.level = OD_Logger.LOG_LEVEL.DEBUG
+  -- db:addPlugin('JJP-Bass Mono/Stereo (Waves)')
 end

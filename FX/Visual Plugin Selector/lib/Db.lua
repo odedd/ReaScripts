@@ -6,13 +6,8 @@ OD_VPS_DB = {
         plugins = {}
     },
     PLUGIN = {
-        VARIANT = {
-            MONO = 'mono',
-            STEREO = 'stereo',
-            MONO_TO_STEREO = 'mono to stereo',
-            STEREO_TO_5_0 = 'stereo to 5.0',
-            STEREO_TO_5_1 = 'stereo to 5.1',
-            OTHER = 'OTHER',
+        VARIANT_PATTERNS = {
+            'mono','stereo','mono/stereo','stereo/%d%.%d','upmix %dto%d'
         }
     }
 }
@@ -135,40 +130,41 @@ function OD_VPS_DB:getVst()
     end
 end
 
-function OD_VPS_DB:addPlugin(vst_name, fx_folder, fx_type, vst_file, vsti, vst_id)
-    if vst_name == '' then return false end
+function OD_VPS_DB:addPlugin(full_name, fx_folder, fx_type, vst_file, vsti, vst_id)
+    if full_name == '' then return false end
     local name, vendor, channels, variant
-    name, vendor, channels = vst_name:match('(.+)%s%((.+)%)%s%((.*%dch)%)$')
-    if not channels then -- channels are sometimes reffered to as "%d out"
-        name, vendor, channels = vst_name:match('(.+)%s%((.+)%)%s%((%d*%sout)%)$')
-    end
-    if not channels then -- when there's only one channel it's reffered to as "mono"
-        name, vendor, channels = vst_name:match('(.+)%s%((.+)%)%s%((mono)%)$')
+    -- name, vendor, channels = vst_name:match('(.-)%s%((.+)%)%s%((.*%dch)%)$')
+
+    local t = {}
+    local counter = 1
+    for w in string.gmatch(full_name, "%b()") do
+      t[counter] = w:match("%((.+)%)")
+      counter = counter + 1
     end
 
-    if not vendor then
-        name, vendor = vst_name:match('(.+)%s%((.+)%)')
+    vendor = t[#t]
+
+    if #t == 0 then
+        self.app.logger.logError('cannot parse plugin name: '..full_name)
+        -- error('cannot parse plugin name: '..full_name)
+    end
+    if t[#t]:match('.-%dch$') or t[#t]:match('%d*%sout$') or t[#t] == 'mono' then
+        channels = t[#t]
+        vendor = t[#t - 1] 
     end
 
-    if name:lower():match(' mono$') then
-        variant = self.PLUGIN.VARIANT.MONO
-        name = name:gsub(' mono$', '')
-    elseif name:lower():match(' stereo$') then
-        variant = self.PLUGIN.VARIANT.STEREO
-        name = name:gsub(' stereo$', '')
-    elseif name:lower():match(' mono/stereo$') then
-        variant = self.PLUGIN.VARIANT.MONO_STEREO
-        name = name:gsub(' mono/stereo$', '')
-    elseif name:lower():match(' stereo/5%.0$') then
-        variant = self.PLUGIN.VARIANT.STEREO_5_0
-        name = name:gsub(' stereo/5%.0$', '')
-    elseif name:lower():match(' stereo/5%.1$') then
-        variant = self.PLUGIN.VARIANT.STEREO_5_1
-        name = name:gsub(' stereo/5%.1$', '')
+    name = full_name:gsub(' %('..OD_EscapePattern(vendor)..'%).-$','')
+    for i, var in ipairs(self.PLUGIN.VARIANT_PATTERNS) do
+        if name:lower():match('%s'..var:lower()..'$') then
+            local pat = OD_CaseInsensitivePattern(var)
+            variant = name:match('%s('..pat..')$')
+            name = name:gsub('%s'..pat..'$', '')
+            break
+        end
     end
 
     local pluginInfo = {
-        full_name = vst_name,
+        full_name = full_name,
         name = name,
         vendor = vendor,
         channels = channels,
@@ -180,13 +176,14 @@ function OD_VPS_DB:addPlugin(vst_name, fx_folder, fx_type, vst_file, vsti, vst_i
         vst_id = vst_id
     }
 
+    self.app.logger:logTable(self.app.logger.LOG_LEVEL.DEBUG, 'pluginInfo', pluginInfo)
     local key = vendor:lower() .. '_' .. name:lower()
     if self.items.plugins[key] then
         table.insert(self.items.plugins[key].instances, pluginInfo)
-        -- reaper.ShowConsoleMsg('added variant to ' .. name .. ' by ' .. vendor .. '\n')
+        self.app.logger:logInfo('Added variant to ' .. name .. ' by ' .. vendor, pluginInfo.full_name)
     else
         self.items.plugins[key] = { instances = { pluginInfo } }
-        -- reaper.ShowConsoleMsg('added ' .. name .. ' by ' .. vendor .. '\n')
+        self.app.logger:logInfo('Added new plugin: ' .. name .. ' by ' .. vendor, pluginInfo.full_name)
     end
     return true
 end
