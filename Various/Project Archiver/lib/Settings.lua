@@ -27,7 +27,7 @@ PA_Settings = OD_Settings:new({
 
 function PA_Settings:check()
     local errors = {}
-    if not (self.settings.backup or self.settings.keepActiveTakesOnly or self.settings.minimize or self.settings.cleanMediaFolder or (self.settings.collect ~= 0)) then
+    if not (self.current.backup or self.current.keepActiveTakesOnly or self.current.minimize or self.current.cleanMediaFolder or (self.current.collect ~= 0)) then
         table.insert(errors, T.ERROR_NOTHING_TO_DO)
         return false, errors
     end
@@ -44,16 +44,16 @@ function PA_Settings:check()
         table.insert(errors, "Reaper must be stopped while the script is running")
         return false, errors
     end
-    if self.settings.backup then
-        if self.settings.backupDestination == nil then
+    if self.current.backup then
+        if self.current.backupDestination == nil then
             table.insert(errors, T.ERROR_NO_BACKUP_DESTINATION)
-        elseif not OD_FolderExists(self.settings.backupDestination) then
+        elseif not OD_FolderExists(self.current.backupDestination) then
             table.insert(errors, T.ERROR_BACKUP_DESTINATION_MISSING)
-        elseif not OD_IsFolderEmpty(self.settings.backupDestination) then
+        elseif not OD_IsFolderEmpty(self.current.backupDestination) then
             table.insert(errors, T.ERROR_BACKUP_DESTINATION_MUST_BE_EMPTY)
         end
     else
-        if self.settings.cleanMediaFolder and self.settings.deleteMethod == DELETE_METHOD.KEEP_IN_FOLDER then
+        if self.current.cleanMediaFolder and self.current.deleteMethod == DELETE_METHOD.KEEP_IN_FOLDER then
             table.insert(errors, T.ERROR_KEEP_IN_FOLDER)
         end
     end
