@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.6.2
+-- @version 0.6.3
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -14,7 +14,7 @@
 --   [nomain] lib/**
 -- @changelog
 -- @changelog
---   Internal changes to logger
+--   Internal changes
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -103,7 +103,7 @@ Gui.st.col.status = {
 ---------------------------------------
 
 local function doPerform()
-    if PA_Settings:check() then
+    if PA_Settings:Check() then
         -- force checkProjectChange to reset the app, set log file, etc.
         app:checkProjectChange(true)
 
@@ -384,7 +384,7 @@ function app.drawWarning()
             r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
             if r.ImGui_Button(ctx, 'Got it') then
-                PA_Settings:save()
+                PA_Settings:Save()
                 r.ImGui_CloseCurrentPopup(ctx)
             end
             r.ImGui_EndPopup(ctx)
@@ -415,10 +415,10 @@ function app.drawBottom(ctx, bottom_lines)
             -- don't save backupDestination into saved preferences, but save all other settings
             local tmpDest = settings.backupDestination
             settings.backupDestination = nil
-            PA_Settings:save()
+            PA_Settings:Save()
             settings.backupDestination = tmpDest
 
-            local ok, errors = PA_Settings:check()
+            local ok, errors = PA_Settings:Check()
             if not ok then
                 app:msg(table.concat(errors, '\n\n'))
             else
@@ -696,6 +696,6 @@ if OD_PrereqsOK({
         js_version = 1.310,   -- required for JS_Dialog_BrowseForFolder
         reaper_version = 6.76 -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
     }) then
-    PA_Settings:load()
+    PA_Settings:Load()
     r.defer(app.loop)
 end
