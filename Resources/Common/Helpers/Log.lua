@@ -1,123 +1,128 @@
 -- @noindex
 
-LOG_LEVEL = {
-    NONE = 0,
-    ERROR = 1,
-    INFO = 2,
-    DEBUG = 3
+OD_Logger = {
+    LOG_LEVEL = {
+        NONE = 0,
+        ERROR = 1,
+        INFO = 2,
+        DEBUG = 3
+    },
+    LOG_OUTPUT = {
+        CONSOLE = 0,
+        FILE = 1
+    }
 }
 
-LOG_LEVEL_INFO = {
-    [LOG_LEVEL.NONE] = {order = LOG_LEVEL.NONE, name = "NONE", description = "None"},
-    [LOG_LEVEL.ERROR] = {order = LOG_LEVEL.ERROR, name = "ERROR", description = "Errors only"},
-    [LOG_LEVEL.INFO] = {order = LOG_LEVEL.INFO, name = "INFO", description = "Information & Errors"},
-    [LOG_LEVEL.DEBUG] = {order = LOG_LEVEL.DEBUG, name = "DEBUG", description = "Everything (A lot!)"},
-}
+function OD_Logger:new(o)
+    o = o or {} -- create object if user does not provide one
+    setmetatable(o, self)
+    self.__index = self
+    return o
+end
 
-LOG_OUTPUT = {
-    CONSOLE = 0,
-    FILE = 1
-}
-Log = {
-    level = LOG_LEVEL.INFO,
-    output = LOG_OUTPUT.CONSOLE
-}
+function OD_Logger:init()
+    self.LOG_LEVEL_INFO = {
+        [self.LOG_LEVEL.NONE] = {order = self.LOG_LEVEL.NONE, name = "NONE", description = "None"},
+        [self.LOG_LEVEL.ERROR] = {order = self.LOG_LEVEL.ERROR, name = "ERROR", description = "Errors only"},
+        [self.LOG_LEVEL.INFO] = {order = self.LOG_LEVEL.INFO, name = "INFO", description = "Information & Errors"},
+        [self.LOG_LEVEL.DEBUG] = {order = self.LOG_LEVEL.DEBUG, name = "DEBUG", description = "Everything (A lot!)"},
+    }
+    self.level = self.level or self.LOG_LEVEL.INFO
+    self.output = self.output or self.LOG_OUTPUT.CONSOLE
 
-local function __FILE__(depth) return debug.getinfo(depth, 'S').source end
-local function __LINE__(depth) return debug.getinfo(depth, 'l').currentline end
-local function __FUNC__(depth) return debug.getinfo(depth, 'n').name end
+    reaper.atexit(function () self:exit() end)
+end
 
-local function getLogFile()
-    if Log.file and OD_FileExists(Log.filename) then return Log.file end
-    if Log.filename == nil then 
-        Log.output = LOG_OUTPUT.CONSOLE
-        OD_LogError('No log filename defined. resorting to console')
+function OD_Logger:__FILE__(depth) return debug.getinfo(depth, 'S').source end
+function OD_Logger:__LINE__(depth) return debug.getinfo(depth, 'l').currentline end
+function OD_Logger:__FUNC__(depth) return debug.getinfo(depth, 'n').name end
+
+function OD_Logger:getLogFile()
+    if self.file and OD_FileExists(self.filename) then return self.file end
+    if self.filename == nil then 
+        self.output = self.LOG_OUTPUT.CONSOLE
+        self:logError('No log filename defined. resorting to console')
         return false
     end
-    Log.file = io.open(Log.filename, "a")
-    return Log.file
+    self.file = io.open(self.filename, "a")
+    return self.file
 end
-local function closeLogFile()
-    if Log.file then
-        Log.file:flush()
-        Log.file:close()
-        Log.file = nil
+function OD_Logger:closeLogFile()
+    if self.file then
+        self.file:flush()
+        self.file:close()
+        self.file = nil
         return true
     else
         return false
     end
 end
-local function flushLog()
-    if Log.file then
-        Log.file:flush()
+function OD_Logger:flush()
+    if self.file then
+        self.file:flush()
         return true
     else
         return false
     end
 end
-local function sendToLog(msg)
-    if Log.output == LOG_OUTPUT.FILE then
-        local file = getLogFile()
+function OD_Logger:sendToLog(msg)
+    if self.output == self.LOG_OUTPUT.FILE then
+        local file = self:getLogFile()
         if file then
             file:write(msg..'\n')
         end
     end
-    if Log.output == LOG_OUTPUT.CONSOLE then
+    if self.output == self.LOG_OUTPUT.CONSOLE then
         reaper.ShowConsoleMsg(msg..'\n')
     end
 end
-local function getLogCodePosition(depth)
+function OD_Logger:getLogCodePosition(depth)
     depth = depth or 2
-    local funcDepth = __FUNC__(depth)
-    local _, file, ext = OD_DissectFilename(tostring(__FILE__(depth)))
-    return (file .. (ext and ('.' .. ext) or '') .. "#" .. tostring(__LINE__(depth)) .. (funcDepth and " (" .. tostring(__FUNC__(depth)) .. ")" or ""))
+    local funcDepth = self:__FUNC__(depth)
+    local _, file, ext = OD_DissectFilename(tostring(self:__FILE__(depth)))
+    return (file .. (ext and ('.' .. ext) or '') .. "#" .. tostring(self:__LINE__(depth)) .. (funcDepth and " (" .. tostring(self:__FUNC__(depth)) .. ")" or ""))
 end
 
-function OD_Log(level, msg, msg_val, depth_offset)
-    if level <= Log.level then
+function OD_Logger:log(level, msg, msg_val, depth_offset)
+    if level <= self.level then
         local fullMsg =
-            LOG_LEVEL_INFO[level].name..' '..os.date("%c") .. ' ' .. getLogCodePosition(4+(depth_offset or 0)) .. ": " ..
+            self.LOG_LEVEL_INFO[level].name..' '..os.date("%c") .. ' ' .. self:getLogCodePosition(4+(depth_offset or 0)) .. ": " ..
             msg .. ((msg_val ~= nil) and (' (' .. tostring(msg_val) .. ')') or '')
-            sendToLog(fullMsg)
+            self:sendToLog(fullMsg)
     end
     return msg_val
 end
 
-function OD_LogDebug(msg, msg_val, depth_offset)
-    return OD_Log(LOG_LEVEL.DEBUG, msg, msg_val, depth_offset)
+function OD_Logger:logDebug(msg, msg_val, depth_offset)
+    return self:log(self.LOG_LEVEL.DEBUG, msg, msg_val, depth_offset)
 end
-function OD_LogInfo(msg, msg_val, depth_offset)
-    return OD_Log(LOG_LEVEL.INFO, msg, msg_val, depth_offset)
+function OD_Logger:logInfo(msg, msg_val, depth_offset)
+    return self:log(self.LOG_LEVEL.INFO, msg, msg_val, depth_offset)
 end
-function OD_LogError(msg, msg_val, depth_offset)
-    return OD_Log(LOG_LEVEL.ERROR, msg, msg_val, depth_offset)
+function OD_Logger:logError(msg, msg_val, depth_offset)
+    return self:log(self.LOG_LEVEL.ERROR, msg, msg_val, depth_offset)
 end
 
-function OD_LogTable(level, tableName, table, depth_offset)
+function OD_Logger:logTable(level, tableName, table, depth_offset)
     for k,v in pairs(table) do
         if type(v) ~= 'table' then
-            OD_Log(level, (tableName..'.%s'):format(k), v, depth_offset)
+            self:log(level, (tableName..'.%s'):format(k), v, (depth_offset or 0)+1)
         else
-            OD_LogTable(level,tableName..'.'..tostring(k),v, (depth_offset or 0) + 1)
+            self:logTable(level,tableName..'.'..tostring(k),v, (depth_offset or 0) + 1)
         end
     end
 
 end
 
-function OD_SetLogFile(filename)
-    if filename ~= Log.filename then closeLogFile() end
+function OD_Logger:setLogFile(filename)
+    if filename ~= self.filename then self:closeLogFile() end
     local path, basename, ext = OD_DissectFilename(filename)
     if basename ~= nil and ext ~= nil then
-        Log.filename = filename
+        self.filename = filename
     else
-        Log.filename = nil
+        self.filename = nil
     end
 end
-function OD_FlushLog()
-    flushLog()
+function OD_Logger:exit()
+    self:closeLogFile()
 end
-local function exit()
-    closeLogFile()
-end
-
-reaper.atexit(exit)
