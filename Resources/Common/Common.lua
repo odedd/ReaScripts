@@ -13,7 +13,7 @@ local function matchUrlInString(str)
     local preString, url = string.match(str, "(.-)(https?://[%w-_%.%?%.:/%+=&]+)")
     return url, OD_Trim(preString or '')
 end
-local function OD_FindContentKey(content, key, self)
+function OD_FindContentKey(content, key, self)
     if self then
         for match in content:gmatch("%-%- @(.-)\n") do
             local key, val = match:match("(.-) (.+)")
@@ -32,7 +32,7 @@ local function OD_FindContentKey(content, key, self)
                     -- end
                     -- table.insert(Scr[key:lower()], val)
                 -- else
-                -- end 
+                -- end
             end
         end
         return
@@ -138,6 +138,7 @@ end
 local function OD_GetReaperInfo()
     r.x64 = reaper.GetAppVersion():match(".*(64)") and true or nil
     r.path = reaper.GetResourcePath():gsub("\\", "/")
+    r.ini = OD_GetContent(reaper.get_ini_file():gsub("\\", "/"))
 end
 
 -------------------------------------------
