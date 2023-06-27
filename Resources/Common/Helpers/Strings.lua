@@ -48,3 +48,65 @@ end
 --     return str:gsub("[%(%)%.%+%-%*%?%[%]%^%$%%]", "%%%1")
 --   end
   
+
+
+local function _is_not_sanitized_posix(str)
+  -- A sanitized string must be quoted.
+  if not string.match(str, "^'.*'$") then
+      return true
+  -- A quoted string containing no quote characters within is sanitized.
+  elseif string.match(str, "^'[^']*'$") then
+      return false
+  end
+  
+  -- Any quote characters within a sanitized string must be properly
+  -- escaped.
+  local quotesStripped = string.sub(str, 2, -2)
+  local escapedQuotesRemoved = string.gsub(quotesStripped, "'\\''", "")
+  if string.find(escapedQuotesRemoved, "'") then
+      return true
+  else
+      return false
+  end
+end
+-- from dtutils
+local function _is_not_sanitized_windows(str)
+  if not string.match(str, "^\".*\"$") then
+     return true
+  else
+     return false
+  end
+end
+-- from dtutils
+function OD_IsNotSanitized(str)
+ if OS_is.win == "windows" then
+     return _is_not_sanitized_windows(str)
+ else
+     return _is_not_sanitized_posix(str)
+ end
+end
+-- from dtutils
+local function _sanitize_posix(str)
+ if _is_not_sanitized_posix(str) then
+     return "'" .. string.gsub(str, "'", "'\\''") .. "'"
+ else
+      return str
+ end
+end
+-- from dtutils
+local function _sanitize_windows(str)
+ if _is_not_sanitized_windows(str) then
+     return "\"" .. string.gsub(str, "\"", "\"^\"\"") .. "\""
+ else
+     return str
+ end
+end
+
+-- from dtutils
+function OD_Sanitize(str)
+ if OS_is.win then
+     return _sanitize_windows(str)
+ else
+     return _sanitize_posix(str)
+ end
+end
