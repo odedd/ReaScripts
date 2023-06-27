@@ -134,8 +134,11 @@ if OD_PrereqsOK({
       logger:flush()
     end
 
-  app.coPerform = coroutine.create(function() db:scanPhotos() end)
-  -- app.coPerform = coroutine.create(function() db:scan(true) end)
+    -- local mainHwnd = reaper.GetMainHwnd()
+    -- reaper.JS_Window_SetForeground(mainHwnd)
+    -- coroutine.yield()
+  -- app.coPerform = coroutine.create(function() db:scanPhotos() end)
+  app.coPerform = coroutine.create(function() db:scan(true) end)
   r.defer(app.loop)
 
 end

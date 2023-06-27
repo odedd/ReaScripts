@@ -6,9 +6,9 @@ function OD_Wait(seconds)
     while r.time_precise() - time < seconds do end
 end
 
-function OD_WaitAndDo(seconds, action, performOnce)
+function OD_WaitAndDo(seconds, performAtLeastOnce, action)
     if seconds == 0 then 
-        if performOnce and action then action() end -- perform once even if time is zero
+        if performAtLeastOnce and action then action() end -- perform once even if time is zero
         return
     end
     local time = r.time_precise()

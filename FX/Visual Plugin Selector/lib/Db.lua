@@ -13,7 +13,8 @@ OD_VPS_DB = {
             -- patterns in the plugin names that are actually variants of the same plugin.
             -- this is determined by the plugin developers, and is not always consistent.
             -- parantheses are there to mark which part of the name should be captured as the variant.
-            '%(?(mono)%)?', '%(?(stereo)%)?', '%(?(mono/stereo)%)?', '%(?(stereo/%d%.%d)%)?', '(upmix %dto%d)', '%(([ms])%)', '%((.-%->.+)%)' },
+            '%(?(mono)%)?', '%(?(stereo)%)?', '%(?(mono/stereo)%)?', '%(?(stereo/%d%.%d)%)?', '(upmix %dto%d)',
+            '%(([ms])%)', '%((.-%->.+)%)' },
         VENDOR_ALIASES = {
             -- some vendors have different names in different plugin types.
             ['Universal Audio'] = { 'Universal Audio, Inc.', 'Universal Audio' },
@@ -200,6 +201,7 @@ function OD_VPS_DB:helpers()
 end
 
 function OD_VPS_DB:parseIniFiles()
+    self.app.logger:logDebug('-- OD_VPS_DB:parseIniFiles()')
     self:helpers().parseIniFxFodlers(OD_GetContent(self.paths.fx_folders))
     self.defaults.fx_filter_string = self:helpers().findContentKey(r.ini,
         r.x64 and (OS_is.win and "def_fx_filt64" or "def_fx_filtx64") or
@@ -208,15 +210,18 @@ function OD_VPS_DB:parseIniFiles()
 end
 
 function OD_VPS_DB:load()
+    self.app.logger:logDebug('-- OD_VPS_DB:load()')
     if not OD_FileExists(self.filename) then error("File not found: " .. self.filename) end
     self.items = table.load(self.filename)
 end
 
 function OD_VPS_DB:save()
+    self.app.logger:logDebug('-- OD_VPS_DB:save()')
     table.save(self.items, self.filename)
 end
 
 function OD_VPS_DB:scanPhotos()
+    self.app.logger:logInfo('-- OD_VPS_DB:scanPhotos()')
     -- iterates through plugin.instances, and selects the instance whose fx_type has the highest priority in PHOTO_PRIORITY
     local function selectInstance(plugin)
         local chosen_instance = nil
@@ -238,7 +243,7 @@ function OD_VPS_DB:scanPhotos()
     local cntr = 0
     for key, plugin in OD_PairsByOrder(self.items.plugins) do
         local instance = selectInstance(plugin)
-        -- if key == 'fabfilter_pro-c 2' then 
+        -- if key == 'fabfilter_pro-c 2' then
         local targetFilename = self.app.settings.current.photosPath:gsub('\\', '/'):gsub('/$', '') .. '/' ..
             key .. '.jpg'
         local file_exists = OD_FileExists(targetFilename)
@@ -255,23 +260,30 @@ function OD_VPS_DB:scanPhotos()
                     (instance.instrument and 'i:' or ':') .. instance.full_name
                 plugin.crashed = true
                 self:save()
+                -- bring reaper's main window to the front and yield to let it get focus
+                local mainHwnd = reaper.GetMainHwnd()
+                reaper.JS_Window_SetForeground(mainHwnd)
+                coroutine.yield()
+                
                 local success, track, window = LoadPlugin(loadString)
                 plugin.crashed = false
-                OD_WaitAndDo(self.app.settings.current.vendorWaitTimes[instance.vendor] or 0.5, function() -- some plugins need time to load the ui 
-                    coroutine.yield()
-                end, true)
                 plugin.scanned = true
                 if not success then
                     self.app.logger:logError('Error loading plugin: ' .. loadString)
+                    plugin.loaded = false
                 else
+                    -- some plugins need time to load the ui
+                    plugin.loaded = true
+                    OD_WaitAndDo(self.app.settings.current.vendorWaitTimes[instance.vendor] or 0.5, true,
+                        function()
+                            coroutine.yield()
+                        end)
                     CapturePluginWindow(window, targetFilename)
                     if OD_FileExists(targetFilename) then
                         self.app.logger:logInfo(('Capture succeeded: %s'):format(instance.full_name), targetFilename)
-                        plugin.loaded = true
                         plugin.photo = targetFilename
                     else
                         self.app.logger:logError(('Capture failed: %s'):format(instance.full_name), targetFilename)
-                        plugin.loaded = false
                         plugin.photo = nil
                     end
                 end
@@ -288,11 +300,99 @@ function OD_VPS_DB:scanPhotos()
 end
 
 function OD_VPS_DB:scan(scan_photos)
-    self.items.plugins = {}
+    self.app.logger:logInfo('-- OD_VPS_DB:scan()')
+    local self = self
+
+    -- adapted from Quick Adder 2 by neutronic
+    local function getAu()
+        self.app.logger:logInfo('-- OD_VPS_DB:scan() -> getAu()')
+        local cntr = 0
+        local content = OD_GetContent(self.paths.au)
+        if not content then return end
+        for line in content:gmatch(".-[\n\r]") do
+            -- if cntr > 100 then goto SKIP end
+            if line:match("^.-=.+$") then
+                local au_name, au_i = line:match("^(.-)%s-=(.+)$")
+                au_i = au_i:match("<inst") ~= nil
+                if not au_name:match("^#") then
+                    local fx_folder = self:helpers().getFXfolder(au_name, 5)
+                    self:addPlugin(au_name, 'AU', fx_folder, au_i, nil)
+                    cntr = cntr + 1
+                    if cntr % 20 == 0 then
+                        coroutine.yield()
+                    end
+                end
+            end
+            ::SKIP::
+        end
+    end
+
+    -- adapted from Quick Adder 2 by neutronic
+    local function getVst()
+        self.app.logger:logInfo('-- OD_VPS_DB:scan() -> getVst()')
+        local cntr = 0
+        local content = OD_GetContent(self.paths.vst)
+        for line in content:gmatch(".-\n") do
+            -- if cntr > 100 then goto SKIP end
+            if not line:match(".-=.-,.-,.+") then goto SKIP end -- if not valid FX entry
+            local fx_type
+            local vst_file, vst_id, vst_name = line:match("(.-)=.-,(.-),(.+)\n")
+            vst_file = vst_file:gsub("<.+", "")
+
+            if vst_name:match("^[#<]") then goto SKIP end -- if exclude or shell
+
+            local vsti = vst_name:match("!!!VSTi$") ~= nil
+
+            if vsti then vst_name = vst_name:gsub("!!!VSTi", "") end
+
+            if not vst_file:lower():match("%.vst3$") then -- if VST2
+                fx_type = "VST2"
+            else
+                fx_type = "VST3"
+            end
+            local fx_folder = self:helpers().getFXfolder(vst_id .. "//" .. vst_file, 3)
+
+            self:addPlugin(vst_name, fx_type, fx_folder, vsti, vst_id)
+            cntr = cntr + 1
+            if cntr % 20 == 0 then
+                coroutine.yield()
+            end
+            ::SKIP::
+        end
+    end
+
+    local function deleteUnscanned()
+        self.app.logger:logInfo('-- OD_VPS_DB:deleteUnscanned()')
+        for key, plugin in OD_PairsByOrder(self.items.plugins) do
+            if not self.app.temp.scanned_instances[key] then -- if whole key (plugin+vendor) wasn't found, delete it
+                self.items.plugins[key] = nil
+            else
+                for i = 1, #plugin.instances do
+                    local foundInstance = false
+                    for j = 1, #self.app.temp.scanned_instances[key] do
+                        if OD_TableDeepCompare(plugin.instances[i], self.app.temp.scanned_instances[key][j]) then
+                            foundInstance = true
+                        end
+                    end
+                    if not foundInstance then
+                        self.app.logger:logInfo('Deleting instance', plugin.instances[i].full_name)
+                        table.remove(plugin.instances, i)
+                    end
+                end
+                if OD_IsTableEmpty(plugin.instances) then
+                    self.app.logger:logInfo('Deleting key - no more instances', key)
+                    self.items.plugins[key] = nil
+                end
+            end
+        end
+    end
+
     self.app.temp.scanTotal = 0
+    self.app.temp.scanned_instances = {} -- mark all plugins that were scanned so that I can delete the ones that weren't
     self:parseIniFiles()
-    self:getVst()
-    self:getAu()
+    getVst()
+    getAu()
+    deleteUnscanned()
     self:save()
     if scan_photos then self:scanPhotos() end
 end
@@ -331,74 +431,21 @@ end
 --     end
 -- end
 
--- adapted from Quick Adder 2 by neutronic
-function OD_VPS_DB:getAu()
-    local cntr = 0
-    local content = OD_GetContent(self.paths.au)
-    if not content then return end
-    for line in content:gmatch(".-[\n\r]") do
-        -- if cntr > 100 then goto SKIP end
-        if line:match("^.-=.+$") then
-            local au_name, au_i = line:match("^(.-)%s-=(.+)$")
-            au_i = au_i:match("<inst") ~= nil
-            if not au_name:match("^#") then
-                local fx_folder = self:helpers().getFXfolder(au_name, 5)
-                self:addPlugin(au_name, 'AU', fx_folder, au_i, nil)
-                cntr = cntr + 1
-                if cntr % 20 == 0 then
-                    coroutine.yield()
-                end
-            end
-        end
-        ::SKIP::
-    end
-end
-
--- adapted from Quick Adder 2 by neutronic
-function OD_VPS_DB:getVst()
-    local cntr = 0
-    local content = OD_GetContent(self.paths.vst)
-    for line in content:gmatch(".-\n") do
-        -- if cntr > 100 then goto SKIP end
-        if not line:match(".-=.-,.-,.+") then goto SKIP end -- if not valid FX entry
-        local fx_type
-        local vst_file, vst_id, vst_name = line:match("(.-)=.-,(.-),(.+)\n")
-        vst_file = vst_file:gsub("<.+", "")
-
-        if vst_name:match("^[#<]") then goto SKIP end -- if exclude or shell
-
-        local vsti = vst_name:match("!!!VSTi$") ~= nil
-
-        if vsti then vst_name = vst_name:gsub("!!!VSTi", "") end
-
-        if not vst_file:lower():match("%.vst3$") then -- if VST2
-            fx_type = "VST2"
-        else
-            fx_type = "VST3"
-        end
-        local fx_folder = self:helpers().getFXfolder(vst_id .. "//" .. vst_file, 3)
-
-        self:addPlugin(vst_name, fx_type, fx_folder, vsti, vst_id)
-        cntr = cntr + 1
-        if cntr % 20 == 0 then
-            coroutine.yield()
-        end
-        ::SKIP::
-    end
-end
-
 function OD_VPS_DB:addPlugin(full_name, fx_type, fx_folder, instrument, vst_id)
+    self.app.logger:logDebug('-- OD_VPS_DB:addPlugin()')
     local self = self
     local function shouldExclude()
+        self.app.logger:logDebug('-- OD_VPS_DB:addPlugin() -> shouldExclude()')
         return (self.defaults.fx_filter and self:helpers().fxExclCheck(fx_type:upper():gsub("VST2", "VST") .. (instrument and 'i' or '') .. ":" .. full_name:lower())) or
             (self.defaults.fx_filter and not self:helpers().fxExclCheck(fx_type:upper():gsub("VST2", "VST") .. (instrument and 'i' or '') .. ":" .. full_name:lower(), true))
     end
 
     local function extractNameVendorChannels(full_name, fx_type)
+        self.app.logger:logDebug('-- OD_VPS_DB:addPlugin() -> extractNameVendorChannels()')
         local name, vendor, channels, variant
         local t = {}
         if fx_type:match('^AU') then
-            t[2], t[1] = full_name:match('(.-): (.*)')
+            t[2], t[1] = full_name:match('(.-):%s?(.*)')
             name = t[1]
         elseif fx_type:match('^VST') then
             local counter = 1
@@ -427,7 +474,7 @@ function OD_VPS_DB:addPlugin(full_name, fx_type, fx_folder, instrument, vst_id)
                 break
             end
         end
-        
+
         for i, varPat in ipairs(self.PLUGIN.VARIANT_PATTERNS) do
             if name:lower():match('%s' .. varPat:lower() .. '$') then
                 local pat = OD_CaseInsensitivePattern(varPat)
@@ -440,19 +487,25 @@ function OD_VPS_DB:addPlugin(full_name, fx_type, fx_folder, instrument, vst_id)
         return true, name, vendor, channels, variant
     end
 
-    local function duplicatesExist(instances, fx_type, name, vendor, variant, instrument, vst_id)
-        -- check for duplicate type(+instrument)+name
+    local function duplicatesExist(instances, instance)
+        self.app.logger:logDebug('-- OD_VPS_DB:addPlugin() -> duplicatesExist()')
+        -- check for duplicate based on everything but id
         for i, v in ipairs(instances) do
-            if (v.name == name) and (v.variant == variant) and (v.vendor == vendor) and (v.fx_type == fx_type) and (v.instrument == instrument) then
-                return true, 'Duplicate vst name and type found', fx_type .. (instrument and 'i:' or ': ') .. full_name
+            local tmpInstanceA = OD_DeepCopy(instance)
+            local tmpInstanceB = OD_DeepCopy(v)
+            tmpInstanceA.vst_id = nil
+            tmpInstanceB.vst_id = nil
+            if OD_TableDeepCompare(tmpInstanceA, tmpInstanceB) then
+                return true, 'Duplicate vst name and type found',
+                    instance.fx_type .. (instance.instrument and 'i:' or ': ') .. instance.full_name
             end
         end
-        if vst_id then
+        if instance.vst_id then
             -- check for duplicate IDs - waves plugins are sometimes installed with multiple waveshells that share the same ID
             -- no need to worry about it here, so leave just one. Reaper deals with it when loading the FX
             for i, v in ipairs(instances) do
-                if v.vst_id == vst_id then
-                    return true, 'Duplicate vst ID found', vst_id
+                if v.vst_id == instance.vst_id then
+                    return true, 'Duplicate vst ID found', instance.vst_id
                 end
             end
         end
@@ -473,7 +526,7 @@ function OD_VPS_DB:addPlugin(full_name, fx_type, fx_folder, instrument, vst_id)
             return false
         end
 
-        local instanceInfo = {
+        local instance = {
             full_name = full_name,
             name = name,
             vendor = vendor,
@@ -485,17 +538,16 @@ function OD_VPS_DB:addPlugin(full_name, fx_type, fx_folder, instrument, vst_id)
             vst_id = vst_id
         }
 
-        local key = (instrument and 'i_' or '') .. instanceInfo.vendor:lower() .. '_' .. instanceInfo.name:lower()
+        local key = (instrument and 'i_' or '') .. instance.vendor:lower() .. '_' .. instance.name:lower()
         if self.items.plugins[key] then
-            local duplicatesExist, msg, msg_val = duplicatesExist(self.items.plugins[key].instances, fx_type, name,
-                vendor, variant, instrument, vst_id)
+            local duplicatesExist, msg, msg_val = duplicatesExist(self.items.plugins[key].instances, instance)
             if duplicatesExist then
                 self.app.logger:logInfo('Skipping ' .. full_name .. ' - ' .. msg, msg_val)
             else
-                table.insert(self.items.plugins[key].instances, instanceInfo)
+                table.insert(self.items.plugins[key].instances, instance)
                 self.app.logger:logInfo(
                     'Added ' .. fx_type .. (instrument and 'i' or '') .. ' variant to: ' .. name .. ' by ' .. vendor,
-                    instanceInfo.full_name)
+                    instance.full_name)
             end
         else
             self.app.temp.scanTotal = self.app.temp.scanTotal + 1
@@ -503,14 +555,20 @@ function OD_VPS_DB:addPlugin(full_name, fx_type, fx_folder, instrument, vst_id)
                 name = name,
                 vendor = vendor,
                 order = self.app.temp.scanTotal,
-                instances = { instanceInfo },
-                photo = nil, -- filename of photo of the plugin
+                instances = { instance },
+                photo = nil,     -- filename of photo of the plugin
                 scanned = false, -- was the plugin scanned for a photo?
-                loaded = nil, -- when loading during photo scanning, was it loaded successfully?
+                loaded = nil,    -- when loading during photo scanning, was it loaded successfully?
                 crashed = false, -- when loading during photo scanning, did it crash reaper
             }
             self.app.logger:logInfo('Added ' ..
-                fx_type .. (instrument and 'i' or '') .. ': ' .. name .. ' by ' .. vendor, instanceInfo.full_name)
+                fx_type .. (instrument and 'i' or '') .. ': ' .. name .. ' by ' .. vendor, instance.full_name)
+        end
+        -- add to scanned instances for deleting unscanned instances later
+        if self.app.temp.scanned_instances[key] then
+            table.insert(self.app.temp.scanned_instances[key], instance)
+        else
+            self.app.temp.scanned_instances[key] = { instance }
         end
         return true
     end

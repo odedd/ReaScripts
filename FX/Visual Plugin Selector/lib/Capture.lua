@@ -7,12 +7,18 @@ function LoadPlugin(plugin_name)
     r.TrackFX_Show(track, fx, 3)
     local success = r.TrackFX_GetCount( track ) > 0
     local hwnd
-    reaper.defer()
     if success then
       hwnd = r.JS_Window_FindTop(plugin_name:gsub('(.-):','%1: '), false)
       if not hwnd then --sometimes VST versions are loaded as VSTis, so look for that instead
         hwnd = r.JS_Window_FindTop(plugin_name:gsub('(.-):','%1i: '), false)
       end
+      if not hwnd then --fallback to not finding the top window (useful as some plugins show a modal window on startup, which interrupts all following captures)
+        hwnd = r.JS_Window_Find(plugin_name:gsub('(.-):','%1: '), false)
+      end
+      if not hwnd then --fallback to non-top-VSTi same as above
+        hwnd = r.JS_Window_Find(plugin_name:gsub('(.-):','%1i: '), false)
+      end
+
       if not hwnd then success = false end
     end
     return success, track, hwnd
