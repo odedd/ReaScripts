@@ -1,6 +1,7 @@
 -- @noindex
 -- ! OD_Db
 OD_VPS_DB = {
+    filename = nil,
     paths = {},          -- paths to different files
     defaults = {},       -- defaults from reaper (like default fx filter)
     items = {            -- everything here will be persisted to a file
@@ -12,9 +13,18 @@ OD_VPS_DB = {
             -- patterns in the plugin names that are actually variants of the same plugin.
             -- this is determined by the plugin developers, and is not always consistent.
             -- parantheses are there to mark which part of the name should be captured as the variant.
-            '(mono)', '(stereo)', '(mono/stereo)', '(stereo/%d%.%d)', '(upmix %dto%d)', '%(([ms])%)', '%((.-%->.+)%)' },
+            '%(?(mono)%)?', '%(?(stereo)%)?', '%(?(mono/stereo)%)?', '%(?(stereo/%d%.%d)%)?', '(upmix %dto%d)', '%(([ms])%)', '%((.-%->.+)%)' },
         VENDOR_ALIASES = {
-            ['Universal Audio, Inc.'] = { 'Universal Audio, Inc.', 'Universal Audio' }
+            -- some vendors have different names in different plugin types.
+            ['Universal Audio'] = { 'Universal Audio, Inc.', 'Universal Audio' },
+            ['Native Instruments'] = { 'Native Instruments GmbH', 'Native Instruments' },
+        },
+        PHOTO_PRIORITY = {
+            -- determins which plugin type should be preffered when taking a screenshot of a plugin.
+            ['VST3'] = 10,
+            ['VST2'] = 5,
+            ['AU'] = 3,
+            ['JS'] = 2,
         }
     }
 }
@@ -40,6 +50,7 @@ function OD_VPS_DB:init()
         end
     end
     self.paths.fx_folders = r.path .. "/reaper-fxfolders.ini"
+    if self.filename == nil then error("DB filename not set") end
 end
 
 function OD_VPS_DB:helpers()
@@ -60,7 +71,7 @@ function OD_VPS_DB:helpers()
             return content and content:gsub(key .. "[:=]%s?", "") or false
         end,
         -- get default fx filter, as defined in reaper settings -> Plug-ins -> Only show FX matching filter string
-        parseIniFxFilt = function(str) -- adapted from Quick Adder 2 by neutronic
+        parseIniFxFilt = function(str)                        -- adapted from Quick Adder 2 by neutronic
             if not str then str = 'NOT ( ^AU "(Waves)" )' end --if it's not there, it means that the default is set, which is this
             if str:match(" OR ") then return end
             str = str:gsub("AND", "")
@@ -196,10 +207,94 @@ function OD_VPS_DB:parseIniFiles()
     self:helpers().parseIniFxFilt(self.defaults.fx_filter_string)
 end
 
-function OD_VPS_DB:scan()
+function OD_VPS_DB:load()
+    if not OD_FileExists(self.filename) then error("File not found: " .. self.filename) end
+    self.items = table.load(self.filename)
+end
+
+function OD_VPS_DB:save()
+    table.save(self.items, self.filename)
+end
+
+function OD_VPS_DB:scanPhotos()
+    -- iterates through plugin.instances, and selects the instance whose fx_type has the highest priority in PHOTO_PRIORITY
+    local function selectInstance(plugin)
+        local chosen_instance = nil
+        local highest_priority = 0
+        for i, instance in ipairs(plugin.instances) do
+            if instance.fx_type then
+                local priority = self.PLUGIN.PHOTO_PRIORITY[instance.fx_type]
+                if priority and priority > highest_priority then
+                    chosen_instance = instance
+                    highest_priority = priority
+                end
+            end
+        end
+        return chosen_instance
+    end
+
+    local path = self.app.settings.current.photosPath
+    r.RecursiveCreateDirectory(path, 0)
+    local cntr = 0
+    for key, plugin in OD_PairsByOrder(self.items.plugins) do
+        local instance = selectInstance(plugin)
+        -- if key == 'fabfilter_pro-c 2' then 
+        local targetFilename = self.app.settings.current.photosPath:gsub('\\', '/'):gsub('/$', '') .. '/' ..
+            key .. '.jpg'
+        local file_exists = OD_FileExists(targetFilename)
+        -- if file wasn's scanned yet, haven't crashed or if it was scanned but the image file doesn't exist
+        if (plugin.photo and not file_exists) or (not plugin.scanned and not plugin.crashed) then
+            if file_exists and plugin.photo == nil then -- file already exists for plugin, but it hasn't been scanned
+                self.app.logger:logInfo(('Capture found: %s'):format(instance.full_name), targetFilename)
+                plugin.photo = targetFilename
+                plugin.scanned = true
+                plugin.loaded = true
+                plugin.crashed = false
+            else
+                local loadString = instance.fx_type:gsub('VST2', 'VST') ..
+                    (instance.instrument and 'i:' or ':') .. instance.full_name
+                plugin.crashed = true
+                self:save()
+                local success, track, window = LoadPlugin(loadString)
+                plugin.crashed = false
+                OD_WaitAndDo(self.app.settings.current.vendorWaitTimes[instance.vendor] or 0.5, function() -- some plugins need time to load the ui 
+                    coroutine.yield()
+                end, true)
+                plugin.scanned = true
+                if not success then
+                    self.app.logger:logError('Error loading plugin: ' .. loadString)
+                else
+                    CapturePluginWindow(window, targetFilename)
+                    if OD_FileExists(targetFilename) then
+                        self.app.logger:logInfo(('Capture succeeded: %s'):format(instance.full_name), targetFilename)
+                        plugin.loaded = true
+                        plugin.photo = targetFilename
+                    else
+                        self.app.logger:logError(('Capture failed: %s'):format(instance.full_name), targetFilename)
+                        plugin.loaded = false
+                        plugin.photo = nil
+                    end
+                end
+                r.DeleteTrack(track)
+            end
+        end
+        cntr = cntr + 1
+        -- if cntr % 20 == 0 then
+        --     -- reaper.ShowConsoleMsg(cntr..'\n')
+        --     coroutine.yield()
+        -- end
+    end
+    self:save()
+end
+
+function OD_VPS_DB:scan(scan_photos)
+    self.items.plugins = {}
+    self.app.temp.scanTotal = 0
     self:parseIniFiles()
     self:getVst()
     self:getAu()
+    self:save()
+    if scan_photos then self:scanPhotos() end
 end
 
 -- adapted from Quick Adder 2 by neutronic
@@ -250,7 +345,9 @@ function OD_VPS_DB:getAu()
                 local fx_folder = self:helpers().getFXfolder(au_name, 5)
                 self:addPlugin(au_name, 'AU', fx_folder, au_i, nil)
                 cntr = cntr + 1
-                coroutine.yield()
+                if cntr % 20 == 0 then
+                    coroutine.yield()
+                end
             end
         end
         ::SKIP::
@@ -283,24 +380,22 @@ function OD_VPS_DB:getVst()
 
         self:addPlugin(vst_name, fx_type, fx_folder, vsti, vst_id)
         cntr = cntr + 1
-
-        coroutine.yield()
+        if cntr % 20 == 0 then
+            coroutine.yield()
+        end
         ::SKIP::
     end
 end
 
 function OD_VPS_DB:addPlugin(full_name, fx_type, fx_folder, instrument, vst_id)
-    if full_name == '' then return false end
-    local name, vendor, channels, variant
+    local self = self
+    local function shouldExclude()
+        return (self.defaults.fx_filter and self:helpers().fxExclCheck(fx_type:upper():gsub("VST2", "VST") .. (instrument and 'i' or '') .. ":" .. full_name:lower())) or
+            (self.defaults.fx_filter and not self:helpers().fxExclCheck(fx_type:upper():gsub("VST2", "VST") .. (instrument and 'i' or '') .. ":" .. full_name:lower(), true))
+    end
 
-    if (self.defaults.fx_filter and self:helpers().fxExclCheck(fx_type:upper():gsub("VST2", "VST") .. (instrument and 'i' or '') .. ":" .. full_name:lower())) or
-        (self.defaults.fx_filter and not self:helpers().fxExclCheck(fx_type:upper():gsub("VST2", "VST") .. (instrument and 'i' or '') .. ":" .. full_name:lower(), true)) then
-        self.app.logger:logInfo('Skipping ' .. full_name .. ' - excluded by reaper FX filter',
-            self.defaults.fx_filter_string)
-        return false
-    else
-        -- name, vendor, channels = vst_name:match('(.-)%s%((.+)%)%s%((.*%dch)%)$')
-
+    local function extractNameVendorChannels(full_name, fx_type)
+        local name, vendor, channels, variant
         local t = {}
         if fx_type:match('^AU') then
             t[2], t[1] = full_name:match('(.-): (.*)')
@@ -314,72 +409,109 @@ function OD_VPS_DB:addPlugin(full_name, fx_type, fx_folder, instrument, vst_id)
         end
         vendor = t[#t]
 
-        if #t == 0 then
+        if #t == 0 then return false end
+
+        if t[#t]:match('.-%dch$') or t[#t]:match('%d*%sout$') or t[#t] == 'mono' then
+            channels = t[#t]
+            vendor = t[#t - 1]
+        end
+
+        if fx_type:match('^VST') then
+            name = full_name:gsub(' %(' .. OD_EscapePattern(vendor) .. '%).-$', '')
+        end
+
+        --  some vendors appear differently on different formats, so I try to unify them
+        for k, v in pairs(self.PLUGIN.VENDOR_ALIASES) do
+            if OD_HasValue(v, vendor) then
+                vendor = k
+                break
+            end
+        end
+        
+        for i, varPat in ipairs(self.PLUGIN.VARIANT_PATTERNS) do
+            if name:lower():match('%s' .. varPat:lower() .. '$') then
+                local pat = OD_CaseInsensitivePattern(varPat)
+                variant = name:match('%s' .. pat .. '$')
+                name = name:gsub('%s' .. pat .. '$', '')
+                break
+            end
+        end
+
+        return true, name, vendor, channels, variant
+    end
+
+    local function duplicatesExist(instances, fx_type, name, vendor, variant, instrument, vst_id)
+        -- check for duplicate type(+instrument)+name
+        for i, v in ipairs(instances) do
+            if (v.name == name) and (v.variant == variant) and (v.vendor == vendor) and (v.fx_type == fx_type) and (v.instrument == instrument) then
+                return true, 'Duplicate vst name and type found', fx_type .. (instrument and 'i:' or ': ') .. full_name
+            end
+        end
+        if vst_id then
+            -- check for duplicate IDs - waves plugins are sometimes installed with multiple waveshells that share the same ID
+            -- no need to worry about it here, so leave just one. Reaper deals with it when loading the FX
+            for i, v in ipairs(instances) do
+                if v.vst_id == vst_id then
+                    return true, 'Duplicate vst ID found', vst_id
+                end
+            end
+        end
+        return false
+    end
+
+    if full_name == '' then return false end
+
+    if shouldExclude() then
+        self.app.logger:logInfo('Skipping ' .. full_name .. ' - excluded by reaper FX filter',
+            self.defaults.fx_filter_string)
+        return false
+    else
+        local success, name, vendor, channels, variant = extractNameVendorChannels(full_name, fx_type)
+
+        if not success then
             self.app.logger:logError('cannot parse plugin name: ' .. full_name)
-            -- error('cannot parse plugin name: '..full_name)
             return false
-        else
-            if t[#t]:match('.-%dch$') or t[#t]:match('%d*%sout$') or t[#t] == 'mono' then
-                channels = t[#t]
-                vendor = t[#t - 1]
-            end
+        end
 
-            --  some vendors appear differently on different formats, so I try to unify them
-            for k, v in pairs(self.PLUGIN.VENDOR_ALIASES) do
-                if OD_HasValue(v, vendor) then
-                    vendor = k
-                    break
-                end
-            end
+        local instanceInfo = {
+            full_name = full_name,
+            name = name,
+            vendor = vendor,
+            channels = channels,
+            variant = variant,
+            instrument = instrument,
+            fx_type = fx_type,
+            fx_folder = fx_folder,
+            vst_id = vst_id
+        }
 
-            if fx_type:match('^VST') then
-                name = full_name:gsub(' %(' .. OD_EscapePattern(vendor) .. '%).-$', '')
-            end
-
-            for i, varPat in ipairs(self.PLUGIN.VARIANT_PATTERNS) do
-                if name:lower():match('%s' .. varPat:lower() .. '$') then
-                    local pat = OD_CaseInsensitivePattern(varPat)
-                    variant = name:match('%s' .. pat .. '$')
-                    name = name:gsub('%s' .. pat .. '$', '')
-                    break
-                end
-            end
-
-            local pluginInfo = {
-                full_name = full_name,
-                name = name,
-                vendor = vendor,
-                channels = channels,
-                variant = variant,
-                instrument = instrument,
-                fx_type = fx_type,
-                fx_folder = fx_folder,
-                vst_id = vst_id
-            }
-
-            local key = (instrument and 'i_' or '') .. vendor:lower() .. '_' .. name:lower()
-            if self.items.plugins[key] then
-                if vst_id then
-                    -- check for duplicate IDs - waves plugins are sometimes installed with multiple waveshells that share the same ID
-                    -- no need to worry about it here, so leave just one. Reaper deals with it when loading the FX
-                    for i, v in ipairs(self.items.plugins[key].instances) do
-                        if v.vst_id == vst_id then
-                            self.app.logger:logInfo('Skipping ' .. full_name .. ' - Duplicate vst ID found',
-                                vst_id)
-                            return false
-                        end
-                    end
-                end
-                table.insert(self.items.plugins[key].instances, pluginInfo)
+        local key = (instrument and 'i_' or '') .. instanceInfo.vendor:lower() .. '_' .. instanceInfo.name:lower()
+        if self.items.plugins[key] then
+            local duplicatesExist, msg, msg_val = duplicatesExist(self.items.plugins[key].instances, fx_type, name,
+                vendor, variant, instrument, vst_id)
+            if duplicatesExist then
+                self.app.logger:logInfo('Skipping ' .. full_name .. ' - ' .. msg, msg_val)
+            else
+                table.insert(self.items.plugins[key].instances, instanceInfo)
                 self.app.logger:logInfo(
                     'Added ' .. fx_type .. (instrument and 'i' or '') .. ' variant to: ' .. name .. ' by ' .. vendor,
-                    pluginInfo.full_name)
-            else
-                self.items.plugins[key] = { instances = { pluginInfo } }
-                self.app.logger:logInfo('Added ' ..
-                    fx_type .. (instrument and 'i' or '') .. ': ' .. name .. ' by ' .. vendor, pluginInfo.full_name)
+                    instanceInfo.full_name)
             end
-            return true
+        else
+            self.app.temp.scanTotal = self.app.temp.scanTotal + 1
+            self.items.plugins[key] = {
+                name = name,
+                vendor = vendor,
+                order = self.app.temp.scanTotal,
+                instances = { instanceInfo },
+                photo = nil, -- filename of photo of the plugin
+                scanned = false, -- was the plugin scanned for a photo?
+                loaded = nil, -- when loading during photo scanning, was it loaded successfully?
+                crashed = false, -- when loading during photo scanning, did it crash reaper
+            }
+            self.app.logger:logInfo('Added ' ..
+                fx_type .. (instrument and 'i' or '') .. ': ' .. name .. ' by ' .. vendor, instanceInfo.full_name)
         end
+        return true
     end
 end

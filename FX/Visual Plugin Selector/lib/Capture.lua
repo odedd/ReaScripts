@@ -1,13 +1,21 @@
 -- @noindex
 
 function LoadPlugin(plugin_name)
-    local track = r.GetTrack(0, 0)               -- get the currently selected track
-    local fx_count = r.TrackFX_GetCount(track)   -- get the number of effects on the track
-    local found = false
+  r.InsertTrackAtIndex(0,false)
+    local track = r.GetTrack(0,0) 
     local fx = r.TrackFX_AddByName(track, plugin_name, false, 1)
     r.TrackFX_Show(track, fx, 3)
-    local retval = r.JS_Window_FindTop(plugin_name, false)
-    return retval
+    local success = r.TrackFX_GetCount( track ) > 0
+    local hwnd
+    reaper.defer()
+    if success then
+      hwnd = r.JS_Window_FindTop(plugin_name:gsub('(.-):','%1: '), false)
+      if not hwnd then --sometimes VST versions are loaded as VSTis, so look for that instead
+        hwnd = r.JS_Window_FindTop(plugin_name:gsub('(.-):','%1i: '), false)
+      end
+      if not hwnd then success = false end
+    end
+    return success, track, hwnd
   end
   
   function getPluginWindowBounds(hwnd)
@@ -19,7 +27,8 @@ function LoadPlugin(plugin_name)
           scrh -
           bottom                                                -- macos (On macOS, screen coordinates are relative to the *bottom* left corner of the primary display, and the positive Y-axis points upward.)
       top = top + 20                                            -- compensate for macos main menu bar
-      top = top + 28                                            -- plugin reaper bar
+      top = top + 29                                            -- plugin reaper bar
+      bottom = bottom + 27
     end
     return left, top, right - left, bottom - top
   end
@@ -27,8 +36,8 @@ function LoadPlugin(plugin_name)
   function CapturePluginWindow(window, filename)
     local x, y, w, h = getPluginWindowBounds(window)
     local cmd = 'screencapture -R' .. x .. ',' .. y .. ',' ..
-    w .. ',' .. h .. ' -x -a -tjpg /Users/odeddavidov/Desktop/test2.jpg'
+    w .. ',' .. h .. ' -x -a -tjpg ' .. OD_Sanitize(filename) .. ''
     os.execute(cmd)
-    img = r.ImGui_CreateImage('/Users/odeddavidov/Desktop/test2.jpg')
+    -- img = r.ImGui_CreateImage(filename)
   end
   

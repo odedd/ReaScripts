@@ -36,18 +36,38 @@ local app = OD_Perform_App:new({
 local gui = OD_Gui:new()
 local logger = OD_Logger:new({level = OD_Logger.LOG_LEVEL.ERROR})
 local db = OD_VPS_DB:new()
+local settings = OD_Settings:new({
+  default = {
+    photosPath = p .. 'Photos/',
+    vendorWaitTimes = {
+      ['Universal Audio (UADx)'] = 2,
+      ['Tokyo Dawn Labs'] = 1,
+      ['Leapwing Audio'] = 1,
+      ['Sound Radix'] = 1,
+    }
+  },
+  dfsetfile = Scr.dfsetfile
+})
 
 app:connect('gui', gui)
 app:connect('db', db)
 app:connect('logger', logger)
 app:connect('scr', Scr)
--- app:connect('op', Op)
+app:connect('settings', settings)
+
+db.filename = p .. Scr.no_ext .. '.db'
+
 app:init()
 gui:init()
 logger:init()
 db:init()
+settings:init()
 
 local ctx = gui.ctx
+
+logger.level = logger.LOG_LEVEL.INFO
+logger.output = logger.LOG_OUTPUT.FILE
+logger:setLogFile(p .. Scr.name .. '_' .. os.date("%c") .. '.log')
 
 -------------------
 -- basic helpers --
@@ -99,26 +119,23 @@ if OD_PrereqsOK({
       js_version = 1.310,   -- required for JS_Dialog_BrowseForFolder
       reaper_version = 6.76 -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
     }) then
-  local pluginname = 'Pro-C 2'
-  --  local window = LoadPlugin(pluginname)
-  --  r.defer(function() CapturePluginWindow(window) end)
-  app.onCancel = function()
-    reaper.ShowConsoleMsg('I\'ve been cancelled\n')
-    reaper.ShowConsoleMsg(app.perform.status..'\n')
-  end
 
-  app.onDone = function()
-    reaper.ShowConsoleMsg('I\'m done\n')
-    table.save(db.items, p .. Scr.no_ext .. '.db')
-    logger.flush()
-  end
-  logger.level = logger.LOG_LEVEL.INFO
-  logger.output = logger.LOG_OUTPUT.FILE
-  logger:setLogFile(p .. Scr.name .. '_' .. os.date("%c") .. '.log')
-  app.coPerform = coroutine.create(function() db:scan() end)
+      -- LoadPlugin('VST:Absynth 5 (Native Instruments GmbH)')
+    settings:load()
+    db:load()
+    app.onCancel = function()
+      reaper.ShowConsoleMsg('I\'ve been cancelled\n')
+      reaper.ShowConsoleMsg(app.perform.status..'\n')
+    end
+
+    app.onDone = function()
+      reaper.ShowConsoleMsg('I\'m done\n')
+      db:save()
+      logger:flush()
+    end
+
+  app.coPerform = coroutine.create(function() db:scanPhotos() end)
+  -- app.coPerform = coroutine.create(function() db:scan(true) end)
   r.defer(app.loop)
 
-  -- logger.level = OD_Logger.LOG_LEVEL.DEBUG
-  -- db:addPlugin('Universal Audio, Inc.: PS22 Spread(10) (m->s)','AU')
-  -- reaper.ShowConsoleMsg(('OneKnob Phatter (s)'):match('%([ms]%)'))
 end
