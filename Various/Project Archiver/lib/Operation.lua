@@ -165,6 +165,7 @@ function GetMediaFiles()
             fullpath = fullpath,
             relOrAbsPath = relOrAbsPath,
             basename = basename,
+            filenameWithoutPath = basename .. (ext and ('.'..ext) or ''), 
             ext = ext,
             pathIsRelative = pathIsRelative,
             external = not pathIsRelative,
@@ -860,6 +861,13 @@ function MinimizeAndApplyMedia()
 
                     r.SetMediaItemTake_Source(oc.take, newSrc)
                     r.SetMediaItemTakeInfo_Value(oc.take, "D_STARTOFFS", oc.newItemPosition)
+                    local _, oldTakeName = r.GetSetMediaItemTakeInfo_String(oc.take,'P_NAME','',false)
+                    if oldTakeName:match(fileInfo.filenameWithoutPath) then
+                        local _, newBasename, newExt = OD_DissectFilename(uniqueName)
+                        if newBasename then
+                            r.GetSetMediaItemTakeInfo_String(oc.take,'P_NAME',oldTakeName:gsub(fileInfo.filenameWithoutPath,newBasename .. (newExt and ('.' .. newExt) or '')),true)
+                        end
+                    end
                     applyTakeStretchMarkers(oc, smrkrs)
                     applyTakeMarkers(oc)
 
