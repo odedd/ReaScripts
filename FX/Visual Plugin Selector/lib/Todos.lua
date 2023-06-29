@@ -1,0 +1,7 @@
+-- @noindex
+-- TODO: Run as a dedicated process:
+-- in reaper-vstbridge32.ini
+-- [vst_dll_options]
+-- (for vst - use filename) FabFilter Pro-Q 3.vst3=2 -1
+-- (for au - use full_name) FabFilter: Pro-Q 3=2 -1
+-- TODO: categories (reaper-fxtags.ini)

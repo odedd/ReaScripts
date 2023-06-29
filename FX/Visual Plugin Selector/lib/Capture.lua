@@ -37,7 +37,7 @@ function GetExternalWindowCorrdinates(plugin_name)
   end
 end
 
-function getPluginWindowBounds(hwnd)
+local function getPluginWindowBounds(hwnd)
   local _, left, top, right, bottom = r.JS_Window_GetClientRect(hwnd)
   if OS_is.mac then
     local parent = r.JS_Window_GetParent(hwnd)
@@ -57,7 +57,7 @@ function CapturePluginWindow(window, filename, coordinates)
   if coordinates then
     x, y, w, h = coordinates.x, coordinates.y, coordinates.w, coordinates.h
   else
-    x, y, w, h = getPluginWindowBounds(window, coordinates)
+    x, y, w, h = getPluginWindowBounds(window)
   end
   local cmd = 'screencapture -R' .. x .. ',' .. y .. ',' ..
       w .. ',' .. h .. ' -x -a -tjpg ' .. OD_Sanitize(filename) .. ''
