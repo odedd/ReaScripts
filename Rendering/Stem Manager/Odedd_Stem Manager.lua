@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 1.7.0
+-- @version 1.7.1
 -- @donation https://paypal.me/odedda
 -- @link https://forum.cockos.com/showthread.php?t=268512
 -- @license GNU GPL v3
@@ -20,7 +20,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Fixed broken loading of stems in existing projects (might break projects made with v1.6.0+ !)
+--   Fixed rendering when region or marker selection was required
 
 local r = reaper
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
@@ -570,7 +570,7 @@ end]]):gsub('$(%w+)', {
                             -- for some reason selecting in windows requires region manager window to remain open for some time
                             -- (this is a workaround until proper api support for selecting regions exists)
                             if OS_is.win then
-                                SelectMarkers(rsg.selected_markers, false)
+                                OD_SelectMarkers(rsg.selected_markers, false)
                                 local t = os.clock()
                                 while (os.clock() - t < 0.5) do
                                     coroutine.yield('Creating stem ' .. stemName .. ' (selecting markers)', idx,
@@ -578,7 +578,7 @@ end]]):gsub('$(%w+)', {
                                 end
                                 r.Main_OnCommand(40326, 0) -- close region/marker manager
                             else
-                                SelectMarkers(rsg.selected_markers)
+                                OD_SelectMarkers(rsg.selected_markers)
                             end
                         elseif render_preset.boundsflag == RB_SELECTED_REGIONS and rsg.select_regions then
                             -- window must be given an opportunity to open (therefore yielded) for the selection to work
@@ -589,7 +589,7 @@ end]]):gsub('$(%w+)', {
                             -- for some reason selecting in windows requires region manager window to remain open for some time
                             -- (this is a workaround until proper api support for selecting regions exists)
                             if OS_is.win then
-                                SelectRegions(rsg.selected_regions, false)
+                                OD_SelectRegions(rsg.selected_regions, false)
                                 local t = os.clock()
                                 while (os.clock() - t < 0.5) do
                                     coroutine.yield('Creating stem ' .. stemName .. ' (selecting regions)', idx,
@@ -597,7 +597,7 @@ end]]):gsub('$(%w+)', {
                                 end
                                 r.Main_OnCommand(40326, 0) -- close region/marker manager
                             else
-                                SelectRegions(rsg.selected_regions)
+                                OD_SelectRegions(rsg.selected_regions)
                             end
                         elseif render_preset.boundsflag == RB_TIME_SELECTION and rsg.make_timeSel then
                             r.GetSet_LoopTimeRange2(0, true, false, rsg.timeSelStart, rsg.timeSelEnd, 0) -- , boolean isLoop, number start, number end, boolean allowautoseek)
