@@ -34,7 +34,7 @@ local app = OD_Perform_App:new({
 })
 
 local gui = OD_Gui:new()
-local logger = OD_Logger:new({level = OD_Logger.LOG_LEVEL.ERROR})
+local logger = OD_Logger:new({ level = OD_Logger.LOG_LEVEL.ERROR })
 local db = OD_VPS_DB:new()
 local settings = OD_Settings:new({
   default = {
@@ -65,9 +65,9 @@ settings:init()
 
 local ctx = gui.ctx
 
-logger.level = logger.LOG_LEVEL.INFO
+logger.level = logger.LOG_LEVEL.DEBUG
 logger.output = logger.LOG_OUTPUT.FILE
-logger:setLogFile(p .. Scr.name .. '_' .. os.date("%c") .. '.log')
+logger:setLogFile(p .. Scr.no_ext .. '_' .. os.date("%c") .. '.log')
 
 -------------------
 -- basic helpers --
@@ -119,26 +119,50 @@ if OD_PrereqsOK({
       js_version = 1.310,   -- required for JS_Dialog_BrowseForFolder
       reaper_version = 6.76 -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
     }) then
+  settings:load()
+  db:load()
+  app.onCancel = function()
+    reaper.ShowConsoleMsg('I\'ve been cancelled\n')
+    reaper.ShowConsoleMsg(app.perform.status .. '\n')
+  end
 
-      -- LoadPlugin('VST:Absynth 5 (Native Instruments GmbH)')
-    settings:load()
-    db:load()
-    app.onCancel = function()
-      reaper.ShowConsoleMsg('I\'ve been cancelled\n')
-      reaper.ShowConsoleMsg(app.perform.status..'\n')
-    end
+  app.onDone = function()
+    reaper.ShowConsoleMsg('I\'m done\n')
+    db:save()
+    logger:flush()
+    logger:closeLogFile()
+  end
 
-    app.onDone = function()
-      reaper.ShowConsoleMsg('I\'m done\n')
-      db:save()
-      logger:flush()
-    end
-
-    -- local mainHwnd = reaper.GetMainHwnd()
-    -- reaper.JS_Window_SetForeground(mainHwnd)
-    -- coroutine.yield()
+  -- local mainHwnd = reaper.GetMainHwnd()
+  -- reaper.JS_Window_SetForeground(mainHwnd)
+  -- coroutine.yield()
   -- app.coPerform = coroutine.create(function() db:scanPhotos() end)
-  app.coPerform = coroutine.create(function() db:scan(true) end)
-  r.defer(app.loop)
+   app.coPerform = coroutine.create(function() db:scan(true) end)
+   r.defer(app.loop)
 
+  -- local plugin_name = 'AU:iZotope: Stutter Edit'
+  -- r.InsertTrackAtIndex(0, false)
+  -- local track = r.GetTrack(0, 0)
+  -- local fx = r.TrackFX_AddByName(track, plugin_name, false, -1000)
+  -- if fx == -1 then return false, track, nil, 'does not exist' end
+  -- r.TrackFX_Show(track, fx, 3)
+  -- -- reaper.defer()
+  -- -- reaper.defer()
+  -- -- reaper.defer()
+  -- -- reaper.defer()
+  -- -- local windowName = plugin_name:gsub('^(.-):', '%1: ')
+  -- -- OD_Wait(0.5)
+  -- local windowTitleString = 'AU: Stutter Edit'
+  -- local hwnd = r.JS_Window_FindTop(windowTitleString, false) or
+  --                   r.JS_Window_FindTop(windowTitleString:gsub('^(.-):', '%1i:'), false) or --sometimes VST versions are loaded as VSTis, so look for that instead
+  --                   r.JS_Window_Find(windowTitleString, false) or                            --fallback to not finding the top window (useful as some plugins show a modal window on startup, which interrupts all following captures)
+  --                   r.JS_Window_Find(windowTitleString:gsub('^(.-):', '%1i:'), false)       --or    --fallback to non-top-VSTi same as above
+
+  -- reaper.ShowConsoleMsg(tostring(hwnd) .. '\n')
 end
+
+-- TODO: Run as a dedicated process:
+-- in reaper-vstbridge32.ini
+-- [vst_dll_options]
+-- (for vst - use filename) FabFilter Pro-Q 3.vst3=2 -1
+-- (for au - use full_name) FabFilter: Pro-Q 3=2 -1
