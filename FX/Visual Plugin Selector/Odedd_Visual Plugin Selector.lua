@@ -65,7 +65,7 @@ settings:init()
 
 local ctx = gui.ctx
 
-logger.level = logger.LOG_LEVEL.DEBUG
+logger.level = logger.LOG_LEVEL.INFO
 logger.output = logger.LOG_OUTPUT.FILE
 logger:setLogFile(p .. Scr.no_ext .. '_' .. os.date("%c") .. '.log')
 
