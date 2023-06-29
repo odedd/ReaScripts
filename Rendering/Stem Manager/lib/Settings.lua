@@ -44,7 +44,7 @@ function GetDefaultSettings(factory)
 
     if not factory then
         local loaded_ext_settings = table.load(Scr.dfsetfile) or
-            {} -- unpickle(r.GetExtState(scr.context_name, 'DEFAULT SETTINGS') or '')
+            {} -- unpickle(r.GetExtState(scr.ext_name, 'DEFAULT SETTINGS') or '')
         -- merge default settings from extstates with script defaults
         for k, v in pairs(loaded_ext_settings or {}) do
             if not (k == 'render_setting_groups') then
@@ -68,7 +68,7 @@ end
 function LoadSettings()
     Settings = GetDefaultSettings()
     -- take merged updated default settings and merge project specific settings into them
-    local loaded_project_settings = unpickle(OD_LoadLongProjExtKey(Scr.context_name, 'PROJECT SETTINGS'))
+    local loaded_project_settings = unpickle(OD_LoadLongProjExtKey(Scr.ext_name, 'PROJECT SETTINGS'))
     -- Settings.project = Settings.project or {}
     Settings.project = OD_DeepCopy(Settings.default)
     -- OD_MergeTables(Settings.project,Settings.default)
@@ -87,7 +87,7 @@ end
 
 function SaveSettings()
     table.save(Settings.default, Scr.dfsetfile)
-    OD_SaveLongProjExtState(Scr.context_name, 'PROJECT SETTINGS', pickle(Settings.project))
+    OD_SaveLongProjExtState(Scr.ext_name, 'PROJECT SETTINGS', pickle(Settings.project))
     r.MarkProjectDirty(0)
 end
 

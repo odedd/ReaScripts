@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 1.6.1
+-- @version 1.7.0
 -- @donation https://paypal.me/odedda
 -- @link https://forum.cockos.com/showthread.php?t=268512
 -- @license GNU GPL v3
@@ -20,7 +20,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Fixed some crashes
+--   Fixed broken loading of stems in existing projects (might break projects made with v1.6.0+ !)
 
 local r = reaper
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
@@ -110,7 +110,7 @@ if cmdId then
 else
   r.MB(script_name..' not installed', script_name,0)
 end]]):gsub('$(%w+)', {
-            context = Scr.context_name,
+            context = Scr.ext_name,
             scriptname = Scr.basename,
             cmd = cmd
         })
@@ -716,10 +716,10 @@ end]]):gsub('$(%w+)', {
     end
 
     local function checkExternalCommand()
-        local raw_cmd = r.GetExtState(Scr.context_name, 'EXTERNAL COMMAND')
+        local raw_cmd = r.GetExtState(Scr.ext_name, 'EXTERNAL COMMAND')
         local cmd, arg = raw_cmd:match('^([%w_]+)%s*(.*)$')
         if cmd ~= '' and cmd ~= nil then
-            r.SetExtState(Scr.context_name, 'EXTERNAL COMMAND', '', false)
+            r.SetExtState(Scr.ext_name, 'EXTERNAL COMMAND', '', false)
             if cmd == 'sync' then
                 if arg then
                     stemName = DB:findSimilarStem(arg, true)
@@ -2480,14 +2480,14 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
     end
 
     local function loop()
-        r.DeleteExtState(Scr.context_name, 'defer', false)
+        r.DeleteExtState(Scr.ext_name, 'defer', false)
         checkPerform()
         r.ImGui_PushFont(Gui.ctx, Gui.st.fonts.default)
         App.open = App.drawMainWindow()
         r.ImGui_PopFont(Gui.ctx)
         checkExternalCommand()
         if App.open then
-            r.SetExtState(Scr.context_name, 'defer', '1', false)
+            r.SetExtState(Scr.ext_name, 'defer', '1', false)
             r.defer(loop)
         else
             r.ImGui_DestroyContext(Gui.ctx)

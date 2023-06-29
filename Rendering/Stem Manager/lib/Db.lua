@@ -301,15 +301,15 @@ DB = {
                 end
             end
             if foundTrackInfo.stemMatrix and not (foundTrackInfo.stemMatrix == '') then
-                local retval = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. Scr.context_name .. '_STEM_MATRIX',
+                local retval = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. Scr.ext_name .. '_STEM_MATRIX',
                     pickle(foundTrackInfo.stemMatrix), true)
             else
-                r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. Scr.context_name .. '_STEM_MATRIX', '', true)
+                r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. Scr.ext_name .. '_STEM_MATRIX', '', true)
             end
         end
-        OD_SaveLongProjExtState(Scr.context_name, 'STEMS', pickle(self.stems or {}))
+        OD_SaveLongProjExtState(Scr.ext_name, 'STEMS', pickle(self.stems or {}))
         for k, v in pairs(self.savedSoloStates) do
-            r.SetProjExtState(0, Scr.context_name .. '_SAVED_SOLO_STATES', k, pickle(v))
+            r.SetProjExtState(0, Scr.ext_name .. '_SAVED_SOLO_STATES', k, pickle(v))
         end
         r.MarkProjectDirty(0)
     end,
@@ -331,7 +331,7 @@ DB = {
             if App.debug then
                 r.ShowConsoleMsg('FULL SYNC\n')
             end
-            self.stems = unpickle(OD_LoadLongProjExtKey(Scr.context_name, 'STEMS')) or {}
+            self.stems = unpickle(OD_LoadLongProjExtKey(Scr.ext_name, 'STEMS')) or {}
             self.prefSoloIP = select(2, r.get_config_var_string('soloip')) == '1'
         end
 
@@ -345,11 +345,11 @@ DB = {
         if full then
             self.savedSoloStates = {}
             i = 0
-            local retval, k, v = r.EnumProjExtState(0, Scr.context_name .. '_SAVED_SOLO_STATES', i)
+            local retval, k, v = r.EnumProjExtState(0, Scr.ext_name .. '_SAVED_SOLO_STATES', i)
             while retval do
                 self.savedSoloStates[k] = unpickle(v)
                 i = i + 1
-                retval, k, v = r.EnumProjExtState(0, Scr.context_name .. '_SAVED_SOLO_STATES', i)
+                retval, k, v = r.EnumProjExtState(0, Scr.ext_name .. '_SAVED_SOLO_STATES', i)
             end
             self.savedSoloStates = self.savedSoloStates or {}
         end
@@ -373,7 +373,7 @@ DB = {
                 local folderDepth = r.GetMediaTrackInfo_Value(rTrack, "I_FOLDERDEPTH")
                 local hidden = (r.GetMediaTrackInfo_Value(rTrack, "B_SHOWINTCP") == 0)
                 local color = r.GetTrackColor(rTrack)
-                local _, rawStemMatrix = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. Scr.context_name ..
+                local _, rawStemMatrix = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. Scr.ext_name ..
                     '_STEM_MATRIX', "", false)
                 local stemMatrix = unpickle(rawStemMatrix)
                 local trackInfo = {
