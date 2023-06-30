@@ -140,7 +140,6 @@ local function prereqCheck(args)
 
     if check_lua_batteries then
         if OD_FileExists(lua_batteries_path) then
-            reaper.ShowConsoleMsg(OD_DissectFilename(lua_batteries_path)..'metapkg.lua'..'\n')
             local version = OD_FindContentKey(OD_GetContent(OD_DissectFilename(lua_batteries_path)..'metapkg.lua'), "%-%- @version", false)
             if version then
                 local versionMatch = OD_CheckVersionRequirement(version, lua_batteries_version)
@@ -154,7 +153,7 @@ local function prereqCheck(args)
                 table.insert(errors, 'Mavriq Lua Batteries version could not be determined.\nPlease update via ReaPack.')
             end
         else
-            table.insert(errors, 'This script requires Mavriq Lua Batteris.\nPlease install it via ReaPack using the repository:\nhttps://github.com/mavriq-dev/public-reascripts/raw/master/index.xml')
+            table.insert(errors, 'This script requires Mavriq Lua Batteris.\nPlease install it via ReaPack\nusing the repository:\nhttps://github.com/mavriq-dev/public-reascripts/raw/master/index.xml')
         end
     end
     return errors
