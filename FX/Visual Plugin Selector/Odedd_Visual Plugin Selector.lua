@@ -117,7 +117,8 @@ if OD_PrereqsOK({
       reaimgui_version = '0.8',
       sws = true,           -- required for SNM_SetIntConfigVar - setting config vars (max file size limitation and autosave options)
       js_version = 1.310,   -- required for JS_Dialog_BrowseForFolder
-      reaper_version = 6.76 -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
+      reaper_version = 6.76, -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
+      lua_batteries_version = '0.1.0rc3'
     }) then
   settings:load()
   db:load()
@@ -137,8 +138,8 @@ if OD_PrereqsOK({
   -- reaper.JS_Window_SetForeground(mainHwnd)
   -- coroutine.yield()
   -- app.coPerform = coroutine.create(function() db:scanPhotos() end)
-   app.coPerform = coroutine.create(function() db:scan(true) end)
-   r.defer(app.loop)
+  -- app.coPerform = coroutine.create(function() db:scan(true) end)
+  --  r.defer(app.loop)
 
   -- local plugin_name = 'AU:iZotope: Stutter Edit'
   -- r.InsertTrackAtIndex(0, false)

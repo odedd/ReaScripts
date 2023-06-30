@@ -20,26 +20,26 @@ function OD_FindContentKey(content, key, self)
             if val then
                 local url, description = matchUrlInString(val)
                 if url and description then
-                    Scr[key:lower()] = Scr[key:lower()] or {} 
+                    Scr[key:lower()] = Scr[key:lower()] or {}
                     -- val = {[description] = url}
                     Scr[key:lower()][description] = url
                 else
                     Scr[key:lower()] = val
                 end
                 -- if Scr[key:lower()] then
-                    -- if type(Scr[key:lower()]) ~= 'table' then
-                        -- Scr[key:lower()] = { Scr[key:lower()] }
-                    -- end
-                    -- table.insert(Scr[key:lower()], val)
+                -- if type(Scr[key:lower()]) ~= 'table' then
+                -- Scr[key:lower()] = { Scr[key:lower()] }
+                -- end
+                -- table.insert(Scr[key:lower()], val)
                 -- else
                 -- end
             end
         end
         return
     else
-        content = content:match(key .. "[:=].-\n")
+        content = content:match(key .. "[:=]?.-\n")
     end
-    return content and content:gsub(key .. "[:=]%s?", "") or false
+    return content and content:gsub(key .. "[:=]?%s?", "") or false
 end
 
 local function OD_GetScr()
@@ -51,7 +51,7 @@ local function OD_GetScr()
     Scr.version = Scr.version or "0.0.0"
     Scr.major_version = OD_GetMajorVersion(Scr.version)
     Scr.minor_version = OD_GetMinorVersion(Scr.version)
-    Scr.dfsetfile = Scr.dir..Scr.no_ext..'.ini'
+    Scr.dfsetfile = Scr.dir .. Scr.no_ext .. '.ini'
     Scr.namespace = "Odedd"
     Scr.name = Scr.description
     Scr.developer = Scr.author
@@ -71,20 +71,25 @@ local function OD_GetOS()
 end
 
 local function prereqCheck(args)
-
     args = args or {}
-    args.scripts = args.scripts or {} -- {"cfillion_Apply render preset.lua" , "r.GetResourcePath() .. '/Scripts/ReaTeam Scripts/Rendering/cfillion_Apply render preset.lua'"}
+    args.scripts = args.scripts or
+    {}                                -- {"cfillion_Apply render preset.lua" , "r.GetResourcePath() .. '/Scripts/ReaTeam Scripts/Rendering/cfillion_Apply render preset.lua'"}
     local errors = {}
 
     local reaimgui_script_path = args.reaimgui_path or r.GetResourcePath() ..
-                                     '/Scripts/ReaTeam Extensions/API/imgui.lua'
+        '/Scripts/ReaTeam Extensions/API/imgui.lua'
+    local lua_batteries_path = args.lua_batteries_path or r.GetResourcePath() ..
+        '/Scripts/Mavriq ReaScript Repository/Various/Mavriq-Lua-Batteries/batteries_header.lua'
     local check_reimgui = args.reaimgui or (args.reaimgui_version ~= nil) or false
     local reaimgui_version = args.reaimgui_version or '0.7'
-    
+
     local check_sws = args.sws
 
     local check_js = args.js or (args.js_version ~= nil) or false
     local js_version = args.js_version
+
+    local check_lua_batteries = args.lua_batteries or (args.lua_batteries_version ~= nil) or false
+    local lua_batteries_version = args.lua_batteries_version
 
     local min_reaper_version = args.reaper_version or 6.44
 
@@ -130,6 +135,26 @@ local function prereqCheck(args)
             end
         else
             table.insert(errors, 'This script requires ReaImgui.\nPlease install it via ReaPack.')
+        end
+    end
+
+    if check_lua_batteries then
+        if OD_FileExists(lua_batteries_path) then
+            reaper.ShowConsoleMsg(OD_DissectFilename(lua_batteries_path)..'metapkg.lua'..'\n')
+            local version = OD_FindContentKey(OD_GetContent(OD_DissectFilename(lua_batteries_path)..'metapkg.lua'), "%-%- @version", false)
+            if version then
+                local versionMatch = OD_CheckVersionRequirement(version, lua_batteries_version)
+                if not versionMatch then
+                    table.insert(errors, ('Mavriq Lua Batteries version must be %s or above.\nPlease update via ReaPack.'):format(
+                        lua_batteries_version))
+                else
+                    dofile(lua_batteries_path)
+                end
+            else
+                table.insert(errors, 'Mavriq Lua Batteries version could not be determined.\nPlease update via ReaPack.')
+            end
+        else
+            table.insert(errors, 'This script requires Mavriq Lua Batteris.\nPlease install it via ReaPack using the repository:\nhttps://github.com/mavriq-dev/public-reascripts/raw/master/index.xml')
         end
     end
     return errors
