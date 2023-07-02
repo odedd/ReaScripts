@@ -66,7 +66,8 @@ function OD_VPS_DB:helpers()
             if instance.fx_type == 'AU' then
                 windowTitleString = 'AU' ..
                     (instance.instrument and 'i: ' or ': ') ..
-                    instance.full_name:gsub('^' .. OD_EscapePattern(instance.originalVendor or instance.vendor) .. ':%s?', '') ..
+                    instance.full_name:gsub(
+                    '^' .. OD_EscapePattern(instance.originalVendor or instance.vendor) .. ':%s?', '') ..
                     (instance.vendor and (' (' .. (instance.originalVendor or instance.vendor) .. ')') or '')
             elseif instance.fx_type:match('^VST') then
                 windowTitleString = instance.fx_type:gsub('VST2', 'VST') ..
@@ -83,7 +84,7 @@ function OD_VPS_DB:helpers()
             local track = r.GetTrack(0, 0)
             local fx = r.TrackFX_AddByName(track, loadString, false, -1)
             coroutine.yield() -- allow the plugin to load, otherwise when doing some of the next tests, some plugins crash
-            if fx == -1 then 
+            if fx == -1 then
                 return false, track, nil, 'does not exist'
             end
             r.TrackFX_Show(track, fx, 3)
@@ -94,10 +95,10 @@ function OD_VPS_DB:helpers()
             if success then
                 self.app.logger:logDebug('Loading successful. Looking for window title', windowTitleString)
                 hwnd = r.JS_Window_FindTop(windowTitleString, false) or
-                r.JS_Window_FindTop(windowTitleString:gsub('^(.-):', '%1i:'), false) or --sometimes VST versions are loaded as VSTis, so look for that instead
-                r.JS_Window_Find(windowTitleString, false) or                            --fallback to not finding the top window (useful as some plugins show a modal window on startup, which interrupts all following captures)
-                r.JS_Window_Find(windowTitleString:gsub('^(.-):', '%1i:'), false)       --or    --fallback to non-top-VSTi same as above
-                
+                    r.JS_Window_FindTop(windowTitleString:gsub('^(.-):', '%1i:'), false) or --sometimes VST versions are loaded as VSTis, so look for that instead
+                    r.JS_Window_Find(windowTitleString, false) or                       --fallback to not finding the top window (useful as some plugins show a modal window on startup, which interrupts all following captures)
+                    r.JS_Window_Find(windowTitleString:gsub('^(.-):', '%1i:'), false)   --or    --fallback to non-top-VSTi same as above
+
                 if not hwnd then
                     success = false
                     err = 'No hwnd'
@@ -360,7 +361,8 @@ function OD_VPS_DB:scanPhotos()
             end
         end
         if chosen_instance then
-            self.app.logger:logDebug('Instance chosen', '('..chosen_instance.fx_type .. ') ' ..chosen_instance.full_name)
+            self.app.logger:logDebug('Instance chosen', '(' ..
+            chosen_instance.fx_type .. ') ' .. chosen_instance.full_name)
         end
         return chosen_instance
     end
@@ -369,17 +371,17 @@ function OD_VPS_DB:scanPhotos()
     -- 2. true if retry is needed with another instance
     local function capturePluginPhoto(key, plugin)
         self.app.logger:logDebug('-- OD_VPS_DB:scanPhotos() -> capturePluginPhoto() plugin=', plugin.name)
-        if plugin.onlyMissingInstances then 
+        if plugin.onlyMissingInstances then
             self.app.logger:logDebug('All plugin\'s instances are missing', plugin.name)
             return false, false
         end
-        local instance = selectInstance(plugin)
         -- if key == 'fabfilter_pro-c 2' then
         local targetPath = self.app.settings.current.photosPath:gsub('\\', '/'):gsub('/$', '')
         local targetFilename = OD_SanitizeFilename(key .. '.jpg')
         local file_exists = OD_FileExists(targetPath .. '/' .. targetFilename)
         -- if file wasn's scanned yet, haven't crashed or if it was scanned but the image file doesn't exist
         if (not plugin.crashed) and ((not plugin.scanned) or (not plugin.photo) or (plugin.photo and not file_exists)) then
+            local instance = selectInstance(plugin)
             if file_exists and plugin.photo == nil then -- file already exists for plugin, but it hasn't been scanned
                 self.app.logger:logInfo(('Capture found: %s'):format(instance.full_name), targetPath ..
                     '/' .. targetFilename)
@@ -443,7 +445,7 @@ function OD_VPS_DB:scanPhotos()
             end
         else
             if plugin.crashed then
-                self.app.logger:logDebug('Capture skipped since plugin crashed before', instance.full_name)
+                self.app.logger:logDebug('Capture skipped since plugin crashed before', plugin.name)
                 return false, false
             end
             self.app.logger:logDebug('Capture skipped since it already exists.', targetFilename)
@@ -642,7 +644,7 @@ function OD_VPS_DB:scan(scan_photos)
                     end
                     if not foundInstance then
                         self:deleteInstance(key, plugin.instances[i], true)
-                        -- self.app.logger:logInfo('Deleting instance', plugin.instances[i].full_name)
+                        -- self.app.logger:logDebug('Deleting instance', plugin.instances[i].full_name)
                         -- table.remove(plugin.instances, i)
                     end
                 end

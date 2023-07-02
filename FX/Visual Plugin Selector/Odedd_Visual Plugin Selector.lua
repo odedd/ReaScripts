@@ -65,7 +65,7 @@ settings:init()
 
 local ctx = gui.ctx
 
-logger.level = logger.LOG_LEVEL.INFO
+logger.level = logger.LOG_LEVEL.DEBUG
 logger.output = logger.LOG_OUTPUT.FILE
 logger:setLogFile(p .. Scr.no_ext .. '_' .. os.date("%c") .. '.log')
 
@@ -138,8 +138,8 @@ if OD_PrereqsOK({
   -- reaper.JS_Window_SetForeground(mainHwnd)
   -- coroutine.yield()
   -- app.coPerform = coroutine.create(function() db:scanPhotos() end)
-  -- app.coPerform = coroutine.create(function() db:scan(true) end)
-  --  r.defer(app.loop)
+  app.coPerform = coroutine.create(function() db:scan(true) end)
+   r.defer(app.loop)
 
   -- local plugin_name = 'AU:iZotope: Stutter Edit'
   -- r.InsertTrackAtIndex(0, false)
