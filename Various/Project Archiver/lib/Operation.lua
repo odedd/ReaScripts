@@ -165,7 +165,7 @@ function GetMediaFiles()
             fullpath = fullpath,
             relOrAbsPath = relOrAbsPath,
             basename = basename,
-            filenameWithoutPath = basename .. (ext and ('.'..ext) or ''), 
+            filenameWithoutPath = (basename and (basename .. (ext and ('.'..ext) or '')) or nil),
             ext = ext,
             pathIsRelative = pathIsRelative,
             external = not pathIsRelative,
