@@ -165,7 +165,7 @@ function GetMediaFiles()
             fullpath = fullpath,
             relOrAbsPath = relOrAbsPath,
             basename = basename,
-            filenameWithoutPath = (basename and (basename .. (ext and ('.'..ext) or '')) or nil),
+            filenameWithoutPath = (basename and (basename .. (ext and ('.' .. ext) or '')) or nil),
             ext = ext,
             pathIsRelative = pathIsRelative,
             external = not pathIsRelative,
@@ -294,7 +294,6 @@ function GetMediaFiles()
                 Op.app.mediaFiles[filename].status_info = sourceType
             end
             if Op.app.mediaFiles[filename].missing then
-                reaper.ShowConsoleMsg('missing..\n')
                 Op.app.mediaFiles[filename].status = STATUS.ERROR
                 Op.app.mediaFiles[filename].status_info = 'file missing'
                 Op.app.mediaFiles[filename].sourceFileSize = 0
@@ -327,26 +326,47 @@ function GetMediaFiles()
             end
         end
     end
-
     -- based on funciton by MPL
     local function getFilesFromRS5K()
         Op.app.logger:logDebug('-- GetMediaFiles() -> getFilesFromRS5K()', nil, 1)
-        for i = 1, r.GetNumTracks(0) do
-            local tr = r.GetTrack(0, i - 1)
-            for fx = 1, r.TrackFX_GetCount(tr) do
-                if IsRS5K(tr, fx - 1) then
-                    local retval, file_src = r.TrackFX_GetNamedConfigParm(tr, fx - 1, 'FILE0')
+        for i = 0, r.GetNumTracks(0) - 1 do
+            local tr = r.GetTrack(0, i)
+            for fx = 0, r.TrackFX_GetCount(tr)-1 do
+                if IsRS5K(tr, fx) then
+                    local retval, file_src = r.TrackFX_GetNamedConfigParm(tr, fx, 'FILE0')
                     if Op.app.mediaFiles[file_src] then
-                        table.insert(Op.app.mediaFiles[file_src].instances, { track = tr, fxIndex = fx - 1 })
+                        table.insert(Op.app.mediaFiles[file_src].instances, { track = tr, fxIndex = fx })
                     else
                         addMediaFile(file_src, FILE_TYPES.RS5K, true)
-                        Op.app.mediaFiles[file_src].instances = { { track = tr, fxIndex = fx - 1 } }
+                        Op.app.mediaFiles[file_src].instances = { { track = tr, fxIndex = fx } }
                     end
                     Op.app.mediaFiles[file_src].newFileSize = Op.app.mediaFiles[file_src].sourceFileSize
                 end
             end
         end
     end
+
+    local function getFilesFromFrozenTracks()
+        Op.app.logger:logDebug('-- GetMediaFiles() -> getFilesFromFrozenTracks()', nil, 1)
+        local root = ReadRPP(Op.app.fullProjPath) -- Parse the RPP
+
+        local tracks = root:findAllChunksByName("TRACK")
+        for i, track in ipairs(tracks) do
+            local freezes = track:findAllChunksByName("FREEZE")
+            for j, freeze in ipairs(freezes) do
+                local items = freeze:findAllChunksByName("ITEM")
+                for k, item in ipairs(items) do
+                    local source = item:findFirstChunkByName("SOURCE")
+                    local filename = source:findAllNodesByName("FILE")[1]:getParam(1):getString()
+                    Op.app.logger:logDebug('Found frozen file', filename)
+                    addMediaFile(filename, FILE_TYPES.AUDIO, true)
+                    Op.app.mediaFiles[filename].newFileSize = Op.app.mediaFiles[filename].sourceFileSize
+                    Op.app.mediaFiles[filename].status_info = 'Used in a frozen track'
+                end
+            end
+        end
+    end
+
 
     -- * init
     Op.app.mediaFiles = {}
@@ -358,6 +378,9 @@ function GetMediaFiles()
 
     getFilesFromItems(numMediaItems)
     getFilesFromRS5K()
+    if settings.freezeHandling == FREEZE_HANDLING.KEEP then
+        getFilesFromFrozenTracks()
+    end
 end
 
 function CollectMedia()
@@ -401,7 +424,8 @@ function CollectMedia()
     end
 
     local function applyToOriginal(filename, newFilename)
-        Op.app.logger:logDebug('-- CollectMedia() -> applyToOriginal()', tostring(filename) .. ' -> ' .. tostring(newFilename), 1)
+        Op.app.logger:logDebug('-- CollectMedia() -> applyToOriginal()',
+            tostring(filename) .. ' -> ' .. tostring(newFilename), 1)
         local fileInfo = Op.app.mediaFiles[filename]
         Op.app.usedFiles[filename] = nil
         Op.app.usedFiles[newFilename] = 1
@@ -423,7 +447,8 @@ function CollectMedia()
                 r.TrackFX_SetNamedConfigParm(instance.track, instance.fxIndex, 'FILE0',
                     uniqueFilenameInBackupDestination or newFilename)
             end
-            Op.app.logger:logDebug(('Absolute target file reference set for %s instances of a RS5K sample'):format(instanceCount),
+            Op.app.logger:logDebug(
+                ('Absolute target file reference set for %s instances of a RS5K sample'):format(instanceCount),
                 uniqueFilenameInBackupDestination or newFilename)
         else
             local newSrc = r.PCM_Source_CreateFromFile(newFilename)
@@ -861,11 +886,13 @@ function MinimizeAndApplyMedia()
 
                     r.SetMediaItemTake_Source(oc.take, newSrc)
                     r.SetMediaItemTakeInfo_Value(oc.take, "D_STARTOFFS", oc.newItemPosition)
-                    local _, oldTakeName = r.GetSetMediaItemTakeInfo_String(oc.take,'P_NAME','',false)
+                    local _, oldTakeName = r.GetSetMediaItemTakeInfo_String(oc.take, 'P_NAME', '', false)
                     if oldTakeName:match(fileInfo.filenameWithoutPath) then
                         local _, newBasename, newExt = OD_DissectFilename(uniqueName)
                         if newBasename then
-                            r.GetSetMediaItemTakeInfo_String(oc.take,'P_NAME',oldTakeName:gsub(fileInfo.filenameWithoutPath,newBasename .. (newExt and ('.' .. newExt) or '')),true)
+                            r.GetSetMediaItemTakeInfo_String(oc.take, 'P_NAME',
+                                oldTakeName:gsub(fileInfo.filenameWithoutPath,
+                                    newBasename .. (newExt and ('.' .. newExt) or '')), true)
                         end
                     end
                     applyTakeStretchMarkers(oc, smrkrs)
@@ -920,7 +947,8 @@ function MinimizeAndApplyMedia()
                 if fileInfo.status == STATUS.ERROR then
                     Op.app.logger:logError('Minimize error', (filename .. ' -> ' .. tostring(fileInfo.newfilename)))
                 else
-                    Op.app.logger:logInfo('Minimized Successfully', (filename .. ' -> ' .. tostring(fileInfo.newfilename)))
+                    Op.app.logger:logInfo('Minimized Successfully',
+                        (filename .. ' -> ' .. tostring(fileInfo.newfilename)))
                     fileInfo.status = STATUS.MINIMIZED
                 end
             end
@@ -977,7 +1005,8 @@ function Restore()
     if success then
         Op.app.logger:logInfo('Temporary RPP backup file deleted', Op.app.revert.tmpBackupFileName)
     else
-        Op.app.logger:logError(('Temporary RPP backup file not deleted (%s)'):format(error), Op.app.revert.tmpBackupFileName)
+        Op.app.logger:logError(('Temporary RPP backup file not deleted (%s)'):format(error),
+            Op.app.revert.tmpBackupFileName)
     end
 end
 
@@ -1010,7 +1039,7 @@ function Revert(cancel)
         Op.app.usedFiles = {}
         Op.app.mediaFileCount = 0
         Restore() -- if not cancelled, restore will be called anyway
-        Op.app.logger:logInfo('** Process Completed') 
+        Op.app.logger:logInfo('** Process Completed')
         Op.app.logger:flush()
     end
 end
@@ -1138,7 +1167,8 @@ function CreateBackupProject()
                 Op.app.logger:logInfo('File backup (Move) successful', (fileInfo.newfilename .. ' -> ' .. target))
                 fileInfo.status = STATUS.DONE
             else
-                Op.app.logger:logError('File backup (Move) failed', (tostring(fileInfo.newfilename) .. ' -> ' .. tostring(target)))
+                Op.app.logger:logError('File backup (Move) failed',
+                    (tostring(fileInfo.newfilename) .. ' -> ' .. tostring(target)))
                 fileInfo.status = STATUS.ERROR
                 fileInfo.status_info = 'move failed'
             end
@@ -1148,7 +1178,8 @@ function CreateBackupProject()
                 coroutine.yield('Creating backup project')
                 local target = (targetPath .. fileInfo.relOrAbsFile):gsub('\\\\', '\\')
                 if OD_CopyFile(fileInfo.filenameWithPath, target, Op.app.logger) then
-                    Op.app.logger:logInfo('File backup (Copy) successful', (fileInfo.filenameWithPath .. ' -> ' .. target))
+                    Op.app.logger:logInfo('File backup (Copy) successful',
+                        (fileInfo.filenameWithPath .. ' -> ' .. target))
                     fileInfo.status = STATUS.DONE
                 else
                     Op.app.logger:logError('File backup (Copy) failed',
@@ -1369,6 +1400,95 @@ function KeepActiveTakesOnly()
         end
     end
     reaper.Main_OnCommand(40131, 0) -- Take: Crop to active take in items
+end
+
+function FixFrozenTracksFileAssociations()
+    Op.app.logger:logInfo('-- GetMediaFiles() -> getFilesFromFrozenTracks()', nil, 1)
+
+    local targetProj = settings.backup and Op.app.backupTargetProject or Op.app.fullProjPath
+
+    r.Main_SaveProject(-1)
+
+    local root = ReadRPP(targetProj) -- Parse the RPP
+
+    local filenameUpdated = false
+    local tracks = root:findAllChunksByName("TRACK")
+    for i, track in ipairs(tracks) do
+        local freezes = track:findAllChunksByName("FREEZE")
+        for j, freeze in ipairs(freezes) do
+            local items = freeze:findAllChunksByName("ITEM")
+            for k, item in ipairs(items) do
+                local source = item:findFirstChunkByName("SOURCE")
+                local filename = source:findAllNodesByName("FILE")[1]:getParam(1):getString()
+                local fileInfo = Op.app.mediaFiles[filename]
+                local newFilename = fileInfo.newfilename or filename
+
+                local _, unqBasename, unqExt = OD_DissectFilename(newFilename)
+                -- Frozen sources are saved as absolute paths,
+                -- so they need to be set to the backup target location
+                if settings.backup then
+                    local targetPathInBackupDestination = (settings.backupDestination:gsub('\\', '/'):gsub('/$', '') .. OD_FolderSep() ..
+                            (fileInfo.collectBackupTargetPath or (fileInfo.pathIsRelative and fileInfo.relOrAbsPath or Op.app.relProjectRecordingPath)) .. OD_FolderSep())
+                        :gsub('//$', '/')
+                    newFilename = targetPathInBackupDestination ..
+                        unqBasename .. (unqExt and ('.' .. unqExt) or '')
+                end
+                Op.app.logger:logDebug('Fixing frozen file association', filename .. ' -> ' .. newFilename)
+                source:findAllNodesByName("FILE")[1]:getParam(1):setString(newFilename)
+                if filename ~= newFilename then filenameUpdated = true end
+            end
+        end
+    end
+    if filenameUpdated then
+        Op.app.logger:logInfo('Filenames updated in freeze chunks')
+        Op.app.logger:logDebug('Writing new RPP', targetProj)
+        WriteRPP(targetProj, root)
+        if not settings.backup then
+            r.Main_openProject("noprompt:" .. Op.app.fullProjPath)
+        end
+    end
+end
+
+function UnlockFrozenItems()
+    Op.app.logger:logInfo('-- GetMediaFiles() -> UnlockFrozenItems()', nil, 1)
+    -- unlock all items in frozen tracks
+    for i = 0, r.GetNumTracks(0) - 1 do
+        local track = r.GetTrack(0, i)
+        if r.BR_GetMediaTrackFreezeCount( track ) > 0 then
+            for j = 0, reaper.CountTrackMediaItems( track ) - 1 do
+                local item = reaper.GetTrackMediaItem( track, j )
+                reaper.SetMediaItemInfo_Value( item, 'C_LOCK', 0 )
+                r.UpdateItemInProject(item)
+            end
+        end
+    end
+end    
+
+function RemoveFreezeChunks()
+    Op.app.logger:logInfo('-- GetMediaFiles() -> RemoveFreezeChunks()', nil, 1)
+    r.Main_SaveProject(-1)
+
+    local targetProj = settings.backup and Op.app.backupTargetProject or Op.app.fullProjPath
+    local root = ReadRPP(targetProj) -- Parse the RPP
+
+    local freezeChunkRemoved = false
+    local tracks = root:findAllChunksByName("TRACK")
+    for i, track in ipairs(tracks) do
+        local freezes = track:findAllChunksByName("FREEZE")
+        for j, freeze in ipairs(freezes) do
+            Op.app.logger:logDebug('Freeze chunk removed')
+            freeze:remove()
+            freezeChunkRemoved = true
+        end
+    end
+    if freezeChunkRemoved then
+        Op.app.logger:logInfo('Freeze chunks removed')
+        Op.app.logger:logDebug('Writing new RPP', targetProj)
+        WriteRPP(targetProj, root)
+        if not settings.backup then
+            r.Main_openProject("noprompt:" .. Op.app.fullProjPath)
+        end
+    end
 end
 
 function CalculateSavings()

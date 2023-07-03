@@ -10,6 +10,7 @@ PA_Settings = OD_Settings:new({
         deleteMethod = DELETE_METHOD.MOVE_TO_TRASH,
         collect = COLLECT.RS5K + COLLECT.VIDEO + COLLECT.EXTERNAL,
         collectOperation = COLLECT_OPERATION.COPY,
+        freezeHandling = FREEZE_HANDLING.REMOVE,
         keepMediaFolderStructure = true,
         glueFormat = GLUE_FORMATS.FLAC24,
         padding = 1,
@@ -27,7 +28,7 @@ PA_Settings = OD_Settings:new({
 
 function PA_Settings:check()
     local errors = {}
-    if not (self.current.backup or self.current.keepActiveTakesOnly or self.current.minimize or self.current.cleanMediaFolder or (self.current.collect ~= 0)) then
+    if not (self.current.backup or self.current.keepActiveTakesOnly or self.current.minimize or self.current.cleanMediaFolder or (self.freezeHandling == FREEZE_HANDLING.KEEP) or (self.current.collect ~= 0)) then
         table.insert(errors, T.ERROR_NOTHING_TO_DO)
         return false, errors
     end

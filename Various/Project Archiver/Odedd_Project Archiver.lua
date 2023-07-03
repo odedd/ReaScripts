@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.6.9
+-- @version 0.7.0
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -13,8 +13,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Logging error fixed
---   Internal Fix
+--   Added support for frozen tracks
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -139,9 +138,18 @@ local function doPerform()
                 if settings.backup or settings.collect ~= 0 then
                     CollectMedia()
                 end
+                if settings.freezeHandling == FREEZE_HANDLING.REMOVE then
+                    UnlockFrozenItems()
+                end
                 if settings.backup then
                     -- copy to a new project path (move glued files, copy others)
                     CreateBackupProject()
+                    if settings.freezeHandling == FREEZE_HANDLING.KEEP then
+                        -- fix paths in frozen tracks
+                        FixFrozenTracksFileAssociations()
+                    elseif settings.freezeHandling == FREEZE_HANDLING.REMOVE then
+                        RemoveFreezeChunks()
+                    end
                     -- should happen here so that revert happens afterward
                     CalculateSavings()
                     -- revert back to temporary copy of project
@@ -157,6 +165,12 @@ local function doPerform()
                     FinalizePeaksBuild()
                     -- if not creating a backup, save project
                     r.Main_SaveProject(-1)
+                    if settings.freezeHandling == FREEZE_HANDLING.KEEP then
+                        -- fix paths in frozen tracks
+                        FixFrozenTracksFileAssociations()
+                    elseif settings.freezeHandling == FREEZE_HANDLING.REMOVE then
+                        RemoveFreezeChunks()
+                    end
                     CalculateSavings()
                 end
                 -- restore settings and other stuff saved at the beginning of the process
@@ -618,6 +632,22 @@ function app.drawMainWindow()
         end
 
         r.ImGui_Unindent(ctx)
+
+
+        if settings.freezeHandling == FREEZE_HANDLING.REMOVE then
+            Gui.settingIcon(Gui.icons.caution, T.CAUTION_FREEZE_REMOVE)
+            app.warningCount = app.warningCount + 1
+        else
+            r.ImGui_Bullet(ctx)
+        end
+        settings.freezeHandling = Gui.setting(
+            'combo',
+            T.SETTINGS.FREEZE_HANDLING.LABEL,
+            T.SETTINGS.FREEZE_HANDLING.HINT,
+            settings.freezeHandling, {
+                list = FREEZE_HANDLING_LIST
+            })
+
         if not settings.backup then
             if settings.cleanMediaFolder then
                 Gui.settingIcon(Gui.icons.caution, T.CAUTION_CLEAN_MEDIA_FOLDER)
@@ -692,10 +722,14 @@ end
 
 if OD_PrereqsOK({
         reaimgui_version = '0.8',
-        sws = true,           -- required for SNM_SetIntConfigVar - setting config vars (max file size limitation and autosave options)
-        js_version = 1.310,   -- required for JS_Dialog_BrowseForFolder
-        reaper_version = 6.76 -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
+        sws = true,            -- required for SNM_SetIntConfigVar - setting config vars (max file size limitation and autosave options)
+        js_version = 1.310,    -- required for JS_Dialog_BrowseForFolder
+        reaper_version = 6.76, -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
+        scripts = {
+            ['Reateam_RPP-Parser.lua'] = r.path .. "/Scripts/Reateam Scripts/Development/RPP-Parser/Reateam_RPP-Parser.lua"
+        }
     }) then
+    dofile(r.path .. "/Scripts/Reateam Scripts/Development/RPP-Parser/Reateam_RPP-Parser.lua")
     PA_Settings:load()
     r.defer(app.loop)
 end

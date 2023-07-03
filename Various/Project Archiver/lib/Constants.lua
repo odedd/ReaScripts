@@ -209,3 +209,17 @@ GLUE_FORMATS_DETAILS = {
 for i = 0, #GLUE_FORMATS_DETAILS do
     GLUE_FORMATS_LIST = (GLUE_FORMATS_LIST or '') .. GLUE_FORMATS_DETAILS[i].description .. '\0'
 end
+
+FREEZE_HANDLING = {
+    KEEP = 0,
+    REMOVE = 1,
+}
+
+FREEZE_HANDLING_DESCRIPTIONS = {
+    [FREEZE_HANDLING.KEEP] = 'Keep freeze source files, unminimized',
+    [FREEZE_HANDLING.REMOVE] = 'Make frozen tracks permanent & remove association to source files'
+}
+
+for i = 0, #FREEZE_HANDLING_DESCRIPTIONS do
+    FREEZE_HANDLING_LIST = (FREEZE_HANDLING_LIST or '') .. FREEZE_HANDLING_DESCRIPTIONS[i] .. '\0'
+end
