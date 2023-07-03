@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.6.8
+-- @version 0.6.9
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -13,6 +13,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
+--   Logging error fixed
 --   Internal Fix
 
 ---------------------------------------
@@ -112,7 +113,7 @@ local function doPerform()
         logger:logInfo('Script file: ', Scr.path)
         logger:logInfo('Script version: ', tostring(Scr.version))
         logger:logInfo('JS_ReaScriptAPI version: ', tostring(r.APIExists('JS_ReaScriptAPI_Version')))
-        logger:logTable(logger.LOG_LEVEL.INFO, 'Settings', settings, 1)
+        logger:logTable(logger.LOG_LEVEL.INFO, 'Settings', settings)
 
         Prepare()
         if settings.keepActiveTakesOnly then
