@@ -15,10 +15,15 @@ This cannot be undone!
 
 T.CAUTION_COLLECT_MOVE =
 [[The files will no longer exist in their original location, which will
-make them unusable for any other project or application that needs them]]
+make them unusable for any other project or application that needs them.]]
 
 T.CAUTION_DELETE =
 [[These files will be deleted forever. This cannot be undone!]]
+
+T.CAUTION_FREEZE_REMOVE =
+[[Frozen source files will be removed. Frozen tracks will become
+unfrozen, making their audio permanent, and you will not be able
+to revert back to their unfrozen form.]]
 
 T.CAUTION_CLEAN_MEDIA_FOLDER =
 [[This will make any other RPP that uses files in the media folder UNUSABLE!
@@ -156,6 +161,10 @@ T.SETTINGS.COLLECT = {
             TEXT_HELP = 'Folder to collect files into (eg. RS5K Samples). Leave empty for the project\'s media folder.',
             targetPath = FILE_TYPES.RS5K
       }
+}
+T.SETTINGS.FREEZE_HANDLING = {
+      LABEL = 'Frozen track handling',
+      HINT = 'Should frozen tracks be kept frozen, keeping their source media or become unfrozen, making their changes permanent and removing the source media'
 }
 T.SETTINGS.CLEAN_MEDIA_FOLDER = {
       LABEL = 'Clean media folder',
