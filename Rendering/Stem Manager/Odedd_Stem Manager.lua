@@ -20,7 +20,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Fixed rendering when region or marker selection was required
+--   Requirement message for ReaImGui 0.8 will now be enforced
 
 local r = reaper
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
@@ -34,13 +34,6 @@ r.ClearConsole()
 
 OD_Init()
 
-dofile(p .. 'lib/Constants.lua')
-dofile(p .. 'lib/Db.lua')
-dofile(p .. 'lib/Settings.lua')
-dofile(p .. 'lib/Gui.lua')
-
-Scr.presetFolder = Scr.dir .. 'Presets'
-r.RecursiveCreateDirectory(Scr.presetFolder, 0)
 
 if OD_PrereqsOK({
         reaimgui_version = '0.8',
@@ -49,6 +42,14 @@ if OD_PrereqsOK({
         scripts = {
             ["cfillion_Apply render preset.lua"] = r.GetResourcePath() .. "/Scripts/ReaTeam Scripts/Rendering/cfillion_Apply render preset.lua" }
     }) then
+    dofile(p .. 'lib/Constants.lua')
+    dofile(p .. 'lib/Db.lua')
+    dofile(p .. 'lib/Settings.lua')
+    dofile(p .. 'lib/Gui.lua')
+
+    Scr.presetFolder = Scr.dir .. 'Presets'
+    r.RecursiveCreateDirectory(Scr.presetFolder, 0)
+
     local frameCount = 0
     local applyPresetScript = loadfile(r.GetResourcePath() ..
         "/Scripts/ReaTeam Scripts/Rendering/cfillion_Apply render preset.lua")
@@ -1522,6 +1523,7 @@ end]]):gsub('$(%w+)', {
             r.ImGui_End(ctx)
         end
     end
+
     function App:drawPopup(ctx, popupType, title, data)
         local data = data or {}
         local center = { Gui.mainWindow.pos[1] + Gui.mainWindow.size[1] / 2,
