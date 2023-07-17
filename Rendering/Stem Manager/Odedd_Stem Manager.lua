@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 1.7.1
+-- @version 1.7.2
 -- @donation https://paypal.me/odedda
 -- @link https://forum.cockos.com/showthread.php?t=268512
 -- @license GNU GPL v3
@@ -20,7 +20,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Requirement message for ReaImGui 0.8 will now be enforced
+--   Requirement message for ReaImGui now enforced
 
 local r = reaper
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
@@ -33,7 +33,6 @@ end
 r.ClearConsole()
 
 OD_Init()
-
 
 if OD_PrereqsOK({
         reaimgui_version = '0.8',
