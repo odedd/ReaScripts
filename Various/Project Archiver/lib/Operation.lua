@@ -221,83 +221,85 @@ function GetMediaFiles()
             end
             -- Check if the media source is valid and has a filename with "WAVE" source type
             local sourceType = r.GetMediaSourceType(mediaSource, "")
-            local oc = nil
-            local filename = r.GetMediaSourceFileName(mediaSource, "") -- :gsub('/',folderSep())
-            local fileExists = OD_FileExists(filename)
-            -- log occurance if it's to be minimized
-            if fileExists and mediaSource then
-                local sp, ep
-                if settings.minimize then -- no need to do it if not minimizing (wasteful)
-                    sp, ep = getTakeSourcePositions(take, srclen)
-                end
-                -- Create a table to store the occurrence information
-                oc = {
-                    takeName = r.GetTakeName(take),
-                    startTime = sp,      -- r.GetMediaItemInfo_Value(mediaItem, "D_POSITION"),
-                    endTime = ep,        -- r.GetMediaItemInfo_Value(mediaItem, "D_LENGTH") + r.GetMediaItemInfo_Value(mediaItem, "D_POSITION"),
-                    newItemPosition = 0, -- Placeholder for the new item's position
-                    newItemLength = 0,   -- Placeholder for the new item's length
-                    newItem = nil,
-                    newTake = nil,
-                    playrate = r.GetMediaItemTakeInfo_Value(take, "D_PLAYRATE"),
-                    item = mediaItem, -- Reference to the original media item
-                    take = take,      -- Reference to the original media take
-                    placed = false,
-                    src = mediaSource,
-                    srclen = srclen,
-                    newsrclen = 0,
-                    rev = rev,
-                    section = section
-                    -- section_length = len or 0,
-                    -- section_offset = offs or 0,
-                    -- itemLength = itemLength,
-                    -- normalizedItemLength = (itemLength+sp) % math.max(len, srclen),
-                }
-            end
-            -- Check if the media file entry exists in the mediaFiles table
-            if Op.app.mediaFiles[filename] then
-                if oc ~= nil then -- if unsupported format, the occurrence will be nil
-                    -- Append the occurrence to the existing entry
-                    table.insert(Op.app.mediaFiles[filename].occurrences, oc)
-                    if oc.section then
-                        Op.app.mediaFiles[filename].hasSection = true
+            if sourceType ~= 'EMPTY' then
+                local oc = nil
+                local filename = r.GetMediaSourceFileName(mediaSource, "") -- :gsub('/',folderSep())
+                local fileExists = OD_FileExists(filename)
+                -- log occurance if it's to be minimized
+                if fileExists and mediaSource then
+                    local sp, ep
+                    if settings.minimize then -- no need to do it if not minimizing (wasteful)
+                        sp, ep = getTakeSourcePositions(take, srclen)
                     end
+                    -- Create a table to store the occurrence information
+                    oc = {
+                        takeName = r.GetTakeName(take),
+                        startTime = sp,  -- r.GetMediaItemInfo_Value(mediaItem, "D_POSITION"),
+                        endTime = ep,    -- r.GetMediaItemInfo_Value(mediaItem, "D_LENGTH") + r.GetMediaItemInfo_Value(mediaItem, "D_POSITION"),
+                        newItemPosition = 0, -- Placeholder for the new item's position
+                        newItemLength = 0, -- Placeholder for the new item's length
+                        newItem = nil,
+                        newTake = nil,
+                        playrate = r.GetMediaItemTakeInfo_Value(take, "D_PLAYRATE"),
+                        item = mediaItem, -- Reference to the original media item
+                        take = take,  -- Reference to the original media take
+                        placed = false,
+                        src = mediaSource,
+                        srclen = srclen,
+                        newsrclen = 0,
+                        rev = rev,
+                        section = section
+                        -- section_length = len or 0,
+                        -- section_offset = offs or 0,
+                        -- itemLength = itemLength,
+                        -- normalizedItemLength = (itemLength+sp) % math.max(len, srclen),
+                    }
                 end
-            else
-                local fileType = FILE_TYPES.AUDIO
-                if OD_HasValue(MEDIA_TYPES.VIDEO, sourceType) then
-                    fileType = FILE_TYPES.VIDEO
-                elseif OD_HasValue(MEDIA_TYPES.SUBPROJECT, sourceType) then
-                    fileType = FILE_TYPES.SUBPROJECT
+                -- Check if the media file entry exists in the mediaFiles table
+                if Op.app.mediaFiles[filename] then
+                    if oc ~= nil then -- if unsupported format, the occurrence will be nil
+                        -- Append the occurrence to the existing entry
+                        table.insert(Op.app.mediaFiles[filename].occurrences, oc)
+                        if oc.section then
+                            Op.app.mediaFiles[filename].hasSection = true
+                        end
+                    end
+                else
+                    local fileType = FILE_TYPES.AUDIO
+                    if OD_HasValue(MEDIA_TYPES.VIDEO, sourceType) then
+                        fileType = FILE_TYPES.VIDEO
+                    elseif OD_HasValue(MEDIA_TYPES.SUBPROJECT, sourceType) then
+                        fileType = FILE_TYPES.SUBPROJECT
+                    end
+                    local ignore = true
+                    if OD_HasValue(MEDIA_TYPES.UNCOMPRESSED, sourceType) or
+                        OD_HasValue(MEDIA_TYPES.LOSSLESS, sourceType) or
+                        OD_HasValue(MEDIA_TYPES.SUBPROJECT, sourceType) then
+                        ignore = false
+                    end
+                    if (settings.minimizeSourceTypes == MINIMIZE_SOURCE_TYPES.ALL) and
+                        OD_HasValue(MEDIA_TYPES.COMPRESSED, sourceType) then
+                        ignore = false
+                    end
+                    addMediaFile(filename, fileType, ignore, fileExists, oc)
+                    Op.app.mediaFiles[filename].srclen = srclen
+                    Op.app.mediaFiles[filename].sourceType = sourceType
                 end
-                local ignore = true
-                if OD_HasValue(MEDIA_TYPES.UNCOMPRESSED, sourceType) or
-                    OD_HasValue(MEDIA_TYPES.LOSSLESS, sourceType) or
-                    OD_HasValue(MEDIA_TYPES.SUBPROJECT, sourceType) then
-                    ignore = false
+                if Op.app.mediaFiles[filename].hasSection then
+                    Op.app.mediaFiles[filename].status_info = 'Has sections'
+                    Op.app.mediaFiles[filename].ignore = true
                 end
-                if (settings.minimizeSourceTypes == MINIMIZE_SOURCE_TYPES.ALL) and
-                    OD_HasValue(MEDIA_TYPES.COMPRESSED, sourceType) then
-                    ignore = false
+                if Op.app.mediaFiles[filename].ignore or not settings.minimize then
+                    Op.app.mediaFiles[filename].newFileSize = Op.app.mediaFiles[filename].sourceFileSize
+                    Op.app.mediaFiles[filename].status = STATUS.IGNORE
+                    Op.app.mediaFiles[filename].status_info = sourceType
                 end
-                addMediaFile(filename, fileType, ignore, fileExists, oc)
-                Op.app.mediaFiles[filename].srclen = srclen
-                Op.app.mediaFiles[filename].sourceType = sourceType
-            end
-            if Op.app.mediaFiles[filename].hasSection then
-                Op.app.mediaFiles[filename].status_info = 'Has sections'
-                Op.app.mediaFiles[filename].ignore = true
-            end
-            if Op.app.mediaFiles[filename].ignore or not settings.minimize then
-                Op.app.mediaFiles[filename].newFileSize = Op.app.mediaFiles[filename].sourceFileSize
-                Op.app.mediaFiles[filename].status = STATUS.IGNORE
-                Op.app.mediaFiles[filename].status_info = sourceType
-            end
-            if Op.app.mediaFiles[filename].missing then
-                Op.app.mediaFiles[filename].status = STATUS.ERROR
-                Op.app.mediaFiles[filename].status_info = 'file missing'
-                Op.app.mediaFiles[filename].sourceFileSize = 0
-                Op.app.mediaFiles[filename].newFileSize = 0
+                if Op.app.mediaFiles[filename].missing then
+                    Op.app.mediaFiles[filename].status = STATUS.ERROR
+                    Op.app.mediaFiles[filename].status_info = 'file missing'
+                    Op.app.mediaFiles[filename].sourceFileSize = 0
+                    Op.app.mediaFiles[filename].newFileSize = 0
+                end
             end
         end
     end
@@ -331,7 +333,7 @@ function GetMediaFiles()
         Op.app.logger:logDebug('-- GetMediaFiles() -> getFilesFromRS5K()', nil, 1)
         for i = 0, r.GetNumTracks(0) - 1 do
             local tr = r.GetTrack(0, i)
-            for fx = 0, r.TrackFX_GetCount(tr)-1 do
+            for fx = 0, r.TrackFX_GetCount(tr) - 1 do
                 if IsRS5K(tr, fx) then
                     local retval, file_src = r.TrackFX_GetNamedConfigParm(tr, fx, 'FILE0')
                     if Op.app.mediaFiles[file_src] then
@@ -1172,7 +1174,7 @@ function CreateBackupProject()
                 fileInfo.status = STATUS.ERROR
                 fileInfo.status_info = 'move failed'
             end
-        elseif settings.minimize or fileInfo.collectBackupOperation == COLLECT_BACKUP_OPERATION.COPY or (not fileInfo.ignore) then -- copy all other files, if in media folder
+        elseif not fileInfo.missing and (settings.minimize or fileInfo.collectBackupOperation == COLLECT_BACKUP_OPERATION.COPY or (not fileInfo.ignore)) then -- copy all other files, if in media folder
             if fileInfo.pathIsRelative then
                 fileInfo.status = STATUS.COPYING
                 coroutine.yield('Creating backup project')
@@ -1454,15 +1456,15 @@ function UnlockFrozenItems()
     -- unlock all items in frozen tracks
     for i = 0, r.GetNumTracks(0) - 1 do
         local track = r.GetTrack(0, i)
-        if r.BR_GetMediaTrackFreezeCount( track ) > 0 then
-            for j = 0, reaper.CountTrackMediaItems( track ) - 1 do
-                local item = reaper.GetTrackMediaItem( track, j )
-                reaper.SetMediaItemInfo_Value( item, 'C_LOCK', 0 )
+        if r.BR_GetMediaTrackFreezeCount(track) > 0 then
+            for j = 0, reaper.CountTrackMediaItems(track) - 1 do
+                local item = reaper.GetTrackMediaItem(track, j)
+                reaper.SetMediaItemInfo_Value(item, 'C_LOCK', 0)
                 r.UpdateItemInProject(item)
             end
         end
     end
-end    
+end
 
 function RemoveFreezeChunks()
     Op.app.logger:logInfo('-- GetMediaFiles() -> RemoveFreezeChunks()', nil, 1)
