@@ -147,7 +147,7 @@ function GetMediaFiles()
         return startSrcPos, endSrcPos, srclen -- maybe should be finalLength instead? check in regards to playrate
     end
 
-    local function addMediaFile(filename, fileType, ignore, fileExists, oc)
+    local function addMediaFile(filename, fileType, ignore, fileExists, oc, sourceType)
         Op.app.logger:logDebug('-- GetMediaFiles() -> addMediaFile()', nil, 1)
         local fullpath, basename, ext = OD_DissectFilename(filename)
         local relOrAbsFile, relOrAbsPath, pathIsRelative = OD_GetRelativeOrAbsoluteFile(filename,
@@ -155,6 +155,7 @@ function GetMediaFiles()
         local sourceFileSize = OD_GetFileSize(filename)
         Op.app.logger:logInfo('Adding source ' .. (filename or ''))
         if fileExists == nil then fileExists = OD_FileExists(filename) end
+        if not Op.app.mediaFiles[filename] then Op.app.mediaFileCount = Op.app.mediaFileCount + 1 end
         Op.app.mediaFiles[filename] = {
             order = Op.app.mediaFileCount,
             status = STATUS.SCANNED,
@@ -170,7 +171,7 @@ function GetMediaFiles()
             pathIsRelative = pathIsRelative,
             external = not pathIsRelative,
             relOrAbsFile = relOrAbsFile,
-            sourceFileSize = sourceFileSize,
+            sourceFileSize = fileExists and sourceFileSize or 0,
             occurrences = { oc },
             hasSection = oc and oc.section or false,
             newFileSize = nil,
@@ -178,8 +179,25 @@ function GetMediaFiles()
             status_info = '',
             keep_length = 1
         }
+
+        if Op.app.mediaFiles[filename].hasSection then
+            Op.app.mediaFiles[filename].status_info = 'Has sections'
+            Op.app.mediaFiles[filename].ignore = true
+        end
+        if Op.app.mediaFiles[filename].ignore or not settings.minimize then
+            Op.app.mediaFiles[filename].newFileSize = Op.app.mediaFiles[filename].sourceFileSize
+            Op.app.mediaFiles[filename].status = STATUS.IGNORE
+            Op.app.mediaFiles[filename].status_info = sourceType or ""
+        end
+        if Op.app.mediaFiles[filename].missing then
+            Op.app.mediaFiles[filename].status = STATUS.ERROR
+            Op.app.mediaFiles[filename].status_info = 'file missing'
+            Op.app.mediaFiles[filename].sourceFileSize = 0
+            Op.app.mediaFiles[filename].newFileSize = 0
+        end
+
+
         Op.app.scroll = filename
-        Op.app.mediaFileCount = Op.app.mediaFileCount + 1
         -- Check if the media file entry exists in the usedFiles table
         if not Op.app.usedFiles[filename] then
             Op.app.usedFiles[filename] = 1
@@ -234,15 +252,15 @@ function GetMediaFiles()
                     -- Create a table to store the occurrence information
                     oc = {
                         takeName = r.GetTakeName(take),
-                        startTime = sp,  -- r.GetMediaItemInfo_Value(mediaItem, "D_POSITION"),
-                        endTime = ep,    -- r.GetMediaItemInfo_Value(mediaItem, "D_LENGTH") + r.GetMediaItemInfo_Value(mediaItem, "D_POSITION"),
+                        startTime = sp,      -- r.GetMediaItemInfo_Value(mediaItem, "D_POSITION"),
+                        endTime = ep,        -- r.GetMediaItemInfo_Value(mediaItem, "D_LENGTH") + r.GetMediaItemInfo_Value(mediaItem, "D_POSITION"),
                         newItemPosition = 0, -- Placeholder for the new item's position
-                        newItemLength = 0, -- Placeholder for the new item's length
+                        newItemLength = 0,   -- Placeholder for the new item's length
                         newItem = nil,
                         newTake = nil,
                         playrate = r.GetMediaItemTakeInfo_Value(take, "D_PLAYRATE"),
                         item = mediaItem, -- Reference to the original media item
-                        take = take,  -- Reference to the original media take
+                        take = take,      -- Reference to the original media take
                         placed = false,
                         src = mediaSource,
                         srclen = srclen,
@@ -281,24 +299,9 @@ function GetMediaFiles()
                         OD_HasValue(MEDIA_TYPES.COMPRESSED, sourceType) then
                         ignore = false
                     end
-                    addMediaFile(filename, fileType, ignore, fileExists, oc)
+                    addMediaFile(filename, fileType, ignore, fileExists, oc, sourceType)
                     Op.app.mediaFiles[filename].srclen = srclen
                     Op.app.mediaFiles[filename].sourceType = sourceType
-                end
-                if Op.app.mediaFiles[filename].hasSection then
-                    Op.app.mediaFiles[filename].status_info = 'Has sections'
-                    Op.app.mediaFiles[filename].ignore = true
-                end
-                if Op.app.mediaFiles[filename].ignore or not settings.minimize then
-                    Op.app.mediaFiles[filename].newFileSize = Op.app.mediaFiles[filename].sourceFileSize
-                    Op.app.mediaFiles[filename].status = STATUS.IGNORE
-                    Op.app.mediaFiles[filename].status_info = sourceType
-                end
-                if Op.app.mediaFiles[filename].missing then
-                    Op.app.mediaFiles[filename].status = STATUS.ERROR
-                    Op.app.mediaFiles[filename].status_info = 'file missing'
-                    Op.app.mediaFiles[filename].sourceFileSize = 0
-                    Op.app.mediaFiles[filename].newFileSize = 0
                 end
             end
         end
@@ -358,12 +361,18 @@ function GetMediaFiles()
             for j, freeze in ipairs(freezes) do
                 local items = freeze:findAllChunksByName("ITEM")
                 for k, item in ipairs(items) do
-                    local source = item:findFirstChunkByName("SOURCE")
-                    local filename = source:findAllNodesByName("FILE")[1]:getParam(1):getString()
-                    Op.app.logger:logDebug('Found frozen file', filename)
-                    addMediaFile(filename, FILE_TYPES.AUDIO, true)
-                    Op.app.mediaFiles[filename].newFileSize = Op.app.mediaFiles[filename].sourceFileSize
-                    Op.app.mediaFiles[filename].status_info = 'Used in a frozen track'
+                    local sources = item:findAllChunksByName("SOURCE")
+                    for s, source in ipairs(sources) do
+                        local sourceType = source:getParam(1):getString()
+                        if sourceType == 'EMPTY' then break end
+                        local filename = source:findAllNodesByName("FILE")[1]:getParam(1):getString()
+                        filename = OD_GetRelativeOrAbsoluteFile(filename, Op.app.projPath) -- convert path to relative if possible, to match the mediaFiles table
+                        Op.app.logger:logDebug('Found frozen file', filename)
+                        Op.app.mediaFiles[filename] = nil
+                        addMediaFile(filename, FILE_TYPES.AUDIO, true)
+                        Op.app.mediaFiles[filename].newFileSize = Op.app.mediaFiles[filename].sourceFileSize
+                        Op.app.mediaFiles[filename].status_info = 'Used in a frozen track'
+                    end
                 end
             end
         end
@@ -390,6 +399,7 @@ function CollectMedia()
     -- determine which files should be collected:
     local function shouldCollect(fileInfo)
         Op.app.logger:logDebug('-- CollectMedia() -> shouldCollect()', fileInfo.filenameWithPath, 1)
+        if fileInfo.missing then return false end
         --       only if backup, collect all audio files which were ignored
         return (settings.backup and fileInfo.fileType == FILE_TYPES.AUDIO and fileInfo.ignore) or
             -- + if set to collect external audio files, collect them
@@ -1420,24 +1430,29 @@ function FixFrozenTracksFileAssociations()
         for j, freeze in ipairs(freezes) do
             local items = freeze:findAllChunksByName("ITEM")
             for k, item in ipairs(items) do
-                local source = item:findFirstChunkByName("SOURCE")
-                local filename = source:findAllNodesByName("FILE")[1]:getParam(1):getString()
-                local fileInfo = Op.app.mediaFiles[filename]
-                local newFilename = fileInfo.newfilename or filename
+                local sources = item:findAllChunksByName("SOURCE")
+                for s, source in ipairs(sources) do
+                    local sourceType = source:getParam(1):getString()
+                    if sourceType == 'EMPTY' then break end
+                    local filename = source:findAllNodesByName("FILE")[1]:getParam(1):getString()
+                    filename = OD_GetRelativeOrAbsoluteFile(filename, Op.app.projPath) -- convert path to relative if possible, to match the mediaFiles table
+                    local fileInfo = Op.app.mediaFiles[filename]
+                    local newFilename = fileInfo.newfilename or filename
 
-                local _, unqBasename, unqExt = OD_DissectFilename(newFilename)
-                -- Frozen sources are saved as absolute paths,
-                -- so they need to be set to the backup target location
-                if settings.backup then
-                    local targetPathInBackupDestination = (settings.backupDestination:gsub('\\', '/'):gsub('/$', '') .. OD_FolderSep() ..
-                            (fileInfo.collectBackupTargetPath or (fileInfo.pathIsRelative and fileInfo.relOrAbsPath or Op.app.relProjectRecordingPath)) .. OD_FolderSep())
-                        :gsub('//$', '/')
-                    newFilename = targetPathInBackupDestination ..
-                        unqBasename .. (unqExt and ('.' .. unqExt) or '')
+                    local _, unqBasename, unqExt = OD_DissectFilename(newFilename)
+                    -- Frozen sources are saved as absolute paths,
+                    -- so they need to be set to the backup target location
+                    if settings.backup then
+                        local targetPathInBackupDestination = (settings.backupDestination:gsub('\\', '/'):gsub('/$', '') .. OD_FolderSep() ..
+                                (fileInfo.collectBackupTargetPath or (fileInfo.pathIsRelative and fileInfo.relOrAbsPath or Op.app.relProjectRecordingPath)) .. OD_FolderSep())
+                            :gsub('//$', '/')
+                        newFilename = targetPathInBackupDestination ..
+                            unqBasename .. (unqExt and ('.' .. unqExt) or '')
+                    end
+                    Op.app.logger:logDebug('Fixing frozen file association', filename .. ' -> ' .. newFilename)
+                    source:findAllNodesByName("FILE")[1]:getParam(1):setString(newFilename)
+                    if filename ~= newFilename then filenameUpdated = true end
                 end
-                Op.app.logger:logDebug('Fixing frozen file association', filename .. ' -> ' .. newFilename)
-                source:findAllNodesByName("FILE")[1]:getParam(1):setString(newFilename)
-                if filename ~= newFilename then filenameUpdated = true end
             end
         end
     end

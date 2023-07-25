@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.7.2
+-- @version 0.7.3
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -13,8 +13,11 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Fixed handling takes with an empty source
---   Fixed a display issue with 0 byte files
+--   Update minimum required ReaImGui version
+--   Handle multiple sources in frozen items
+--   Handle empty source in frozen items
+--   Handle frozen source files that are also used in the project at other items
+--   Better handle missing sources
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -34,7 +37,7 @@ r.ClearConsole()
 OD_Init()
 
 if OD_PrereqsOK({
-        reaimgui_version = '0.8',
+        reaimgui_version = '0.8.4',
         sws = true,            -- required for SNM_SetIntConfigVar - setting config vars (max file size limitation and autosave options)
         js_version = 1.310,    -- required for JS_Dialog_BrowseForFolder
         reaper_version = 6.76, -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
