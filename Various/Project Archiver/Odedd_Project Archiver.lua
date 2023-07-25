@@ -13,8 +13,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Fixed handling takes with an empty source
---   Fixed a display issue with 0 byte files
+--   Update minimum required ReaImGui version
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -34,7 +33,7 @@ r.ClearConsole()
 OD_Init()
 
 if OD_PrereqsOK({
-        reaimgui_version = '0.8',
+        reaimgui_version = '0.8.4',
         sws = true,            -- required for SNM_SetIntConfigVar - setting config vars (max file size limitation and autosave options)
         js_version = 1.310,    -- required for JS_Dialog_BrowseForFolder
         reaper_version = 6.76, -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
