@@ -154,6 +154,7 @@ function GetMediaFiles()
             Op.app.projPath)
         local sourceFileSize = OD_GetFileSize(filename)
         Op.app.logger:logInfo('Adding source ' .. (filename or ''))
+        assert(basename ~= nil, 'Media filename could not be parsed')
         if fileExists == nil then fileExists = OD_FileExists(filename) end
         if not Op.app.mediaFiles[filename] then Op.app.mediaFileCount = Op.app.mediaFileCount + 1 end
         Op.app.mediaFiles[filename] = {
@@ -365,7 +366,9 @@ function GetMediaFiles()
                     for s, source in ipairs(sources) do
                         local sourceType = source:getParam(1):getString()
                         if sourceType == 'EMPTY' then break end
-                        local filename = source:findAllNodesByName("FILE")[1]:getParam(1):getString()
+                        local fileNodes = source:findAllNodesByName("FILE")
+                        assert(fileNodes ~= nil, 'Frozen file not found')
+                        local filename = fileNodes[1]:getParam(1):getString()
                         filename = OD_GetRelativeOrAbsoluteFile(filename, Op.app.projPath) -- convert path to relative if possible, to match the mediaFiles table
                         Op.app.logger:logDebug('Found frozen file', filename)
                         Op.app.mediaFiles[filename] = nil
