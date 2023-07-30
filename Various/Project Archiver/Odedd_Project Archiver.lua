@@ -13,11 +13,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Update minimum required ReaImGui version
---   Handle multiple sources in frozen items
---   Handle empty source in frozen items
---   Handle frozen source files that are also used in the project at other items
---   Better handle missing sources
+--   Clearer error messages
 
 ---------------------------------------
 -- SETUP ------------------------------
