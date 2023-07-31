@@ -13,7 +13,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Clearer error messages
+--   Ignore any non audio frozen source files (e.g. MIDI) when minimizing
 
 ---------------------------------------
 -- SETUP ------------------------------
