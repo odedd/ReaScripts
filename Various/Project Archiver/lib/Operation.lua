@@ -365,7 +365,7 @@ function GetMediaFiles()
                     local sources = item:findAllChunksByName("SOURCE")
                     for s, source in ipairs(sources) do
                         local sourceType = source:getParam(1):getString()
-                        if sourceType == 'EMPTY' then break end
+                        if sourceType ~= 'WAVE' then break end
                         local fileNodes = source:findAllNodesByName("FILE")
                         assert(fileNodes ~= nil, 'Frozen file not found')
                         local filename = fileNodes[1]:getParam(1):getString()
@@ -1436,7 +1436,7 @@ function FixFrozenTracksFileAssociations()
                 local sources = item:findAllChunksByName("SOURCE")
                 for s, source in ipairs(sources) do
                     local sourceType = source:getParam(1):getString()
-                    if sourceType == 'EMPTY' then break end
+                    if sourceType ~= 'WAVE' then break end
                     local filename = source:findAllNodesByName("FILE")[1]:getParam(1):getString()
                     filename = OD_GetRelativeOrAbsoluteFile(filename, Op.app.projPath) -- convert path to relative if possible, to match the mediaFiles table
                     local fileInfo = Op.app.mediaFiles[filename]
