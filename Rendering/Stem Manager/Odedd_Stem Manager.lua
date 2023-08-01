@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 1.7.2
+-- @version 1.7.3
 -- @donation https://paypal.me/odedda
 -- @link https://forum.cockos.com/showthread.php?t=268512
 -- @license GNU GPL v3
@@ -20,7 +20,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Requirement message for ReaImGui now enforced
+--   Fix loading old edge-case projects
 
 local r = reaper
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
@@ -2495,6 +2495,7 @@ It is dependent on cfillion's work both on the incredible ReaImgui library, and 
         end
     end
 
+    
     LoadSettings()
     UpdateSettings() -- fix format of actions saved pre v1.1.0
     r.defer(loop)

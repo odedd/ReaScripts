@@ -77,8 +77,10 @@ function LoadSettings()
             Settings.project[k] = v
         else
             for rgIdx, val in ipairs(v) do
-                for rgSetting, rgV in pairs(val or {}) do
-                    Settings.project.render_setting_groups[rgIdx][rgSetting] = rgV
+                if rgIdx < RENDER_SETTING_GROUPS_SLOTS then
+                    for rgSetting, rgV in pairs(val or {}) do
+                        Settings.project.render_setting_groups[rgIdx][rgSetting] = rgV
+                    end
                 end
             end
         end
