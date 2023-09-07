@@ -13,7 +13,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Ignore any non audio frozen source files (e.g. MIDI) when minimizing
+--   Ignore click items
 
 ---------------------------------------
 -- SETUP ------------------------------
