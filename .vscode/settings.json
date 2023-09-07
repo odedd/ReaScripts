@@ -6,5 +6,8 @@
         "pickle",
         "unpickle",
         "OD_Log"
+    ],
+    "Lua.workspace.library": [
+        "/Users/odeddavidov/.vscode/extensions/antoinebalaine.reascript-docs-0.0.10/resources/reaper-types.lua"
     ]
 }
