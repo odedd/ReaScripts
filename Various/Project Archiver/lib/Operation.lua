@@ -240,7 +240,7 @@ function GetMediaFiles()
             end
             -- Check if the media source is valid and has a filename with "WAVE" source type
             local sourceType = r.GetMediaSourceType(mediaSource, "")
-            if sourceType ~= 'EMPTY' then
+            if sourceType ~= 'EMPTY' and sourceType ~= 'CLICK' then
                 local oc = nil
                 local filename = r.GetMediaSourceFileName(mediaSource, "") -- :gsub('/',folderSep())
                 local fileExists = OD_FileExists(filename)
