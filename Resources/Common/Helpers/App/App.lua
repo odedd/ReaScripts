@@ -174,10 +174,10 @@ end
 function OD_Gui_App:msg (msg, title)
     self.popup.msg = self.popup.msg or msg
     self.popup.title = self.popup.title or title or Scr.name
-    if coroutine.isyieldable(self.coPerform) then
-        coroutine.yield('', 0, 1)
-        coroutine.yield('', 0, 1)
-    end
+    -- if coroutine.isyieldable(self.coPerform) then
+        -- coroutine.yield('', 0, 1)
+        -- coroutine.yield('', 0, 1)
+    -- end
 end
 
 function OD_Gui_App:drawMsg()
