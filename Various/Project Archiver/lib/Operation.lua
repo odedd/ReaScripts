@@ -731,7 +731,10 @@ function MinimizeAndApplyMedia()
     local function glueItems(track)
         Op.app.logger:logDebug('-- MinimizeAndApplyMedia() -> glueItems()', nil, 1)
         -- temporarily remove max file size limitation, if it exists, otherwise glue operation will split every X time
-        local maxrecsize_use = select(2, r.get_config_var_string('maxrecsize_use'))
+        local maxrecsize_use = r.SNM_GetIntConfigVar('maxrecsize_use',999)
+        if maxrecsize_use == 999 then
+            error('maxrecsize_use not found')
+        end
         if maxrecsize_use & 1 == 1 then
             r.SNM_SetIntConfigVar('maxrecsize_use', maxrecsize_use - 1)
         end
@@ -1087,7 +1090,10 @@ function Prepare()
         -- save current edit cursor position
         Op.app.restore.pos = r.GetCursorPosition()
         -- save current autosave options
-        Op.app.restore.saveopts = select(2, r.get_config_var_string('saveopts'))
+        Op.app.restore.saveopts = r.SNM_GetIntConfigVar('saveopts',999)
+        if Op.app.restore.saveopts == 999 then
+            error('saveopts not found')
+        end
         Op.app.logger:logDebug('Op.app.restore.saveopts', Op.app.restore.saveopts)
         -- save current "Save project file references with relative pathnames" setting
         Op.app.restore.projrelpath = select(2, r.get_config_var_string('projrelpath'))
