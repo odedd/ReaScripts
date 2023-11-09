@@ -731,7 +731,7 @@ function MinimizeAndApplyMedia()
     local function glueItems(track)
         Op.app.logger:logDebug('-- MinimizeAndApplyMedia() -> glueItems()', nil, 1)
         -- temporarily remove max file size limitation, if it exists, otherwise glue operation will split every X time
-        local maxrecsize_use = r.SNM_GetIntConfigVar('maxrecsize_use',999)
+        local maxrecsize_use = r.SNM_GetIntConfigVar('maxrecsize_use', 999)
         if maxrecsize_use == 999 then
             error('maxrecsize_use not found')
         end
@@ -1037,7 +1037,7 @@ function Revert(cancel)
     else
         Op.app.logger:logError('Temporary RPP backup file not restored', Op.app.revert.tmpBackupFileName)
     end
-    -- r.reduce_open_files(2) -- seems ok. might be needed for win, but I tested and I'm pretty sure it's not needed.
+    r.reduce_open_files(2) -- seems ok. might be needed for win, but I tested and I'm pretty sure it's not needed.
     -- delete files created but not used
     for filename, fileInfo in pairs(Op.app.mediaFiles) do
         if fileInfo.newfilename and fileInfo.status ~= STATUS.DONE then
@@ -1090,7 +1090,7 @@ function Prepare()
         -- save current edit cursor position
         Op.app.restore.pos = r.GetCursorPosition()
         -- save current autosave options
-        Op.app.restore.saveopts = r.SNM_GetIntConfigVar('saveopts',999)
+        Op.app.restore.saveopts = r.SNM_GetIntConfigVar('saveopts', 999)
         if Op.app.restore.saveopts == 999 then
             error('saveopts not found')
         end
@@ -1184,6 +1184,7 @@ function CreateBackupProject()
             local target = (targetPath ..
                 (fileInfo.collectBackupTargetPath or Op.app.relProjectRecordingPath) ..
                 OD_FolderSep() .. newFN .. (newExt and ('.' .. newExt) or '')):gsub('\\\\', '\\')
+            if OS_is.win then r.reduce_open_files(2) end -- windows won't delete/move files that are in use. not sure it's needed
             if OD_MoveFile(fileInfo.newfilename, target, Op.app.logger) then
                 Op.app.logger:logInfo('File backup (Move) successful', (fileInfo.newfilename .. ' -> ' .. target))
                 fileInfo.status = STATUS.DONE
