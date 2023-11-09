@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 1.7.3
+-- @version 1.7.4
 -- @donation https://paypal.me/odedda
 -- @link https://forum.cockos.com/showthread.php?t=268512
 -- @license GNU GPL v3
@@ -20,7 +20,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Fix loading old edge-case projects
+--   Fixed a bug related to applying and saving preferences when region and marker selections are changed.
 
 local r = reaper
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
@@ -1472,6 +1472,8 @@ end]]):gsub('$(%w+)', {
             if r.ImGui_Button(ctx, "Save as default settings") then
                 -- Settings.project = OD_DeepCopy(Gui.stWnd[cP].tS)
                 -- Settings.default = OD_DeepCopy(Gui.stWnd[cP].tS)
+                Settings.project = {}
+                Settings.default = {}
                 OD_MergeTables(Settings.project, Gui.stWnd[cP].tS)
                 OD_MergeTables(Settings.default, Gui.stWnd[cP].tS)
                 SaveSettings()
@@ -1491,6 +1493,7 @@ end]]):gsub('$(%w+)', {
 
             if r.ImGui_Button(ctx, "  OK  ") then
                 -- Settings.project = OD_DeepCopy(Gui.stWnd[cP].tS)
+                Settings.project = {}
                 OD_MergeTables(Settings.project, Gui.stWnd[cP].tS)
                 SaveSettings()
                 r.PromptForAction(-1, 0, 0)
@@ -1510,6 +1513,7 @@ end]]):gsub('$(%w+)', {
 
             if r.ImGui_Button(ctx, "Apply") then
                 -- Settings.project = OD_DeepCopy(Gui.stWnd[cP].tS)
+                Settings.project = {}
                 OD_MergeTables(Settings.project, Gui.stWnd[cP].tS)
                 SaveSettings()
             end
