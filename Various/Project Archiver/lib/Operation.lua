@@ -702,16 +702,106 @@ function MinimizeAndApplyMedia()
     end
 
     local function trimItems(fileInfo, splitItems)
+        -- Heavily lifted and then (slightly) adapted from "amagalma_Remove visible content (trim) behind items.lua"
+        -- There's a similar native action (ID 40930) but it started bugging out at some point
+        local function doTrimItems()
+            local selItems = {}
+            local selItemGUID = {}
+            local toDelete = {}
+
+            local function storeSelectedItems()
+                local sel_item_cnt = r.CountSelectedMediaItems(0)
+                if sel_item_cnt > 0 then
+                    -- Store selected items
+                    for i = 0, sel_item_cnt - 1 do
+                        local selitem = r.GetSelectedMediaItem(0, i)
+                        selItems[#selItems + 1] = selitem
+                        local GUID = r.BR_GetMediaItemGUID(selitem)
+                        selItemGUID[GUID] = true
+                    end
+                end
+            end
+
+            storeSelectedItems()
+
+            local trimstate = r.GetToggleCommandStateEx(0, 41117) -- get Options: Toggle trim behind items state
+            if trimstate == 1 then
+                r.Main_OnCommand(41121, 0)                        -- Options: Disable trim behind items when editing
+            end
+            -- Unselect selected items (Needed for ApplyNudge!!!)
+            for i = 1, #selItems do
+                r.SetMediaItemSelected(selItems[i], false)
+            end
+            -- iterate selected items
+            for i = 1, #selItems do
+                local startTime = reaper.GetMediaItemInfo_Value(selItems[i], "D_POSITION")
+                local endTime = startTime + reaper.GetMediaItemInfo_Value(selItems[i], "D_LENGTH")
+                local track = reaper.GetMediaItem_Track(selItems[i])
+                local track_items_cnt = reaper.CountTrackMediaItems(track)
+                for j = 0, track_items_cnt - 1 do
+                    local itemInTrack = reaper.GetTrackMediaItem(track, j)
+                    local iitStart = reaper.GetMediaItemInfo_Value(itemInTrack, "D_POSITION")
+                    local iitEnd = iitStart + reaper.GetMediaItemInfo_Value(itemInTrack, "D_LENGTH")
+                    local selectedIIT = selItemGUID[reaper.BR_GetMediaItemGUID(itemInTrack)] or false
+                    -- do not compare item with itself, compare only with unselected items
+                    if itemInTrack ~= selItems[i] and not selectedIIT then
+                        ---- Cases: ----
+
+                        if iitStart >= startTime and iitEnd <= endTime then     -- checked item is contained
+                            -- Store items in table for deletion after item iteration finishes
+                            toDelete[#toDelete + 1] = { track = track, item = itemInTrack }
+                        elseif iitStart >= startTime and iitStart < endTime and iitEnd > endTime then     -- checked item touches item's End
+                            reaper.SetMediaItemSelected(itemInTrack, true)
+                            reaper.ApplyNudge(0, 1, 1, 1, endTime, false, 0)
+                            reaper.SetMediaItemSelected(itemInTrack, false)
+                            -- remove fade in of trimmed item
+                            reaper.SetMediaItemInfo_Value(itemInTrack, "D_FADEINLEN", 0)
+                        elseif iitEnd > startTime and iitEnd <= endTime and iitStart < startTime then     -- checked item touches item's Start
+                            reaper.SetMediaItemSelected(itemInTrack, true)
+                            reaper.ApplyNudge(0, 1, 3, 1, startTime, false, 0)
+                            reaper.SetMediaItemSelected(itemInTrack, false)
+                            -- remove fade out of trimmed item
+                            reaper.SetMediaItemInfo_Value(itemInTrack, "D_FADEOUTLEN", 0)
+                        elseif iitStart < startTime and iitEnd > endTime then     -- checked item encloses selected item
+                            local new_item = reaper.SplitMediaItem(itemInTrack, startTime)
+                            reaper.SetMediaItemSelected(new_item, true)
+                            reaper.ApplyNudge(0, 1, 1, 1, endTime, false, 0)
+                            reaper.SetMediaItemSelected(new_item, false)
+                            -- checked item has nothing to do with selected item
+                        else
+                            -- do nothing
+                        end
+                        ----------------
+                    end
+                end
+            end
+
+            -- Delete items if needed --------------------------------
+            if #toDelete > 0 then
+                for i = 1, #toDelete do
+                    reaper.DeleteTrackMediaItem(toDelete[i].track, toDelete[i].item)
+                end
+            end
+
+            -- Re-select previously selected items -------------------
+            for i = 1, #selItems do
+                reaper.SetMediaItemSelected(selItems[i], true)
+            end
+            if trimstate == 1 then
+                reaper.Main_OnCommand(41120, 0) -- Re-enable trim behind items (if it was enabled)
+            end
+        end
+
         Op.app.logger:logDebug('-- MinimizeAndApplyMedia() -> trimItems()', nil, 1)
         -- then trim each object...
         for i, oc in ipairs(fileInfo.occurrences) do
-            -- if item was deleted on the vious '40930' action, it is no longer valid
+            -- if item was deleted on the previous '40930' action, it is no longer valid
             if r.ValidatePtr2(0, oc.newItem, "MediaItem*") then
                 r.SelectAllMediaItems(0, false)
                 r.SetMediaItemInfo_Value(oc.newItem, "D_FADEINLEN", 0)
                 r.SetMediaItemInfo_Value(oc.newItem, "D_FADEOUTLEN", 0)
                 r.SetMediaItemSelected(oc.newItem, true)
-                r.Main_OnCommand(40930, 0) -- trim content behind
+                doTrimItems() -- replaces r.Main_OnCommand(40930, 0) (trim content behind) because it failed in some edge cases I couldn't really identify
             end
         end
 
@@ -723,7 +813,7 @@ function MinimizeAndApplyMedia()
                 r.SetMediaItemInfo_Value(splitItem, "D_FADEINLEN", 0)
                 r.SetMediaItemInfo_Value(splitItem, "D_FADEOUTLEN", 0)
                 r.SetMediaItemSelected(splitItem, true)
-                r.Main_OnCommand(40930, 0) -- trim content behind
+                doTrimItems() -- replaces r.Main_OnCommand(40930, 0) (trim content behind) because it failed in some edge cases I couldn't really identify
             end
         end
     end
@@ -731,7 +821,7 @@ function MinimizeAndApplyMedia()
     local function glueItems(track)
         Op.app.logger:logDebug('-- MinimizeAndApplyMedia() -> glueItems()', nil, 1)
         -- temporarily remove max file size limitation, if it exists, otherwise glue operation will split every X time
-        local maxrecsize_use = r.SNM_GetIntConfigVar('maxrecsize_use',999)
+        local maxrecsize_use = r.SNM_GetIntConfigVar('maxrecsize_use', 999)
         if maxrecsize_use == 999 then
             error('maxrecsize_use not found')
         end
@@ -1090,7 +1180,7 @@ function Prepare()
         -- save current edit cursor position
         Op.app.restore.pos = r.GetCursorPosition()
         -- save current autosave options
-        Op.app.restore.saveopts = r.SNM_GetIntConfigVar('saveopts',999)
+        Op.app.restore.saveopts = r.SNM_GetIntConfigVar('saveopts', 999)
         if Op.app.restore.saveopts == 999 then
             error('saveopts not found')
         end
