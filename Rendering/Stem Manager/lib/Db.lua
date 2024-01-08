@@ -20,8 +20,10 @@ DB = {
             if (tokens[1] == '<RENDERPRESET' or tokens[1] == 'RENDERPRESET_OUTPUT') and not (tokens[2] == "") and
                 tokens[2] then
                 local name = tokens[2]
+                local folder = tokens[10]
                 self.renderPresets[name] = self.renderPresets[name] or {}
                 self.renderPresets[name].name = name
+                self.renderPresets[name].folder = folder or ""
                 self.renderPresets[name].filepattern = tokens[8] or self.renderPresets[name].filepattern
                 if tokens[6] then
                     self.renderPresets[name].settings = (tonumber(tokens[6]) & SETTINGS_SOURCE_MASK) |

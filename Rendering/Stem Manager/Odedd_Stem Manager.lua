@@ -20,6 +20,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
+--   Preset "directory" filed now gets properly loaded with preset.
 --   Fixed a bug related to applying and saving preferences when region and marker selections are changed.
 
 local r = reaper
@@ -562,6 +563,12 @@ end]]):gsub('$(%w+)', {
                         local render_preset = DB.renderPresets[rsg.render_preset]
                         ApplyPresetByName = render_preset.name
                         if applyPresetScript ~= nil then applyPresetScript() end
+                        -- when "apply_render_preset" is run, it sets the project's render settings to the preset's settings, 
+                        -- but doesn't apply the preset's directory, so I do it manually as a workaround until the script gets updated.
+                        -- I already contacted cfillion about it. Will probably be fixed on the next release (>2.1.1).
+                        if render_preset.folder then
+                            r.GetSetProjectInfo_String(0, "RENDER_FILE", render_preset.folder, true)
+                        end
                         if render_preset.boundsflag == RB_SELECTED_MARKERS and rsg.select_markers then
                             -- window must be given an opportunity to open (therefore yielded) for the selection to work
                             OD_OpenAndGetRegionManagerWindow()
