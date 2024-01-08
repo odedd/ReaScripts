@@ -21,7 +21,7 @@
 --   This is where Stem Manager comes in.
 -- @changelog
 --   Preset "directory" filed now gets properly loaded with preset.
---   Fixed a bug related to applying and saving preferences when region and marker selections are changed.
+--   Added ability to play sound after rendering.
 
 local r = reaper
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
@@ -715,6 +715,12 @@ end]]):gsub('$(%w+)', {
                 r.GetSet_LoopTimeRange2(0, true, false, saved_time_selection[1], saved_time_selection[2], 0) -- , boolean isLoop, number start, number end, boolean allowautoseek)
             end
             r.GetSetProjectInfo_String(0, "RENDER_PATTERN", saved_filename, true)
+            if Settings.project.play_sound_when_done and r.APIExists('CF_CreatePreview') then
+                local source = reaper.PCM_Source_CreateFromFile(p .. 'lib/render-complete.wav')
+                local preview = reaper.CF_CreatePreview(source)
+                reaper.PCM_Source_Destroy(source)
+                reaper.CF_Preview_Play(preview)
+            end
             coroutine.yield('Done', 1, 1)
         else
             coroutine.yield('Done', 0, 1)
@@ -1309,6 +1315,31 @@ end]]):gsub('$(%w+)', {
                 })
             Gui.stWnd[cP].tS.show_hidden_tracks = setting('checkbox', 'Show hidden tracks',
                 "Show tracks that are hidden in the TCP?", Gui.stWnd[cP].tS.show_hidden_tracks)
+            Gui.stWnd[cP].tS.play_sound_when_done = setting('checkbox', 'Play sound when done',
+                "Play sound when rendering is done (not applicable when adding to render queue)", Gui.stWnd[cP].tS.play_sound_when_done)
+            if Gui.stWnd[cP].tS.play_sound_when_done and not r.APIExists("CF_CreatePreview") then
+                r.ImGui_SameLine(ctx)
+                r.ImGui_Text(ctx,"SWS pre-release missing. More info")
+                r.ImGui_SameLine(ctx)
+                local sws_pre_release_url = "https://forum.cockos.com/showthread.php?t=153702"
+                if r.ImGui_SmallButton(ctx, 'here') then
+                    if r.APIExists('CF_ShellExecute') then
+                        r.CF_ShellExecute(sws_pre_release_url)
+                    else
+                        local command
+                        if OS_is.mac then
+                            command = 'open "%s"'
+                        elseif OS_is.win then
+                            command = 'start "URL" /B "%s"'
+                        elseif OS_is.lin then
+                            command = 'xdg-open "%s"'
+                        end
+                        if command then
+                            os.execute(command:format(sws_pre_release_url))
+                        end
+                    end
+                end
+            end
 
             r.ImGui_Text(ctx, '')
             r.ImGui_PushFont(ctx, Gui.st.fonts.bold)
