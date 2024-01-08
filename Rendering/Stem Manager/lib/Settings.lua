@@ -13,7 +13,8 @@ function GetDefaultSettings(factory)
             reflect_on_add = REFLECT_ON_ADD_TRUE,
             syncmode = SYNCMODE_MIRROR,
             render_setting_groups = {},
-            show_hidden_tracks = false
+            show_hidden_tracks = false,
+            play_sound_when_done = false
         }
     }
 
