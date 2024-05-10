@@ -1,4 +1,4 @@
--- @description Send Mixer
+-- @description Send Buddy
 -- @author Oded Davidov
 -- @version 0.0.0
 -- @donation https://paypal.me/odedda
@@ -642,7 +642,7 @@ if OD_PrereqsOK({
         r.ImGui_PushFont(ctx, app.gui.st.fonts.large_bold)
         app.gui:pushColors(app.gui.st.col.title)
         r.ImGui_AlignTextToFramePadding(ctx)
-        r.ImGui_Text(ctx, 'Send Mixer')
+        r.ImGui_Text(ctx, app.scr.name)
         app.gui:popColors(app.gui.st.col.title)
         r.ImGui_PopFont(ctx)
         r.ImGui_PushFont(ctx, app.gui.st.fonts.large)
@@ -653,9 +653,9 @@ if OD_PrereqsOK({
         local menu = {}
         if app.page == APP_PAGE.MIXER then
             table.insert(menu, {icon='plus',hint='Add Send'})
-            table.insert(menu, {icon='gear',hint='Settings'})
         elseif app.page == APP_PAGE.SEARCH_SEND then
             table.insert(menu, {icon='back',hint='Back'})
+            table.insert(menu, {icon='gear',hint='Settings'})
         end
         local rv, btn =  beginRightIconMenu(ctx, menu)
         r.ImGui_PopFont(ctx)
