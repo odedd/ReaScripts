@@ -193,6 +193,14 @@ function OD_Gui_App:drawMsg()
     end
 end
 
+function OD_Gui_App:getHint(window)
+    if window == 'main' then
+        return self.hint[window].text, self.hint[window].color
+    else
+        return self.hint[window].text, self.hint[window].color
+    end
+end
+
 -- ! OD_Perform_App
 OD_Perform_App = OD_Gui_App:new({
     coPerform = nil,
@@ -209,10 +217,12 @@ function OD_Perform_App:getStatus(window)
         if self.coPerform then
             return self.perform.status
         end
-        return self.hint[window].text, self.hint[window].color
-    else
-        return self.hint[window].text, self.hint[window].color
     end
+    return OD_Gui_App.getHint(self, window)
+        -- return self.hint[window].text, self.hint[window].color
+    -- else
+        -- return self.hint[window].text, self.hint[window].color
+    -- end
 end
 
 function OD_Perform_App:checkPerform()

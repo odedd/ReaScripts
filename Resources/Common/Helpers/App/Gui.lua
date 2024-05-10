@@ -11,7 +11,8 @@ OD_Gui = {
             error = 0xFF5555FF,
             hint = 0xCCCCCCFF,
         }
-    }
+    },
+    reaperHWND = reaper.GetMainHwnd()
 }
 
 function OD_Gui:new(o)
@@ -25,10 +26,36 @@ function OD_Gui:init()
     self.ctx = r.ImGui_CreateContext(self.app.scr.context_name .. '_MAIN') --, reaper.ImGui_ConfigFlags_DockingEnable())
     local font_default = self.font or
         r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Regular.ttf', self.app.scr.dir), 16)
+    local font_small = self.font or
+        r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Regular.ttf', self.app.scr.dir), 14)
+    local font_bold = self.font or
+        r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Bold.ttf', self.app.scr.dir), 16)
+    local font_icons_large = self.font or r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Icons-Regular.otf', self.app.scr.dir), 20)
+
+    
+    local font_large = self.font or
+    r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Regular.ttf', self.app.scr.dir), 20)
+    local font_large_bold = self.font or
+    r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Bold.ttf', self.app.scr.dir), 20)
+    
+    r.ImGui_Attach(self.ctx, font_small)
     r.ImGui_Attach(self.ctx, font_default)
+    r.ImGui_Attach(self.ctx, font_bold)
+    r.ImGui_Attach(self.ctx, font_large)
+    r.ImGui_Attach(self.ctx, font_large_bold)
+    r.ImGui_Attach(self.ctx, font_icons_large)
 
     self.draw_list = r.ImGui_GetWindowDrawList(self.ctx)
-    self.st.fonts = { default = font_default }
+    self.st.fonts = { small = font_small, default = font_default, bold = font_bold, large = font_large, large_bold = font_large_bold, icons_large = font_icons_large }
+    self.keyModCtrlCmd = (OS_is.mac or OS_is.mac_arm) and r.ImGui_Mod_Super() or r.ImGui_Mod_Ctrl()
+    self.notKeyModCtrlCmd = (OS_is.mac or OS_is.mac_arm) and r.ImGui_Mod_Ctrl() or r.ImGui_Mod_Super()
+    self.descModCtrlCmd = (OS_is.mac or OS_is.mac_arm) and 'cmd' or 'control'
+    self.descModAlt = (OS_is.mac or OS_is.mac_arm) and 'opt' or 'alt'
+
+    self.vars = {
+        framePaddingX = select(1, r.ImGui_GetStyleVar(self.ctx, r.ImGui_StyleVar_FramePadding())),
+        framePaddingY = select(2, r.ImGui_GetStyleVar(self.ctx, r.ImGui_StyleVar_FramePadding()))
+    }
 
     self.popups = {
         singleInput = {
@@ -38,6 +65,22 @@ function OD_Gui:init()
 
     r.ImGui_PushFont(self.ctx, self.st.fonts.default)
     self.TEXT_BASE_WIDTH, self.TEXT_BASE_HEIGHT = r.ImGui_CalcTextSize(self.ctx, 'A'),
+        r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+    r.ImGui_PopFont(self.ctx)
+    r.ImGui_PushFont(self.ctx, self.st.fonts.small)
+    self.TEXT_BASE_WIDTH_SMALL, self.TEXT_BASE_HEIGHT_SMALL = r.ImGui_CalcTextSize(self.ctx, 'A'),
+        r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+    r.ImGui_PopFont(self.ctx)
+    r.ImGui_PushFont(self.ctx, self.st.fonts.bold)
+    self.TEXT_BASE_WIDTH_BOLD, self.TEXT_BASE_HEIGHT_BOLD = r.ImGui_CalcTextSize(self.ctx, 'A'),
+        r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+    r.ImGui_PopFont(self.ctx)
+    r.ImGui_PushFont(self.ctx, self.st.fonts.large)
+    self.TEXT_BASE_WIDTH_LARGE, self.TEXT_BASE_HEIGHT_LARGE = r.ImGui_CalcTextSize(self.ctx, 'A'),
+        r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+    r.ImGui_PopFont(self.ctx)
+    r.ImGui_PushFont(self.ctx, self.st.fonts.large_bold)
+    self.TEXT_BASE_WIDTH_LARGE_BOLD, self.TEXT_BASE_HEIGHT_LARGE_BOLD = r.ImGui_CalcTextSize(self.ctx, 'A'),
         r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
     r.ImGui_PopFont(self.ctx)
 
