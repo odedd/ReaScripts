@@ -31,8 +31,6 @@ function OD_Gui:init()
     local font_bold = self.font or
         r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Bold.ttf', self.app.scr.dir), 16)
     local font_icons_large = self.font or r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Icons-Regular.otf', self.app.scr.dir), 20)
-
-    
     local font_large = self.font or
     r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Regular.ttf', self.app.scr.dir), 20)
     local font_large_bold = self.font or

@@ -206,10 +206,6 @@ if OD_PrereqsOK({
                 if r.ImGui_IsItemHovered(ctx) then
                     if mw ~= 0 then
                         local scale = .2
-                        -- if r.ImGui_IsKeyPressed(ctx, app.gui.keyModCtrlCmd) then
-                        --     -- TODO: doesn't work because of the need to focus Reaper's main window. Can be solved by (app.focusMainReaperWindow = false) but creates problems of its own
-                        --     scale = .02
-                        -- end
                         if v > app.settings.current.scaleLevel then
                             scale = 0.05
                         end
@@ -436,24 +432,6 @@ if OD_PrereqsOK({
             -- r.ImGui_EndGroup(ctx)
         end
 
-        local drawAddSendButton = function(top, h)
-            local w = app.settings.current.sendWidth * .75
-            app.gui:pushColors(app.gui.st.col.buttons.add)
-            r.ImGui_SetCursorPosY(ctx, top)
-            local centerPosX = select(1, r.ImGui_GetCursorScreenPos(ctx)) + w / 2
-            local centerPosY = select(2, r.ImGui_GetCursorScreenPos(ctx)) + h / 2
-            if r.ImGui_Button(ctx, '##addSend', w, h) then
-                app.switchPage(APP_PAGE.SEARCH_SEND)
-            end
-            app.gui:popColors(app.gui.st.col.buttons.add)
-            local color = app.gui.st.col.buttons.add
-                [r.ImGui_Col_Text()] -- gui.st.col.stemSyncBtn.active[r.ImGui_Col_Text()] or gui.st.col.stemSyncBtn.active[r.ImGui_Col_Button()]
-            r.ImGui_DrawList_AddLine(app.gui.draw_list, centerPosX - w / 5, centerPosY, centerPosX + w / 5,
-                centerPosY, color, 2)
-            r.ImGui_DrawList_AddLine(app.gui.draw_list, centerPosX, centerPosY - w / 5, centerPosX,
-                centerPosY + w / 5, color, 2)
-        end
-
         -- r.ImGui_SetWindowSize(ctx, (app.settings.current.sendWidth + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2) * app.db.numSends + (r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())), app.gui.mainWindow.size[2])
         local btnHeight, btnStartPosY = 0, 0
         if next(app.db.sends) then
@@ -502,29 +480,16 @@ if OD_PrereqsOK({
         if btnHeight == 0 then btnHeight = app.settings.current.faderHeight end
 
         r.ImGui_PopFont(ctx)
-        drawAddSendButton(btnStartPosY, btnHeight)
     end
 
     function app.drawSearch()
-        local ctx = app.gui.ctx
-        local selectedResult = nil
-        local w =select(1,r.ImGui_GetContentRegionAvail(ctx))
-        r.ImGui_PushFont(ctx, app.gui.st.fonts.large)
-        app.gui:pushStyles(app.gui.st.vars.searchWindow)
-        app.gui:pushColors(app.gui.st.col.searchWindow)
-        app.temp.searchResults = app.temp.searchResults or {}
 
-        if app.pageSwitched then
-            r.ImGui_SetKeyboardFocusHere(ctx, 0)
-        end
-        r.ImGui_SetNextItemWidth(ctx, w)
-        local rv, searchInput = r.ImGui_InputText(ctx, "##searchInput", app.temp.searchInput)
-        if rv then
-            app.temp.searchInput = searchInput
+        local function filterResults(query)
+            app.temp.searchInput = query
             app.temp.searchResults = {}
             for i, plugin in ipairs(app.db.plugins) do
                 -- local numResults = #app.temp.searchResults
-                if string.find(plugin.name:lower(), OD_EscapePattern(searchInput):lower()) then
+                if string.find(plugin.name:lower(), OD_EscapePattern(query):lower()) then
                     local result = OD_DeepCopy(plugin)
                     result.type = result.fx_type
                     table.insert(app.temp.searchResults, result)
@@ -534,6 +499,22 @@ if OD_PrereqsOK({
             app.temp.highlightedResult = #app.temp.searchResults > 0 and 1 or nil
             app.temp.lastInvisibleGroup = nil
         end
+
+        local ctx = app.gui.ctx
+        local selectedResult = nil
+        local w = select(1, r.ImGui_GetContentRegionAvail(ctx))
+        r.ImGui_PushFont(ctx, app.gui.st.fonts.large)
+        app.gui:pushStyles(app.gui.st.vars.searchWindow)
+        app.gui:pushColors(app.gui.st.col.searchWindow)
+        app.temp.searchResults = app.temp.searchResults or {}
+
+        if app.pageSwitched then
+            filterResults('')
+            r.ImGui_SetKeyboardFocusHere(ctx, 0)
+        end
+        r.ImGui_SetNextItemWidth(ctx, w)
+        local rv, searchInput = r.ImGui_InputText(ctx, "##searchInput", app.temp.searchInput)
+        if rv then filterResults(searchInput) end
 
         if r.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Escape()) then
             app.switchPage(APP_PAGE.MIXER)
@@ -557,7 +538,6 @@ if OD_PrereqsOK({
             end
         end
 
-
         local selectableFlags = r.ImGui_SelectableFlags_SpanAllColumns() | r.ImGui_SelectableFlags_AllowItemOverlap()
         local outer_size = { 0.0, app.gui.TEXT_BASE_HEIGHT_LARGE * app.settings.current.maxSearchResults }
         local tableFlags = r.ImGui_TableFlags_ScrollY()
@@ -571,7 +551,6 @@ if OD_PrereqsOK({
             local foundInvisibleGroup = false
             local absIndex = 0
             for i, result in ipairs(app.temp.searchResults) do
-                
                 local currentScreenY = select(2, r.ImGui_GetCursorScreenPos(ctx))
                 if result.group ~= lastGroup then
                     r.ImGui_TableNextRow(ctx, r.ImGui_TableRowFlags_None(), app.gui.TEXT_BASE_HEIGHT_LARGE)
@@ -601,12 +580,12 @@ if OD_PrereqsOK({
                 if i == app.temp.highlightedResult then highlightedResultAbsIndex = absIndex end
                 r.ImGui_PopID(ctx)
             end
-            if app.temp.checkScroll  and highlightedResultAbsIndex > firstVisibleAbsIndex +app.settings.current.maxSearchResults  -1 then
+            if app.temp.checkScroll and highlightedResultAbsIndex > firstVisibleAbsIndex + app.settings.current.maxSearchResults - 1 then
                 r.ImGui_SetScrollY(ctx,
                     app.gui.TEXT_BASE_HEIGHT_LARGE * (highlightedResultAbsIndex - app.settings.current.maxSearchResults))
                 app.temp.checkScroll = false
-            elseif app.temp.checkScroll  and highlightedResultAbsIndex <= firstVisibleAbsIndex + 1 then
-                r.ImGui_SetScrollY(ctx, app.gui.TEXT_BASE_HEIGHT_LARGE * (highlightedResultAbsIndex-2))
+            elseif app.temp.checkScroll and highlightedResultAbsIndex <= firstVisibleAbsIndex + 1 then
+                r.ImGui_SetScrollY(ctx, app.gui.TEXT_BASE_HEIGHT_LARGE * (highlightedResultAbsIndex - 2))
                 app.temp.checkScroll = false
             end
             r.ImGui_EndTable(ctx)
@@ -617,27 +596,81 @@ if OD_PrereqsOK({
         if selectedResult then
             r.ShowConsoleMsg(selectedResult.full_name .. '\n')
             app.switchPage(APP_PAGE.MIXER)
-            -- app.db:addSend(selectedResult)
         end
     end
+    function app.iconButton(ctx, icon)
+        local x, y = r.ImGui_GetCursorPos(ctx)
+        local w = select(1, r.ImGui_CalcTextSize(ctx, ICONS[(icon):upper()])) + app.gui.vars.framePaddingX * 2
+        local clicked
+        if r.ImGui_InvisibleButton(ctx, '##menuBtn'..icon, w, r.ImGui_GetTextLineHeightWithSpacing(ctx)) then
+            clicked = true
+        end
+        if r.ImGui_IsItemHovered(ctx) and not r.ImGui_IsItemActive(ctx) then
+            app.gui:pushColors(app.gui.st.col.buttons.topBarIcon.hovered)
+        elseif r.ImGui_IsItemActive(ctx) then
+            app.gui:pushColors(app.gui.st.col.buttons.topBarIcon.active)
+        else
+            app.gui:pushColors(app.gui.st.col.buttons.topBarIcon.default)
+        end
+        r.ImGui_SetCursorPos(ctx, x + app.gui.vars.framePaddingX, y + app.gui.vars.framePaddingY)
+        r.ImGui_Text(ctx, tostring(ICONS[icon:upper()]))
+        app.gui:popColors(app.gui.st.col.buttons.topBarIcon.default)
+        r.ImGui_SetCursorPos(ctx, x + w, y)
+        return clicked
+    end
+    function app.drawTopBar()
+        local function beginRightIconMenu(ctx, buttons)
+            local windowEnd = app.gui.mainWindow.size[1] - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) 
+            r.ImGui_SameLine(ctx, windowEnd)
+            r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_large)
+            local clicked = nil
+            local prevX = r.ImGui_GetCursorPosX(ctx)- r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing())
+            for i, btn in ipairs(buttons) do
+                local w = select(1, r.ImGui_CalcTextSize(ctx, ICONS[(btn.icon):upper()])) + app.gui.vars.framePaddingX * 2
+                local x = prevX - w - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing())
+                prevX = x
+                r.ImGui_SetCursorPosX(ctx, x)
+                if app.iconButton(ctx, btn.icon) then clicked = btn.icon end
+                app:setHoveredHint('main', btn.hint)
+            end
+            r.ImGui_PopFont(ctx)
+            return clicked ~= nil, clicked
+        end
 
-    function app.drawTitle()
         local ctx = app.gui.ctx
-        r.ImGui_BeginGroup(ctx  )
-        r.ImGui_PushFont(ctx, app.gui.st.fonts.large)
+        r.ImGui_BeginGroup(ctx)
+        r.ImGui_PushFont(ctx, app.gui.st.fonts.large_bold)
+        app.gui:pushColors(app.gui.st.col.title)
         r.ImGui_AlignTextToFramePadding(ctx)
         r.ImGui_Text(ctx, 'Send Mixer')
+        app.gui:popColors(app.gui.st.col.title)
+        r.ImGui_PopFont(ctx)
+        r.ImGui_PushFont(ctx, app.gui.st.fonts.large)
         r.ImGui_SameLine(ctx)
         r.ImGui_BeginDisabled(ctx)
         r.ImGui_Text(ctx, 'v' .. app.scr.version)
         r.ImGui_EndDisabled(ctx)
-        r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_large)
-        r.ImGui_SameLine(ctx, app.gui.mainWindow.size[1]-select(1,r.ImGui_CalcTextSize(ctx, ICONS.GEAR))- r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding())*2 - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())*2)
-        r.ImGui_Button(ctx, ICONS.GEAR)
-        r.ImGui_PopFont(ctx)
+        local menu = {}
+        if app.page == APP_PAGE.MIXER then
+            table.insert(menu, {icon='plus',hint='Add Send'})
+            table.insert(menu, {icon='gear',hint='Settings'})
+        elseif app.page == APP_PAGE.SEARCH_SEND then
+            table.insert(menu, {icon='back',hint='Back'})
+        end
+        local rv, btn =  beginRightIconMenu(ctx, menu)
         r.ImGui_PopFont(ctx)
         r.ImGui_EndGroup(ctx)
+        if rv then
+            if btn == 'plus' then
+                app.switchPage(APP_PAGE.SEARCH_SEND)
+            elseif btn == 'gear' then
+                -- app.switchPage(APP_PAGE.SETTINGS)
+            elseif btn == 'back' then
+                app.switchPage(APP_PAGE.MIXER)
+            end
+        end
     end
+
     function app.drawMainWindow()
         local ctx = app.gui.ctx
 
@@ -661,7 +694,6 @@ if OD_PrereqsOK({
             return false
         end
         r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
-        app.gui:pushColors(app.gui.st.col.title)
         local visible, open = r.ImGui_Begin(ctx,
             (app.db.trackName or 'No track') .. "###mainWindow",
             true,
@@ -673,18 +705,16 @@ if OD_PrereqsOK({
         }
 
         if visible then
-            app.drawTitle()
+            app.drawTopBar()
             if app.page == APP_PAGE.MIXER then
                 app.drawMixer()
-                if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Escape()) then return false end
+                if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Escape()) then open = false end
             elseif app.page == APP_PAGE.SEARCH_SEND then
                 app.drawSearch()
             end
-
             drawHint()
             r.ImGui_End(ctx)
         end
-        app.gui:popColors(app.gui.st.col.title)
         return open
     end
 
@@ -719,6 +749,6 @@ if OD_PrereqsOK({
     -- app.settings:save()
     app.db:init()
     app.switchPage(APP_PAGE.MIXER)
-    app.switchPage(APP_PAGE.SEARCH_SEND)
+    -- app.switchPage(APP_PAGE.SEARCH_SEND)
     r.defer(app.loop)
 end

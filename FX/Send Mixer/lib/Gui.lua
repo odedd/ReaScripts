@@ -19,6 +19,7 @@ SM_Gui.init = function(self)
         widgetBG = 0x949494ff,
         hovered = 0xa4a4a4ff,
         active = 0xa4a4a4ff,
+        main = 0x8a3e38ff,
     }
     self.st.colpresets = {
         midButton = {
@@ -91,10 +92,13 @@ SM_Gui.init = function(self)
                     [r.ImGui_Col_Text()] = 0x000000ff,
                 }
             },
-            route = self.st.colpresets.midButton
-            ,
+            route = self.st.colpresets.midButton,
             add = self.st.colpresets.midButton,
-            
+            topBarIcon = {
+                default = {[r.ImGui_Col_Text()] = self.st.basecolors.midBG},
+                hovered = {[r.ImGui_Col_Text()] = self.st.basecolors.active},
+                active = {[r.ImGui_Col_Text()] = self.st.basecolors.midText},
+            }
         },
         searchWindow ={
             [r.ImGui_Col_TableBorderStrong()] = 0x00000000,
@@ -113,7 +117,7 @@ SM_Gui.init = function(self)
             [r.ImGui_Col_ButtonActive()] = self.st.basecolors.active
         },
         title = {
-            [r.ImGui_Col_TitleBgActive()] = r.ImGui_GetStyleColor(self.ctx, r.ImGui_Col_TitleBg()),
+            [r.ImGui_Col_Text()] = self.st.basecolors.main,
         }
     }
     self.st.vars = {
@@ -127,7 +131,8 @@ SM_Gui.init = function(self)
         },
         main = {
             [r.ImGui_StyleVar_FrameRounding()] = { self.st.rounding, nil },
-            [r.ImGui_StyleVar_ItemSpacing()] = { 4, 4 }
+            [r.ImGui_StyleVar_ItemSpacing()] = { 4, 4 },
+            [r.ImGui_StyleVar_WindowRounding()] = { 10, nil },
         },
         searchWindow = {
             [r.ImGui_StyleVar_SeparatorTextAlign()] = {0,0},
