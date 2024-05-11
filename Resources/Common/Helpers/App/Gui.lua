@@ -22,29 +22,40 @@ function OD_Gui:new(o)
     return o
 end
 
-function OD_Gui:init()
-    self.ctx = r.ImGui_CreateContext(self.app.scr.context_name .. '_MAIN') --, reaper.ImGui_ConfigFlags_DockingEnable())
-    local font_default = self.font or
-        r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Regular.ttf', self.app.scr.dir), 16)
-    local font_small = self.font or
-        r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Regular.ttf', self.app.scr.dir), 14)
-    local font_bold = self.font or
-        r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Bold.ttf', self.app.scr.dir), 16)
-    local font_icons_large = self.font or r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Icons-Regular.otf', self.app.scr.dir), 20)
-    local font_large = self.font or
-    r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Regular.ttf', self.app.scr.dir), 20)
-    local font_large_bold = self.font or
-    r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Bold.ttf', self.app.scr.dir), 20)
-    
-    r.ImGui_Attach(self.ctx, font_small)
-    r.ImGui_Attach(self.ctx, font_default)
-    r.ImGui_Attach(self.ctx, font_bold)
-    r.ImGui_Attach(self.ctx, font_large)
-    r.ImGui_Attach(self.ctx, font_large_bold)
-    r.ImGui_Attach(self.ctx, font_icons_large)
+function OD_Gui:createFonts(fonts)
+    self.st.fonts = {}
+    for k, font in pairs(fonts) do
+        self.st.fonts[k] = r.ImGui_CreateFont(OD_LocalOrCommon(font.file, self.app.scr.dir), font.size)
+    end
+end
 
+function OD_Gui:init()
+    if not self.st.fonts then
+        local small = 16
+        local default = 18
+        local medium = 20
+        local large = 22
+        self:createFonts({
+            default = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = default },
+            small = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = small },
+            medium = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = medium },
+            large = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = large },
+            bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = default },
+            small_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = small },
+            medium_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = medium },
+            large_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = large },
+            icons = { file = 'Resources/Fonts/Icons-Regular.otf', size = default },
+            icons_small = { file = 'Resources/Fonts/Icons-Regular.otf', size = small },
+            icons_medium = { file = 'Resources/Fonts/Icons-Regular.otf', size = medium },
+            icons_large = { file = 'Resources/Fonts/Icons-Regular.otf', size = large }
+        })
+    end
+    
+    self.ctx = r.ImGui_CreateContext(self.app.scr.context_name .. '_MAIN') --, reaper.ImGui_ConfigFlags_DockingEnable())    
+    for k, font in pairs(self.st.fonts) do
+        r.ImGui_Attach(self.ctx, font)
+    end
     self.draw_list = r.ImGui_GetWindowDrawList(self.ctx)
-    self.st.fonts = { small = font_small, default = font_default, bold = font_bold, large = font_large, large_bold = font_large_bold, icons_large = font_icons_large }
     self.keyModCtrlCmd = (OS_is.mac or OS_is.mac_arm) and r.ImGui_Mod_Super() or r.ImGui_Mod_Ctrl()
     self.notKeyModCtrlCmd = (OS_is.mac or OS_is.mac_arm) and r.ImGui_Mod_Ctrl() or r.ImGui_Mod_Super()
     self.descModCtrlCmd = (OS_is.mac or OS_is.mac_arm) and 'cmd' or 'control'

@@ -7,63 +7,11 @@ DB = {
     changedTrack = true,
     soloedSends = {},
     plugins = {},
+    tracks = {},
     init = function(self, app)
         self:getPlugins()
-    end,
-    getSelectedTrack = function(self)
-        if self.app.settings.current.autoSelectTrack == false and self.track ~= nil then return self.track, false end
-        if reaper.CountSelectedTracks(0) == 0 then
-            if self.track ~= nil then
-                -- self.app.logger:logDebug('No tracks selected. Zeroing sends.')
-                self.trackName = nil
-                self.sends = {}
-            end
-            return nil, false
-        end
-        -- check for self.track==nil because on first script run the GetCursorContext() does not return 0
-        if r.GetCursorContext() == 0 or self.track == nil then
-            local track = reaper.GetLastTouchedTrack()
-            return track, track ~= self.track
-        end
-    end,
-    getInserts = function(self, track)
-        local fxCount = r.TrackFX_GetCount(track)
-        local inserts = {}
-        for i = 0, fxCount - 1 do
-            local _, fxName = r.TrackFX_GetFXName(track, i, '')
-            local offline = r.TrackFX_GetOffline(track, i)
-            local enabled = r.TrackFX_GetEnabled(track, i)
-            local shortName, shortened = self.app.minimizeText(fxName:gsub('.-%:', ''):gsub('%(.-%)$', ''),
-                self.app.settings.current.sendWidth - r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
-            table.insert(inserts, {
-                order = i,
-                name = fxName,
-                shortName = shortName,
-                shortened = shortened,
-                offline = offline,
-                enabled = enabled,
-                track = track,
-                setEnabled = function(self, enabled)
-                    r.TrackFX_SetEnabled(self.track, i, enabled)
-                end,
-                setOffline = function(self, offline)
-                    r.TrackFX_SetOffline(self.track, i, offline)
-                end,
-                delete = function(self)
-                    r.TrackFX_Delete(self.track, i)
-                end,
-                toggleShow = function(self)
-                    if not r.TrackFX_GetOpen(track, i) then
-                        r.TrackFX_Show(track, i, 3)
-                        return true
-                    else
-                        r.TrackFX_Show(track, i, 2)
-                        return false
-                    end
-                end
-            })
-        end
-        return inserts, fxCount
+        self:getTracks()
+        self:assembleAssets()
     end,
     sync = function(self)
         self.track, self.changedTrack = self:getSelectedTrack()
@@ -173,6 +121,88 @@ DB = {
     end
 }
 
+--- TRACKS
+DB.getSelectedTrack = function(self)
+    if self.app.settings.current.autoSelectTrack == false and self.track ~= nil then return self.track, false end
+    if reaper.CountSelectedTracks(0) == 0 then
+        if self.track ~= nil then
+            -- self.app.logger:logDebug('No tracks selected. Zeroing sends.')
+            self.trackName = nil
+            self.sends = {}
+        end
+        return nil, false
+    end
+    -- check for self.track==nil because on first script run the GetCursorContext() does not return 0
+    if r.GetCursorContext() == 0 or self.track == nil then
+        local track = reaper.GetLastTouchedTrack()
+        return track, track ~= self.track
+    end
+end
+
+-- get project tracks into self.tracks, keeping the track's GUID, name and color, and wheather it has receives or not
+DB.getTracks = function(self)
+    self.tracks = {}
+    local numTracks = reaper.CountTracks(0)
+    for i = 0, numTracks - 1 do
+        local track = reaper.GetTrack(0, i)
+        local trackGUID = select(2, reaper.GetTrackGUID(track))
+        local trackName = select(2, reaper.GetTrackName(track))
+        local trackColor = select(2, reaper.GetTrackColor(track))
+        local hasReceives = reaper.GetTrackNumSends(track, -1) > 0
+        table.insert(self.tracks, {
+            guid = trackGUID,
+            name = trackName,
+            color = trackColor,
+            hasReceives = hasReceives
+        })
+    end
+end
+
+
+--- INSERTS
+DB.getInserts = function(self, track)
+    local fxCount = r.TrackFX_GetCount(track)
+    local inserts = {}
+    for i = 0, fxCount - 1 do
+        local _, fxName = r.TrackFX_GetFXName(track, i, '')
+        local offline = r.TrackFX_GetOffline(track, i)
+        local enabled = r.TrackFX_GetEnabled(track, i)
+        local shortName, shortened = self.app.minimizeText(fxName:gsub('.-%:', ''):gsub('%(.-%)$', ''),
+            self.app.settings.current.sendWidth -
+            r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
+        table.insert(inserts, {
+            order = i,
+            name = fxName,
+            shortName = shortName,
+            shortened = shortened,
+            offline = offline,
+            enabled = enabled,
+            track = track,
+            setEnabled = function(self, enabled)
+                r.TrackFX_SetEnabled(self.track, i, enabled)
+            end,
+            setOffline = function(self, offline)
+                r.TrackFX_SetOffline(self.track, i, offline)
+            end,
+            delete = function(self)
+                r.TrackFX_Delete(self.track, i)
+            end,
+            toggleShow = function(self)
+                if not r.TrackFX_GetOpen(track, i) then
+                    r.TrackFX_Show(track, i, 3)
+                    return true
+                else
+                    r.TrackFX_Show(track, i, 2)
+                    return false
+                end
+            end
+        })
+    end
+    return inserts, fxCount
+end
+
+
+--- PLUGINS
 DB.addPlugin = function(self, full_name, fx_type, instrument, ident)
     -- TODO: check about DX and DXi plugins (maybe in windows?)
     self.app.logger:logDebug('-- OD_VPS_DB:addPlugin()')
@@ -239,17 +269,54 @@ DB.getPlugins = function(self)
         end
         local plugin = self:addPlugin(name, fx_type, instrument, ident)
         if plugin then
-            plugin.group = OD_HasValue(self.app.settings.current.favorites, plugin.full_name) and FAVORITE_GROUP or plugin.fx_type
+            plugin.group = OD_HasValue(self.app.settings.current.favorites, plugin.full_name) and FAVORITE_GROUP or
+            plugin.fx_type
         end
         i = i + 1
         if not found then break end
     end
-    self:sortPlugins()
 end
-DB.sortPlugins = function(self)
+
+-- ASSETS
+
+DB.assembleAssets = function(self)
+    self.assets = {}
+    for _, track in ipairs(self.tracks) do
+        table.insert(self.assets, {
+            type = "track",
+            name = track.name,
+            load = track.guid,
+            group = track.hasReceives and RECEIVES_GROUP or TRACKS_GROUP
+        })
+    end
+    for _, plugin in ipairs(self.plugins) do
+        table.insert(self.assets, {
+            type = "plugin",
+            name = plugin.name,
+            load = plugin.full_name,
+            group = plugin.group,
+            vendor = plugin.vendor,
+            fx_type = plugin.fx_type
+        })
+    end
+
+    self:sortAssets()
+    -- self.app.logger:logDebug('Assembling assets')
+    -- self.app.logger:logDebug('Plugins: ' .. #self.plugins)
+    -- self.app.logger:logDebug('Tracks: ' .. #self.tracks)
+    -- self.app.logger:logDebug('Sends: ' .. #self.sends)
+    -- self.app.logger:logDebug('Inserts: ' .. self.maxNumInserts)
+    -- self.app.logger:logDebug('Track: ' .. (self.trackName or 'nil'))
+    -- self.app.logger:logDebug('Changed track: ' .. tostring(self.changedTrack))
+    -- self.app.logger:logDebug('Soloed sends: ' .. #self.soloedSends)
+end
+
+DB.sortAssets = function(self)
     local groupPriority = OD_DeepCopy(self.app.settings.current.groupPriority)
+    groupPriority[RECEIVES_GROUP] = -2
+    groupPriority[TRACKS_GROUP] = -1
     groupPriority[FAVORITE_GROUP] = 0
-    table.sort(self.plugins, function(a, b)
+    table.sort(self.assets, function(a, b)
         local aPriority = groupPriority[a.group] or 100
         local bPriority = groupPriority[b.group] or 100
         if aPriority == bPriority then

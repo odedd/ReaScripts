@@ -3,7 +3,7 @@ SM_Gui = OD_Gui:new({
 
 })
 
-SM_Gui.init = function(self)
+SM_Gui.init = function(self, fonts)
     OD_Gui.init(self)
     self.st.basecolors = {
         darkBG = 0x242429ff,

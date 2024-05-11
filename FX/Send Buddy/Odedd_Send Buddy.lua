@@ -67,6 +67,7 @@ if OD_PrereqsOK({
     logger:init()
 
     -- logger:logTable(OD_Logger.LOG_LEVEL.DEBUG,'scr',app.scr)
+    
     app.gui:init();
 
     function app:checkProjectChange(force)
@@ -487,10 +488,10 @@ if OD_PrereqsOK({
         local function filterResults(query)
             app.temp.searchInput = query
             app.temp.searchResults = {}
-            for i, plugin in ipairs(app.db.plugins) do
+            for i, asset in ipairs(app.db.assets) do
                 -- local numResults = #app.temp.searchResults
-                if string.find(plugin.name:lower(), OD_EscapePattern(query):lower()) then
-                    local result = OD_DeepCopy(plugin)
+                if string.find(asset.name:lower(), OD_EscapePattern(query):lower()) then
+                    local result = OD_DeepCopy(asset)
                     result.type = result.fx_type
                     table.insert(app.temp.searchResults, result)
                 end
@@ -503,7 +504,7 @@ if OD_PrereqsOK({
         local ctx = app.gui.ctx
         local selectedResult = nil
         local w = select(1, r.ImGui_GetContentRegionAvail(ctx))
-        r.ImGui_PushFont(ctx, app.gui.st.fonts.large)
+        r.ImGui_PushFont(ctx, app.gui.st.fonts.medium)
         app.gui:pushStyles(app.gui.st.vars.searchWindow)
         app.gui:pushColors(app.gui.st.col.searchWindow)
         app.temp.searchResults = app.temp.searchResults or {}
@@ -574,9 +575,18 @@ if OD_PrereqsOK({
 
                 r.ImGui_TableSetColumnIndex(ctx, 0)
 
-                if r.ImGui_Selectable(ctx, result.name, i == app.temp.highlightedResult, selectableFlags, 0, 0) then
+                if r.ImGui_Selectable(ctx, '', i == app.temp.highlightedResult, selectableFlags, 0, 0) then
                     selectedResult = result
                 end
+                r.ImGui_SameLine(ctx)
+                if result.group == FAVORITE_GROUP then
+                    -- app.gui:pushColors(app.gui.st.col.searchWindow.favorite)
+                    r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_medium)
+                    r.ImGui_Text(ctx, ICONS.STAR)
+                    r.ImGui_PopFont(ctx)
+                    r.ImGui_SameLine(ctx)
+                end
+                r.ImGui_Text(ctx, result.name)
                 if i == app.temp.highlightedResult then highlightedResultAbsIndex = absIndex end
                 r.ImGui_PopID(ctx)
             end
@@ -594,7 +604,7 @@ if OD_PrereqsOK({
         app.gui:popStyles(app.gui.st.vars.searchWindow)
         r.ImGui_PopFont(ctx)
         if selectedResult then
-            r.ShowConsoleMsg(selectedResult.full_name .. '\n')
+            r.ShowConsoleMsg(selectedResult.load .. '\n')
             app.switchPage(APP_PAGE.MIXER)
         end
     end

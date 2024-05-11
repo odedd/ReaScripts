@@ -59,3 +59,5 @@ PLUGIN = {
     INTERNAL = { 'Video Processor', 'Container' },
 }
 FAVORITE_GROUP = 'Favorite'
+RECEIVES_GROUP = 'Tracks with receives'
+TRACKS_GROUP = 'All project tracks'
