@@ -67,7 +67,7 @@ if OD_PrereqsOK({
     logger:init()
 
     -- logger:logTable(OD_Logger.LOG_LEVEL.DEBUG,'scr',app.scr)
-    
+
     app.gui:init();
 
     function app:checkProjectChange(force)
@@ -484,18 +484,34 @@ if OD_PrereqsOK({
     end
 
     function app.drawSearch()
+        local function nocase(s)
+            s = string.gsub(s, "%a", function(c)
+                return string.format("[%s%s]", string.lower(c),
+                    string.upper(c))
+            end)
+            return s
+        end
 
         local function filterResults(query)
             app.temp.searchInput = query
             app.temp.searchResults = {}
+            query = query:gsub('%s+', ' ')
             for i, asset in ipairs(app.db.assets) do
                 -- local numResults = #app.temp.searchResults
-                if string.find(asset.name:lower(), OD_EscapePattern(query):lower()) then
+                local pat = OD_EscapePattern(query):lower():gsub('%% ', '.-[ -_]')
+                if string.find(asset.name:lower(), pat) then
                     local result = OD_DeepCopy(asset)
-                    result.type = result.fx_type
                     table.insert(app.temp.searchResults, result)
                 end
             end
+            -- r.ShowConsoleMsg(pat .. '\n')
+
+            -- string.gsub(('Pro-MB 3'):lower(), OD_EscapePattern(query):lower():gsub('%% ', '.-[%%s-_]'),
+            --     function (c)
+            --     r.ShowConsoleMsg(c .. '\n')
+            --         return c
+            --     end
+            -- )
             -- reset highlighted result and invisible group
             app.temp.highlightedResult = #app.temp.searchResults > 0 and 1 or nil
             app.temp.lastInvisibleGroup = nil
@@ -586,7 +602,30 @@ if OD_PrereqsOK({
                     r.ImGui_PopFont(ctx)
                     r.ImGui_SameLine(ctx)
                 end
-                r.ImGui_Text(ctx, result.name)
+
+                -- draw result name, highlighting the search query
+
+                local text = result.name
+                r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing(), 0.0, 0.0)
+                for foundText in searchInput:gmatch('([^%s]+)') do
+                    local pat = nocase('(.-[ -_]-)(' .. OD_EscapePattern(foundText) .. ')(.*)')
+                    for notFound, found, rest in text:gmatch(pat) do
+                        if notFound then
+                            r.ImGui_Text(ctx, notFound)
+                            r.ImGui_SameLine(ctx)
+                        end
+                        if found then
+                            app.gui:pushColors(app.gui.st.col.searchHighligh)
+                            r.ImGui_Text(ctx, found)
+                            app.gui:popColors(app.gui.st.col.searchHighligh)
+                            r.ImGui_SameLine(ctx)
+                        end
+                        text = rest
+                    end
+                end
+                r.ImGui_Text(ctx, text)
+                r.ImGui_PopStyleVar(ctx)
+
                 if i == app.temp.highlightedResult then highlightedResultAbsIndex = absIndex end
                 r.ImGui_PopID(ctx)
             end
@@ -608,11 +647,12 @@ if OD_PrereqsOK({
             app.switchPage(APP_PAGE.MIXER)
         end
     end
+
     function app.iconButton(ctx, icon)
         local x, y = r.ImGui_GetCursorPos(ctx)
         local w = select(1, r.ImGui_CalcTextSize(ctx, ICONS[(icon):upper()])) + app.gui.vars.framePaddingX * 2
         local clicked
-        if r.ImGui_InvisibleButton(ctx, '##menuBtn'..icon, w, r.ImGui_GetTextLineHeightWithSpacing(ctx)) then
+        if r.ImGui_InvisibleButton(ctx, '##menuBtn' .. icon, w, r.ImGui_GetTextLineHeightWithSpacing(ctx)) then
             clicked = true
         end
         if r.ImGui_IsItemHovered(ctx) and not r.ImGui_IsItemActive(ctx) then
@@ -628,15 +668,17 @@ if OD_PrereqsOK({
         r.ImGui_SetCursorPos(ctx, x + w, y)
         return clicked
     end
+
     function app.drawTopBar()
         local function beginRightIconMenu(ctx, buttons)
-            local windowEnd = app.gui.mainWindow.size[1] - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) 
+            local windowEnd = app.gui.mainWindow.size[1] - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())
             r.ImGui_SameLine(ctx, windowEnd)
             r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_large)
             local clicked = nil
-            local prevX = r.ImGui_GetCursorPosX(ctx)- r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing())
+            local prevX = r.ImGui_GetCursorPosX(ctx) - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing())
             for i, btn in ipairs(buttons) do
-                local w = select(1, r.ImGui_CalcTextSize(ctx, ICONS[(btn.icon):upper()])) + app.gui.vars.framePaddingX * 2
+                local w = select(1, r.ImGui_CalcTextSize(ctx, ICONS[(btn.icon):upper()])) +
+                    app.gui.vars.framePaddingX * 2
                 local x = prevX - w - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing())
                 prevX = x
                 r.ImGui_SetCursorPosX(ctx, x)
@@ -662,12 +704,12 @@ if OD_PrereqsOK({
         r.ImGui_EndDisabled(ctx)
         local menu = {}
         if app.page == APP_PAGE.MIXER then
-            table.insert(menu, {icon='plus',hint='Add Send'})
+            table.insert(menu, { icon = 'plus', hint = 'Add Send' })
         elseif app.page == APP_PAGE.SEARCH_SEND then
-            table.insert(menu, {icon='back',hint='Back'})
-            table.insert(menu, {icon='gear',hint='Settings'})
+            table.insert(menu, { icon = 'back', hint = 'Back' })
+            table.insert(menu, { icon = 'gear', hint = 'Settings' })
         end
-        local rv, btn =  beginRightIconMenu(ctx, menu)
+        local rv, btn = beginRightIconMenu(ctx, menu)
         r.ImGui_PopFont(ctx)
         r.ImGui_EndGroup(ctx)
         if rv then
@@ -759,6 +801,6 @@ if OD_PrereqsOK({
     -- app.settings:save()
     app.db:init()
     app.switchPage(APP_PAGE.MIXER)
-    -- app.switchPage(APP_PAGE.SEARCH_SEND)
+    app.switchPage(APP_PAGE.SEARCH_SEND)
     r.defer(app.loop)
 end

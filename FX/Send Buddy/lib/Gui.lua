@@ -103,6 +103,9 @@ SM_Gui.init = function(self, fonts)
         searchWindow ={
             [r.ImGui_Col_TableBorderStrong()] = 0x00000000,
         },
+        searchHighligh = {
+            [r.ImGui_Col_Text()] = self.st.basecolors.main,
+        },
         main = {
             [r.ImGui_Col_FrameBg()] = self.st.basecolors.darkBG,
             [r.ImGui_Col_FrameBgHovered()] = self.st.basecolors.darkHovered,
