@@ -9,10 +9,10 @@ SM_Settings = OD_Settings:new({
         sendWidth = 60,
         maxNumInserts = 10,
         faderHeight = 240,
-        autoSelectTrack = false,
+        followSelectedTrack = true,
         scaleFactor = 2,
         scaleLevel = -20,
-        maxSearchResults = 10,
+        maxSearchResults = 20,
         favorites = {
             'VST3: Pro-Q 3 (FabFilter)',
             'VST3: ValhallaVintageVerb (Valhalla DSP, LLC)'

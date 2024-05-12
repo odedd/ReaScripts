@@ -35,6 +35,7 @@ function OD_Gui:init()
         local default = 18
         local medium = 20
         local large = 22
+        local huge = large*3
         self:createFonts({
             default = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = default },
             small = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = small },
@@ -47,7 +48,8 @@ function OD_Gui:init()
             icons = { file = 'Resources/Fonts/Icons-Regular.otf', size = default },
             icons_small = { file = 'Resources/Fonts/Icons-Regular.otf', size = small },
             icons_medium = { file = 'Resources/Fonts/Icons-Regular.otf', size = medium },
-            icons_large = { file = 'Resources/Fonts/Icons-Regular.otf', size = large }
+            icons_large = { file = 'Resources/Fonts/Icons-Regular.otf', size = large },
+            icons_huge = { file = 'Resources/Fonts/Icons-Regular.otf', size = huge }
         })
     end
     

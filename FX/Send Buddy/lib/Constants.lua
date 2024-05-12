@@ -4,13 +4,15 @@
 DB_SCALE = math.log(10.0) * 0.05
 
 APP_PAGE = {
-    ['MIXER'] = {width = 400, windowFlags = r.ImGui_WindowFlags_AlwaysAutoResize()},
+    ['MIXER'] = {width = 500, windowFlags = r.ImGui_WindowFlags_AlwaysAutoResize()},
     ['SEARCH_SEND'] = {width = 900, windowFlags = r.ImGui_WindowFlags_None()},
-    ['SEACH_FX'] = {width = 900, windowFlags = r.ImGui_WindowFlags_None()}
+    ['SEARCH_FX'] = {width = 900, windowFlags = r.ImGui_WindowFlags_None()},
+    ['CLOSE'] = 'close'
 }
 
 ICONS = {
     ['GEAR'] = 'G',
+    ['HMMM'] = 'H',
     ['LEFT'] = 'L',
     ['POLARITY'] = 'O',
     ['PLUS'] = 'P',
@@ -18,6 +20,11 @@ ICONS = {
     ['STAR'] = 'S',
     ['UNDO'] = 'U',
     ['CLOSE'] = 'X',
+}
+
+ASSETS = {
+    ['TRACK'] = 0,
+    ['PLUGIN'] = 1,
 }
 
 NUM_CHANNELS = 128
@@ -63,5 +70,5 @@ PLUGIN = {
     INTERNAL = { 'Video Processor', 'Container' },
 }
 FAVORITE_GROUP = 'Favorite'
-RECEIVES_GROUP = 'Tracks with receives'
-TRACKS_GROUP = 'All project tracks'
+RECEIVES_GROUP = 'Existing receiving tracks'
+TRACKS_GROUP = 'Existing tracks'

@@ -13,15 +13,28 @@ DB = {
         self:getTracks()
         self:assembleAssets()
     end,
-    sync = function(self)
+    sync = function(self, refresh)
         self.track, self.changedTrack = self:getSelectedTrack()
+        self.refresh = refresh or false
         if self.changedTrack then
             self.soloedSends = {}
+            self.refresh = true
         end
-        if self.track then
+
+        self.current_project = r.GetProjectStateChangeCount(0) -- if project changed, force full sync
+        if self.current_project ~= self.previous_project then
+            self.previous_project = self.current_project
+            self.refresh = true
+        end
+
+        if self.refresh and self.track then
             _, self.trackName = reaper.GetTrackName(self.track)
-            local _, trackName = reaper.GetTrackName(self.track)
+            -- local _, trackName = reaper.GetTrackName(self.track)
+            -- local oldNumSends = self.numSends
             self.numSends = reaper.GetTrackNumSends(self.track, 0)
+            -- if self.numSends < oldNumSends then
+            --     self.removedSends = true
+            -- end
             self.sends = {}
             self.maxNumInserts = 0
             for i = 0, self.numSends - 1 do
@@ -51,6 +64,7 @@ DB = {
                         end
                         reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'D_VOL',
                             (dB <= self.db.app.settings.current.minSendVol and 0 or OD_ValFromdB(dB)))
+                        self.db:sync(true)
                     end,
                     setPan = function(self, pan)
                         if pan < -1 then
@@ -59,25 +73,31 @@ DB = {
                             pan = 1
                         end
                         reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'D_PAN', pan)
+                        self.db:sync(true)
                     end,
                     setPanLaw = function(self, panLaw)
                         reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'D_PANLAW', panLaw)
+                        self.db:sync(true)
                     end,
                     setMono = function(self, mono)
                         reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'B_MONO', mono)
+                        self.db:sync(true)
                     end,
                     setPhase = function(self, phase)
                         reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'B_PHASE', phase)
+                        self.db:sync(true)
                     end,
                     setSrcChan = function(self, srcChan)
                         reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'I_SRCCHAN', srcChan)
+                        self.db:sync(true)
                     end,
                     setMode = function(self, mode)
                         reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'I_SENDMODE', mode)
+                        self.db:sync(true)
                     end,
                     setDestChan = function(self, destChan)
                         local numChannels = SRC_CHANNELS[self.srcChan].numChannels +
-                            (destChan >= 1024 and destChan - 1024 or destChan)
+                        (destChan >= 1024 and destChan - 1024 or destChan)
                         r.ShowConsoleMsg('numChannels: ' .. numChannels .. '\n')
                         local nearestEvenChannel = math.ceil(numChannels / 2) * 2
                         local destChanChannelCount = reaper.GetMediaTrackInfo_Value(self.destTrack, 'I_NCHAN')
@@ -85,9 +105,11 @@ DB = {
                             reaper.SetMediaTrackInfo_Value(self.destTrack, 'I_NCHAN', nearestEvenChannel)
                         end
                         reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'I_DSTCHAN', destChan)
+                        self.db:sync(true)
                     end,
-                    setMute = function(self, mute)
+                    setMute = function(self, mute, skipRefresh)
                         reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'B_MUTE', mute and 1 or 0)
+                        if not skipRefresh then self:sync(true) end
                     end,
                     setSolo = function(self, solo, exclusive)
                         local exclusive = (exclusive ~= false) and true or false
@@ -101,11 +123,21 @@ DB = {
                         for si, send in ipairs(self.db.sends) do
                             -- reaper.ShowConsoleMsg(snd.name .. '\n')
                             if next(self.db.soloedSends) == nil then
-                                send:setMute(false)
+                                send:setMute(false, true)
                             else
-                                send:setMute(exclusive and (si == i) or (self.db.soloedSends[si - 1] == nil))
+                                send:setMute(exclusive and (si == i) or (self.db.soloedSends[si - 1] == nil), true)
                             end
                         end
+                        self.db:sync(true)
+                    end,
+                    addInsert = function(self, fxName)
+                        local fxIndex = r.TrackFX_AddByName(self.destTrack, fxName, false, -1)
+                        if fxIndex == -1 then
+                            self.db.app.logger:logError('Cannot add ' .. fxName .. ' to ' .. self.destTrack)
+                            return false
+                        end
+                        self.db:sync(true)
+                        return true
                     end,
                 }
                 send.destInsertsCount = r.TrackFX_GetCount(send.destTrack)
@@ -117,26 +149,47 @@ DB = {
 
                 table.insert(self.sends, send)
             end
+        self.app.refreshWindowSizeOnNextFrame = true
         end
     end
 }
 
+--- Sends
+
+DB.createNewSend = function(self, asset)
+    if asset.type == ASSETS.TRACK then
+        -- local sendTrackIndex = asset.load
+        local sendTrack = OD_GetTrackFromGuid(0, asset.load)
+        if sendTrack then
+            reaper.CreateTrackSend(self.track, sendTrack)
+        end
+    elseif asset.type == ASSETS.PLUGIN then
+        local newTrackIndex = r.GetNumTracks()
+        reaper.InsertTrackAtIndex(newTrackIndex, true)
+        local newTrack = reaper.GetTrack(0, newTrackIndex)
+        reaper.GetSetMediaTrackInfo_String(newTrack, "P_NAME", asset.name, true)
+        reaper.CreateTrackSend(self.track, newTrack)
+        self:sync(true)
+        for _, send in ipairs(self.sends) do
+            if send.destTrack == newTrack then
+                send:addInsert(asset.load)
+            end
+        end
+    end
+    self:sync(true)
+end
+
+
 --- TRACKS
 DB.getSelectedTrack = function(self)
-    if self.app.settings.current.autoSelectTrack == false and self.track ~= nil then return self.track, false end
-    if reaper.CountSelectedTracks(0) == 0 then
-        if self.track ~= nil then
-            -- self.app.logger:logDebug('No tracks selected. Zeroing sends.')
-            self.trackName = nil
-            self.sends = {}
-        end
+    if self.app.settings.current.followSelectedTrack == false and self.track ~= nil then return self.track, false end
+    local track = reaper.GetLastTouchedTrack()
+    if track == nil and self.track ~= nil then
+        self.trackName = nil
+        self.sends = {}
         return nil, false
     end
-    -- check for self.track==nil because on first script run the GetCursorContext() does not return 0
-    if r.GetCursorContext() == 0 or self.track == nil then
-        local track = reaper.GetLastTouchedTrack()
-        return track, track ~= self.track
-    end
+    return track, (track ~= self.track)
 end
 
 -- get project tracks into self.tracks, keeping the track's GUID, name and color, and wheather it has receives or not
@@ -154,10 +207,12 @@ DB.getTracks = function(self)
         end
         if not skip then
             local trackName = select(2, reaper.GetTrackName(track))
-            local trackColor = select(2, reaper.GetTrackColor(track))
+            local trackColor = reaper.GetTrackColor(track)
+            local trackGuid = reaper.GetTrackGUID(track)
             local hasReceives = reaper.GetTrackNumSends(track, -1) > 0
             table.insert(self.tracks, {
                 name = trackName,
+                guid = trackGuid,
                 color = trackColor,
                 hasReceives = hasReceives,
                 order = i,
@@ -179,7 +234,8 @@ DB.getInserts = function(self, track)
             self.app.settings.current.sendWidth -
             r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
         table.insert(inserts, {
-            order = i,
+            order = i,  
+            db = self,
             name = fxName,
             shortName = shortName,
             shortened = shortened,
@@ -188,12 +244,15 @@ DB.getInserts = function(self, track)
             track = track,
             setEnabled = function(self, enabled)
                 r.TrackFX_SetEnabled(self.track, i, enabled)
+                self.db:sync(true)
             end,
             setOffline = function(self, offline)
                 r.TrackFX_SetOffline(self.track, i, offline)
+                self.db:sync(true)
             end,
             delete = function(self)
                 r.TrackFX_Delete(self.track, i)
+                self.db:sync(true)
             end,
             toggleShow = function(self)
                 if not r.TrackFX_GetOpen(track, i) then
@@ -278,7 +337,7 @@ DB.getPlugins = function(self)
         local plugin = self:addPlugin(name, fx_type, instrument, ident)
         if plugin then
             plugin.group = OD_HasValue(self.app.settings.current.favorites, plugin.full_name) and FAVORITE_GROUP or
-            plugin.fx_type
+                plugin.fx_type
         end
         i = i + 1
         if not found then break end
@@ -291,16 +350,17 @@ DB.assembleAssets = function(self)
     self.assets = {}
     for _, track in ipairs(self.tracks) do
         table.insert(self.assets, {
-            type = "track",
+            type = ASSETS.TRACK,
             name = track.name,
-            load = track.order,
+            load = track.guid,
             group = track.hasReceives and RECEIVES_GROUP or TRACKS_GROUP,
             order = track.order,
+            color = track.color
         })
     end
     for _, plugin in ipairs(self.plugins) do
         table.insert(self.assets, {
-            type = "plugin",
+            type = ASSETS.PLUGIN,
             name = plugin.name,
             load = plugin.full_name,
             group = plugin.group,
@@ -310,14 +370,6 @@ DB.assembleAssets = function(self)
     end
 
     self:sortAssets()
-    -- self.app.logger:logDebug('Assembling assets')
-    -- self.app.logger:logDebug('Plugins: ' .. #self.plugins)
-    -- self.app.logger:logDebug('Tracks: ' .. #self.tracks)
-    -- self.app.logger:logDebug('Sends: ' .. #self.sends)
-    -- self.app.logger:logDebug('Inserts: ' .. self.maxNumInserts)
-    -- self.app.logger:logDebug('Track: ' .. (self.trackName or 'nil'))
-    -- self.app.logger:logDebug('Changed track: ' .. tostring(self.changedTrack))
-    -- self.app.logger:logDebug('Soloed sends: ' .. #self.soloedSends)
 end
 
 DB.sortAssets = function(self)
@@ -328,7 +380,7 @@ DB.sortAssets = function(self)
     table.sort(self.assets, function(a, b)
         local aPriority = groupPriority[a.group] or 100
         local bPriority = groupPriority[b.group] or 100
-        if a.type == 'track' and b.type == 'track' and aPriority == bPriority then
+        if a.type == ASSETS['TRACK'] and b.type == ASSETS['TRACK'] and aPriority == bPriority then
             return a.order < b.order
         elseif aPriority == bPriority then
             return a.name < b.name

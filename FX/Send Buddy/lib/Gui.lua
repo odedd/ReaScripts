@@ -7,8 +7,8 @@ SM_Gui.init = function(self, fonts)
     OD_Gui.init(self)
     self.st.basecolors = {
         darkBG = 0x242429ff,
-        darkHovered = 0x29292fff,
-        darkActive = 0x2d2d35ff,
+        darkHovered = 0x2d2d35ff,
+        darkActive = 0x35353cff,
         darkText = 0xcfcfcfff,
         midBG = 0x545454ff,
         midHovered = 0x646464ff,
@@ -19,9 +19,10 @@ SM_Gui.init = function(self, fonts)
         widgetBG = 0x949494ff,
         hovered = 0xa4a4a4ff,
         active = 0xa4a4a4ff,
-        main = 0x8a3e38ff,
-        mainDark = 0x37211fff,
-        mainBright = 0xb5564fff,
+        main = 0x953745ff,
+        mainDark = 0x371f23ff,
+        mainBright = 0xb73849ff,
+        mainBrighter = 0xc74859ff,
     }
     self.st.colpresets = {
         midButton = {
@@ -40,6 +41,10 @@ SM_Gui.init = function(self, fonts)
         insert = {
             enabled = {
                 [r.ImGui_Col_Text()] = 0x2b2b2bff,
+                [r.ImGui_Col_Button()] = self.st.basecolors.widgetBG,
+                [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.hovered,
+                [r.ImGui_Col_ButtonActive()] = self.st.basecolors.active
+    
             },
             disabled = {
                 [r.ImGui_Col_Button()] = 0x746a2cff,
@@ -52,7 +57,13 @@ SM_Gui.init = function(self, fonts)
                 [r.ImGui_Col_Text()] = 0xf71659ff,
                 [r.ImGui_Col_ButtonHovered()] = 0x894b56ff,
                 [r.ImGui_Col_ButtonActive()] = 0x742c39ff
-            }
+            },
+            add = {
+                [r.ImGui_Col_Button()] = self.st.basecolors.darkBG,
+                [r.ImGui_Col_Text()] = 0x878787ff,
+                [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.darkHovered,
+                [r.ImGui_Col_ButtonActive()] = self.st.basecolors.darkActive
+            },
         },
         buttons = {
             mute = {
@@ -64,6 +75,9 @@ SM_Gui.init = function(self, fonts)
                 },
                 [0] = {
                     [r.ImGui_Col_Text()] = 0x000000ff,
+                    [r.ImGui_Col_Button()] = self.st.basecolors.widgetBG,
+            [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.hovered,
+            [r.ImGui_Col_ButtonActive()] = self.st.basecolors.active
                 }
             },
             solo = {
@@ -75,11 +89,17 @@ SM_Gui.init = function(self, fonts)
                 },
                 [0] = {
                     [r.ImGui_Col_Text()] = 0x000000ff,
+                    [r.ImGui_Col_Button()] = self.st.basecolors.widgetBG,
+            [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.hovered,
+            [r.ImGui_Col_ButtonActive()] = self.st.basecolors.active
                 }
             },
             mode = {
                 [0] = {
                     [r.ImGui_Col_Text()] = 0x000000ff,
+                    [r.ImGui_Col_Button()] = self.st.basecolors.widgetBG,
+            [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.hovered,
+            [r.ImGui_Col_ButtonActive()] = self.st.basecolors.active
                 },
                 [1] = {
                     [r.ImGui_Col_Button()] = 0x4291d6ff,
@@ -125,12 +145,12 @@ SM_Gui.init = function(self, fonts)
             [r.ImGui_Col_TextSelectedBg()] = self.st.basecolors.darkActive,
             [r.ImGui_Col_HeaderHovered()] = self.st.basecolors.headerHovered,
             [r.ImGui_Col_Header()] = self.st.basecolors.header,
-            [r.ImGui_Col_Button()] = self.st.basecolors.widgetBG,
-            [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.hovered,
-            [r.ImGui_Col_ButtonActive()] = self.st.basecolors.active
+            [r.ImGui_Col_Button()] = self.st.basecolors.main,
+            [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.mainBright,
+            [r.ImGui_Col_ButtonActive()] = self.st.basecolors.mainBrighter
         },
         title = {
-            [r.ImGui_Col_Text()] = self.st.basecolors.main,
+            [r.ImGui_Col_Text()] = self.st.basecolors.mainBright,
         }
     }
     self.st.vars = {
@@ -151,6 +171,10 @@ SM_Gui.init = function(self, fonts)
             [r.ImGui_StyleVar_SeparatorTextAlign()] = { 0, 0 },
             [r.ImGui_StyleVar_SeparatorTextBorderSize()] = { 1, nil },
             [r.ImGui_StyleVar_SeparatorTextPadding()] = { 0, 0 },
+        },
+        bigButton = {
+            [r.ImGui_StyleVar_FrameRounding()] = { 10, nil },
+            [r.ImGui_StyleVar_FramePadding()] = { 20, 10 },
         }
     }
 end
