@@ -141,20 +141,28 @@ end
 
 -- get project tracks into self.tracks, keeping the track's GUID, name and color, and wheather it has receives or not
 DB.getTracks = function(self)
+    self:sync()
     self.tracks = {}
     local numTracks = reaper.CountTracks(0)
     for i = 0, numTracks - 1 do
         local track = reaper.GetTrack(0, i)
-        local trackGUID = select(2, reaper.GetTrackGUID(track))
-        local trackName = select(2, reaper.GetTrackName(track))
-        local trackColor = select(2, reaper.GetTrackColor(track))
-        local hasReceives = reaper.GetTrackNumSends(track, -1) > 0
-        table.insert(self.tracks, {
-            guid = trackGUID,
-            name = trackName,
-            color = trackColor,
-            hasReceives = hasReceives
-        })
+        local skip = false
+        for _, send in ipairs(self.sends) do
+            if send.destTrack == track then
+                skip = true
+            end
+        end
+        if not skip then
+            local trackName = select(2, reaper.GetTrackName(track))
+            local trackColor = select(2, reaper.GetTrackColor(track))
+            local hasReceives = reaper.GetTrackNumSends(track, -1) > 0
+            table.insert(self.tracks, {
+                name = trackName,
+                color = trackColor,
+                hasReceives = hasReceives,
+                order = i,
+            })
+        end
     end
 end
 
@@ -285,8 +293,9 @@ DB.assembleAssets = function(self)
         table.insert(self.assets, {
             type = "track",
             name = track.name,
-            load = track.guid,
-            group = track.hasReceives and RECEIVES_GROUP or TRACKS_GROUP
+            load = track.order,
+            group = track.hasReceives and RECEIVES_GROUP or TRACKS_GROUP,
+            order = track.order,
         })
     end
     for _, plugin in ipairs(self.plugins) do
@@ -319,7 +328,9 @@ DB.sortAssets = function(self)
     table.sort(self.assets, function(a, b)
         local aPriority = groupPriority[a.group] or 100
         local bPriority = groupPriority[b.group] or 100
-        if aPriority == bPriority then
+        if a.type == 'track' and b.type == 'track' and aPriority == bPriority then
+            return a.order < b.order
+        elseif aPriority == bPriority then
             return a.name < b.name
         else
             return aPriority < bPriority

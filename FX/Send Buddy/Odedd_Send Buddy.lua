@@ -168,6 +168,7 @@ if OD_PrereqsOK({
 
     function app.drawMixer()
         local ctx = app.gui.ctx
+        app.db:sync()
         r.ImGui_PushFont(ctx, app.gui.st.fonts.small)
         local drawSend = function(s, part, label)
             local drawFader = function()
@@ -504,15 +505,6 @@ if OD_PrereqsOK({
                     table.insert(app.temp.searchResults, result)
                 end
             end
-            -- r.ShowConsoleMsg(pat .. '\n')
-
-            -- string.gsub(('Pro-MB 3'):lower(), OD_EscapePattern(query):lower():gsub('%% ', '.-[%%s-_]'),
-            --     function (c)
-            --     r.ShowConsoleMsg(c .. '\n')
-            --         return c
-            --     end
-            -- )
-            -- reset highlighted result and invisible group
             app.temp.highlightedResult = #app.temp.searchResults > 0 and 1 or nil
             app.temp.lastInvisibleGroup = nil
         end
@@ -539,12 +531,12 @@ if OD_PrereqsOK({
             if r.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_DownArrow()) then
                 if app.temp.highlightedResult < #app.temp.searchResults then
                     app.temp.highlightedResult = app.temp.highlightedResult + 1
-                    app.temp.checkScroll = true
+                    app.temp.checkScrollDown = true
                 end
             elseif r.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_UpArrow()) then
                 if app.temp.highlightedResult > 1 then
                     app.temp.highlightedResult = app.temp.highlightedResult - 1
-                    app.temp.checkScroll = true
+                    app.temp.checkScrollUp = true
                 end
             elseif r.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Enter()) then
                 if app.temp.highlightedResult then
@@ -564,33 +556,31 @@ if OD_PrereqsOK({
         if r.ImGui_BeginTable(ctx, "##searchResults", 1, tableFlags, table.unpack(outer_size)) then
             r.ImGui_TableSetupScrollFreeze(ctx, 0, 1)
             local firstVisibleAbsIndex = nil
-            local highlightedResultAbsIndex = nil
+            local highlightedY = nil
             local foundInvisibleGroup = false
             local absIndex = 0
             for i, result in ipairs(app.temp.searchResults) do
-                local currentScreenY = select(2, r.ImGui_GetCursorScreenPos(ctx))
+                -- local currentScreenY =
+
                 if result.group ~= lastGroup then
                     r.ImGui_TableNextRow(ctx, r.ImGui_TableRowFlags_None(), app.gui.TEXT_BASE_HEIGHT_LARGE)
                     absIndex = absIndex + 1
                     r.ImGui_TableSetColumnIndex(ctx, 0)
                     r.ImGui_SeparatorText(ctx, i == 1 and app.temp.lastInvisibleGroup or result.group)
                     lastGroup = result.group
-                    if currentScreenY <= upperRowY then
+                    if select(2, r.ImGui_GetCursorScreenPos(ctx)) <= upperRowY + app.gui.TEXT_BASE_HEIGHT_LARGE then
                         app.temp.lastInvisibleGroup = result.group
                         foundInvisibleGroup = true
                     end
                 end
                 if not foundInvisibleGroup then app.temp.lastInvisibleGroup = nil end
-                if firstVisibleAbsIndex == nil and currentScreenY >= upperRowY then
-                    firstVisibleAbsIndex = absIndex
-                end
-
                 r.ImGui_PushID(ctx, 'result' .. i)
                 r.ImGui_TableNextRow(ctx, r.ImGui_TableRowFlags_None(), app.gui.TEXT_BASE_HEIGHT_LARGE)
                 absIndex = absIndex + 1
-
                 r.ImGui_TableSetColumnIndex(ctx, 0)
-
+                if (app.temp.checkScrollDown or app.temp.checkScrollUp) and i == app.temp.highlightedResult then
+                    highlightedY = select(2, r.ImGui_GetCursorScreenPos(ctx))
+                end
                 if r.ImGui_Selectable(ctx, '', i == app.temp.highlightedResult, selectableFlags, 0, 0) then
                     selectedResult = result
                 end
@@ -598,7 +588,9 @@ if OD_PrereqsOK({
                 if result.group == FAVORITE_GROUP then
                     -- app.gui:pushColors(app.gui.st.col.searchWindow.favorite)
                     r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_medium)
+                    app.gui:pushColors(app.gui.st.col.search.favorite)
                     r.ImGui_Text(ctx, ICONS.STAR)
+                    app.gui:popColors(app.gui.st.col.search.favorite)
                     r.ImGui_PopFont(ctx)
                     r.ImGui_SameLine(ctx)
                 end
@@ -615,9 +607,9 @@ if OD_PrereqsOK({
                             r.ImGui_SameLine(ctx)
                         end
                         if found then
-                            app.gui:pushColors(app.gui.st.col.searchHighligh)
+                            app.gui:pushColors(app.gui.st.col.search.highlight)
                             r.ImGui_Text(ctx, found)
-                            app.gui:popColors(app.gui.st.col.searchHighligh)
+                            app.gui:popColors(app.gui.st.col.search.highlight)
                             r.ImGui_SameLine(ctx)
                         end
                         text = rest
@@ -626,16 +618,18 @@ if OD_PrereqsOK({
                 r.ImGui_Text(ctx, text)
                 r.ImGui_PopStyleVar(ctx)
 
-                if i == app.temp.highlightedResult then highlightedResultAbsIndex = absIndex end
                 r.ImGui_PopID(ctx)
             end
-            if app.temp.checkScroll and highlightedResultAbsIndex > firstVisibleAbsIndex + app.settings.current.maxSearchResults - 1 then
+            if app.temp.checkScrollDown and highlightedY > upperRowY + app.settings.current.maxSearchResults * app.gui.TEXT_BASE_HEIGHT_LARGE then
                 r.ImGui_SetScrollY(ctx,
-                    app.gui.TEXT_BASE_HEIGHT_LARGE * (highlightedResultAbsIndex - app.settings.current.maxSearchResults))
-                app.temp.checkScroll = false
-            elseif app.temp.checkScroll and highlightedResultAbsIndex <= firstVisibleAbsIndex + 1 then
-                r.ImGui_SetScrollY(ctx, app.gui.TEXT_BASE_HEIGHT_LARGE * (highlightedResultAbsIndex - 2))
-                app.temp.checkScroll = false
+                    r.ImGui_GetScrollY(ctx) +
+                    (highlightedY - (upperRowY + (app.settings.current.maxSearchResults - 1) * app.gui.TEXT_BASE_HEIGHT_LARGE) - 1))
+                app.temp.checkScrollDown = false
+            end
+            if app.temp.checkScrollUp and highlightedY <= upperRowY + app.gui.TEXT_BASE_HEIGHT_LARGE then
+                r.ImGui_SetScrollY(ctx,
+                    r.ImGui_GetScrollY(ctx) - (upperRowY - highlightedY + 1) - app.gui.TEXT_BASE_HEIGHT_LARGE)
+                app.temp.checkScrollUp = false
             end
             r.ImGui_EndTable(ctx)
         end
@@ -705,8 +699,9 @@ if OD_PrereqsOK({
         local menu = {}
         if app.page == APP_PAGE.MIXER then
             table.insert(menu, { icon = 'plus', hint = 'Add Send' })
+            table.insert(menu, { icon = 'gear', hint = 'Settings' })
         elseif app.page == APP_PAGE.SEARCH_SEND then
-            table.insert(menu, { icon = 'back', hint = 'Back' })
+            table.insert(menu, { icon = 'right', hint = 'Back' })
             table.insert(menu, { icon = 'gear', hint = 'Settings' })
         end
         local rv, btn = beginRightIconMenu(ctx, menu)
@@ -717,7 +712,7 @@ if OD_PrereqsOK({
                 app.switchPage(APP_PAGE.SEARCH_SEND)
             elseif btn == 'gear' then
                 -- app.switchPage(APP_PAGE.SETTINGS)
-            elseif btn == 'back' then
+            elseif btn == 'right' then
                 app.switchPage(APP_PAGE.MIXER)
             end
         end
@@ -740,7 +735,7 @@ if OD_PrereqsOK({
         local max_w, max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx))
         app.warningCount = 0
 
-        app.db:sync()
+
         if app.db.track == nil and not app.settings.current.autoSelectTrack then
             r.ShowMessageBox('No track selected.', 'Send Mixer', 0)
             return false
@@ -800,7 +795,8 @@ if OD_PrereqsOK({
     app.settings:load()
     -- app.settings:save()
     app.db:init()
+    app.db:sync()
     app.switchPage(APP_PAGE.MIXER)
-    app.switchPage(APP_PAGE.SEARCH_SEND)
+    -- app.switchPage(APP_PAGE.SEARCH_SEND)
     r.defer(app.loop)
 end

@@ -20,6 +20,8 @@ SM_Gui.init = function(self, fonts)
         hovered = 0xa4a4a4ff,
         active = 0xa4a4a4ff,
         main = 0x8a3e38ff,
+        mainDark = 0x37211fff,
+        mainBright = 0xb5564fff,
     }
     self.st.colpresets = {
         midButton = {
@@ -95,16 +97,24 @@ SM_Gui.init = function(self, fonts)
             route = self.st.colpresets.midButton,
             add = self.st.colpresets.midButton,
             topBarIcon = {
-                default = {[r.ImGui_Col_Text()] = self.st.basecolors.midBG},
-                hovered = {[r.ImGui_Col_Text()] = self.st.basecolors.active},
-                active = {[r.ImGui_Col_Text()] = self.st.basecolors.midText},
+                default = { [r.ImGui_Col_Text()] = self.st.basecolors.midBG },
+                hovered = { [r.ImGui_Col_Text()] = self.st.basecolors.active },
+                active = { [r.ImGui_Col_Text()] = self.st.basecolors.midText },
             }
         },
-        searchWindow ={
+        searchWindow = {
             [r.ImGui_Col_TableBorderStrong()] = 0x00000000,
+            [r.ImGui_Col_TextSelectedBg()] = self.st.basecolors.main,
+            [r.ImGui_Col_Header()] = self.st.basecolors.mainDark,
+            [r.ImGui_Col_HeaderHovered()] = self.st.basecolors.mainDark,
         },
-        searchHighligh = {
-            [r.ImGui_Col_Text()] = self.st.basecolors.main,
+        search = {
+            highlight = {
+                [r.ImGui_Col_Text()] = self.st.basecolors.mainBright,
+            },
+            favorite = {
+                [r.ImGui_Col_Text()] = self.st.basecolors.main,
+            }
         },
         main = {
             [r.ImGui_Col_FrameBg()] = self.st.basecolors.darkBG,
@@ -138,9 +148,9 @@ SM_Gui.init = function(self, fonts)
             [r.ImGui_StyleVar_WindowRounding()] = { 10, nil },
         },
         searchWindow = {
-            [r.ImGui_StyleVar_SeparatorTextAlign()] = {0,0},
-            [r.ImGui_StyleVar_SeparatorTextBorderSize()] = {1,nil},
-            [r.ImGui_StyleVar_SeparatorTextPadding()] = {0,0},
+            [r.ImGui_StyleVar_SeparatorTextAlign()] = { 0, 0 },
+            [r.ImGui_StyleVar_SeparatorTextBorderSize()] = { 1, nil },
+            [r.ImGui_StyleVar_SeparatorTextPadding()] = { 0, 0 },
         }
     }
 end

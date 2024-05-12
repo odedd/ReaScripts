@@ -10,10 +10,14 @@ APP_PAGE = {
 }
 
 ICONS = {
-    ['BACK'] = 'B',
     ['GEAR'] = 'G',
+    ['LEFT'] = 'L',
+    ['POLARITY'] = 'O',
     ['PLUS'] = 'P',
+    ['RIGHT'] = 'R',
     ['STAR'] = 'S',
+    ['UNDO'] = 'U',
+    ['CLOSE'] = 'X',
 }
 
 NUM_CHANNELS = 128
