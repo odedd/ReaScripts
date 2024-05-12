@@ -174,7 +174,7 @@ if OD_PrereqsOK({
         end
     end
 
-    function app.switchPage(page)
+    function app.setPage(page)
         app.page = page
         app.pageSwitched = true
     end
@@ -315,7 +315,6 @@ if OD_PrereqsOK({
                 app.gui:popColors(app.gui.st.col.buttons.route)
                 r.ImGui_EndGroup(ctx)
                 if r.ImGui_BeginPopup(ctx, '##srcChanMenu' .. s.order) then
-                    -- r.ShowConsoleMsg('hi')
                     if r.ImGui_MenuItem(ctx, 'None', nil, s.srcChan == -1, true) then s:setSrcChan(-1) end
                     r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
                     if r.ImGui_BeginMenu(ctx, 'Mono source') then
@@ -414,7 +413,7 @@ if OD_PrereqsOK({
                 r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_small)
                 if r.ImGui_Button(ctx, "P##", app.settings.current.sendWidth) then
                     app.temp.addFxToSend = s
-                    app.switchPage(APP_PAGE.SEARCH_FX)
+                    app.setPage(APP_PAGE.SEARCH_FX)
                 end
                 r.ImGui_PopFont(ctx)
                 app.gui:popColors(app.gui.st.col.insert.add)
@@ -549,7 +548,7 @@ if OD_PrereqsOK({
         if rv then filterResults(searchInput) end
 
         if r.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Escape()) then
-            app.switchPage(APP_PAGE.MIXER)
+            app.setPage(APP_PAGE.MIXER)
         elseif app.temp.highlightedResult then
             if r.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_DownArrow()) then
                 if app.temp.highlightedResult < #app.temp.searchResults then
@@ -676,7 +675,75 @@ if OD_PrereqsOK({
             elseif app.page == APP_PAGE.SEARCH_SEND then
                 app.db:createNewSend(selectedResult)
             end
-            app.switchPage(APP_PAGE.MIXER)
+            app.setPage(APP_PAGE.MIXER)
+        end
+    end
+
+    function app.drawErrorNoSends()
+        local ctx = app.gui.ctx
+        app.db:sync()
+        local w, h = app.page.width - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 2,
+            app.page.width * 3 / 4
+        if r.ImGui_BeginChild(ctx, '##noSends', w, h, nil, nil) then
+            r.ImGui_Dummy(ctx, w, h)
+            r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_huge)
+            local text = 'H'
+            r.ImGui_SetCursorPos(ctx, (w - r.ImGui_CalcTextSize(ctx, text)) / 2,
+                h / 2 - app.gui.TEXT_BASE_HEIGHT * 5)
+            r.ImGui_TextColored(ctx, app.gui.st.basecolors.main, text)
+            r.ImGui_PopFont(ctx)
+            local text = 'No sends here yet...'
+            r.ImGui_SetCursorPos(ctx, (w - r.ImGui_CalcTextSize(ctx, text)) / 2,
+                h / 2)
+            r.ImGui_Text(ctx, text)
+            text = 'Why not add one?'
+            -- app.gui:pushStyles(app.gui.st.vars.bigButton)
+            r.ImGui_SetCursorPos(ctx, w / 2 - r.ImGui_CalcTextSize(ctx, text) / 2, h / 2 + app.gui.TEXT_BASE_HEIGHT * 2)
+            r.ImGui_Text(ctx, text)
+            r.ImGui_SameLine(ctx)
+            r.ImGui_SetCursorPosY(ctx, r.ImGui_GetCursorPosY(ctx) + app.gui.TEXT_BASE_HEIGHT / 2)
+            r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx) + app.gui.TEXT_BASE_WIDTH)
+            local x, y = r.ImGui_GetCursorScreenPos(ctx)
+            local sz = app.gui.TEXT_BASE_WIDTH * 1.5
+            local th = 3
+            r.ImGui_DrawList_AddBezierQuadratic(app.gui.draw_list,
+                x, y, app.temp.addSendBtnX, y, app.temp.addSendBtnX, app.temp.addSendBtnY,
+                app.gui.st.basecolors.main, th, 20)
+            r.ImGui_DrawList_AddBezierQuadratic(app.gui.draw_list,
+                app.temp.addSendBtnX, app.temp.addSendBtnY,
+                app.temp.addSendBtnX + sz / 1.5, app.temp.addSendBtnY + sz * 1.5,
+                app.temp.addSendBtnX + sz, app.temp.addSendBtnY + sz * 1.5,
+                app.gui.st.basecolors.main, th, 20)
+            r.ImGui_DrawList_AddBezierQuadratic(app.gui.draw_list,
+                app.temp.addSendBtnX, app.temp.addSendBtnY,
+                app.temp.addSendBtnX - sz / 1.5, app.temp.addSendBtnY + sz * 1.5,
+                app.temp.addSendBtnX - sz, app.temp.addSendBtnY + sz * 1.5,
+                app.gui.st.basecolors.main, th, 20)
+
+            -- app.gui:popStyles(app.gui.st.vars.bigButton)
+            r.ImGui_EndChild(ctx)
+        end
+    end
+
+    function app.drawErrorNoTrack()
+        local ctx = app.gui.ctx
+        app.db:sync()
+        local w, h = app.page.width - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 2,
+            app.page.width * 3 / 4
+        if r.ImGui_BeginChild(ctx, '##noTrack', w, h, nil, nil) then
+            r.ImGui_Dummy(ctx, w, h)
+            r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_huge)
+            local text = 'H'
+            r.ImGui_SetCursorPos(ctx, (w - r.ImGui_CalcTextSize(ctx, text)) / 2,
+                h / 2 - app.gui.TEXT_BASE_HEIGHT * 5)
+            r.ImGui_TextColored(ctx, app.gui.st.basecolors.main, text)
+            r.ImGui_PopFont(ctx)
+            local text = 'No track selected'
+            r.ImGui_SetCursorPos(ctx, (w - r.ImGui_CalcTextSize(ctx, text)) / 2,
+                h / 2 + app.gui.TEXT_BASE_HEIGHT * 2)
+            r.ImGui_Text(ctx, text)
+            -- app.gui:popStyles(app.gui.st.vars.bigButton)
+            r.ImGui_EndChild(ctx)
         end
     end
 
@@ -715,7 +782,7 @@ if OD_PrereqsOK({
                 prevX = x
                 r.ImGui_SetCursorPosX(ctx, x)
                 if app.iconButton(ctx, btn.icon) then clicked = btn.icon end
-                if app.page == APP_PAGE.MIXER and app.db.numSends == 0 and btn.icon == 'plus' then
+                if app.page == APP_PAGE.NO_SENDS and btn.icon == 'plus' then
                     app.temp.addSendBtnX, app.temp.addSendBtnY = r.ImGui_GetCursorScreenPos(ctx)
                     app.temp.addSendBtnX = app.temp.addSendBtnX - w / 2
                     app.temp.addSendBtnY = app.temp.addSendBtnY + w * 1.5
@@ -737,12 +804,19 @@ if OD_PrereqsOK({
         r.ImGui_PushFont(ctx, app.gui.st.fonts.large)
         r.ImGui_SameLine(ctx)
         r.ImGui_BeginDisabled(ctx)
-        r.ImGui_Text(ctx, ' ' .. (app.db.trackName or ''))
+        local caption = app.db.track and app.db.trackName or ''
+        if app.page == APP_PAGE.SEARCH_SEND then
+            caption = 'Add Send to track \'' .. app.db.trackName .. '\''
+        end
+        r.ImGui_Text(ctx, ' ' .. caption)
         r.ImGui_EndDisabled(ctx)
         local menu = {}
-        if app.page == APP_PAGE.MIXER then
+        if app.page == APP_PAGE.MIXER or app.page == APP_PAGE.NO_SENDS then
             table.insert(menu, { icon = 'close', hint = 'Close' })
             table.insert(menu, { icon = 'plus', hint = 'Add Send' })
+            table.insert(menu, { icon = 'gear', hint = 'Settings' })
+        elseif app.page == APP_PAGE.NO_TRACK then
+            table.insert(menu, { icon = 'close', hint = 'Close' })
             table.insert(menu, { icon = 'gear', hint = 'Settings' })
         elseif app.page == APP_PAGE.SEARCH_SEND or app.page == APP_PAGE.SEARCH_FX then
             table.insert(menu, { icon = 'right', hint = 'Back' })
@@ -751,15 +825,16 @@ if OD_PrereqsOK({
         local rv, btn = beginRightIconMenu(ctx, menu)
         r.ImGui_PopFont(ctx)
         r.ImGui_EndGroup(ctx)
+        r.ImGui_Separator(ctx)
         if rv then
             if btn == 'plus' then
-                app.switchPage(APP_PAGE.SEARCH_SEND)
+                app.setPage(APP_PAGE.SEARCH_SEND)
             elseif btn == 'close' then
-                app.switchPage(APP_PAGE.CLOSE)
+                app.setPage(APP_PAGE.CLOSE)
             elseif btn == 'gear' then
-                -- app.switchPage(APP_PAGE.SETTINGS)
+                -- app.setPage(APP_PAGE.SETTINGS)
             elseif btn == 'right' then
-                app.switchPage(APP_PAGE.MIXER)
+                app.setPage(APP_PAGE.MIXER)
             end
         end
     end
@@ -782,18 +857,14 @@ if OD_PrereqsOK({
         local max_w, max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx))
         app.warningCount = 0
 
-
-        if app.db.track == nil and not app.settings.current.followSelectedTrack then
-            r.ShowMessageBox('No track selected.', 'Send Mixer', 0)
-            return false
-        end
         if app.refreshWindowSizeOnNextFrame then app.refreshWindowSize() end
 
         r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
         local visible, open = r.ImGui_Begin(ctx, "###mainWindow",
             true,
             r.ImGui_WindowFlags_NoDocking() | r.ImGui_WindowFlags_NoCollapse() |
-            r.ImGui_WindowFlags_NoTitleBar() |  r.ImGui_WindowFlags_NoResize() | app.page.windowFlags)
+            r.ImGui_WindowFlags_NoTitleBar() | app.page.windowFlags)
+        -- r.ImGui_WindowFlags_NoResize()
         app.gui.mainWindow = {
             pos = { r.ImGui_GetWindowPos(ctx) },
             size = { r.ImGui_GetWindowSize(ctx) }
@@ -801,55 +872,17 @@ if OD_PrereqsOK({
 
         if visible then
             app.drawTopBar()
-            if app.page == APP_PAGE.MIXER then
-                if app.db.numSends == 0 then
-                    app.db:sync()
-                    local w, h = app.page.width - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())*2, app.page.width * 3 / 4
-                    if r.ImGui_BeginChild(ctx, '##noSends', w, h, nil, nil) then
-                        r.ImGui_Dummy(ctx, w, h)
-                        r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_huge)
-                        local text = 'H'
-                        r.ImGui_SetCursorPos(ctx, (w - r.ImGui_CalcTextSize(ctx, text)) / 2,
-                            h / 2 - app.gui.TEXT_BASE_HEIGHT*5)
-                        r.ImGui_TextColored(ctx, app.gui.st.basecolors.main, text)
-                            r.ImGui_PopFont(ctx)
-                        local text = 'No sends here yet'
-                        r.ImGui_SetCursorPos(ctx, (w - r.ImGui_CalcTextSize(ctx, text)) / 2,
-                            h / 2)
-                        r.ImGui_Text(ctx, text)
-                        text = 'Why not add one?'
-                        -- app.gui:pushStyles(app.gui.st.vars.bigButton)
-                        r.ImGui_SetCursorPos(ctx, w / 2 - r.ImGui_CalcTextSize(ctx, text) / 2, h / 2 + app.gui.TEXT_BASE_HEIGHT*2)
-                        r.ImGui_Text(ctx, text)
-                        r.ImGui_SameLine(ctx)
-                        r.ImGui_SetCursorPosY(ctx, r.ImGui_GetCursorPosY(ctx) + app.gui.TEXT_BASE_HEIGHT / 2)
-                        r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx) + app.gui.TEXT_BASE_WIDTH)
-                        local x, y = r.ImGui_GetCursorScreenPos(ctx)
-                        local sz = app.gui.TEXT_BASE_WIDTH * 1.5
-                        local th = 3
-                        r.ImGui_DrawList_AddBezierQuadratic(app.gui.draw_list,
-                            x, y, app.temp.addSendBtnX, y, app.temp.addSendBtnX, app.temp.addSendBtnY,
-                            app.gui.st.basecolors.main, th, 20)
-                        r.ImGui_DrawList_AddBezierQuadratic(app.gui.draw_list,
-                            app.temp.addSendBtnX, app.temp.addSendBtnY,
-                            app.temp.addSendBtnX + sz / 1.5, app.temp.addSendBtnY + sz * 1.5,
-                            app.temp.addSendBtnX + sz, app.temp.addSendBtnY + sz * 1.5,
-                            app.gui.st.basecolors.main, th, 20)
-                        r.ImGui_DrawList_AddBezierQuadratic(app.gui.draw_list,
-                            app.temp.addSendBtnX, app.temp.addSendBtnY,
-                            app.temp.addSendBtnX - sz / 1.5, app.temp.addSendBtnY + sz * 1.5,
-                            app.temp.addSendBtnX - sz, app.temp.addSendBtnY + sz * 1.5,
-                            app.gui.st.basecolors.main, th, 20)
-
-                        -- app.gui:popStyles(app.gui.st.vars.bigButton)
-                        r.ImGui_EndChild(ctx)
-                    end
-                else
-                    app.drawMixer()
-                end
+            if app.page == APP_PAGE.CLOSE then
+                return false
+            elseif app.page == APP_PAGE.MIXER then
+                app.drawMixer()
                 if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Escape()) then open = false end
             elseif app.page == APP_PAGE.SEARCH_SEND or app.page == APP_PAGE.SEARCH_FX then
                 app.drawSearch()
+            elseif app.page == APP_PAGE.NO_SENDS then
+                app.drawErrorNoSends()
+            elseif app.page == APP_PAGE.NO_TRACK then
+                app.drawErrorNoTrack()
             end
             app.drawHint('main')
             r.ImGui_End(ctx)
@@ -868,7 +901,7 @@ if OD_PrereqsOK({
         r.ImGui_PopFont(ctx)
         app.gui:popColors(app.gui.st.col.main)
         app.gui:popStyles(app.gui.st.vars.main)
-        if app.page == APP_PAGE.MIXER and r.ImGui_IsWindowFocused(ctx, r.ImGui_FocusedFlags_AnyWindow()) and app.focusMainReaperWindow and not (reaper.ImGui_IsPopupOpen(ctx, r.ImGui_PopupFlags_AnyPopup()) or reaper.ImGui_IsAnyMouseDown(ctx) or reaper.ImGui_IsAnyItemActive(ctx) or reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Escape())) then
+        if app.page.giveFocus and r.ImGui_IsWindowFocused(ctx, r.ImGui_FocusedFlags_AnyWindow()) and app.focusMainReaperWindow and not (reaper.ImGui_IsPopupOpen(ctx, r.ImGui_PopupFlags_AnyPopup()) or reaper.ImGui_IsAnyMouseDown(ctx) or reaper.ImGui_IsAnyItemActive(ctx) or reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Escape())) then
             r.JS_Window_SetFocus(app.gui.reaperHWND)
         else
             app.focusMainReaperWindow = true
@@ -888,7 +921,5 @@ if OD_PrereqsOK({
     -- app.settings:save()
     app.db:init()
     app.db:sync()
-    app.switchPage(APP_PAGE.MIXER)
-    -- app.switchPage(APP_PAGE.SEARCH_SEND)
     r.defer(app.loop)
 end

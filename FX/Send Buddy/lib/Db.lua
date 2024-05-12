@@ -1,6 +1,6 @@
 DB = {
     sends = {},
-    track = nil,
+    track = -1, -- this is to force a track change when loading the script
     trackName = nil,
     numSends = 0,
     maxNumInserts = 0,
@@ -17,6 +17,10 @@ DB = {
         self.track, self.changedTrack = self:getSelectedTrack()
         self.refresh = refresh or false
         if self.changedTrack then
+            if self.track == nil then
+                self.app.setPage(APP_PAGE.NO_TRACK)
+            end
+            self.numSends = 0
             self.soloedSends = {}
             self.refresh = true
         end
@@ -149,7 +153,13 @@ DB = {
 
                 table.insert(self.sends, send)
             end
-        self.app.refreshWindowSizeOnNextFrame = true
+           
+            if self.numSends == 0 then
+                self.app.setPage(APP_PAGE.NO_SENDS)
+            else
+                self.app.setPage(APP_PAGE.MIXER)
+            end
+            self.app.refreshWindowSizeOnNextFrame = true
         end
     end
 }
@@ -182,12 +192,12 @@ end
 
 --- TRACKS
 DB.getSelectedTrack = function(self)
-    if self.app.settings.current.followSelectedTrack == false and self.track ~= nil then return self.track, false end
+    if self.app.settings.current.followSelectedTrack == false and self.track ~= nil and self.track ~= -1 then return self.track, false end
     local track = reaper.GetLastTouchedTrack()
     if track == nil and self.track ~= nil then
         self.trackName = nil
         self.sends = {}
-        return nil, false
+        return nil, true
     end
     return track, (track ~= self.track)
 end
