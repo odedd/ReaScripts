@@ -5,6 +5,13 @@ SM_Gui = OD_Gui:new({
 
 SM_Gui.init = function(self, fonts)
     OD_Gui.init(self)
+    r.ImGui_PushFont(self.ctx, self.st.fonts.large)
+    self.mainWindow.hintHeight = r.ImGui_GetTextLineHeightWithSpacing(self.ctx) +
+    select(2, r.ImGui_GetStyleVar(self.ctx, r.ImGui_StyleVar_FramePadding())) +
+    select(2, r.ImGui_GetStyleVar(self.ctx, r.ImGui_StyleVar_WindowPadding())) +
+    select(2, r.ImGui_GetStyleVar(self.ctx, r.ImGui_StyleVar_ItemSpacing()))
+    r.ImGui_PopFont(self.ctx)
+
     self.st.basecolors = {
         darkBG = 0x242429ff,
         darkHovered = 0x2d2d35ff,

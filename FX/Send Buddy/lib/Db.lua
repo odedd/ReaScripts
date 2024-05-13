@@ -9,6 +9,8 @@ DB = {
     plugins = {},
     tracks = {},
     init = function(self, app)
+        self.plugins = {}
+        self.tracks = {}
         self:getPlugins()
         self:getTracks()
         self:assembleAssets()
@@ -34,11 +36,8 @@ DB = {
         if self.refresh and self.track then
             _, self.trackName = reaper.GetTrackName(self.track)
             -- local _, trackName = reaper.GetTrackName(self.track)
-            -- local oldNumSends = self.numSends
+            local oldNumSends = self.numSends
             self.numSends = reaper.GetTrackNumSends(self.track, 0)
-            -- if self.numSends < oldNumSends then
-            --     self.removedSends = true
-            -- end
             self.sends = {}
             self.maxNumInserts = 0
             for i = 0, self.numSends - 1 do
@@ -113,7 +112,7 @@ DB = {
                     end,
                     setMute = function(self, mute, skipRefresh)
                         reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'B_MUTE', mute and 1 or 0)
-                        if not skipRefresh then self:sync(true) end
+                        if not skipRefresh then self.db:sync(true) end
                     end,
                     setSolo = function(self, solo, exclusive)
                         local exclusive = (exclusive ~= false) and true or false
@@ -159,7 +158,9 @@ DB = {
             else
                 self.app.setPage(APP_PAGE.MIXER)
             end
-            self.app.refreshWindowSizeOnNextFrame = true
+            if oldNumSends ~= self.numSends then
+                 self.app.refreshWindowSizeOnNextFrame = true
+            end
         end
     end
 }
