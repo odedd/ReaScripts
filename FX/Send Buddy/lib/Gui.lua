@@ -147,7 +147,10 @@ SM_Gui.init = function(self, fonts)
             [r.ImGui_Col_Header()] = self.st.basecolors.header,
             [r.ImGui_Col_Button()] = self.st.basecolors.main,
             [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.mainBright,
-            [r.ImGui_Col_ButtonActive()] = self.st.basecolors.mainBrighter
+            [r.ImGui_Col_ButtonActive()] = self.st.basecolors.mainBrighter,
+            [r.ImGui_Col_ResizeGrip()]= self.st.basecolors.darkBG,
+            [r.ImGui_Col_ResizeGripHovered()]= self.st.basecolors.mainDark,
+            [r.ImGui_Col_ResizeGripActive()]= self.st.basecolors.main,
         },
         title = {
             [r.ImGui_Col_Text()] = self.st.basecolors.mainBright,
@@ -177,4 +180,13 @@ SM_Gui.init = function(self, fonts)
             [r.ImGui_StyleVar_FramePadding()] = { 20, 10 },
         }
     }
+
+    self.drawSadFace = function(self, sizeFactor,color)
+            local x, y = r.ImGui_GetCursorScreenPos(self.ctx)
+            local sz = self.TEXT_BASE_WIDTH *sizeFactor
+            r.ImGui_DrawList_AddCircleFilled(self.draw_list, x, y, sz, color, 36)
+            r.ImGui_DrawList_AddCircleFilled(self.draw_list, x-sz/3.5, y-sz/5, sz/9, 0x000000ff, 36)
+            r.ImGui_DrawList_AddCircleFilled(self.draw_list, x+sz/3.5, y-sz/5, sz/9, 0x000000ff, 36)
+            r.ImGui_DrawList_AddLine(self.draw_list, x+sz/2, y+sz/10, x-sz/2, y+sz/2.5, 0x000000ff, sz/9)
+    end
 end

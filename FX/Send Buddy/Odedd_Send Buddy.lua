@@ -148,6 +148,7 @@ if OD_PrereqsOK({
 
     function app.refreshWindowSize()
         if app.page then
+            local max_w, max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(app.gui.ctx))
             local width = app.page.width
             if app.page == APP_PAGE.MIXER then
                 local shouldScroll = app.db.maxNumInserts > app.settings.current.maxNumInserts
@@ -155,7 +156,10 @@ if OD_PrereqsOK({
                     r.ImGui_GetStyleVar(app.gui.ctx, r.ImGui_StyleVar_WindowPadding()) +
                     (shouldScroll and r.ImGui_GetStyleVar(app.gui.ctx, r.ImGui_StyleVar_ScrollbarSize()) or 0)
             end
-            r.ImGui_SetNextWindowSize(app.gui.ctx, math.max(width, app.page.width), 0)
+            
+            app.gui.mainWindow.min_w,app.gui.mainWindow.min_h = math.max(width, app.page.width),app.page.height or 0
+            app.gui.mainWindow.max_w,app.gui.mainWindow.max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(app.gui.ctx))
+            r.ImGui_SetNextWindowSize(app.gui.ctx, math.max(width, app.page.width), app.page.height or 0)
             app.refreshWindowSizeOnNextFrame = false
         end
     end
@@ -184,7 +188,7 @@ if OD_PrereqsOK({
         app.db:sync()
         r.ImGui_PushFont(ctx, app.gui.st.fonts.small)
         local drawSend = function(s, part, label)
-            local drawFader = function()
+            local drawFader = function(h)
                 local v = OD_dBFromValue(s.vol)
                 local mw = r.ImGui_GetMouseWheel(ctx)
                 local scaledV = (v >= app.settings.current.scaleLevel) and (v / app.settings.current.scaleFactor) or
@@ -198,7 +202,7 @@ if OD_PrereqsOK({
                 end
                 app.gui:pushStyles(app.gui.st.vars.vol)
                 local rv, v2 = r.ImGui_VSliderDouble(ctx, '##v', app.settings.current.sendWidth,
-                    app.settings.current.faderHeight,
+                    h,
                     scaledV,
                     app.settings.current.minSendVol,
                     app.settings.current.maxSendVol * app.settings.current.scaleFactor,
@@ -422,6 +426,7 @@ if OD_PrereqsOK({
             r.ImGui_PushID(ctx, 's' .. (s and s.order or -1))
             -- r.ImGui_BeginGroup(ctx)
 
+            local faderHeight = math.max(app.settings.current.minFaderHeight, select(2,r.ImGui_GetContentRegionAvail(ctx))-app.gui.TEXT_BASE_HEIGHT_SMALL*2 - app.gui.mainWindow.hintHeight - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing())*2)
             if s == nil then
                 if r.ImGui_BeginChild(ctx, '##' .. part .. 'Label', app.settings.current.sendWidth, select(2, r.ImGui_CalcTextSize(ctx, label or '')), nil, r.ImGui_WindowFlags_NoScrollbar() | r.ImGui_WindowFlags_NoScrollWithMouse()) then
                     if label then
@@ -442,7 +447,7 @@ if OD_PrereqsOK({
                 elseif part == 'routebutton' then
                     drawRouteButton()
                 elseif part == 'fader' then
-                    drawFader()
+                    drawFader(faderHeight)  
                 elseif part == 'volLabel' then
                     drawVolLabel()
                 elseif part == 'sendName' then
@@ -455,7 +460,6 @@ if OD_PrereqsOK({
         end
 
         -- r.ImGui_SetWindowSize(ctx, (app.settings.current.sendWidth + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2) * app.db.numSends + (r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())), app.gui.mainWindow.size[2])
-        local btnHeight, btnStartPosY = 0, 0
         if next(app.db.sends) then
             local h = -app.gui.vars.framePaddingY +
                 (math.min(app.db.maxNumInserts, app.settings.current.maxNumInserts) + 1) *
@@ -480,26 +484,17 @@ if OD_PrereqsOK({
                 { name = 'sendName' }
             }
             r.ImGui_BeginGroup(ctx)
-            btnStartPosY = r.ImGui_GetCursorPosY(ctx)
             for j, part in ipairs(parts) do
-                if part.name == 'solomute' then
-                    btnStartPosY = r.ImGui_GetCursorPosY(ctx)
-                end
                 r.ImGui_BeginGroup(ctx)
                 for i, s in OD_PairsByOrder(app.db.sends) do
                     drawSend(s, part.name)
                     r.ImGui_SameLine(ctx)
                 end
                 r.ImGui_EndGroup(ctx)
-                if part.name == 'volLabel' then
-                    btnHeight = r.ImGui_GetCursorPosY(ctx) - btnStartPosY -
-                        select(2, r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()))
-                end
             end
             r.ImGui_EndGroup(ctx)
             r.ImGui_SameLine(ctx)
         end
-        if btnHeight == 0 then btnHeight = app.settings.current.faderHeight end
 
         r.ImGui_PopFont(ctx)
     end
@@ -534,6 +529,7 @@ if OD_PrereqsOK({
         local ctx = app.gui.ctx
         local selectedResult = nil
         local w = select(1, r.ImGui_GetContentRegionAvail(ctx))
+
         r.ImGui_PushFont(ctx, app.gui.st.fonts.medium)
         app.gui:pushStyles(app.gui.st.vars.searchWindow)
         app.gui:pushColors(app.gui.st.col.searchWindow)
@@ -545,6 +541,10 @@ if OD_PrereqsOK({
         end
         r.ImGui_SetNextItemWidth(ctx, w)
         local rv, searchInput = r.ImGui_InputText(ctx, "##searchInput", app.temp.searchInput)
+
+        local h = select(2, r.ImGui_GetContentRegionAvail(ctx)) - app.gui.mainWindow.hintHeight
+        local maxSearchResults = math.floor(h/(app.gui.TEXT_BASE_HEIGHT_LARGE))
+
         if rv then filterResults(searchInput) end
 
         if r.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Escape()) then
@@ -570,7 +570,7 @@ if OD_PrereqsOK({
         end
 
         local selectableFlags = r.ImGui_SelectableFlags_SpanAllColumns() | r.ImGui_SelectableFlags_AllowItemOverlap()
-        local outer_size = { 0.0, app.gui.TEXT_BASE_HEIGHT_LARGE * app.settings.current.maxSearchResults }
+        local outer_size = { 0.0, app.gui.TEXT_BASE_HEIGHT_LARGE * h/(app.gui.TEXT_BASE_HEIGHT_LARGE) }
         local tableFlags = r.ImGui_TableFlags_ScrollY()
         local lastGroup = nil
 
@@ -609,7 +609,7 @@ if OD_PrereqsOK({
                 r.ImGui_SameLine(ctx)
 
                 if result.type == ASSETS.TRACK then
-                    r.ImGui_SetCursorPosY(ctx, r.ImGui_GetCursorPosY(ctx) - 1)
+                    r.ImGui_SetCursorPosY(ctx, r.ImGui_GetCursorPosY(ctx))
                     local size = app.gui.TEXT_BASE_HEIGHT_LARGE - app.gui.vars.framePaddingY * 2
                     r.ImGui_ColorButton(ctx, 'color', r.ImGui_ColorConvertNative(result.color),
                         r.ImGui_ColorEditFlags_NoAlpha() | r.ImGui_ColorEditFlags_NoBorder() |
@@ -652,15 +652,15 @@ if OD_PrereqsOK({
 
                 r.ImGui_PopID(ctx)
             end
-            if app.temp.checkScrollDown and highlightedY > upperRowY + app.settings.current.maxSearchResults * app.gui.TEXT_BASE_HEIGHT_LARGE then
+            if app.temp.checkScrollDown and highlightedY > upperRowY + maxSearchResults * app.gui.TEXT_BASE_HEIGHT_LARGE then
                 r.ImGui_SetScrollY(ctx,
                     r.ImGui_GetScrollY(ctx) +
-                    (highlightedY - (upperRowY + (app.settings.current.maxSearchResults - 1) * app.gui.TEXT_BASE_HEIGHT_LARGE) - 1))
+                    (highlightedY - (upperRowY + (maxSearchResults - 1) * app.gui.TEXT_BASE_HEIGHT_LARGE) - 1))
                 app.temp.checkScrollDown = false
             end
             if app.temp.checkScrollUp and highlightedY <= upperRowY + app.gui.TEXT_BASE_HEIGHT_LARGE then
                 r.ImGui_SetScrollY(ctx,
-                    r.ImGui_GetScrollY(ctx) - (upperRowY - highlightedY + 1) - app.gui.TEXT_BASE_HEIGHT_LARGE)
+                    r.ImGui_GetScrollY(ctx) - (upperRowY - highlightedY + 1) - app.gui.TEXT_BASE_HEIGHT_LARGE-1)
                 app.temp.checkScrollUp = false
             end
             r.ImGui_EndTable(ctx)
@@ -675,6 +675,8 @@ if OD_PrereqsOK({
             elseif app.page == APP_PAGE.SEARCH_SEND then
                 app.db:createNewSend(selectedResult)
             end
+            -- TODO: handle going back to a "no track" or "no sends" page
+            -- app.db:sync(true)
             app.setPage(APP_PAGE.MIXER)
         end
     end
@@ -682,23 +684,19 @@ if OD_PrereqsOK({
     function app.drawErrorNoSends()
         local ctx = app.gui.ctx
         app.db:sync()
-        local w, h = app.page.width - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 2,
-            app.page.width * 3 / 4
+        local w, h = select(1, r.ImGui_GetContentRegionAvail(ctx)) - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 2,
+        select(2, r.ImGui_GetContentRegionAvail(ctx)) - app.gui.mainWindow.hintHeight
         if r.ImGui_BeginChild(ctx, '##noSends', w, h, nil, nil) then
             r.ImGui_Dummy(ctx, w, h)
-            r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_huge)
-            local text = 'H'
-            r.ImGui_SetCursorPos(ctx, (w - r.ImGui_CalcTextSize(ctx, text)) / 2,
-                h / 2 - app.gui.TEXT_BASE_HEIGHT * 5)
-            r.ImGui_TextColored(ctx, app.gui.st.basecolors.main, text)
-            r.ImGui_PopFont(ctx)
+            r.ImGui_SetCursorPos(ctx, w / 2,
+            h / 2 - app.gui.TEXT_BASE_HEIGHT * 2)
+            app.gui:drawSadFace(4, app.gui.st.basecolors.main)
             local text = 'No sends here yet...'
             r.ImGui_SetCursorPos(ctx, (w - r.ImGui_CalcTextSize(ctx, text)) / 2,
-                h / 2)
+                h / 2 + app.gui.TEXT_BASE_HEIGHT)
             r.ImGui_Text(ctx, text)
             text = 'Why not add one?'
-            -- app.gui:pushStyles(app.gui.st.vars.bigButton)
-            r.ImGui_SetCursorPos(ctx, w / 2 - r.ImGui_CalcTextSize(ctx, text) / 2, h / 2 + app.gui.TEXT_BASE_HEIGHT * 2)
+            r.ImGui_SetCursorPos(ctx, w / 2 - r.ImGui_CalcTextSize(ctx, text) / 2, h / 2 + app.gui.TEXT_BASE_HEIGHT * 3)
             r.ImGui_Text(ctx, text)
             r.ImGui_SameLine(ctx)
             r.ImGui_SetCursorPosY(ctx, r.ImGui_GetCursorPosY(ctx) + app.gui.TEXT_BASE_HEIGHT / 2)
@@ -720,7 +718,6 @@ if OD_PrereqsOK({
                 app.temp.addSendBtnX - sz, app.temp.addSendBtnY + sz * 1.5,
                 app.gui.st.basecolors.main, th, 20)
 
-            -- app.gui:popStyles(app.gui.st.vars.bigButton)
             r.ImGui_EndChild(ctx)
         end
     end
@@ -728,16 +725,13 @@ if OD_PrereqsOK({
     function app.drawErrorNoTrack()
         local ctx = app.gui.ctx
         app.db:sync()
-        local w, h = app.page.width - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 2,
-            app.page.width * 3 / 4
+        local w, h = select(1, r.ImGui_GetContentRegionAvail(ctx)) - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 2,
+        select(2, r.ImGui_GetContentRegionAvail(ctx)) - app.gui.mainWindow.hintHeight
         if r.ImGui_BeginChild(ctx, '##noTrack', w, h, nil, nil) then
             r.ImGui_Dummy(ctx, w, h)
-            r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_huge)
-            local text = 'H'
-            r.ImGui_SetCursorPos(ctx, (w - r.ImGui_CalcTextSize(ctx, text)) / 2,
-                h / 2 - app.gui.TEXT_BASE_HEIGHT * 5)
-            r.ImGui_TextColored(ctx, app.gui.st.basecolors.main, text)
-            r.ImGui_PopFont(ctx)
+            r.ImGui_SetCursorPos(ctx, w / 2,
+            h / 2 - app.gui.TEXT_BASE_HEIGHT * 1)
+            app.gui:drawSadFace(4, app.gui.st.basecolors.main)
             local text = 'No track selected'
             r.ImGui_SetCursorPos(ctx, (w - r.ImGui_CalcTextSize(ctx, text)) / 2,
                 h / 2 + app.gui.TEXT_BASE_HEIGHT * 2)
@@ -770,7 +764,7 @@ if OD_PrereqsOK({
 
     function app.drawTopBar()
         local function beginRightIconMenu(ctx, buttons)
-            local windowEnd = app.gui.mainWindow.size[1] - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())
+            local windowEnd = app.gui.mainWindow.size[1] - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) - ((r.ImGui_GetScrollMaxY(app.gui.ctx) > 0 ) and r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ScrollbarSize()) or 0)
             r.ImGui_SameLine(ctx, windowEnd)
             r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_large)
             local clicked = nil
@@ -793,6 +787,7 @@ if OD_PrereqsOK({
             return clicked ~= nil, clicked
         end
 
+        
         local ctx = app.gui.ctx
         r.ImGui_BeginGroup(ctx)
         r.ImGui_PushFont(ctx, app.gui.st.fonts.large_bold)
@@ -854,21 +849,20 @@ if OD_PrereqsOK({
     function app.drawMainWindow()
         local ctx = app.gui.ctx
 
-        local max_w, max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx))
         app.warningCount = 0
 
         if app.refreshWindowSizeOnNextFrame then app.refreshWindowSize() end
-
+        app.gui.mainWindow.hintHeight = r.ImGui_GetTextLineHeightWithSpacing(ctx)+select(2,r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()))+select(2,r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))+select(2,r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()))
         r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
+        r.ImGui_SetNextWindowSizeConstraints(app.gui.ctx, app.gui.mainWindow.min_w, app.gui.mainWindow.min_h, app.gui.mainWindow.max_w, app.gui.mainWindow.max_h)
+        
         local visible, open = r.ImGui_Begin(ctx, "###mainWindow",
             true,
-            r.ImGui_WindowFlags_NoDocking() | r.ImGui_WindowFlags_NoCollapse() |
+             r.ImGui_WindowFlags_NoCollapse() |
             r.ImGui_WindowFlags_NoTitleBar() | app.page.windowFlags)
         -- r.ImGui_WindowFlags_NoResize()
-        app.gui.mainWindow = {
-            pos = { r.ImGui_GetWindowPos(ctx) },
-            size = { r.ImGui_GetWindowSize(ctx) }
-        }
+        app.gui.mainWindow.pos = { r.ImGui_GetWindowPos(ctx) }
+        app.gui.mainWindow.size = { r.ImGui_GetWindowSize(ctx) }
 
         if visible then
             app.drawTopBar()
