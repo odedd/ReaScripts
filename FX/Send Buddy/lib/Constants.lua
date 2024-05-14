@@ -4,7 +4,7 @@
 DB_SCALE = math.log(10.0) * 0.05
 
 APP_PAGE = {
-    ['MIXER'] = {width = 500, minHeight = 407, windowFlags = r.ImGui_WindowFlags_None(), giveFocus = true},
+    ['MIXER'] = {width = 500, minHeight = 407, windowFlags = r.ImGui_WindowFlags_None(), giveFocus = false},
     ['SEARCH_SEND'] = {width = 900, height = 409, minHeight = 409, windowFlags = r.ImGui_WindowFlags_None()},
     ['SEARCH_FX'] = {width = 900, height = 409, minHeight = 409, windowFlags = r.ImGui_WindowFlags_None()},
     ['NO_SENDS'] = {width = 500, height = 500*3/4, minHeight = 500*3/4, windowFlags = r.ImGui_WindowFlags_None(), giveFocus = true},
@@ -13,6 +13,8 @@ APP_PAGE = {
 }
 
 ICONS = {
+    ['DOCK_DOWN'] = 'D',
+    ['UNDOCK'] = 'E',
     ['GEAR'] = 'G',
     ['HMMM'] = 'H',
     ['LEFT'] = 'L',

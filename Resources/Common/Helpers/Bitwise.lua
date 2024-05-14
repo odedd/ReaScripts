@@ -15,3 +15,15 @@ end
 function OD_BfToggle(int, bit)
     return int ~bit
 end
+
+-- Convert to a string showing an integer as a binary number
+function OD_ToBitString(num,bits)
+    -- returns a table of bits, most significant first.
+    bits = bits or math.max(1, select(2, math.frexp(num)))
+    local t = {} -- will contain the bits        
+    for b = bits, 1, -1 do
+        t[b] = math.fmod(num, 2)
+        num = math.floor((num - t[b]) / 2)
+    end
+    return table.concat(t)
+end

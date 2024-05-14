@@ -33,7 +33,7 @@ if OD_PrereqsOK({
         reaimgui_version = '0.8.4',
         sws = true,            -- required for SNM_SetIntConfigVar - setting config vars (max file size limitation and autosave options)
         js_version = 1.310,    -- required for JS_Dialog_BrowseForFolder
-        reaper_version = 6.76, -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
+        reaper_version = 7.01, -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
     }) then
     dofile(p .. 'lib/Constants.lua')
     dofile(p .. 'lib/Settings.lua')
@@ -152,12 +152,12 @@ if OD_PrereqsOK({
             local width = app.page.width
             local minHeight = app.page.minHeight or 0
             if app.page == APP_PAGE.MIXER then
-                
                 width, minHeight = app.calculateMixerSize()
             end
-            app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = math.max(width, app.page.width), (minHeight or app.page.minHeight or 0) or 0
+            app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = math.max(width, app.page.width),
+                (minHeight or app.page.minHeight or 0) or 0
             app.gui.mainWindow.max_w, app.gui.mainWindow.max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(app
-            .gui.ctx))
+                .gui.ctx))
             r.ImGui_SetNextWindowSize(app.gui.ctx, math.max(width, app.page.width), app.page.height or 0)
             app.refreshWindowSizeOnNextFrame = false
         end
@@ -191,21 +191,30 @@ if OD_PrereqsOK({
         local vSpacing = select(2, r.ImGui_GetStyleVar(app.gui.ctx, r.ImGui_StyleVar_ItemSpacing()))
         local topBarH = app.gui.TEXT_BASE_HEIGHT_LARGE + vSpacing * 2 + 1
         -- inserts
-        local insertsH = (app.settings.current.maxNumInserts + 1) * (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2)
+        local insertsH = (app.settings.current.maxNumInserts + 1) *
+        (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2)
         local separatorH = 5
         -- sends
-        local sendsH = 7 * (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2) + vSpacing + app.settings.current.minFaderHeight
-        local h = wPadding + topBarH + insertsH +  vSpacing + separatorH + vSpacing + sendsH + vSpacing + app.gui.mainWindow.hintHeight + wPadding
-        
+        local sendsH = 7 * (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2) + vSpacing +
+        app.settings.current.minFaderHeight
+        local h = wPadding + topBarH + insertsH + vSpacing + separatorH + vSpacing + sendsH + vSpacing +
+        app.gui.mainWindow.hintHeight + wPadding
+
         local shouldScroll = app.db.maxNumInserts > app.settings.current.maxNumInserts
         local w = app.settings.current.sendWidth * (app.db.numSends + 1) +
-        r.ImGui_GetStyleVar(app.gui.ctx, r.ImGui_StyleVar_WindowPadding()) +
-        (shouldScroll and r.ImGui_GetStyleVar(app.gui.ctx, r.ImGui_StyleVar_ScrollbarSize()) or 0)
+            r.ImGui_GetStyleVar(app.gui.ctx, r.ImGui_StyleVar_WindowPadding()) +
+            (shouldScroll and r.ImGui_GetStyleVar(app.gui.ctx, r.ImGui_StyleVar_ScrollbarSize()) or 0)
         return w, h
     end
 
     function app.drawMixer()
         local ctx = app.gui.ctx
+        local altPressed = OD_IsKeyPressed('alt')
+        local ctrlPressed = OD_IsKeyPressed('control')
+        -- if OD_IsKeyPressed('control') then
+        --     r.ShowConsoleMsg('command pressed\n')
+        -- end
+
         app.db:sync()
         r.ImGui_PushFont(ctx, app.gui.st.fonts.small)
         local drawSend = function(s, part, label)
@@ -248,6 +257,9 @@ if OD_PrereqsOK({
                         local scale = .2
                         if v > app.settings.current.scaleLevel then
                             scale = 0.05
+                        end
+                        if ctrlPressed then
+                            scale = scale * 0.2
                         end
                         if v < app.settings.current.minSendVol then
                             v = app.settings.current.minSendVol
@@ -297,21 +309,39 @@ if OD_PrereqsOK({
                     r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) / 2
                 app.gui:pushColors(app.gui.st.col.buttons.mute[s.mute])
                 if r.ImGui_Button(ctx, 'M##mute' .. s.order, w) then
-                    s:setMute(s.mute == 0.0)
+                    s:setMute(not s.mute)
                 end
                 app.gui:popColors(app.gui.st.col.buttons.mute[s.mute])
                 r.ImGui_SameLine(ctx)
                 local soloed = app.db.soloedSends[s.order] ~= nil
-                app.gui:pushColors(app.gui.st.col.buttons.solo[soloed and 1 or 0])
+                app.gui:pushColors(app.gui.st.col.buttons.solo[soloed])
                 if r.ImGui_Button(ctx, 'S##solo' .. s.order, w) then
                     s:setSolo(not soloed, not r.ImGui_IsKeyDown(ctx, app.gui.keyModCtrlCmd))
                 end
-                app.gui:popColors(app.gui.st.col.buttons.solo[soloed and 1 or 0])
+                app.gui:popColors(app.gui.st.col.buttons.solo[soloed])
+            end
+            local drawPhaseSoloDefeat = function() -- TODO: Implement
+                local w = app.settings.current.sendWidth / 2 -
+                    r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) / 2
+                app.gui:pushColors(app.gui.st.col.buttons.polarity[s.polarity])
+                r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_small)
+                if r.ImGui_Button(ctx, 'O##polarity' .. s.order, w) then
+                    s:setPolarity(not s.polarity)
+                end
+                r.ImGui_PopFont(ctx)
+                app.gui:popColors(app.gui.st.col.buttons.mute[s.mute])
+                r.ImGui_SameLine(ctx)
+                local soloed = app.db.soloedSends[s.order] ~= nil
+                app.gui:pushColors(app.gui.st.col.buttons.solo[soloed])
+                if r.ImGui_Button(ctx, 'D##solodefeat' .. s.order, w) then
+                    s:setSolo(not soloed, not r.ImGui_IsKeyDown(ctx, app.gui.keyModCtrlCmd))
+                end
+                app.gui:popColors(app.gui.st.col.buttons.solo[soloed])
             end
             local drawModeButton = function()
                 local w = app.settings.current.sendWidth
                 app.gui:pushColors(app.gui.st.col.buttons.mode[s.mode])
-                local label = s.mode == 0 and "post" or (s.mode == 1 and "pre-fx" or "post-fx")
+                local label = s.mode == 0 and "post" or (s.mode == 1 and "preFX" or "postFX")
                 if r.ImGui_Button(ctx, label .. '##mode' .. s.order, w) then
                     s:setMode(s.mode == 0 and 1 or (s.mode == 1 and 3 or 0))
                     -- s:setSolo(not soloed, not r.ImGui_IsKeyDown(ctx, app.gui.keyModCtrlCmd))
@@ -465,6 +495,8 @@ if OD_PrereqsOK({
                     drawPan()
                 elseif part == 'solomute' then
                     drawSoloMute()
+                elseif part == 'phasesolod' then
+                    drawPhaseSoloDefeat()
                 elseif part == 'modebutton' then
                     drawModeButton()
                 elseif part == 'routebutton' then
@@ -482,8 +514,11 @@ if OD_PrereqsOK({
             -- r.ImGui_EndGroup(ctx)
         end
 
-        -- r.ImGui_SetWindowSize(ctx, (app.settings.current.sendWidth + r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2) * app.db.numSends + (r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding())), app.gui.mainWindow.size[2])
         if next(app.db.sends) then
+            -- r.ShowConsoleMsg((r.JS_VKeys_GetDown(1000)))
+            -- if r.ImGui_IsKeyDown(ctx, r.ImGui_Mod_Alt()) then
+            --     r.ShowConsoleMsg('Alt is pressed\n')
+            -- end
             local h = -app.gui.vars.framePaddingY +
                 (app.settings.current.maxNumInserts + 1) *
                 (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2)
@@ -512,11 +547,11 @@ if OD_PrereqsOK({
                     if value_with_lock_threshold_y > 0 + app.gui.TEXT_BASE_HEIGHT_SMALL then
                         app.settings.current.maxNumInserts = app.settings.current.maxNumInserts + 1
                         r.ImGui_ResetMouseDragDelta(ctx, r.ImGui_MouseButton_Left())
-                        app.gui.mainWindow.min_w,app.gui.mainWindow.min_h = app.calculateMixerSize()
+                        app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.calculateMixerSize()
                     elseif app.settings.current.maxNumInserts > 0 and value_with_lock_threshold_y < 0 - app.gui.TEXT_BASE_HEIGHT_SMALL then
                         app.settings.current.maxNumInserts = app.settings.current.maxNumInserts - 1
                         r.ImGui_ResetMouseDragDelta(ctx, r.ImGui_MouseButton_Left())
-                        app.gui.mainWindow.min_w,app.gui.mainWindow.min_h = app.calculateMixerSize()
+                        app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.calculateMixerSize()
                     end
                 end
             end
@@ -534,6 +569,17 @@ if OD_PrereqsOK({
                 { name = 'volLabel' },
                 { name = 'sendName' }
             }
+            if altPressed then -- TODO: Implement
+                parts = {
+                    { name = 'phasesolod',  label = 'Phase/Solo Defeat' },
+                    { name = 'modebutton',  label = 'Mode' },
+                    { name = 'routebutton', label = 'Route' },
+                    { name = 'pan',         label = 'Pan' },
+                    { name = 'fader',       label = 'Send\nVolume' },
+                    { name = 'volLabel' },
+                    { name = 'sendName' }
+                }
+            end
             r.ImGui_BeginGroup(ctx)
             for j, part in ipairs(parts) do
                 r.ImGui_BeginGroup(ctx)
@@ -728,7 +774,6 @@ if OD_PrereqsOK({
                 app.db:createNewSend(selectedResult)
             end
             -- TODO: handle going back to a "no track" or "no sends" page
-            -- app.db:sync(true)
             app.setPage(APP_PAGE.MIXER)
         end
     end
@@ -821,7 +866,7 @@ if OD_PrereqsOK({
     function app.drawTopBar()
         local function beginRightIconMenu(ctx, buttons)
             local windowEnd = app.gui.mainWindow.size[1] - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) -
-            ((r.ImGui_GetScrollMaxY(app.gui.ctx) > 0) and r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ScrollbarSize()) or 0)
+                ((r.ImGui_GetScrollMaxY(app.gui.ctx) > 0) and r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ScrollbarSize()) or 0)
             r.ImGui_SameLine(ctx, windowEnd)
             r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_large)
             local clicked = nil
@@ -874,15 +919,26 @@ if OD_PrereqsOK({
             table.insert(menu, { icon = 'right', hint = 'Back' })
             table.insert(menu, { icon = 'gear', hint = 'Settings' })
         end
+        if r.ImGui_IsWindowDocked(ctx) then
+            table.insert(menu, { icon = 'undock', hint = 'Undock' })
+        else
+            if app.settings.current.lastDockId then
+                table.insert(menu, { icon = 'dock_down', hint = 'Dock' })
+            end
+        end
         local rv, btn = beginRightIconMenu(ctx, menu)
         r.ImGui_PopFont(ctx)
         r.ImGui_EndGroup(ctx)
         r.ImGui_Separator(ctx)
         if rv then
-            if btn == 'plus' then
+            if btn == 'close' then
+                app.exit = true
+            elseif btn == 'undock' then
+                app.gui.mainWindow.dockTo = 0
+            elseif btn == 'dock_down' then
+                app.gui.mainWindow.dockTo = app.settings.current.lastDockId
+            elseif btn == 'plus' then
                 app.setPage(APP_PAGE.SEARCH_SEND)
-            elseif btn == 'close' then
-                app.setPage(APP_PAGE.CLOSE)
             elseif btn == 'gear' then
                 -- app.setPage(APP_PAGE.SETTINGS)
             elseif btn == 'right' then
@@ -905,9 +961,13 @@ if OD_PrereqsOK({
 
     function app.drawMainWindow()
         local ctx = app.gui.ctx
-        
+
         if app.refreshWindowSizeOnNextFrame then
             app.refreshWindowSize()
+        end
+        if app.gui.mainWindow.dockTo ~= nil then
+            r.ImGui_SetNextWindowDockID(ctx, app.gui.mainWindow.dockTo, r.ImGui_Cond_Always())
+            app.gui.mainWindow.dockTo = nil
         end
 
         r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
@@ -923,15 +983,17 @@ if OD_PrereqsOK({
         app.gui.mainWindow.size = { r.ImGui_GetWindowSize(ctx) }
 
         if r.ImGui_GetWindowDockID(ctx) ~= app.gui.mainWindow.dockId then
-            r.ShowConsoleMsg('refreshing window size\n')
             app.refreshWindowSizeOnNextFrame = true
             app.gui.mainWindow.dockId = r.ImGui_GetWindowDockID(ctx)
+            if app.gui.mainWindow.dockId ~= 0 then
+                app.settings.current.lastDockId = app.gui.mainWindow.dockId
+                app.settings:save()
+            end
         end
         if visible then
             app.drawTopBar()
-            if app.page == APP_PAGE.CLOSE then
-                return false
-            elseif app.page == APP_PAGE.MIXER then
+
+            if app.page == APP_PAGE.MIXER then
                 app.drawMixer()
                 if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Escape()) then open = false end
             elseif app.page == APP_PAGE.SEARCH_SEND or app.page == APP_PAGE.SEARCH_FX then
@@ -964,7 +1026,7 @@ if OD_PrereqsOK({
             app.focusMainReaperWindow = true
         end
 
-        if app.open and not (app.page == APP_PAGE.CLOSE) then
+        if app.open and not app.exit then
             r.defer(app.loop)
         end
     end
@@ -978,5 +1040,5 @@ if OD_PrereqsOK({
     -- app.settings:save()
     app.db:init()
     app.db:sync()
-    r.defer(app.loop)
+    -- r.defer(app.loop)
 end

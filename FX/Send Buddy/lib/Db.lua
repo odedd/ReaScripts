@@ -47,12 +47,12 @@ DB = {
                     name = sendName,
                     db = self,
                     track = self.track,
-                    mute = reaper.GetTrackSendInfo_Value(self.track, 0, i, 'B_MUTE'),
+                    mute = reaper.GetTrackSendInfo_Value(self.track, 0, i, 'B_MUTE') == 1.0,
                     vol = reaper.GetTrackSendInfo_Value(self.track, 0, i, 'D_VOL'),
                     pan = reaper.GetTrackSendInfo_Value(self.track, 0, i, 'D_PAN'),
                     panLaw = reaper.GetTrackSendInfo_Value(self.track, 0, i, 'D_PANLAW'),
                     mono = math.floor(reaper.GetTrackSendInfo_Value(self.track, 0, i, 'B_MONO')),
-                    phase = reaper.GetTrackSendInfo_Value(self.track, 0, i, 'B_PHASE'),
+                    polarity = reaper.GetTrackSendInfo_Value(self.track, 0, i, 'B_PHASE') == 1.0,
                     srcChan = math.floor(reaper.GetTrackSendInfo_Value(self.track, 0, i, 'I_SRCCHAN')),
                     mode = math.floor(reaper.GetTrackSendInfo_Value(self.track, 0, i, 'I_SENDMODE')),
                     destChan = math.floor(reaper.GetTrackSendInfo_Value(self.track, 0, i, 'I_DSTCHAN')),
@@ -86,8 +86,8 @@ DB = {
                         reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'B_MONO', mono)
                         self.db:sync(true)
                     end,
-                    setPhase = function(self, phase)
-                        reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'B_PHASE', phase)
+                    setPolarity = function(self, polarity)
+                        reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'B_PHASE', polarity and 1 or 0)
                         self.db:sync(true)
                     end,
                     setSrcChan = function(self, srcChan)
@@ -282,7 +282,7 @@ end
 
 --- PLUGINS
 DB.addPlugin = function(self, full_name, fx_type, instrument, ident)
-    -- TODO: check about DX and DXi plugins (maybe in windows?)
+    -- TODO: check about all plugin types
     self.app.logger:logDebug('-- OD_VPS_DB:addPlugin()')
     local self = self
 

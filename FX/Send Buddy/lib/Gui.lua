@@ -7,9 +7,9 @@ SM_Gui.init = function(self, fonts)
     OD_Gui.init(self)
     r.ImGui_PushFont(self.ctx, self.st.fonts.large)
     self.mainWindow.hintHeight = r.ImGui_GetTextLineHeightWithSpacing(self.ctx) +
-    select(2, r.ImGui_GetStyleVar(self.ctx, r.ImGui_StyleVar_FramePadding())) +
-    select(2, r.ImGui_GetStyleVar(self.ctx, r.ImGui_StyleVar_WindowPadding())) +
-    select(2, r.ImGui_GetStyleVar(self.ctx, r.ImGui_StyleVar_ItemSpacing()))
+        select(2, r.ImGui_GetStyleVar(self.ctx, r.ImGui_StyleVar_FramePadding())) +
+        select(2, r.ImGui_GetStyleVar(self.ctx, r.ImGui_StyleVar_WindowPadding())) +
+        select(2, r.ImGui_GetStyleVar(self.ctx, r.ImGui_StyleVar_ItemSpacing()))
     r.ImGui_PopFont(self.ctx)
 
     self.st.basecolors = {
@@ -51,7 +51,7 @@ SM_Gui.init = function(self, fonts)
                 [r.ImGui_Col_Button()] = self.st.basecolors.widgetBG,
                 [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.hovered,
                 [r.ImGui_Col_ButtonActive()] = self.st.basecolors.active
-    
+
             },
             disabled = {
                 [r.ImGui_Col_Button()] = 0x746a2cff,
@@ -74,39 +74,53 @@ SM_Gui.init = function(self, fonts)
         },
         buttons = {
             mute = {
-                [1] = {
+                [true] = {
                     [r.ImGui_Col_Button()] = 0xa63f3fFF,
                     [r.ImGui_Col_Text()] = 0x2b2b2bff,
                     [r.ImGui_Col_ButtonHovered()] = 0xb64f4fFF,
                     [r.ImGui_Col_ButtonActive()] = 0xc65f5fFF
                 },
-                [0] = {
+                [false] = {
                     [r.ImGui_Col_Text()] = 0x000000ff,
                     [r.ImGui_Col_Button()] = self.st.basecolors.widgetBG,
-            [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.hovered,
-            [r.ImGui_Col_ButtonActive()] = self.st.basecolors.active
+                    [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.hovered,
+                    [r.ImGui_Col_ButtonActive()] = self.st.basecolors.active
                 }
             },
             solo = {
-                [1] = {
+                [true] = {
                     [r.ImGui_Col_Button()] = 0xd6be42FF,
                     [r.ImGui_Col_Text()] = 0x000000ff,
                     [r.ImGui_Col_ButtonHovered()] = 0xe6ce52FF,
                     [r.ImGui_Col_ButtonActive()] = 0xf6de62FF
                 },
-                [0] = {
+                [false] = {
                     [r.ImGui_Col_Text()] = 0x000000ff,
                     [r.ImGui_Col_Button()] = self.st.basecolors.widgetBG,
-            [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.hovered,
-            [r.ImGui_Col_ButtonActive()] = self.st.basecolors.active
+                    [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.hovered,
+                    [r.ImGui_Col_ButtonActive()] = self.st.basecolors.active
+                }
+            },
+            polarity = {
+                [true] = {
+                    [r.ImGui_Col_Button()] = 0x3f67d4FF,
+                    [r.ImGui_Col_Text()] = 0x000000ff,
+                    [r.ImGui_Col_ButtonHovered()] = 0x4f77e4FF,
+                    [r.ImGui_Col_ButtonActive()] = 0x5f87f4FF
+                },
+                [false] = {
+                    [r.ImGui_Col_Text()] = 0x000000ff,
+                    [r.ImGui_Col_Button()] = self.st.basecolors.widgetBG,
+                    [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.hovered,
+                    [r.ImGui_Col_ButtonActive()] = self.st.basecolors.active
                 }
             },
             mode = {
                 [0] = {
                     [r.ImGui_Col_Text()] = 0x000000ff,
                     [r.ImGui_Col_Button()] = self.st.basecolors.widgetBG,
-            [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.hovered,
-            [r.ImGui_Col_ButtonActive()] = self.st.basecolors.active
+                    [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.hovered,
+                    [r.ImGui_Col_ButtonActive()] = self.st.basecolors.active
                 },
                 [1] = {
                     [r.ImGui_Col_Button()] = 0x4291d6ff,
@@ -155,9 +169,9 @@ SM_Gui.init = function(self, fonts)
             [r.ImGui_Col_Button()] = self.st.basecolors.main,
             [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.mainBright,
             [r.ImGui_Col_ButtonActive()] = self.st.basecolors.mainBrighter,
-            [r.ImGui_Col_ResizeGrip()]= self.st.basecolors.darkBG,
-            [r.ImGui_Col_ResizeGripHovered()]= self.st.basecolors.mainDark,
-            [r.ImGui_Col_ResizeGripActive()]= self.st.basecolors.main,
+            [r.ImGui_Col_ResizeGrip()] = self.st.basecolors.darkBG,
+            [r.ImGui_Col_ResizeGripHovered()] = self.st.basecolors.mainDark,
+            [r.ImGui_Col_ResizeGripActive()] = self.st.basecolors.main,
         },
         title = {
             [r.ImGui_Col_Text()] = self.st.basecolors.mainBright,
@@ -188,12 +202,12 @@ SM_Gui.init = function(self, fonts)
         }
     }
 
-    self.drawSadFace = function(self, sizeFactor,color)
-            local x, y = r.ImGui_GetCursorScreenPos(self.ctx)
-            local sz = self.TEXT_BASE_WIDTH *sizeFactor
-            r.ImGui_DrawList_AddCircleFilled(self.draw_list, x, y, sz, color, 36)
-            r.ImGui_DrawList_AddCircleFilled(self.draw_list, x-sz/3.5, y-sz/5, sz/9, 0x000000ff, 36)
-            r.ImGui_DrawList_AddCircleFilled(self.draw_list, x+sz/3.5, y-sz/5, sz/9, 0x000000ff, 36)
-            r.ImGui_DrawList_AddLine(self.draw_list, x+sz/2, y+sz/10, x-sz/2, y+sz/2.5, 0x000000ff, sz/9)
+    self.drawSadFace = function(self, sizeFactor, color)
+        local x, y = r.ImGui_GetCursorScreenPos(self.ctx)
+        local sz = self.TEXT_BASE_WIDTH * sizeFactor
+        r.ImGui_DrawList_AddCircleFilled(self.draw_list, x, y, sz, color, 36)
+        r.ImGui_DrawList_AddCircleFilled(self.draw_list, x - sz / 3.5, y - sz / 5, sz / 9, 0x000000ff, 36)
+        r.ImGui_DrawList_AddCircleFilled(self.draw_list, x + sz / 3.5, y - sz / 5, sz / 9, 0x000000ff, 36)
+        r.ImGui_DrawList_AddLine(self.draw_list, x + sz / 2, y + sz / 10, x - sz / 2, y + sz / 2.5, 0x000000ff, sz / 9)
     end
 end

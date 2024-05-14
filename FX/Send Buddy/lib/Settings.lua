@@ -2,17 +2,19 @@
 
 SM_Settings = OD_Settings:new({
     default = {
-        -- remain_opened = false,
+-- User settings
         mouseScrollReversed = true,
         minSendVol = -100,
-        maxSendVol = 12,
-        sendWidth = 60,
+        maxSendVol = 12, -- TODO: Match with Reaper's max send volume?
         maxNumInserts = 4,
-        minFaderHeight = 100,
         followSelectedTrack = true,
-        scaleFactor = 2,
+        lastDockId = nil,
+        
+        -- Permanent settings
+        sendWidth = 60,
+        minFaderHeight = 100,
+        scaleFactor = 2, -- fader scale factor above scaleLevel
         scaleLevel = -20,
-        maxSearchResults = 20,
         favorites = {
             'VST3: Pro-Q 3 (FabFilter)',
             'VST3: ValhallaVintageVerb (Valhalla DSP, LLC)'
