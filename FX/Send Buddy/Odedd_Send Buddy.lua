@@ -1040,5 +1040,5 @@ if OD_PrereqsOK({
     -- app.settings:save()
     app.db:init()
     app.db:sync()
-    -- r.defer(app.loop)
+    r.defer(app.loop)
 end
