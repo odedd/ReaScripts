@@ -135,6 +135,12 @@ SM_Gui.init = function(self, fonts)
                     [r.ImGui_Col_Text()] = 0x000000ff,
                 }
             },
+            env = {
+                [r.ImGui_Col_Button()] = self.st.basecolors.darkBG,
+                [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.darkHovered,
+                [r.ImGui_Col_ButtonActive()] = self.st.basecolors.darkActive,
+                [r.ImGui_Col_Text()] = self.st.basecolors.widgetBG,    
+            },
             route = self.st.colpresets.midButton,
             add = self.st.colpresets.midButton,
             topBarIcon = {

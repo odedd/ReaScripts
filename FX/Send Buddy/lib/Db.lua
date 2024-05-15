@@ -98,7 +98,7 @@ DB = {
                         reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'I_SRCCHAN', srcChan)
                         self.db:sync(true)
                     end,
-                    setMidiRouting = function(self, srcChn,srcBus,destChn,destBus)
+                    setMidiRouting = function(self, srcChn, srcBus, destChn, destBus)
                         srcChn = srcChn or self.midiSrcChn
                         srcBus = srcBus or self.midiSrcBus
                         destChn = destChn or self.midiDestChn
@@ -113,7 +113,7 @@ DB = {
                     end,
                     setDestChan = function(self, destChan)
                         local numChannels = SRC_CHANNELS[self.srcChan].numChannels +
-                        (destChan >= 1024 and destChan - 1024 or destChan)
+                            (destChan >= 1024 and destChan - 1024 or destChan)
                         local nearestEvenChannel = math.ceil(numChannels / 2) * 2
                         local destChanChannelCount = reaper.GetMediaTrackInfo_Value(self.destTrack, 'I_NCHAN')
                         if destChanChannelCount < numChannels then
@@ -154,6 +154,18 @@ DB = {
                         self.db:sync(true)
                         return true
                     end,
+                    toggleVolEnv = function(self, show)
+                        local env = reaper.GetTrackSendInfo_Value(self.track, 0, i, "P_ENV:<VOLENV")
+                        OD_ToggleShowEnvelope(env, show)
+                    end,
+                    togglePanEnv = function(self, show)
+                        local env = reaper.GetTrackSendInfo_Value(self.track, 0, i, "P_ENV:<PANENV")
+                        OD_ToggleShowEnvelope(env, show)
+                    end,
+                    toggleMuteEnv = function(self,show)
+                        local env = reaper.GetTrackSendInfo_Value(self.track, 0, i, "P_ENV:<MUTEENV")
+                        OD_ToggleShowEnvelope(env, show)
+                    end,
                 }
                 send.destInsertsCount = r.TrackFX_GetCount(send.destTrack)
                 -- local maxW = (app.gui.TEXT_BASE_HEIGHT*fxCount<=h) and (app.settings.current.sendWidth) or (app.settings.current.sendWidth - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ScrollbarSize()))
@@ -164,14 +176,14 @@ DB = {
 
                 table.insert(self.sends, send)
             end
-           
+
             if self.numSends == 0 then
                 self.app.setPage(APP_PAGE.NO_SENDS)
             else
                 self.app.setPage(APP_PAGE.MIXER)
             end
             if oldNumSends ~= self.numSends then
-                 self.app.refreshWindowSizeOnNextFrame = true
+                self.app.refreshWindowSizeOnNextFrame = true
             end
         end
     end
@@ -205,7 +217,10 @@ end
 
 --- TRACKS
 DB.getSelectedTrack = function(self)
-    if self.app.settings.current.followSelectedTrack == false and self.track ~= nil and self.track ~= -1 then return self.track, false end
+    if self.app.settings.current.followSelectedTrack == false and self.track ~= nil and self.track ~= -1 then
+        return
+            self.track, false
+    end
     local track = reaper.GetLastTouchedTrack()
     if track == nil and self.track ~= nil then
         self.trackName = nil
@@ -222,25 +237,25 @@ DB.getTracks = function(self)
     local numTracks = reaper.CountTracks(0)
     for i = 0, numTracks - 1 do
         local track = reaper.GetTrack(0, i)
-        local skip = false
-        for _, send in ipairs(self.sends) do
-            if send.destTrack == track then
-                skip = true
-            end
-        end
-        if not skip then
-            local trackName = select(2, reaper.GetTrackName(track))
-            local trackColor = reaper.GetTrackColor(track)
-            local trackGuid = reaper.GetTrackGUID(track)
-            local hasReceives = reaper.GetTrackNumSends(track, -1) > 0
-            table.insert(self.tracks, {
-                name = trackName,
-                guid = trackGuid,
-                color = trackColor,
-                hasReceives = hasReceives,
-                order = i,
-            })
-        end
+        -- local skip = false
+        -- for _, send in ipairs(self.sends) do
+        --     if send.destTrack == track then
+        --         skip = true
+        --     end
+        -- end
+        -- if not skip then
+        local trackName = select(2, reaper.GetTrackName(track))
+        local trackColor = reaper.GetTrackColor(track)
+        local trackGuid = reaper.GetTrackGUID(track)
+        local hasReceives = reaper.GetTrackNumSends(track, -1) > 0
+        table.insert(self.tracks, {
+            name = trackName,
+            guid = trackGuid,
+            color = trackColor,
+            hasReceives = hasReceives,
+            order = i,
+        })
+        -- end
     end
 end
 
@@ -257,7 +272,7 @@ DB.getInserts = function(self, track)
             self.app.settings.current.sendWidth -
             r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
         table.insert(inserts, {
-            order = i,  
+            order = i,
             db = self,
             name = fxName,
             shortName = shortName,
