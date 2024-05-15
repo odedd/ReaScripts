@@ -35,13 +35,13 @@ DB = {
 
         if self.refresh and self.track then
             _, self.trackName = reaper.GetTrackName(self.track)
-            -- local _, trackName = reaper.GetTrackName(self.track)
             local oldNumSends = self.numSends
             self.numSends = reaper.GetTrackNumSends(self.track, 0)
             self.sends = {}
             self.maxNumInserts = 0
             for i = 0, self.numSends - 1 do
                 local _, sendName = reaper.GetTrackSendName(self.track, i)
+                local midiRouting = math.floor(reaper.GetTrackSendInfo_Value(self.track, 0, i, 'I_MIDIFLAGS'))
                 local send = {
                     order = i,
                     name = sendName,
@@ -55,6 +55,10 @@ DB = {
                     polarity = reaper.GetTrackSendInfo_Value(self.track, 0, i, 'B_PHASE') == 1.0,
                     srcChan = math.floor(reaper.GetTrackSendInfo_Value(self.track, 0, i, 'I_SRCCHAN')),
                     mode = math.floor(reaper.GetTrackSendInfo_Value(self.track, 0, i, 'I_SENDMODE')),
+                    midiSrcChn = midiRouting & 0x1f,
+                    midiSrcBus = midiRouting >> 14 & 0xff,
+                    midiDestChn = midiRouting >> 5 & 0x1f,
+                    midiDestBus = midiRouting >> 22 & 0xff,
                     destChan = math.floor(reaper.GetTrackSendInfo_Value(self.track, 0, i, 'I_DSTCHAN')),
                     destTrack = reaper.GetTrackSendInfo_Value(self.track, 0, i, 'P_DESTTRACK'),
                     destInserts = {},
@@ -94,6 +98,15 @@ DB = {
                         reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'I_SRCCHAN', srcChan)
                         self.db:sync(true)
                     end,
+                    setMidiRouting = function(self, srcChn,srcBus,destChn,destBus)
+                        srcChn = srcChn or self.midiSrcChn
+                        srcBus = srcBus or self.midiSrcBus
+                        destChn = destChn or self.midiDestChn
+                        destBus = destBus or self.midiDestBus
+                        local midiRouting = srcChn + (srcBus << 14) | (destChn) << 5 | (destBus << 22)
+                        reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'I_MIDIFLAGS', midiRouting)
+                        self.db:sync(true)
+                    end,
                     setMode = function(self, mode)
                         reaper.SetTrackSendInfo_Value(self.track, 0, self.order, 'I_SENDMODE', mode)
                         self.db:sync(true)
@@ -101,7 +114,6 @@ DB = {
                     setDestChan = function(self, destChan)
                         local numChannels = SRC_CHANNELS[self.srcChan].numChannels +
                         (destChan >= 1024 and destChan - 1024 or destChan)
-                        r.ShowConsoleMsg('numChannels: ' .. numChannels .. '\n')
                         local nearestEvenChannel = math.ceil(numChannels / 2) * 2
                         local destChanChannelCount = reaper.GetMediaTrackInfo_Value(self.destTrack, 'I_NCHAN')
                         if destChanChannelCount < numChannels then

@@ -192,13 +192,13 @@ if OD_PrereqsOK({
         local topBarH = app.gui.TEXT_BASE_HEIGHT_LARGE + vSpacing * 2 + 1
         -- inserts
         local insertsH = (app.settings.current.maxNumInserts + 1) *
-        (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2)
+            (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2)
         local separatorH = 5
         -- sends
         local sendsH = 7 * (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2) + vSpacing +
-        app.settings.current.minFaderHeight
+            app.settings.current.minFaderHeight
         local h = wPadding + topBarH + insertsH + vSpacing + separatorH + vSpacing + sendsH + vSpacing +
-        app.gui.mainWindow.hintHeight + wPadding
+            app.gui.mainWindow.hintHeight + wPadding
 
         local shouldScroll = app.db.maxNumInserts > app.settings.current.maxNumInserts
         local w = app.settings.current.sendWidth * (app.db.numSends + 1) +
@@ -344,9 +344,108 @@ if OD_PrereqsOK({
                 local label = s.mode == 0 and "post" or (s.mode == 1 and "preFX" or "postFX")
                 if r.ImGui_Button(ctx, label .. '##mode' .. s.order, w) then
                     s:setMode(s.mode == 0 and 1 or (s.mode == 1 and 3 or 0))
-                    -- s:setSolo(not soloed, not r.ImGui_IsKeyDown(ctx, app.gui.keyModCtrlCmd))
                 end
                 app.gui:popColors(app.gui.st.col.buttons.mode[s.mode])
+            end
+            local drawMIDIRouteButton = function()
+                local w = app.settings.current.sendWidth
+                app.gui:pushColors(app.gui.st.col.buttons.route)
+                r.ImGui_BeginGroup(ctx)
+                local label
+                if s.midiSrcChn == 0 and s.midiSrcBus == 0 then
+                    label = 'all'
+                elseif s.midiSrcChn == 0 and s.midiSrcBus > 0 then
+                    label = 'B' .. s.midiSrcBus
+                elseif s.midiSrcBus > 0 then
+                    label = s.midiSrcBus .. '/' .. s.midiSrcChn
+                else
+                    label = s.midiSrcChn
+                end
+                if s.midiSrcBus == 255 then
+                    label = 'None'
+                end
+                if r.ImGui_Button(ctx, label .. '##srcMidiChan' .. s.order, w) then
+                    r.ImGui_OpenPopup(ctx, '##srcMidiChanMenu' .. s.order)
+                end
+                app:setHoveredHint('main', 'Source MIDI channel')
+                if s.midiSrcBus == 255 then
+                    label = ''
+                    r.ImGui_BeginDisabled(ctx)
+                elseif s.midiDestChn == 0 and s.midiDestBus == 0 then
+                    label = 'all'
+                elseif s.midiDestChn == 0 and s.midiDestBus > 0 then
+                    label = 'B' .. s.midiDestBus
+                elseif s.midiDestBus > 0 then
+                    label = s.midiDestBus .. '/' .. s.midiDestChn
+                else
+                    label = s.midiDestChn
+                end
+
+                if r.ImGui_Button(ctx, label .. '##destMidiChan' .. s.order, w) then
+                    r.ImGui_OpenPopup(ctx, '##destMidiChanMenu' .. s.order)
+                end
+                app:setHoveredHint('main', 'Destination MIDI channel')
+                if s.midiSrcBus == 255 then
+                    r.ImGui_EndDisabled(ctx)
+                end
+                app.gui:popColors(app.gui.st.col.buttons.route)
+                r.ImGui_EndGroup(ctx)
+                if r.ImGui_BeginPopup(ctx, '##srcMidiChanMenu' .. s.order) then
+                    if r.ImGui_MenuItem(ctx, 'None', nil, s.midiSrcBus == 255, true) then s:setMidiRouting(0x1f,0xff) end
+                    if r.ImGui_MenuItem(ctx, 'All', nil, s.midiSrcChn == 0 and s.midiSrcBus == 0, true) then 
+                        s:setMidiRouting(0,0)
+                    end
+                    r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                    for i = 1, 16 do
+                        if r.ImGui_MenuItem(ctx, i, nil, s.midiSrcChn == i, true) then
+                            s:setMidiRouting(1,0)
+                        end
+                    end
+                    for bus = 1, 128 do
+                        r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                        if r.ImGui_BeginMenu(ctx, "Bus "..bus) then
+                            if r.ImGui_MenuItem(ctx, 'All', nil, s.midiSrcChn == 0 and s.midiSrcBus == bus, true) then 
+                                s:setMidiRouting(0,bus)
+                            end
+                            for i = 1, 16 do
+                                if r.ImGui_MenuItem(ctx, i, nil, s.midiSrcChn == i and s.midiSrcBus == bus, true) then
+                                    s:setMidiRouting(i,bus)
+                                end
+                            end
+                            r.ImGui_EndMenu(ctx)
+                        end
+                    end
+                    app.focusMainReaperWindow = false
+                    r.ImGui_EndPopup(ctx)
+                end
+                r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
+                if r.ImGui_BeginPopup(ctx, '##destMidiChanMenu' .. s.order) then
+                    if r.ImGui_MenuItem(ctx, 'All', nil, s.midiDestChn == 0 and s.midiDestBus == 0, true) then 
+                        s:setMidiRouting(nil,nil,0,0)
+                    end
+                    r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                    for i = 1, 16 do
+                        if r.ImGui_MenuItem(ctx, i, nil, s.midiDestChn == i, true) then
+                            s:setMidiRouting(nil,nil,1,0)
+                        end
+                    end
+                    for bus = 1, 128 do
+                        r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                        if r.ImGui_BeginMenu(ctx, "Bus "..bus) then
+                            if r.ImGui_MenuItem(ctx, 'All', nil, s.midiDestChn == 0 and s.midiDestBus == bus, true) then 
+                                s:setMidiRouting(nil,nil,0,bus)
+                            end
+                            for i = 1, 16 do
+                                if r.ImGui_MenuItem(ctx, i, nil, s.midiDestChn == i and s.midiDestBus == bus, true) then
+                                    s:setMidiRouting(nil,nil,i,bus)
+                                end
+                            end
+                            r.ImGui_EndMenu(ctx)
+                        end
+                    end
+                    app.focusMainReaperWindow = false
+                    r.ImGui_EndPopup(ctx)
+                end
             end
             local drawRouteButton = function()
                 local w = app.settings.current.sendWidth
@@ -355,6 +454,7 @@ if OD_PrereqsOK({
                 if r.ImGui_Button(ctx, SRC_CHANNELS[s.srcChan].label .. '##srcChan' .. s.order, w) then
                     r.ImGui_OpenPopup(ctx, '##srcChanMenu' .. s.order)
                 end
+                app:setHoveredHint('main', 'Source audio channel')
                 local label = s.srcChan == -1 and '' or
                     (s.destChan < 1024) and (s.destChan + 1 .. '/' .. (s.destChan + SRC_CHANNELS[s.srcChan].numChannels)) or
                     s.destChan + 1 - 1024
@@ -364,6 +464,7 @@ if OD_PrereqsOK({
                 if r.ImGui_Button(ctx, label .. '##destChan' .. s.order, w) then
                     r.ImGui_OpenPopup(ctx, '##destChanMenu' .. s.order)
                 end
+                app:setHoveredHint('main', 'Destination audio channel')
                 if s.srcChan == -1 then
                     r.ImGui_EndDisabled(ctx)
                 end
@@ -501,6 +602,8 @@ if OD_PrereqsOK({
                     drawModeButton()
                 elseif part == 'routebutton' then
                     drawRouteButton()
+                elseif part == 'midiroutebutton' then
+                    drawMIDIRouteButton()
                 elseif part == 'fader' then
                     drawFader(faderHeight)
                 elseif part == 'volLabel' then
@@ -571,11 +674,11 @@ if OD_PrereqsOK({
             }
             if altPressed then -- TODO: Implement
                 parts = {
-                    { name = 'phasesolod',  label = 'Phase/Solo Defeat' },
-                    { name = 'modebutton',  label = 'Mode' },
-                    { name = 'routebutton', label = 'Route' },
-                    { name = 'pan',         label = 'Pan' },
-                    { name = 'fader',       label = 'Send\nVolume' },
+                    { name = 'phasesolod',      label = 'Phase/Solo Defeat' },
+                    { name = 'modebutton',      label = 'Mode' },
+                    { name = 'midiroutebutton', label = 'Route' },
+                    { name = 'pan',             label = 'Pan' },
+                    { name = 'fader',           label = 'Send\nVolume' },
                     { name = 'volLabel' },
                     { name = 'sendName' }
                 }
