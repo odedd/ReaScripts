@@ -41,6 +41,14 @@ SRC_CHANNELS[-1] = {
     group = "None",
     label = 'None'
 }
+
+SOLO_STATES = {
+    ['NONE'] = 0,
+    ['MUTE'] = 1,
+    ['SOLO'] = 2,
+    ['SOLO_DEFEAT'] = 3,
+}
+
 for i = 0, NUM_CHANNELS - 1 do
     -- Stereo
     if i < NUM_CHANNELS - 1 then
@@ -76,5 +84,5 @@ PLUGIN = {
     INTERNAL = { 'Video Processor', 'Container' },
 }
 FAVORITE_GROUP = 'Favorite'
-RECEIVES_GROUP = 'Existing receiving tracks'
-TRACKS_GROUP = 'Existing tracks'
+RECEIVES_GROUP = 'Receiving tracks'
+TRACKS_GROUP = 'Other tracks'

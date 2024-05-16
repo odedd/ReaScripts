@@ -16,6 +16,8 @@
 -- SETUP ------------------------------
 ---------------------------------------
 r = reaper
+package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
+ImGui = require 'imgui' '0.9.1'
 
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
 
@@ -30,7 +32,7 @@ r.ClearConsole()
 OD_Init()
 
 if OD_PrereqsOK({
-        reaimgui_version = '0.8.4',
+        reaimgui_version = '0.9.1',
         sws = true,            -- required for SNM_SetIntConfigVar - setting config vars (max file size limitation and autosave options)
         js_version = 1.310,    -- required for JS_Dialog_BrowseForFolder
         reaper_version = 7.01, -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
@@ -111,18 +113,18 @@ if OD_PrereqsOK({
 
     -- function app.minimizeText2(text, maxWidth)
     -- local ctx = app.gui.ctx
-    --     if select(1, r.ImGui_CalcTextSize(ctx, text)) > maxWidth then
+    --     if select(1, ImGui.CalcTextSize(ctx, text)) > maxWidth then
     --         -- text = text:gsub(' ', '')
-    --         text = (select(1, r.ImGui_CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('[^%a%d]', '')
-    --         text = (select(1, r.ImGui_CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub(' ', '')
-    --         text = (select(1, r.ImGui_CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('a', '')
-    --         text = (select(1, r.ImGui_CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('e', '')
-    --         text = (select(1, r.ImGui_CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('i', '')
-    --         text = (select(1, r.ImGui_CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('o', '')
-    --         text = (select(1, r.ImGui_CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('u', '')
-    --         text = (select(1, r.ImGui_CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('%d', '')
+    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('[^%a%d]', '')
+    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub(' ', '')
+    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('a', '')
+    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('e', '')
+    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('i', '')
+    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('o', '')
+    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('u', '')
+    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('%d', '')
     --         for i = 1, text:len() do
-    --             if select(1, r.ImGui_CalcTextSize(ctx, text:sub(1, i))) > maxWidth then
+    --             if select(1, ImGui.CalcTextSize(ctx, text:sub(1, i))) > maxWidth then
     --                 text = text:sub(1, i - 1)
     --             end
     --         end
@@ -137,10 +139,10 @@ if OD_PrereqsOK({
 
     function app.resetOnDoubleClick(id, value, default)
         local ctx = app.gui.ctx
-        if r.ImGui_IsItemDeactivated(ctx) and app.faderReset[id] then
+        if ImGui.IsItemDeactivated(ctx) and app.faderReset[id] then
             app.faderReset[id] = nil
             return true, default
-        elseif reaper.ImGui_IsItemHovered(ctx) and reaper.ImGui_IsMouseDoubleClicked(ctx, 0) then
+        elseif ImGui.IsItemHovered(ctx) and ImGui.IsMouseDoubleClicked(ctx, 0) then
             app.faderReset[id] = true
         end
         return false, value
@@ -148,7 +150,7 @@ if OD_PrereqsOK({
 
     function app.refreshWindowSize()
         if app.page then
-            local max_w, max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(app.gui.ctx))
+            local max_w, max_h = ImGui.Viewport_GetSize(ImGui.GetMainViewport(app.gui.ctx))
             local width = app.page.width
             local minHeight = app.page.minHeight or 0
             if app.page == APP_PAGE.MIXER then
@@ -156,15 +158,19 @@ if OD_PrereqsOK({
             end
             app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = math.max(width, app.page.width),
                 (minHeight or app.page.minHeight or 0) or 0
-            app.gui.mainWindow.max_w, app.gui.mainWindow.max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(app
+            app.gui.mainWindow.max_w, app.gui.mainWindow.max_h = ImGui.Viewport_GetSize(ImGui.GetMainViewport(app
                 .gui.ctx))
-            r.ImGui_SetNextWindowSize(app.gui.ctx, math.max(width, app.page.width), app.page.height or 0)
+            ImGui.SetNextWindowSize(app.gui.ctx, math.max(width, app.page.width), app.page.height or 0)
             app.refreshWindowSizeOnNextFrame = false
         end
     end
 
+    function app.resetTemp()
+        app.temp.confirmation = {}
+    end
     function app.handlePageSwitch()
         if app.pageSwitched then
+            app.resetTemp()
             app.framesSincePageSwitch = (app.framesSincePageSwitch or 0) + 1
         end
         if app.framesSincePageSwitch == 1 then
@@ -187,8 +193,8 @@ if OD_PrereqsOK({
 
     function app.calculateMixerSize()
         -- top bar
-        local wPadding = r.ImGui_GetStyleVar(app.gui.ctx, r.ImGui_StyleVar_WindowPadding())
-        local vSpacing = select(2, r.ImGui_GetStyleVar(app.gui.ctx, r.ImGui_StyleVar_ItemSpacing()))
+        local wPadding = ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_WindowPadding)
+        local vSpacing = select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ItemSpacing))
         local topBarH = app.gui.TEXT_BASE_HEIGHT_LARGE + vSpacing * 2 + 1
         -- inserts
         local insertsH = (app.settings.current.maxNumInserts + 1) *
@@ -202,8 +208,8 @@ if OD_PrereqsOK({
 
         local shouldScroll = app.db.maxNumInserts > app.settings.current.maxNumInserts
         local w = app.settings.current.sendWidth * (app.db.numSends + 1) +
-            r.ImGui_GetStyleVar(app.gui.ctx, r.ImGui_StyleVar_WindowPadding()) +
-            (shouldScroll and r.ImGui_GetStyleVar(app.gui.ctx, r.ImGui_StyleVar_ScrollbarSize()) or 0)
+            ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_WindowPadding) +
+            (shouldScroll and ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ScrollbarSize) or 0)
         return w, h
     end
 
@@ -217,60 +223,76 @@ if OD_PrereqsOK({
         -- end
 
         app.db:sync()
-        r.ImGui_PushFont(ctx, app.gui.st.fonts.small)
+        ImGui.PushFont(ctx, app.gui.st.fonts.small)
 
         local drawSend = function(s, part)
             local drawDummy = function(col, h)
                 app.gui:pushColors(col)
-                r.ImGui_BeginDisabled(ctx)
-                r.ImGui_Button(ctx, '##dummy', app.settings.current.sendWidth, h)
-                r.ImGui_EndDisabled(ctx)
+                ImGui.BeginDisabled(ctx)
+                ImGui.Button(ctx, '##dummy', app.settings.current.sendWidth, h)
+                ImGui.EndDisabled(ctx)
                 app:setHoveredHint('main', ' ')
                 app.gui:popColors(col)
             end
             local drawEnvVolButton = function(h)
                 app.gui:pushColors(app.gui.st.col.buttons.env)
-                -- r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_large)
-                if r.ImGui_Button(ctx, 'VOL\nENV##vEnvelope', app.settings.current.sendWidth, h) then
+                -- ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
+                if ImGui.Button(ctx, 'VOL\nENV##vEnvelope', app.settings.current.sendWidth, h) then
                     s:toggleVolEnv()
                 end
                 app:setHoveredHint('main', s.name .. ' - Show/hide send volume envelope')
-                -- r.ImGui_PopFont(ctx)
+                -- ImGui.PopFont(ctx)
                 app.gui:popColors(app.gui.st.col.buttons.env)
             end
             local drawDeleteSend = function()
-                app.gui:pushColors(app.gui.st.col.buttons.deleteSend)
-                r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_small)
-                if r.ImGui_Button(ctx, ICONS.TRASH .. '##deleteSend', app.settings.current.sendWidth) then
-                    s:delete()
+                local deleteTimeOut = 3
+                local confirmationKey = s.order
+                if app.temp.confirmation[confirmationKey] then
+                    if reaper.time_precise() - app.temp.confirmation[confirmationKey] > deleteTimeOut then
+                        app.temp.confirmation[confirmationKey] = nil
+                    else
+                        app.gui:pushColors(app.gui.st.col.buttons.deleteSend)
+                        if ImGui.Button(ctx, 'Sure?##deleteSend', app.settings.current.sendWidth) then
+                            s:delete()
+                        end
+                        app:setHoveredHint('main', s.name .. ' - Click again to confirm')
+                        app.gui:popColors(app.gui.st.col.buttons.deleteSend)
+                    end
                 end
-                app:setHoveredHint('main', s.name .. ' - Delete send')
-                r.ImGui_PopFont(ctx)
-                app.gui:popColors(app.gui.st.col.buttons.deleteSend)
+                if app.temp.confirmation[confirmationKey] == nil then -- not else because then I miss a frame after the timeout just passed
+                    app.gui:pushColors(app.gui.st.col.buttons.env)
+                    ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                    if ImGui.Button(ctx, ICONS.TRASH .. '##deleteSend', app.settings.current.sendWidth) then
+                        app.temp.confirmation[confirmationKey] = reaper.time_precise()
+                    end
+                    app:setHoveredHint('main', s.name .. ' - Delete send')
+                    ImGui.PopFont(ctx)
+                    app.gui:popColors(app.gui.st.col.buttons.env)
+                end
             end
             local drawEnvMuteButton = function()
                 app.gui:pushColors(app.gui.st.col.buttons.mute[false])
-                -- r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_small)     -- TODO: Fix Icon
-                if r.ImGui_Button(ctx, 'MUTE\nENV##mEnvelope' .. s.order, app.settings.current.sendWidth, app.gui.TEXT_BASE_HEIGHT_SMALL * 2.5 + select(2, r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing())) * 2.5) then
+                -- ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)     -- TODO: Fix Icon
+                if ImGui.Button(ctx, 'MUTE\nENV##mEnvelope' .. s.order, app.settings.current.sendWidth, app.gui.TEXT_BASE_HEIGHT_SMALL * 2.5 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)) * 2.5) then
                     s:toggleMuteEnv()
                 end
-                -- r.ImGui_PopFont(ctx)
+                -- ImGui.PopFont(ctx)
                 app:setHoveredHint('main', s.name .. ' - Show/hide send mute envelope')
                 app.gui:popColors(app.gui.st.col.buttons.mute[false])
             end
             local drawEnvPanButton = function()
                 app.gui:pushColors(app.gui.st.col.buttons.route)
-                -- r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_small)     -- TODO: Fix Icon
-                if r.ImGui_Button(ctx, 'PAN\nENV##pEnvelope' .. s.order, app.settings.current.sendWidth, app.gui.TEXT_BASE_HEIGHT_SMALL * 2.5 + select(2, r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing())) * 2.5) then
+                -- ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)     -- TODO: Fix Icon
+                if ImGui.Button(ctx, 'PAN\nENV##pEnvelope' .. s.order, app.settings.current.sendWidth, app.gui.TEXT_BASE_HEIGHT_SMALL * 2.5 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)) * 2.5) then
                     s:togglePanEnv()
                 end
-                -- r.ImGui_PopFont(ctx)
+                -- ImGui.PopFont(ctx)
                 app:setHoveredHint('main', s.name .. ' - Show/hide send pan envelope')
                 app.gui:popColors(app.gui.st.col.buttons.route)
             end
             local drawFader = function(h)
                 local v = OD_dBFromValue(s.vol)
-                local mw = r.ImGui_GetMouseWheel(ctx)
+                local mw = ImGui.GetMouseWheel(ctx)
                 local scaledV = (v >= app.settings.current.scaleLevel) and (v / app.settings.current.scaleFactor) or
                     (v * app.settings.current.scaleFactor)
                 if v >= app.settings.current.scaleLevel then
@@ -281,7 +303,7 @@ if OD_PrereqsOK({
                         ((app.settings.current.minSendVol - app.settings.current.scaleLevel) / (app.settings.current.minSendVol - (app.settings.current.scaleLevel * app.settings.current.scaleFactor)))
                 end
                 app.gui:pushStyles(app.gui.st.vars.vol)
-                local rv, v2 = r.ImGui_VSliderDouble(ctx, '##v', app.settings.current.sendWidth,
+                local rv, v2 = ImGui.VSliderDouble(ctx, '##v', app.settings.current.sendWidth,
                     h,
                     scaledV,
                     app.settings.current.minSendVol,
@@ -303,7 +325,7 @@ if OD_PrereqsOK({
                 if rv or shouldReset then
                     s:setVolDB(v2)
                 end
-                if r.ImGui_IsItemHovered(ctx) then
+                if ImGui.IsItemHovered(ctx) then
                     if mw ~= 0 then
                         local scale = .2
                         if v > app.settings.current.scaleLevel then
@@ -322,10 +344,10 @@ if OD_PrereqsOK({
             end
 
             local drawPan = function()
-                local mw = r.ImGui_GetMouseWheel(ctx)
-                r.ImGui_SetNextItemWidth(ctx, app.settings.current.sendWidth)
+                local mw = ImGui.GetMouseWheel(ctx)
+                ImGui.SetNextItemWidth(ctx, app.settings.current.sendWidth)
                 app.gui:pushStyles(app.gui.st.vars.pan)
-                local rv, v2 = r.ImGui_SliderDouble(ctx, '##p', s.pan, -1, 1, '')
+                local rv, v2 = ImGui.SliderDouble(ctx, '##p', s.pan, -1, 1, '')
                 app:setHoveredHint('main', s.name .. ' - Send panning')
                 app.gui:popStyles(app.gui.st.vars.pan)
                 if rv then
@@ -336,7 +358,7 @@ if OD_PrereqsOK({
                 if rv or shouldReset then
                     s:setPan(v2)
                 end
-                if r.ImGui_IsItemHovered(ctx) then
+                if ImGui.IsItemHovered(ctx) then
                     if mw ~= 0 then
                         local scale = .01
                         local newV = s.pan + (app.settings.current.mouseScrollReversed and -mw or mw) * scale
@@ -346,11 +368,11 @@ if OD_PrereqsOK({
             end
             local drawVolLabel = function()
                 local v = OD_dBFromValue(s.vol)
-                r.ImGui_SetNextItemWidth(ctx, app.settings.current.sendWidth)
+                ImGui.SetNextItemWidth(ctx, app.settings.current.sendWidth)
                 if v == app.minSendVol then
                     v = '-inf'
                 end
-                local rv, v3 = r.ImGui_DragDouble(ctx, '##db', v, 0, 0, 0, '%.2f')
+                local rv, v3 = ImGui.DragDouble(ctx, '##db', v, 0, 0, 0, '%.2f')
                 app:setHoveredHint('main', s.name .. ' - Send volume. Double-click to enter exact amount.')
                 if rv then
                     s:setVolDB(v3)
@@ -359,40 +381,40 @@ if OD_PrereqsOK({
 
             local drawSoloMute = function()
                 local w = app.settings.current.sendWidth / 2 -
-                    r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) / 2
+                    ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) / 2
 
                 app.gui:pushColors(app.gui.st.col.buttons.mute[s.mute])
-                if r.ImGui_Button(ctx, 'M##mute' .. s.order, w) then
+                if ImGui.Button(ctx, 'M##mute' .. s.order, w) then
                     s:setMute(not s.mute)
                 end
                 app:setHoveredHint('main', s.name .. ' - Mute send')
                 app.gui:popColors(app.gui.st.col.buttons.mute[s.mute])
 
-                r.ImGui_SameLine(ctx)
+                ImGui.SameLine(ctx)
                 local soloed = app.db.soloedSends[s.order] ~= nil
                 app.gui:pushColors(app.gui.st.col.buttons.solo[soloed])
-                if r.ImGui_Button(ctx, 'S##solo' .. s.order, w) then
-                    s:setSolo(not soloed, not r.ImGui_IsKeyDown(ctx, app.gui.keyModCtrlCmd))
+                if ImGui.Button(ctx, 'S##solo' .. s.order, w) then
+                    s:setSolo(not soloed, not ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd))
                 end
                 app:setHoveredHint('main', s.name .. ' - Solo send')
                 app.gui:popColors(app.gui.st.col.buttons.solo[soloed])
             end
             local drawPhaseSoloDefeat = function()
                 local w = app.settings.current.sendWidth / 2 -
-                    r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) / 2
+                    ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) / 2
                 app.gui:pushColors(app.gui.st.col.buttons.polarity[s.polarity])
-                r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_small)
-                if r.ImGui_Button(ctx, 'O##polarity' .. s.order, w) then
+                ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                if ImGui.Button(ctx, 'O##polarity' .. s.order, w) then
                     s:setPolarity(not s.polarity)
                 end
                 app:setHoveredHint('main', s.name .. ' - Invert polarity')
-                r.ImGui_PopFont(ctx)
+                ImGui.PopFont(ctx)
                 app.gui:popColors(app.gui.st.col.buttons.mute[s.mute])
-                r.ImGui_SameLine(ctx)
+                ImGui.SameLine(ctx)
                 local soloed = app.db.soloedSends[s.order] ~= nil
                 app.gui:pushColors(app.gui.st.col.buttons.solo[soloed])
-                if r.ImGui_Button(ctx, 'D##solodefeat' .. s.order, w) then -- TODO: Implement
-                    s:setSolo(not soloed, not r.ImGui_IsKeyDown(ctx, app.gui.keyModCtrlCmd))
+                if ImGui.Button(ctx, 'D##solodefeat' .. s.order, w) then -- TODO: Implement
+                    s:setSolo(not soloed, not ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd))
                 end
                 app:setHoveredHint('main', s.name .. ' - Solo defeat')
                 app.gui:popColors(app.gui.st.col.buttons.solo[soloed])
@@ -401,7 +423,7 @@ if OD_PrereqsOK({
                 local w = app.settings.current.sendWidth
                 app.gui:pushColors(app.gui.st.col.buttons.mode[s.mode])
                 local label = s.mode == 0 and "post" or (s.mode == 1 and "preFX" or "postFX")
-                if r.ImGui_Button(ctx, label .. '##mode' .. s.order, w) then
+                if ImGui.Button(ctx, label .. '##mode' .. s.order, w) then
                     s:setMode(s.mode == 0 and 1 or (s.mode == 1 and 3 or 0))
                 end
                 app:setHoveredHint('main', s.name .. ' - Send placement')
@@ -410,7 +432,7 @@ if OD_PrereqsOK({
             local drawMIDIRouteButtons = function()
                 local w = app.settings.current.sendWidth
                 app.gui:pushColors(app.gui.st.col.buttons.route)
-                r.ImGui_BeginGroup(ctx)
+                ImGui.BeginGroup(ctx)
                 local label
                 if s.midiSrcChn == 0 and s.midiSrcBus == 0 then
                     label = 'all'
@@ -424,13 +446,13 @@ if OD_PrereqsOK({
                 if s.midiSrcBus == 255 then
                     label = 'None'
                 end
-                if r.ImGui_Button(ctx, label .. '##srcMidiChan' .. s.order, w) then
-                    r.ImGui_OpenPopup(ctx, '##srcMidiChanMenu' .. s.order)
+                if ImGui.Button(ctx, label .. '##srcMidiChan' .. s.order, w) then
+                    ImGui.OpenPopup(ctx, '##srcMidiChanMenu' .. s.order)
                 end
                 app:setHoveredHint('main', s.name .. ' - Source MIDI channel')
                 if s.midiSrcBus == 255 then
                     label = ''
-                    r.ImGui_BeginDisabled(ctx)
+                    ImGui.BeginDisabled(ctx)
                 elseif s.midiDestChn == 0 and s.midiDestBus == 0 then
                     label = 'all'
                 elseif s.midiDestChn == 0 and s.midiDestBus > 0 then
@@ -441,163 +463,163 @@ if OD_PrereqsOK({
                     label = s.midiDestChn
                 end
 
-                if r.ImGui_Button(ctx, label .. '##destMidiChan' .. s.order, w) then
-                    r.ImGui_OpenPopup(ctx, '##destMidiChanMenu' .. s.order)
+                if ImGui.Button(ctx, label .. '##destMidiChan' .. s.order, w) then
+                    ImGui.OpenPopup(ctx, '##destMidiChanMenu' .. s.order)
                 end
                 app:setHoveredHint('main', s.name .. ' - Destination MIDI channel')
                 if s.midiSrcBus == 255 then
-                    r.ImGui_EndDisabled(ctx)
+                    ImGui.EndDisabled(ctx)
                 end
                 app.gui:popColors(app.gui.st.col.buttons.route)
-                r.ImGui_EndGroup(ctx)
-                r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
-                if r.ImGui_BeginPopup(ctx, '##srcMidiChanMenu' .. s.order) then
-                    if r.ImGui_MenuItem(ctx, 'None', nil, s.midiSrcBus == 255, true) then s:setMidiRouting(0x1f, 0xff) end
-                    if r.ImGui_MenuItem(ctx, 'All', nil, s.midiSrcChn == 0 and s.midiSrcBus == 0, true) then
+                ImGui.EndGroup(ctx)
+                ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
+                if ImGui.BeginPopup(ctx, '##srcMidiChanMenu' .. s.order) then
+                    if ImGui.MenuItem(ctx, 'None', nil, s.midiSrcBus == 255, true) then s:setMidiRouting(0x1f, 0xff) end
+                    if ImGui.MenuItem(ctx, 'All', nil, s.midiSrcChn == 0 and s.midiSrcBus == 0, true) then
                         s:setMidiRouting(0, 0)
                     end
-                    r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
                     for i = 1, 16 do
-                        if r.ImGui_MenuItem(ctx, i, nil, s.midiSrcChn == i and s.midiSrcBus == 0, true) then
-                            s:setMidiRouting(1, 0)
+                        if ImGui.MenuItem(ctx, i, nil, s.midiSrcChn == i and s.midiSrcBus == 0, true) then
+                            s:setMidiRouting(i, 0)
                         end
                     end
                     for bus = 1, 128 do
-                        r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
-                        if r.ImGui_BeginMenu(ctx, "Bus " .. bus) then
-                            if r.ImGui_MenuItem(ctx, 'All', nil, s.midiSrcChn == 0 and s.midiSrcBus == bus, true) then
+                        ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                        if ImGui.BeginMenu(ctx, "Bus " .. bus) then
+                            if ImGui.MenuItem(ctx, 'All', nil, s.midiSrcChn == 0 and s.midiSrcBus == bus, true) then
                                 s:setMidiRouting(0, bus)
                             end
                             for i = 1, 16 do
-                                if r.ImGui_MenuItem(ctx, i, nil, s.midiSrcChn == i and s.midiSrcBus == bus, true) then
+                                if ImGui.MenuItem(ctx, i, nil, s.midiSrcChn == i and s.midiSrcBus == bus, true) then
                                     s:setMidiRouting(i, bus)
                                 end
                             end
-                            r.ImGui_EndMenu(ctx)
+                            ImGui.EndMenu(ctx)
                         end
                     end
                     app.focusMainReaperWindow = false
-                    r.ImGui_EndPopup(ctx)
+                    ImGui.EndPopup(ctx)
                 end
-                r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
-                if r.ImGui_BeginPopup(ctx, '##destMidiChanMenu' .. s.order) then
-                    if r.ImGui_MenuItem(ctx, 'All', nil, s.midiDestChn == 0 and s.midiDestBus == 0, true) then
+                ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
+                if ImGui.BeginPopup(ctx, '##destMidiChanMenu' .. s.order) then
+                    if ImGui.MenuItem(ctx, 'All', nil, s.midiDestChn == 0 and s.midiDestBus == 0, true) then
                         s:setMidiRouting(nil, nil, 0, 0)
                     end
-                    r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
                     for i = 1, 16 do
-                        if r.ImGui_MenuItem(ctx, i, nil, s.midiDestChn == i and s.midiDestBus == 0, true) then
-                            s:setMidiRouting(nil, nil, 1, 0)
+                        if ImGui.MenuItem(ctx, i, nil, s.midiDestChn == i and s.midiDestBus == 0, true) then
+                            s:setMidiRouting(nil, nil, i, 0)
                         end
                     end
                     for bus = 1, 128 do
-                        r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
-                        if r.ImGui_BeginMenu(ctx, "Bus " .. bus) then
-                            if r.ImGui_MenuItem(ctx, 'All', nil, s.midiDestChn == 0 and s.midiDestBus == bus, true) then
+                        ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                        if ImGui.BeginMenu(ctx, "Bus " .. bus) then
+                            if ImGui.MenuItem(ctx, 'All', nil, s.midiDestChn == 0 and s.midiDestBus == bus, true) then
                                 s:setMidiRouting(nil, nil, 0, bus)
                             end
                             for i = 1, 16 do
-                                if r.ImGui_MenuItem(ctx, i, nil, s.midiDestChn == i and s.midiDestBus == bus, true) then
+                                if ImGui.MenuItem(ctx, i, nil, s.midiDestChn == i and s.midiDestBus == bus, true) then
                                     s:setMidiRouting(nil, nil, i, bus)
                                 end
                             end
-                            r.ImGui_EndMenu(ctx)
+                            ImGui.EndMenu(ctx)
                         end
                     end
                     app.focusMainReaperWindow = false
-                    r.ImGui_EndPopup(ctx)
+                    ImGui.EndPopup(ctx)
                 end
             end
             local drawRouteButtons = function()
                 local w = app.settings.current.sendWidth
                 app.gui:pushColors(app.gui.st.col.buttons.route)
-                r.ImGui_BeginGroup(ctx)
-                if r.ImGui_Button(ctx, SRC_CHANNELS[s.srcChan].label .. '##srcChan' .. s.order, w) then
-                    r.ImGui_OpenPopup(ctx, '##srcChanMenu' .. s.order)
+                ImGui.BeginGroup(ctx)
+                if ImGui.Button(ctx, SRC_CHANNELS[s.srcChan].label .. '##srcChan' .. s.order, w) then
+                    ImGui.OpenPopup(ctx, '##srcChanMenu' .. s.order)
                 end
                 app:setHoveredHint('main', s.name .. ' - Source audio channel')
                 local label = s.srcChan == -1 and '' or
                     (s.destChan < 1024) and (s.destChan + 1 .. '/' .. (s.destChan + SRC_CHANNELS[s.srcChan].numChannels)) or
                     s.destChan + 1 - 1024
                 if s.srcChan == -1 then
-                    r.ImGui_BeginDisabled(ctx)
+                    ImGui.BeginDisabled(ctx)
                 end
-                if r.ImGui_Button(ctx, label .. '##destChan' .. s.order, w) then
-                    r.ImGui_OpenPopup(ctx, '##destChanMenu' .. s.order)
+                if ImGui.Button(ctx, label .. '##destChan' .. s.order, w) then
+                    ImGui.OpenPopup(ctx, '##destChanMenu' .. s.order)
                 end
                 app:setHoveredHint('main', s.name .. ' - Destination audio channel')
                 if s.srcChan == -1 then
-                    r.ImGui_EndDisabled(ctx)
+                    ImGui.EndDisabled(ctx)
                 end
                 app.gui:popColors(app.gui.st.col.buttons.route)
-                r.ImGui_EndGroup(ctx)
-                if r.ImGui_BeginPopup(ctx, '##srcChanMenu' .. s.order) then
-                    if r.ImGui_MenuItem(ctx, 'None', nil, s.srcChan == -1, true) then s:setSrcChan(-1) end
-                    r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
-                    if r.ImGui_BeginMenu(ctx, 'Mono source') then
+                ImGui.EndGroup(ctx)
+                if ImGui.BeginPopup(ctx, '##srcChanMenu' .. s.order) then
+                    if ImGui.MenuItem(ctx, 'None', nil, s.srcChan == -1, true) then s:setSrcChan(-1) end
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                    if ImGui.BeginMenu(ctx, 'Mono source') then
                         for i = 0, NUM_CHANNELS - 1 do
-                            if r.ImGui_MenuItem(ctx, SRC_CHANNELS[i + 1024].label, nil, s.srcChan == i + 1024, true) then
+                            if ImGui.MenuItem(ctx, SRC_CHANNELS[i + 1024].label, nil, s.srcChan == i + 1024, true) then
                                 s:setSrcChan(i + 1024)
                             end
                         end
-                        r.ImGui_EndMenu(ctx)
+                        ImGui.EndMenu(ctx)
                     end
-                    r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
-                    if r.ImGui_BeginMenu(ctx, 'Stereo source') then
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                    if ImGui.BeginMenu(ctx, 'Stereo source') then
                         for i = 0, NUM_CHANNELS - 2 do
-                            if r.ImGui_MenuItem(ctx, SRC_CHANNELS[i].label, nil, s.srcChan == i, true) then
+                            if ImGui.MenuItem(ctx, SRC_CHANNELS[i].label, nil, s.srcChan == i, true) then
                                 s:setSrcChan(
                                     i)
                             end
                         end
-                        r.ImGui_EndMenu(ctx)
+                        ImGui.EndMenu(ctx)
                     end
-                    r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
-                    if r.ImGui_BeginMenu(ctx, 'Multichannel source') then
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
+                    if ImGui.BeginMenu(ctx, 'Multichannel source') then
                         for numChannels = 4, NUM_CHANNELS, 2 do
-                            r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
-                            if r.ImGui_BeginMenu(ctx, numChannels .. " channels") then
+                            ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                            if ImGui.BeginMenu(ctx, numChannels .. " channels") then
                                 for i = 0, NUM_CHANNELS - numChannels do
-                                    if r.ImGui_MenuItem(ctx, SRC_CHANNELS[numChannels * 512 + i].label, nil, s.srcChan == numChannels * 512 + i, true) then
+                                    if ImGui.MenuItem(ctx, SRC_CHANNELS[numChannels * 512 + i].label, nil, s.srcChan == numChannels * 512 + i, true) then
                                         s:setSrcChan(numChannels * 512 + i)
                                     end
                                 end
-                                r.ImGui_EndMenu(ctx)
+                                ImGui.EndMenu(ctx)
                             end
                         end
-                        r.ImGui_EndMenu(ctx)
+                        ImGui.EndMenu(ctx)
                     end
                     app.focusMainReaperWindow = false
-                    r.ImGui_EndPopup(ctx)
+                    ImGui.EndPopup(ctx)
                 end
-                r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
-                if r.ImGui_BeginPopup(ctx, '##destChanMenu' .. s.order) then
-                    r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
-                    if r.ImGui_BeginMenu(ctx, 'Downmix to mono') then
+                ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
+                if ImGui.BeginPopup(ctx, '##destChanMenu' .. s.order) then
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                    if ImGui.BeginMenu(ctx, 'Downmix to mono') then
                         for i = 0, NUM_CHANNELS - 1 do
-                            if r.ImGui_MenuItem(ctx, tostring(i + 1), nil, s.destChan == i + 1024, true) then
+                            if ImGui.MenuItem(ctx, tostring(i + 1), nil, s.destChan == i + 1024, true) then
                                 s:setDestChan(i + 1024)
                             end
                         end
-                        r.ImGui_EndMenu(ctx)
+                        ImGui.EndMenu(ctx)
                     end
 
                     for i = 0, NUM_CHANNELS - SRC_CHANNELS[s.srcChan].numChannels do
-                        if r.ImGui_MenuItem(ctx, (i + 1 .. '/' .. (i + SRC_CHANNELS[s.srcChan].numChannels)), nil, s.destChan == i, true) then
+                        if ImGui.MenuItem(ctx, (i + 1 .. '/' .. (i + SRC_CHANNELS[s.srcChan].numChannels)), nil, s.destChan == i, true) then
                             s:setDestChan(i)
                         end
                     end
                     app.focusMainReaperWindow = false
-                    r.ImGui_EndPopup(ctx)
+                    ImGui.EndPopup(ctx)
                 end
             end
 
             local drawSendName = function()
                 local shortName, shortened = app.minimizeText(s.name, app.settings.current.sendWidth)
-                if r.ImGui_BeginChild(ctx, '##' .. part.name .. 'Label', app.settings.current.sendWidth, app.gui.TEXT_BASE_HEIGHT, nil) then
-                    r.ImGui_AlignTextToFramePadding(ctx)
-                    r.ImGui_Text(ctx, shortName)
-                    r.ImGui_EndChild(ctx)
+                if ImGui.BeginChild(ctx, '##' .. part.name .. 'Label', app.settings.current.sendWidth, app.gui.TEXT_BASE_HEIGHT, nil) then
+                    ImGui.AlignTextToFramePadding(ctx)
+                    ImGui.Text(ctx, shortName)
+                    ImGui.EndChild(ctx)
                 end
                 app:setHoveredHint('main', s.name)
             end
@@ -607,15 +629,15 @@ if OD_PrereqsOK({
                     local colors = insert.offline and app.gui.st.col.insert.offline or
                         (not insert.enabled and app.gui.st.col.insert.disabled or app.gui.st.col.insert.enabled)
                     app.gui:pushColors(colors)
-                    local rv = r.ImGui_Button(ctx, insert.shortName .. "##" .. i, app.settings.current.sendWidth)
+                    local rv = ImGui.Button(ctx, insert.shortName .. "##" .. i, app.settings.current.sendWidth)
                     app.gui:popColors(colors)
                     if rv then
                         -- r.Undo_BeginBlock()
-                        if r.ImGui_IsKeyDown(ctx, app.gui.keyModCtrlCmd) and r.ImGui_IsKeyDown(ctx, r.ImGui_Mod_Shift()) then
+                        if ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd) and ImGui.IsKeyDown(ctx, ImGui.Mod_Shift()) then
                             insert:setOffline(not insert.offline)
-                        elseif r.ImGui_IsKeyDown(ctx, r.ImGui_Mod_Shift()) then
+                        elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift()) then
                             insert:setEnabled(not insert.enabled)
-                        elseif r.ImGui_IsKeyDown(ctx, r.ImGui_Mod_Alt()) then
+                        elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Alt()) then
                             insert:delete()
                         else
                             if insert:toggleShow() then app.focusMainReaperWindow = false end
@@ -637,29 +659,29 @@ if OD_PrereqsOK({
                             deleteHint):gsub('^%l', string.upper)))
                 end
                 app.gui:pushColors(app.gui.st.col.insert.add)
-                r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_small)
-                if r.ImGui_Button(ctx, "P##", app.settings.current.sendWidth) then
+                ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                if ImGui.Button(ctx, "P##", app.settings.current.sendWidth) then
                     app.temp.addFxToSend = s
                     app.setPage(APP_PAGE.SEARCH_FX)
                 end
                 app:setHoveredHint('main', 'Add FX')
-                r.ImGui_PopFont(ctx)
+                ImGui.PopFont(ctx)
                 app.gui:popColors(app.gui.st.col.insert.add)
             end
 
-            r.ImGui_PushID(ctx, 's' .. (s and s.order or -1))
-            -- r.ImGui_BeginGroup(ctx)
+            ImGui.PushID(ctx, 's' .. (s and s.order or -1))
+            -- ImGui.BeginGroup(ctx)
 
             local faderHeight = math.max(app.settings.current.minFaderHeight,
-                select(2, r.ImGui_GetContentRegionAvail(ctx)) - app.gui.TEXT_BASE_HEIGHT_SMALL * 2 -
-                app.gui.mainWindow.hintHeight - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2)
+                select(2, ImGui.GetContentRegionAvail(ctx)) - app.gui.TEXT_BASE_HEIGHT_SMALL * 2 -
+                app.gui.mainWindow.hintHeight - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2)
             if s == nil then
-                if r.ImGui_BeginChild(ctx, '##' .. part.name .. 'Label', app.settings.current.sendWidth, select(2, r.ImGui_CalcTextSize(ctx, label or '')), nil, r.ImGui_WindowFlags_NoScrollbar() | r.ImGui_WindowFlags_NoScrollWithMouse()) then
+                if ImGui.BeginChild(ctx, '##' .. part.name .. 'Label', app.settings.current.sendWidth, select(2, ImGui.CalcTextSize(ctx, label or '')), nil, ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoScrollWithMouse) then
                     if label then
-                        r.ImGui_AlignTextToFramePadding(ctx)
-                        r.ImGui_Text(ctx, label or '')
+                        ImGui.AlignTextToFramePadding(ctx)
+                        ImGui.Text(ctx, label or '')
                     end
-                    r.ImGui_EndChild(ctx)
+                    ImGui.EndChild(ctx)
                 end
             else
                 if part.name == 'inserts' then
@@ -697,66 +719,66 @@ if OD_PrereqsOK({
                 end
             end
 
-            r.ImGui_PopID(ctx)
-            -- r.ImGui_EndGroup(ctx)
+            ImGui.PopID(ctx)
+            -- ImGui.EndGroup(ctx)
         end
 
-        r.ImGui_BeginGroup(ctx)
+        ImGui.BeginGroup(ctx)
         if next(app.db.sends) then
             local h = -app.gui.vars.framePaddingY +
                 (app.settings.current.maxNumInserts + 1) *
                 (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2)
             -- local rv =
-            if r.ImGui_BeginChild(ctx, "##inserts", nil, h, false) then
+            if ImGui.BeginChild(ctx, "##inserts", nil, h, ImGui.ChildFlags_None) then
                 for i, s in OD_PairsByOrder(app.db.sends) do
-                    r.ImGui_BeginGroup(ctx)
+                    ImGui.BeginGroup(ctx)
                     drawSend(s, { name = 'inserts' })
-                    r.ImGui_EndGroup(ctx)
-                    r.ImGui_SameLine(ctx)
+                    ImGui.EndGroup(ctx)
+                    ImGui.SameLine(ctx)
                 end
-                r.ImGui_EndChild(ctx)
+                ImGui.EndChild(ctx)
             end
-            -- r.ImGui_Dummy(ctx, select(1,r.ImGui_GetContentRegionAvail(ctx)), 3)
-            r.ImGui_InvisibleButton(ctx, '##separator', select(1, r.ImGui_GetContentRegionAvail(ctx)), 5)
+            -- ImGui.Dummy(ctx, select(1,ImGui.GetContentRegionAvail(ctx)), 3)
+            ImGui.InvisibleButton(ctx, '##separator', select(1, ImGui.GetContentRegionAvail(ctx)), 5)
 
-            if r.ImGui_IsItemHovered(ctx) then
+            if ImGui.IsItemHovered(ctx) then
                 app:setHoveredHint('main', 'Scroll to change number of inserts')
-                r.ImGui_SetMouseCursor(ctx, r.ImGui_MouseCursor_ResizeNS())
+                ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeNS)
             end
-            if r.ImGui_IsItemActive(ctx) then
-                r.ImGui_SetMouseCursor(ctx, r.ImGui_MouseCursor_ResizeNS())
-                local value_with_lock_threshold_x, value_with_lock_threshold_y = r.ImGui_GetMouseDragDelta(ctx, 0, 0,
-                    r.ImGui_MouseButton_Left())
+            if ImGui.IsItemActive(ctx) then
+                ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeNS)
+                local value_with_lock_threshold_x, value_with_lock_threshold_y = ImGui.GetMouseDragDelta(ctx, 0, 0,
+                    ImGui.MouseButton_Left)
                 if value_with_lock_threshold_y ~= 0 then
                     if value_with_lock_threshold_y > 0 + app.gui.TEXT_BASE_HEIGHT_SMALL then
                         app.settings.current.maxNumInserts = app.settings.current.maxNumInserts + 1
-                        r.ImGui_ResetMouseDragDelta(ctx, r.ImGui_MouseButton_Left())
+                        ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
                         app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.calculateMixerSize()
                     elseif app.settings.current.maxNumInserts > 0 and value_with_lock_threshold_y < 0 - app.gui.TEXT_BASE_HEIGHT_SMALL then
                         app.settings.current.maxNumInserts = app.settings.current.maxNumInserts - 1
-                        r.ImGui_ResetMouseDragDelta(ctx, r.ImGui_MouseButton_Left())
+                        ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
                         app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.calculateMixerSize()
                     end
                 end
             end
-            r.ImGui_SetCursorPosY(ctx,
-                r.ImGui_GetCursorPosY(ctx) - 2 - select(2, r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing())))
-            r.ImGui_Separator(ctx)
-            r.ImGui_SetCursorPosY(ctx,
-                r.ImGui_GetCursorPosY(ctx) + 2 + select(2, r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing())))
+            ImGui.SetCursorPosY(ctx,
+                ImGui.GetCursorPosY(ctx) - 2 - select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)))
+            ImGui.Separator(ctx)
+            ImGui.SetCursorPosY(ctx,
+                ImGui.GetCursorPosY(ctx) + 2 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)))
             local parts = {
                 { name = 'solomute' },
                 { name = 'modebutton' },
-                { name = 'routebutton' },     -- TODO: Maybe make alternate and implement envelopes instead
+                { name = 'routebutton' }, -- TODO: Maybe make alternate and implement envelopes instead
                 { name = 'pan' },
                 { name = 'fader' },
                 { name = 'volLabel' },
                 { name = 'sendName' }
             }
-            if altPressed then     -- TODO: Implement
+            if altPressed then -- TODO: Implement
                 parts = {
                     { name = 'phasesolod' },
-                    { name = 'dummy', color = app.gui.st.col.buttons.mode[0] },
+                    { name = 'dummy',          color = app.gui.st.col.buttons.mode[0] },
                     { name = 'midiroutebutton' },
                     { name = 'dummy',          color = app.gui.st.col.buttons.env },
                     { name = 'dummyFader' },
@@ -764,7 +786,7 @@ if OD_PrereqsOK({
                     { name = 'sendName' }
                 }
             end
-            if shiftPressed then     -- TODO: Implement
+            if shiftPressed then -- TODO: Implement
                 parts = {
                     { name = 'envmute' },
                     { name = 'envpan' },
@@ -773,21 +795,22 @@ if OD_PrereqsOK({
                     { name = 'sendName' }
                 }
             end
-            r.ImGui_BeginGroup(ctx)
+            ImGui.BeginGroup(ctx)
             for j, part in ipairs(parts) do
-                r.ImGui_BeginGroup(ctx)
+                ImGui.BeginGroup(ctx)
                 for i, s in OD_PairsByOrder(app.db.sends) do
                     drawSend(s, part)
-                    r.ImGui_SameLine(ctx)
+                    ImGui.SameLine(ctx)
                 end
-                r.ImGui_EndGroup(ctx)
+                ImGui.EndGroup(ctx)
             end
-            r.ImGui_EndGroup(ctx)
-            r.ImGui_SameLine(ctx)
+            ImGui.EndGroup(ctx)
+            ImGui.SameLine(ctx)
         end
-        r.ImGui_PopFont(ctx)
-        r.ImGui_EndGroup(ctx)
-        if app.hint.main.text == '' then app:setHoveredHint('main', 'Hold '..app.gui.descModAlt.. ' for more controls. Hold shift for envelopes.' ) end
+        ImGui.PopFont(ctx)
+        ImGui.EndGroup(ctx)
+        if app.hint.main.text == '' then app:setHoveredHint('main',
+                'Hold ' .. app.gui.descModAlt .. ' for more controls. Hold shift for envelopes.') end
     end
 
     function app.drawSearch()
@@ -819,56 +842,56 @@ if OD_PrereqsOK({
 
         local ctx = app.gui.ctx
         local selectedResult = nil
-        local w = select(1, r.ImGui_GetContentRegionAvail(ctx))
+        local w = select(1, ImGui.GetContentRegionAvail(ctx))
 
-        r.ImGui_PushFont(ctx, app.gui.st.fonts.medium)
+        ImGui.PushFont(ctx, app.gui.st.fonts.medium)
         app.gui:pushStyles(app.gui.st.vars.searchWindow)
         app.gui:pushColors(app.gui.st.col.searchWindow)
         app.temp.searchResults = app.temp.searchResults or {}
 
         if app.pageSwitched then
-            app.db:init()
+            -- app.db:init()
             filterResults('')
-            r.ImGui_SetKeyboardFocusHere(ctx, 0)
+            ImGui.SetKeyboardFocusHere(ctx, 0)
         end
-        r.ImGui_SetNextItemWidth(ctx, w)
-        local rv, searchInput = r.ImGui_InputText(ctx, "##searchInput", app.temp.searchInput)
+        ImGui.SetNextItemWidth(ctx, w)
+        local rv, searchInput = ImGui.InputText(ctx, "##searchInput", app.temp.searchInput)
 
-        local h = select(2, r.ImGui_GetContentRegionAvail(ctx)) - app.gui.mainWindow.hintHeight
+        local h = select(2, ImGui.GetContentRegionAvail(ctx)) - app.gui.mainWindow.hintHeight
         local maxSearchResults = math.floor(h / (app.gui.TEXT_BASE_HEIGHT_LARGE))
 
         if rv then filterResults(searchInput) end
 
-        if r.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Escape()) then
+        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
             app.setPage(APP_PAGE.MIXER)
         elseif app.temp.highlightedResult then
-            if r.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_DownArrow()) then
+            if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) then
                 if app.temp.highlightedResult < #app.temp.searchResults then
                     app.temp.highlightedResult = app.temp.highlightedResult + 1
                     app.temp.checkScrollDown = true
                 end
-            elseif r.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_UpArrow()) then
+            elseif ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) then
                 if app.temp.highlightedResult > 1 then
                     app.temp.highlightedResult = app.temp.highlightedResult - 1
                     app.temp.checkScrollUp = true
                 end
-            elseif r.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Enter()) then
+            elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
                 if app.temp.highlightedResult then
                     selectedResult = app.temp.searchResults[app.temp.highlightedResult]
                 else
-                    r.ImGui_SetKeyboardFocusHere(ctx, -1)
+                    ImGui.SetKeyboardFocusHere(ctx, -1)
                 end
             end
         end
 
-        local selectableFlags = r.ImGui_SelectableFlags_SpanAllColumns() | r.ImGui_SelectableFlags_AllowItemOverlap()
+        local selectableFlags = ImGui.SelectableFlags_SpanAllColumns 
         local outer_size = { 0.0, app.gui.TEXT_BASE_HEIGHT_LARGE * h / (app.gui.TEXT_BASE_HEIGHT_LARGE) }
-        local tableFlags = r.ImGui_TableFlags_ScrollY()
+        local tableFlags = ImGui.TableFlags_ScrollY
         local lastGroup = nil
 
-        local upperRowY = select(2, r.ImGui_GetCursorScreenPos(ctx))
-        if r.ImGui_BeginTable(ctx, "##searchResults", 1, tableFlags, table.unpack(outer_size)) then
-            r.ImGui_TableSetupScrollFreeze(ctx, 0, 1)
+        local upperRowY = select(2, ImGui.GetCursorScreenPos(ctx))
+        if ImGui.BeginTable(ctx, "##searchResults", 1, tableFlags, table.unpack(outer_size)) then
+            ImGui.TableSetupScrollFreeze(ctx, 0, 1)
             local firstVisibleAbsIndex = nil
             local highlightedY = 0
             local foundInvisibleGroup = false
@@ -877,89 +900,89 @@ if OD_PrereqsOK({
                 -- local currentScreenY =
 
                 if result.group ~= lastGroup then
-                    r.ImGui_TableNextRow(ctx, r.ImGui_TableRowFlags_None(), app.gui.TEXT_BASE_HEIGHT_LARGE)
+                    ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, app.gui.TEXT_BASE_HEIGHT_LARGE)
                     absIndex = absIndex + 1
-                    r.ImGui_TableSetColumnIndex(ctx, 0)
-                    r.ImGui_SeparatorText(ctx, i == 1 and app.temp.lastInvisibleGroup or result.group)
+                    ImGui.TableSetColumnIndex(ctx, 0)
+                    ImGui.SeparatorText(ctx, i == 1 and app.temp.lastInvisibleGroup or result.group)
                     lastGroup = result.group
-                    if select(2, r.ImGui_GetCursorScreenPos(ctx)) <= upperRowY + app.gui.TEXT_BASE_HEIGHT_LARGE then
+                    if select(2, ImGui.GetCursorScreenPos(ctx)) <= upperRowY + app.gui.TEXT_BASE_HEIGHT_LARGE then
                         app.temp.lastInvisibleGroup = result.group
                         foundInvisibleGroup = true
                     end
                 end
                 if not foundInvisibleGroup then app.temp.lastInvisibleGroup = nil end
-                r.ImGui_PushID(ctx, 'result' .. i)
-                r.ImGui_TableNextRow(ctx, r.ImGui_TableRowFlags_None(), app.gui.TEXT_BASE_HEIGHT_LARGE)
+                ImGui.PushID(ctx, 'result' .. i)
+                ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, app.gui.TEXT_BASE_HEIGHT_LARGE)
                 absIndex = absIndex + 1
-                r.ImGui_TableSetColumnIndex(ctx, 0)
+                ImGui.TableSetColumnIndex(ctx, 0)
                 if (app.temp.checkScrollDown or app.temp.checkScrollUp) and i == app.temp.highlightedResult then
-                    highlightedY = select(2, r.ImGui_GetCursorScreenPos(ctx))
+                    highlightedY = select(2, ImGui.GetCursorScreenPos(ctx))
                 end
-                if r.ImGui_Selectable(ctx, '', i == app.temp.highlightedResult, selectableFlags, 0, 0) then
+                if ImGui.Selectable(ctx, '', i == app.temp.highlightedResult, selectableFlags, 0, 0) then
                     selectedResult = result
                 end
-                r.ImGui_SameLine(ctx)
+                ImGui.SameLine(ctx)
 
                 if result.type == ASSETS.TRACK then
-                    r.ImGui_SetCursorPosY(ctx, r.ImGui_GetCursorPosY(ctx))
+                    ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx))
                     local size = app.gui.TEXT_BASE_HEIGHT_LARGE - app.gui.vars.framePaddingY * 2
-                    r.ImGui_ColorButton(ctx, 'color', r.ImGui_ColorConvertNative(result.color),
-                        r.ImGui_ColorEditFlags_NoAlpha() | r.ImGui_ColorEditFlags_NoBorder() |
-                        r.ImGui_ColorEditFlags_NoTooltip(), size, size)
-                    r.ImGui_SameLine(ctx)
+                    ImGui.ColorButton(ctx, 'color', ImGui.ColorConvertNative(result.color),
+                        ImGui.ColorEditFlags_NoAlpha | ImGui.ColorEditFlags_NoBorder |
+                        ImGui.ColorEditFlags_NoTooltip, size, size)
+                    ImGui.SameLine(ctx)
                 end
 
                 if result.group == FAVORITE_GROUP then
                     -- app.gui:pushColors(app.gui.st.col.searchWindow.favorite)
-                    r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_medium)
+                    ImGui.PushFont(ctx, app.gui.st.fonts.icons_medium)
                     app.gui:pushColors(app.gui.st.col.search.favorite)
-                    r.ImGui_Text(ctx, ICONS.STAR)
+                    ImGui.Text(ctx, ICONS.STAR)
                     app.gui:popColors(app.gui.st.col.search.favorite)
-                    r.ImGui_PopFont(ctx)
-                    r.ImGui_SameLine(ctx)
+                    ImGui.PopFont(ctx)
+                    ImGui.SameLine(ctx)
                 end
 
                 -- draw result name, highlighting the search query
 
                 local text = result.name
-                r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing(), 0.0, 0.0)
+                ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 0.0, 0.0)
                 for foundText in searchInput:gmatch('([^%s]+)') do
                     local pat = nocase('(.-[ -_]-)(' .. OD_EscapePattern(foundText) .. ')(.*)')
                     for notFound, found, rest in text:gmatch(pat) do
                         if notFound then
-                            r.ImGui_Text(ctx, notFound)
-                            r.ImGui_SameLine(ctx)
+                            ImGui.Text(ctx, notFound)
+                            ImGui.SameLine(ctx)
                         end
                         if found then
                             app.gui:pushColors(app.gui.st.col.search.highlight)
-                            r.ImGui_Text(ctx, found)
+                            ImGui.Text(ctx, found)
                             app.gui:popColors(app.gui.st.col.search.highlight)
-                            r.ImGui_SameLine(ctx)
+                            ImGui.SameLine(ctx)
                         end
                         text = rest
                     end
                 end
-                r.ImGui_Text(ctx, text)
-                r.ImGui_PopStyleVar(ctx)
+                ImGui.Text(ctx, text)
+                ImGui.PopStyleVar(ctx)
 
-                r.ImGui_PopID(ctx)
+                ImGui.PopID(ctx)
             end
             if app.temp.checkScrollDown and highlightedY > upperRowY + maxSearchResults * app.gui.TEXT_BASE_HEIGHT_LARGE then
-                r.ImGui_SetScrollY(ctx,
-                    r.ImGui_GetScrollY(ctx) +
+                ImGui.SetScrollY(ctx,
+                    ImGui.GetScrollY(ctx) +
                     (highlightedY - (upperRowY + (maxSearchResults - 1) * app.gui.TEXT_BASE_HEIGHT_LARGE) - 1))
                 app.temp.checkScrollDown = false
             end
             if app.temp.checkScrollUp and highlightedY <= upperRowY + app.gui.TEXT_BASE_HEIGHT_LARGE then
-                r.ImGui_SetScrollY(ctx,
-                    r.ImGui_GetScrollY(ctx) - (upperRowY - highlightedY + 1) - app.gui.TEXT_BASE_HEIGHT_LARGE - 1)
+                ImGui.SetScrollY(ctx,
+                    ImGui.GetScrollY(ctx) - (upperRowY - highlightedY + 1) - app.gui.TEXT_BASE_HEIGHT_LARGE - 1)
                 app.temp.checkScrollUp = false
             end
-            r.ImGui_EndTable(ctx)
+            ImGui.EndTable(ctx)
         end
         app.gui:popColors(app.gui.st.col.searchWindow)
         app.gui:popStyles(app.gui.st.vars.searchWindow)
-        r.ImGui_PopFont(ctx)
+        ImGui.PopFont(ctx)
         if selectedResult then
             if app.page == APP_PAGE.SEARCH_FX then
                 app.temp.addFxToSend:addInsert(selectedResult.load)
@@ -976,42 +999,42 @@ if OD_PrereqsOK({
         local ctx = app.gui.ctx
         app.db:sync()
         local w, h =
-            select(1, r.ImGui_GetContentRegionAvail(ctx)) -
-            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 2,
-            select(2, r.ImGui_GetContentRegionAvail(ctx)) - app.gui.mainWindow.hintHeight
-        if r.ImGui_BeginChild(ctx, '##noSends', w, h, nil, nil) then
-            r.ImGui_Dummy(ctx, w, h)
-            r.ImGui_SetCursorPos(ctx, w / 2,
+            select(1, ImGui.GetContentRegionAvail(ctx)) -
+            ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2,
+            select(2, ImGui.GetContentRegionAvail(ctx)) - app.gui.mainWindow.hintHeight
+        if ImGui.BeginChild(ctx, '##noSends', w, h, nil, nil) then
+            ImGui.Dummy(ctx, w, h)
+            ImGui.SetCursorPos(ctx, w / 2,
                 h / 2 - app.gui.TEXT_BASE_HEIGHT * 2)
             app.gui:drawSadFace(4, app.gui.st.basecolors.main)
             local text = 'No sends here yet...'
-            r.ImGui_SetCursorPos(ctx, (w - r.ImGui_CalcTextSize(ctx, text)) / 2,
+            ImGui.SetCursorPos(ctx, (w - ImGui.CalcTextSize(ctx, text)) / 2,
                 h / 2 + app.gui.TEXT_BASE_HEIGHT)
-            r.ImGui_Text(ctx, text)
+            ImGui.Text(ctx, text)
             text = 'Why not add one?'
-            r.ImGui_SetCursorPos(ctx, w / 2 - r.ImGui_CalcTextSize(ctx, text) / 2, h / 2 + app.gui.TEXT_BASE_HEIGHT * 3)
-            r.ImGui_Text(ctx, text)
-            r.ImGui_SameLine(ctx)
-            r.ImGui_SetCursorPosY(ctx, r.ImGui_GetCursorPosY(ctx) + app.gui.TEXT_BASE_HEIGHT / 2)
-            r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx) + app.gui.TEXT_BASE_WIDTH)
-            local x, y = r.ImGui_GetCursorScreenPos(ctx)
+            ImGui.SetCursorPos(ctx, w / 2 - ImGui.CalcTextSize(ctx, text) / 2, h / 2 + app.gui.TEXT_BASE_HEIGHT * 3)
+            ImGui.Text(ctx, text)
+            ImGui.SameLine(ctx)
+            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + app.gui.TEXT_BASE_HEIGHT / 2)
+            ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + app.gui.TEXT_BASE_WIDTH)
+            local x, y = ImGui.GetCursorScreenPos(ctx)
             local sz = app.gui.TEXT_BASE_WIDTH * 1.5
             local th = 3
-            r.ImGui_DrawList_AddBezierQuadratic(app.gui.draw_list,
+            ImGui.DrawList_AddBezierQuadratic(app.gui.draw_list,
                 x, y, app.temp.addSendBtnX, y, app.temp.addSendBtnX, app.temp.addSendBtnY,
                 app.gui.st.basecolors.main, th, 20)
-            r.ImGui_DrawList_AddBezierQuadratic(app.gui.draw_list,
+            ImGui.DrawList_AddBezierQuadratic(app.gui.draw_list,
                 app.temp.addSendBtnX, app.temp.addSendBtnY,
                 app.temp.addSendBtnX + sz / 1.5, app.temp.addSendBtnY + sz * 1.5,
                 app.temp.addSendBtnX + sz, app.temp.addSendBtnY + sz * 1.5,
                 app.gui.st.basecolors.main, th, 20)
-            r.ImGui_DrawList_AddBezierQuadratic(app.gui.draw_list,
+            ImGui.DrawList_AddBezierQuadratic(app.gui.draw_list,
                 app.temp.addSendBtnX, app.temp.addSendBtnY,
                 app.temp.addSendBtnX - sz / 1.5, app.temp.addSendBtnY + sz * 1.5,
                 app.temp.addSendBtnX - sz, app.temp.addSendBtnY + sz * 1.5,
                 app.gui.st.basecolors.main, th, 20)
 
-            r.ImGui_EndChild(ctx)
+            ImGui.EndChild(ctx)
         end
     end
 
@@ -1019,88 +1042,88 @@ if OD_PrereqsOK({
         local ctx = app.gui.ctx
         app.db:sync()
         local w, h =
-            select(1, r.ImGui_GetContentRegionAvail(ctx)) -
-            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 2,
-            select(2, r.ImGui_GetContentRegionAvail(ctx)) - app.gui.mainWindow.hintHeight
-        if r.ImGui_BeginChild(ctx, '##noTrack', w, h, nil, nil) then
-            r.ImGui_Dummy(ctx, w, h)
-            r.ImGui_SetCursorPos(ctx, w / 2,
+            select(1, ImGui.GetContentRegionAvail(ctx)) -
+            ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2,
+            select(2, ImGui.GetContentRegionAvail(ctx)) - app.gui.mainWindow.hintHeight
+        if ImGui.BeginChild(ctx, '##noTrack', w, h, nil, nil) then
+            ImGui.Dummy(ctx, w, h)
+            ImGui.SetCursorPos(ctx, w / 2,
                 h / 2 - app.gui.TEXT_BASE_HEIGHT * 1)
             app.gui:drawSadFace(4, app.gui.st.basecolors.main)
             local text = 'No track selected'
-            r.ImGui_SetCursorPos(ctx, (w - r.ImGui_CalcTextSize(ctx, text)) / 2,
+            ImGui.SetCursorPos(ctx, (w - ImGui.CalcTextSize(ctx, text)) / 2,
                 h / 2 + app.gui.TEXT_BASE_HEIGHT * 2)
-            r.ImGui_Text(ctx, text)
+            ImGui.Text(ctx, text)
             -- app.gui:popStyles(app.gui.st.vars.bigButton)
-            r.ImGui_EndChild(ctx)
+            ImGui.EndChild(ctx)
         end
     end
 
     function app.iconButton(ctx, icon)
-        local x, y = r.ImGui_GetCursorPos(ctx)
-        local w = select(1, r.ImGui_CalcTextSize(ctx, ICONS[(icon):upper()])) + app.gui.vars.framePaddingX * 2
+        local x, y = ImGui.GetCursorPos(ctx)
+        local w = select(1, ImGui.CalcTextSize(ctx, ICONS[(icon):upper()])) + app.gui.vars.framePaddingX * 2
         local clicked
-        if r.ImGui_InvisibleButton(ctx, '##menuBtn' .. icon, w, r.ImGui_GetTextLineHeightWithSpacing(ctx)) then
+        if ImGui.InvisibleButton(ctx, '##menuBtn' .. icon, w, ImGui.GetTextLineHeightWithSpacing(ctx)) then
             clicked = true
         end
-        if r.ImGui_IsItemHovered(ctx) and not r.ImGui_IsItemActive(ctx) then
+        if ImGui.IsItemHovered(ctx) and not ImGui.IsItemActive(ctx) then
             app.gui:pushColors(app.gui.st.col.buttons.topBarIcon.hovered)
-        elseif r.ImGui_IsItemActive(ctx) then
+        elseif ImGui.IsItemActive(ctx) then
             app.gui:pushColors(app.gui.st.col.buttons.topBarIcon.active)
         else
             app.gui:pushColors(app.gui.st.col.buttons.topBarIcon.default)
         end
-        r.ImGui_SetCursorPos(ctx, x + app.gui.vars.framePaddingX, y + app.gui.vars.framePaddingY)
-        r.ImGui_Text(ctx, tostring(ICONS[icon:upper()]))
+        ImGui.SetCursorPos(ctx, x + app.gui.vars.framePaddingX, y + app.gui.vars.framePaddingY)
+        ImGui.Text(ctx, tostring(ICONS[icon:upper()]))
         app.gui:popColors(app.gui.st.col.buttons.topBarIcon.default)
-        r.ImGui_SetCursorPos(ctx, x + w, y)
+        ImGui.SetCursorPos(ctx, x + w, y)
         return clicked
     end
 
     function app.drawTopBar()
         local function beginRightIconMenu(ctx, buttons)
-            local windowEnd = app.gui.mainWindow.size[1] - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) -
-                ((r.ImGui_GetScrollMaxY(app.gui.ctx) > 0) and r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ScrollbarSize()) or 0)
-            r.ImGui_SameLine(ctx, windowEnd)
-            r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_large)
+            local windowEnd = app.gui.mainWindow.size[1] - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) -
+                ((ImGui.GetScrollMaxY(app.gui.ctx) > 0) and ImGui.GetStyleVar(ctx, ImGui.StyleVar_ScrollbarSize) or 0)
+            ImGui.SameLine(ctx, windowEnd)
+            ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
             local clicked = nil
-            local prevX = r.ImGui_GetCursorPosX(ctx) - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing())
+            local prevX = ImGui.GetCursorPosX(ctx) - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
             for i, btn in ipairs(buttons) do
-                local w = select(1, r.ImGui_CalcTextSize(ctx, ICONS[(btn.icon):upper()])) +
+                local w = select(1, ImGui.CalcTextSize(ctx, ICONS[(btn.icon):upper()])) +
                     app.gui.vars.framePaddingX * 2
-                local x = prevX - w - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing())
+                local x = prevX - w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
                 prevX = x
-                r.ImGui_SetCursorPosX(ctx, x)
+                ImGui.SetCursorPosX(ctx, x)
                 if app.iconButton(ctx, btn.icon) then clicked = btn.icon end
                 if app.page == APP_PAGE.NO_SENDS and btn.icon == 'plus' then
-                    app.temp.addSendBtnX, app.temp.addSendBtnY = r.ImGui_GetCursorScreenPos(ctx)
+                    app.temp.addSendBtnX, app.temp.addSendBtnY = ImGui.GetCursorScreenPos(ctx)
                     app.temp.addSendBtnX = app.temp.addSendBtnX - w / 2
                     app.temp.addSendBtnY = app.temp.addSendBtnY + w * 1.5
                 end
                 app:setHoveredHint('main', btn.hint)
             end
-            r.ImGui_PopFont(ctx)
+            ImGui.PopFont(ctx)
             return clicked ~= nil, clicked
         end
 
 
         local ctx = app.gui.ctx
-        r.ImGui_BeginGroup(ctx)
-        r.ImGui_PushFont(ctx, app.gui.st.fonts.large_bold)
+        ImGui.BeginGroup(ctx)
+        ImGui.PushFont(ctx, app.gui.st.fonts.large_bold)
         app.gui:pushColors(app.gui.st.col.title)
-        r.ImGui_AlignTextToFramePadding(ctx)
-        r.ImGui_Text(ctx, app.scr.name)
+        ImGui.AlignTextToFramePadding(ctx)
+        ImGui.Text(ctx, app.scr.name)
         app.gui:popColors(app.gui.st.col.title)
-        r.ImGui_PopFont(ctx)
-        r.ImGui_PushFont(ctx, app.gui.st.fonts.large)
-        r.ImGui_SameLine(ctx)
-        r.ImGui_BeginDisabled(ctx)
+        ImGui.PopFont(ctx)
+        ImGui.PushFont(ctx, app.gui.st.fonts.large)
+        ImGui.SameLine(ctx)
+        ImGui.BeginDisabled(ctx)
         local caption = app.db.track and app.db.trackName or ''
         if app.page == APP_PAGE.SEARCH_SEND then
             caption = 'Add Send to track \'' .. app.db.trackName .. '\''
         end
-        r.ImGui_Text(ctx, ' ' .. caption)
-        r.ImGui_EndDisabled(ctx)
+        ImGui.Text(ctx, ' ' .. caption)
+        ImGui.EndDisabled(ctx)
         local menu = {}
         if app.page == APP_PAGE.MIXER or app.page == APP_PAGE.NO_SENDS then
             table.insert(menu, { icon = 'close', hint = 'Close' })
@@ -1113,7 +1136,7 @@ if OD_PrereqsOK({
             table.insert(menu, { icon = 'right', hint = 'Back' })
             table.insert(menu, { icon = 'gear', hint = 'Settings' })
         end
-        if r.ImGui_IsWindowDocked(ctx) then
+        if ImGui.IsWindowDocked(ctx) then
             table.insert(menu, { icon = 'undock', hint = 'Undock' })
         else
             if app.settings.current.lastDockId then
@@ -1121,9 +1144,9 @@ if OD_PrereqsOK({
             end
         end
         local rv, btn = beginRightIconMenu(ctx, menu)
-        r.ImGui_PopFont(ctx)
-        r.ImGui_EndGroup(ctx)
-        r.ImGui_Separator(ctx)
+        ImGui.PopFont(ctx)
+        ImGui.EndGroup(ctx)
+        ImGui.Separator(ctx)
         if rv then
             if btn == 'close' then
                 app.exit = true
@@ -1144,11 +1167,13 @@ if OD_PrereqsOK({
     function app.drawHint(window)
         local ctx = app.gui.ctx
         local status, col = app:getHint(window)
-        r.ImGui_Spacing(ctx)
-        r.ImGui_Separator(ctx)
-        r.ImGui_Spacing(ctx)
+        ImGui.Spacing(ctx)
+        ImGui.Separator(ctx)
+        ImGui.Spacing(ctx)
         if col then app.gui:pushColors(app.gui.st.col[col]) end
-        r.ImGui_Text(ctx, status)
+        ImGui.PushFont(ctx, app.gui.st.fonts.default)
+        ImGui.Text(ctx, status)
+        ImGui.PopFont(ctx)
         if col then app.gui:popColors(app.gui.st.col[col]) end
         app:setHint(window, '')
     end
@@ -1160,25 +1185,25 @@ if OD_PrereqsOK({
             app.refreshWindowSize()
         end
         if app.gui.mainWindow.dockTo ~= nil then
-            r.ImGui_SetNextWindowDockID(ctx, app.gui.mainWindow.dockTo, r.ImGui_Cond_Always())
+            ImGui.SetNextWindowDockID(ctx, app.gui.mainWindow.dockTo, ImGui.Cond_Always)
             app.gui.mainWindow.dockTo = nil
         end
 
-        r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
-        r.ImGui_SetNextWindowSizeConstraints(app.gui.ctx, app.gui.mainWindow.min_w, app.gui.mainWindow.min_h,
+        ImGui.SetNextWindowPos(ctx, 100, 100, ImGui.Cond_FirstUseEver)
+        ImGui.SetNextWindowSizeConstraints(app.gui.ctx, app.gui.mainWindow.min_w, app.gui.mainWindow.min_h,
             app.gui.mainWindow.max_w, app.gui.mainWindow.max_h)
 
-        local visible, open = r.ImGui_Begin(ctx, "###mainWindow",
+        local visible, open = ImGui.Begin(ctx, "###mainWindow",
             true,
-            r.ImGui_WindowFlags_NoCollapse() |
-            r.ImGui_WindowFlags_NoTitleBar() | app.page.windowFlags)
-        -- r.ImGui_WindowFlags_NoResize()
-        app.gui.mainWindow.pos = { r.ImGui_GetWindowPos(ctx) }
-        app.gui.mainWindow.size = { r.ImGui_GetWindowSize(ctx) }
+            ImGui.WindowFlags_NoCollapse |
+            ImGui.WindowFlags_NoTitleBar | app.page.windowFlags)
+        -- ImGui.WindowFlags_NoResize
+        app.gui.mainWindow.pos = { ImGui.GetWindowPos(ctx) }
+        app.gui.mainWindow.size = { ImGui.GetWindowSize(ctx) }
 
-        if r.ImGui_GetWindowDockID(ctx) ~= app.gui.mainWindow.dockId then
+        if ImGui.GetWindowDockID(ctx) ~= app.gui.mainWindow.dockId then
             app.refreshWindowSizeOnNextFrame = true
-            app.gui.mainWindow.dockId = r.ImGui_GetWindowDockID(ctx)
+            app.gui.mainWindow.dockId = ImGui.GetWindowDockID(ctx)
             if app.gui.mainWindow.dockId ~= 0 then
                 app.settings.current.lastDockId = app.gui.mainWindow.dockId
                 app.settings:save()
@@ -1189,7 +1214,7 @@ if OD_PrereqsOK({
 
             if app.page == APP_PAGE.MIXER then
                 app.drawMixer()
-                if reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Escape()) then open = false end
+                if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then open = false end
             elseif app.page == APP_PAGE.SEARCH_SEND or app.page == APP_PAGE.SEARCH_FX then
                 app.drawSearch()
             elseif app.page == APP_PAGE.NO_SENDS then
@@ -1198,7 +1223,7 @@ if OD_PrereqsOK({
                 app.drawErrorNoTrack()
             end
             app.drawHint('main')
-            r.ImGui_End(ctx)
+            ImGui.End(ctx)
         end
         return open
     end
@@ -1209,12 +1234,12 @@ if OD_PrereqsOK({
 
         app.gui:pushColors(app.gui.st.col.main)
         app.gui:pushStyles(app.gui.st.vars.main)
-        r.ImGui_PushFont(ctx, app.gui.st.fonts.large)
+        ImGui.PushFont(ctx, app.gui.st.fonts.large)
         app.open = app.drawMainWindow()
-        r.ImGui_PopFont(ctx)
+        ImGui.PopFont(ctx)
         app.gui:popColors(app.gui.st.col.main)
         app.gui:popStyles(app.gui.st.vars.main)
-        if app.page.giveFocus and r.ImGui_IsWindowFocused(ctx, r.ImGui_FocusedFlags_AnyWindow()) and app.focusMainReaperWindow and not (reaper.ImGui_IsPopupOpen(ctx, r.ImGui_PopupFlags_AnyPopup()) or reaper.ImGui_IsAnyMouseDown(ctx) or reaper.ImGui_IsAnyItemActive(ctx) or reaper.ImGui_IsKeyPressed(ctx, reaper.ImGui_Key_Escape())) then
+        if app.page.giveFocus and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow) and app.focusMainReaperWindow and not (ImGui.IsPopupOpen(ctx, ImGui.PopupFlags_AnyPopup) or ImGui.IsAnyMouseDown(ctx) or ImGui.IsAnyItemActive(ctx) or ImGui.IsKeyPressed(ctx, ImGui.Key_Escape)) then
             r.JS_Window_SetFocus(app.gui.reaperHWND)
         else
             app.focusMainReaperWindow = true
