@@ -211,74 +211,112 @@ if OD_PrereqsOK({
         local ctx = app.gui.ctx
         local altPressed = OD_IsKeyPressed('alt')
         local ctrlPressed = OD_IsKeyPressed('control')
-        local showEnvelopeButtons = OD_IsKeyPressed('shift')
+        local shiftPressed = OD_IsKeyPressed('shift')
         -- if OD_IsKeyPressed('control') then
         --     r.ShowConsoleMsg('command pressed\n')
         -- end
 
         app.db:sync()
         r.ImGui_PushFont(ctx, app.gui.st.fonts.small)
-        local drawSend = function(s, part, label)
+
+        local drawSend = function(s, part)
+            local drawDummy = function(col, h)
+                app.gui:pushColors(col)
+                r.ImGui_BeginDisabled(ctx)
+                r.ImGui_Button(ctx, '##dummy', app.settings.current.sendWidth, h)
+                r.ImGui_EndDisabled(ctx)
+                app:setHoveredHint('main', ' ')
+                app.gui:popColors(col)
+            end
+            local drawEnvVolButton = function(h)
+                app.gui:pushColors(app.gui.st.col.buttons.env)
+                -- r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_large)
+                if r.ImGui_Button(ctx, 'VOL\nENV##vEnvelope', app.settings.current.sendWidth, h) then
+                    s:toggleVolEnv()
+                end
+                app:setHoveredHint('main', s.name .. ' - Show/hide send volume envelope')
+                -- r.ImGui_PopFont(ctx)
+                app.gui:popColors(app.gui.st.col.buttons.env)
+            end
+            local drawDeleteSend = function()
+                app.gui:pushColors(app.gui.st.col.buttons.deleteSend)
+                r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_small)
+                if r.ImGui_Button(ctx, ICONS.TRASH .. '##deleteSend', app.settings.current.sendWidth) then
+                    s:delete()
+                end
+                app:setHoveredHint('main', s.name .. ' - Delete send')
+                r.ImGui_PopFont(ctx)
+                app.gui:popColors(app.gui.st.col.buttons.deleteSend)
+            end
+            local drawEnvMuteButton = function()
+                app.gui:pushColors(app.gui.st.col.buttons.mute[false])
+                -- r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_small)     -- TODO: Fix Icon
+                if r.ImGui_Button(ctx, 'MUTE\nENV##mEnvelope' .. s.order, app.settings.current.sendWidth, app.gui.TEXT_BASE_HEIGHT_SMALL * 2.5 + select(2, r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing())) * 2.5) then
+                    s:toggleMuteEnv()
+                end
+                -- r.ImGui_PopFont(ctx)
+                app:setHoveredHint('main', s.name .. ' - Show/hide send mute envelope')
+                app.gui:popColors(app.gui.st.col.buttons.mute[false])
+            end
+            local drawEnvPanButton = function()
+                app.gui:pushColors(app.gui.st.col.buttons.route)
+                -- r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_small)     -- TODO: Fix Icon
+                if r.ImGui_Button(ctx, 'PAN\nENV##pEnvelope' .. s.order, app.settings.current.sendWidth, app.gui.TEXT_BASE_HEIGHT_SMALL * 2.5 + select(2, r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing())) * 2.5) then
+                    s:togglePanEnv()
+                end
+                -- r.ImGui_PopFont(ctx)
+                app:setHoveredHint('main', s.name .. ' - Show/hide send pan envelope')
+                app.gui:popColors(app.gui.st.col.buttons.route)
+            end
             local drawFader = function(h)
-                if showEnvelopeButtons then
-                    app.gui:pushColors(app.gui.st.col.buttons.env)
-                    r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_large)
-                    if r.ImGui_Button(ctx, ICONS.ENVELOPE .. '##vEnvelope', app.settings.current.sendWidth, h) then
-                        s:toggleVolEnv()
-                    end
-                    app:setHoveredHint('main', s.name .. ' - Show/hide send volume envelope')
-                    r.ImGui_PopFont(ctx)
-                    app.gui:popColors(app.gui.st.col.buttons.env)
+                local v = OD_dBFromValue(s.vol)
+                local mw = r.ImGui_GetMouseWheel(ctx)
+                local scaledV = (v >= app.settings.current.scaleLevel) and (v / app.settings.current.scaleFactor) or
+                    (v * app.settings.current.scaleFactor)
+                if v >= app.settings.current.scaleLevel then
+                    scaledV = v * app.settings.current.scaleFactor
                 else
-                    local v = OD_dBFromValue(s.vol)
-                    local mw = r.ImGui_GetMouseWheel(ctx)
-                    local scaledV = (v >= app.settings.current.scaleLevel) and (v / app.settings.current.scaleFactor) or
-                        (v * app.settings.current.scaleFactor)
-                    if v >= app.settings.current.scaleLevel then
-                        scaledV = v * app.settings.current.scaleFactor
-                    else
-                        scaledV = app.settings.current.scaleLevel * app.settings.current.scaleFactor +
-                            (v - app.settings.current.scaleLevel) /
-                            ((app.settings.current.minSendVol - app.settings.current.scaleLevel) / (app.settings.current.minSendVol - (app.settings.current.scaleLevel * app.settings.current.scaleFactor)))
-                    end
-                    app.gui:pushStyles(app.gui.st.vars.vol)
-                    local rv, v2 = r.ImGui_VSliderDouble(ctx, '##v', app.settings.current.sendWidth,
-                        h,
-                        scaledV,
-                        app.settings.current.minSendVol,
-                        app.settings.current.maxSendVol * app.settings.current.scaleFactor,
-                        '')
-                    app:setHoveredHint('main', s.name .. ' - Send volume')
-                    app.gui:popStyles(app.gui.st.vars.vol)
-                    if (v2 < app.settings.current.scaleLevel * app.settings.current.scaleFactor) then
-                        v2 = app.settings.current.scaleLevel +
-                            (v2 - app.settings.current.scaleLevel * app.settings.current.scaleFactor) *
-                            (app.settings.current.minSendVol - app.settings.current.scaleLevel) /
-                            (app.settings.current.minSendVol - (app.settings.current.scaleLevel * app.settings.current.scaleFactor))
-                    else
-                        v2 = v2 / app.settings.current.scaleFactor
-                    end
+                    scaledV = app.settings.current.scaleLevel * app.settings.current.scaleFactor +
+                        (v - app.settings.current.scaleLevel) /
+                        ((app.settings.current.minSendVol - app.settings.current.scaleLevel) / (app.settings.current.minSendVol - (app.settings.current.scaleLevel * app.settings.current.scaleFactor)))
+                end
+                app.gui:pushStyles(app.gui.st.vars.vol)
+                local rv, v2 = r.ImGui_VSliderDouble(ctx, '##v', app.settings.current.sendWidth,
+                    h,
+                    scaledV,
+                    app.settings.current.minSendVol,
+                    app.settings.current.maxSendVol * app.settings.current.scaleFactor,
+                    '')
+                app:setHoveredHint('main', s.name .. ' - Send volume')
+                app.gui:popStyles(app.gui.st.vars.vol)
+                if (v2 < app.settings.current.scaleLevel * app.settings.current.scaleFactor) then
+                    v2 = app.settings.current.scaleLevel +
+                        (v2 - app.settings.current.scaleLevel * app.settings.current.scaleFactor) *
+                        (app.settings.current.minSendVol - app.settings.current.scaleLevel) /
+                        (app.settings.current.minSendVol - (app.settings.current.scaleLevel * app.settings.current.scaleFactor))
+                else
+                    v2 = v2 / app.settings.current.scaleFactor
+                end
 
-                    local shouldReset, v2 = app.resetOnDoubleClick('s' .. s.order, v2, 0.0)
+                local shouldReset, v2 = app.resetOnDoubleClick('s' .. s.order, v2, 0.0)
 
-                    if rv or shouldReset then
-                        s:setVolDB(v2)
-                    end
-                    if r.ImGui_IsItemHovered(ctx) then
-                        if mw ~= 0 then
-                            local scale = .2
-                            if v > app.settings.current.scaleLevel then
-                                scale = 0.05
-                            end
-                            if ctrlPressed then
-                                scale = scale * 0.2
-                            end
-                            if v < app.settings.current.minSendVol then
-                                v = app.settings.current.minSendVol
-                            end
-                            local newV = v + (app.settings.current.mouseScrollReversed and -mw or mw) * scale
-                            s:setVolDB(newV)
+                if rv or shouldReset then
+                    s:setVolDB(v2)
+                end
+                if r.ImGui_IsItemHovered(ctx) then
+                    if mw ~= 0 then
+                        local scale = .2
+                        if v > app.settings.current.scaleLevel then
+                            scale = 0.05
                         end
+                        if ctrlPressed then
+                            scale = scale * 0.2
+                        end
+                        if v < app.settings.current.minSendVol then
+                            v = app.settings.current.minSendVol
+                        end
+                        local newV = v + (app.settings.current.mouseScrollReversed and -mw or mw) * scale
+                        s:setVolDB(newV)
                     end
                 end
             end
@@ -323,23 +361,13 @@ if OD_PrereqsOK({
                 local w = app.settings.current.sendWidth / 2 -
                     r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) / 2
 
-                if showEnvelopeButtons then
-                    app.gui:pushColors(app.gui.st.col.buttons.mute[false])
-                    r.ImGui_PushFont(ctx, app.gui.st.fonts.icons_small) -- TODO: Fix Icon
-                    if r.ImGui_Button(ctx, ICONS.ENVELOPE .. '##mEnvelope' .. s.order, w) then
-                        s:toggleMuteEnv()
-                    end
-                    r.ImGui_PopFont(ctx)
-                    app:setHoveredHint('main', s.name .. ' - Show/hide send mute envelope')
-                    app.gui:popColors(app.gui.st.col.buttons.mute[false])
-                else
-                    app.gui:pushColors(app.gui.st.col.buttons.mute[s.mute])
-                    if r.ImGui_Button(ctx, 'M##mute' .. s.order, w) then
-                        s:setMute(not s.mute)
-                    end
-                    app:setHoveredHint('main', s.name .. ' - Mute send')
-                    app.gui:popColors(app.gui.st.col.buttons.mute[s.mute])
+                app.gui:pushColors(app.gui.st.col.buttons.mute[s.mute])
+                if r.ImGui_Button(ctx, 'M##mute' .. s.order, w) then
+                    s:setMute(not s.mute)
                 end
+                app:setHoveredHint('main', s.name .. ' - Mute send')
+                app.gui:popColors(app.gui.st.col.buttons.mute[s.mute])
+
                 r.ImGui_SameLine(ctx)
                 local soloed = app.db.soloedSends[s.order] ~= nil
                 app.gui:pushColors(app.gui.st.col.buttons.solo[soloed])
@@ -422,6 +450,7 @@ if OD_PrereqsOK({
                 end
                 app.gui:popColors(app.gui.st.col.buttons.route)
                 r.ImGui_EndGroup(ctx)
+                r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
                 if r.ImGui_BeginPopup(ctx, '##srcMidiChanMenu' .. s.order) then
                     if r.ImGui_MenuItem(ctx, 'None', nil, s.midiSrcBus == 255, true) then s:setMidiRouting(0x1f, 0xff) end
                     if r.ImGui_MenuItem(ctx, 'All', nil, s.midiSrcChn == 0 and s.midiSrcBus == 0, true) then
@@ -429,7 +458,7 @@ if OD_PrereqsOK({
                     end
                     r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
                     for i = 1, 16 do
-                        if r.ImGui_MenuItem(ctx, i, nil, s.midiSrcChn == i, true) then
+                        if r.ImGui_MenuItem(ctx, i, nil, s.midiSrcChn == i and s.midiSrcBus == 0, true) then
                             s:setMidiRouting(1, 0)
                         end
                     end
@@ -457,7 +486,7 @@ if OD_PrereqsOK({
                     end
                     r.ImGui_SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
                     for i = 1, 16 do
-                        if r.ImGui_MenuItem(ctx, i, nil, s.midiDestChn == i, true) then
+                        if r.ImGui_MenuItem(ctx, i, nil, s.midiDestChn == i and s.midiDestBus == 0, true) then
                             s:setMidiRouting(nil, nil, 1, 0)
                         end
                     end
@@ -565,7 +594,7 @@ if OD_PrereqsOK({
 
             local drawSendName = function()
                 local shortName, shortened = app.minimizeText(s.name, app.settings.current.sendWidth)
-                if r.ImGui_BeginChild(ctx, '##' .. part .. 'Label', app.settings.current.sendWidth, app.gui.TEXT_BASE_HEIGHT, nil) then
+                if r.ImGui_BeginChild(ctx, '##' .. part.name .. 'Label', app.settings.current.sendWidth, app.gui.TEXT_BASE_HEIGHT, nil) then
                     r.ImGui_AlignTextToFramePadding(ctx)
                     r.ImGui_Text(ctx, shortName)
                     r.ImGui_EndChild(ctx)
@@ -625,7 +654,7 @@ if OD_PrereqsOK({
                 select(2, r.ImGui_GetContentRegionAvail(ctx)) - app.gui.TEXT_BASE_HEIGHT_SMALL * 2 -
                 app.gui.mainWindow.hintHeight - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2)
             if s == nil then
-                if r.ImGui_BeginChild(ctx, '##' .. part .. 'Label', app.settings.current.sendWidth, select(2, r.ImGui_CalcTextSize(ctx, label or '')), nil, r.ImGui_WindowFlags_NoScrollbar() | r.ImGui_WindowFlags_NoScrollWithMouse()) then
+                if r.ImGui_BeginChild(ctx, '##' .. part.name .. 'Label', app.settings.current.sendWidth, select(2, r.ImGui_CalcTextSize(ctx, label or '')), nil, r.ImGui_WindowFlags_NoScrollbar() | r.ImGui_WindowFlags_NoScrollWithMouse()) then
                     if label then
                         r.ImGui_AlignTextToFramePadding(ctx)
                         r.ImGui_Text(ctx, label or '')
@@ -633,25 +662,37 @@ if OD_PrereqsOK({
                     r.ImGui_EndChild(ctx)
                 end
             else
-                if part == 'inserts' then
+                if part.name == 'inserts' then
                     drawInserts()
-                elseif part == 'pan' then
+                elseif part.name == 'dummy' then
+                    drawDummy(part.color)
+                elseif part.name == 'dummyFader' then
+                    drawDummy(app.gui.st.col.buttons.env, faderHeight)
+                elseif part.name == 'pan' then
                     drawPan()
-                elseif part == 'solomute' then
+                elseif part.name == 'envmute' then
+                    drawEnvMuteButton()
+                elseif part.name == 'solomute' then
                     drawSoloMute()
-                elseif part == 'phasesolod' then
+                elseif part.name == 'phasesolod' then
                     drawPhaseSoloDefeat()
-                elseif part == 'modebutton' then
+                elseif part.name == 'modebutton' then
                     drawModeButton()
-                elseif part == 'routebutton' then
+                elseif part.name == 'routebutton' then
                     drawRouteButtons()
-                elseif part == 'midiroutebutton' then
+                elseif part.name == 'midiroutebutton' then
                     drawMIDIRouteButtons()
-                elseif part == 'fader' then
+                elseif part.name == 'envpan' then
+                    drawEnvPanButton()
+                elseif part.name == 'fader' then
                     drawFader(faderHeight)
-                elseif part == 'volLabel' then
+                elseif part.name == 'deletesend' then
+                    drawDeleteSend(faderHeight)
+                elseif part.name == 'envvol' then
+                    drawEnvVolButton(faderHeight)
+                elseif part.name == 'volLabel' then
                     drawVolLabel()
-                elseif part == 'sendName' then
+                elseif part.name == 'sendName' then
                     drawSendName()
                 end
             end
@@ -660,6 +701,7 @@ if OD_PrereqsOK({
             -- r.ImGui_EndGroup(ctx)
         end
 
+        r.ImGui_BeginGroup(ctx)
         if next(app.db.sends) then
             local h = -app.gui.vars.framePaddingY +
                 (app.settings.current.maxNumInserts + 1) *
@@ -668,7 +710,7 @@ if OD_PrereqsOK({
             if r.ImGui_BeginChild(ctx, "##inserts", nil, h, false) then
                 for i, s in OD_PairsByOrder(app.db.sends) do
                     r.ImGui_BeginGroup(ctx)
-                    drawSend(s, 'inserts')
+                    drawSend(s, { name = 'inserts' })
                     r.ImGui_EndGroup(ctx)
                     r.ImGui_SameLine(ctx)
                 end
@@ -703,22 +745,31 @@ if OD_PrereqsOK({
             r.ImGui_SetCursorPosY(ctx,
                 r.ImGui_GetCursorPosY(ctx) + 2 + select(2, r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing())))
             local parts = {
-                { name = 'solomute',    label = 'S/M' },
-                { name = 'modebutton',  label = 'Mode' },
-                { name = 'routebutton', label = 'Route' }, -- TODO: Maybe make alternate and implement envelopes instead
-                { name = 'pan',         label = 'Pan' },
-                { name = 'fader',       label = 'Send\nVolume' },
+                { name = 'solomute' },
+                { name = 'modebutton' },
+                { name = 'routebutton' },     -- TODO: Maybe make alternate and implement envelopes instead
+                { name = 'pan' },
+                { name = 'fader' },
                 { name = 'volLabel' },
                 { name = 'sendName' }
             }
-            if altPressed then -- TODO: Implement
+            if altPressed then     -- TODO: Implement
                 parts = {
-                    { name = 'phasesolod',      label = 'Phase/Solo Defeat' },
-                    { name = 'modebutton',      label = 'Mode' },
-                    { name = 'midiroutebutton', label = 'Route' },
-                    { name = 'pan',             label = 'Pan' },
-                    { name = 'fader',           label = 'Send\nVolume' },
-                    { name = 'volLabel' },
+                    { name = 'phasesolod' },
+                    { name = 'dummy', color = app.gui.st.col.buttons.mode[0] },
+                    { name = 'midiroutebutton' },
+                    { name = 'dummy',          color = app.gui.st.col.buttons.env },
+                    { name = 'dummyFader' },
+                    { name = 'deletesend' },
+                    { name = 'sendName' }
+                }
+            end
+            if shiftPressed then     -- TODO: Implement
+                parts = {
+                    { name = 'envmute' },
+                    { name = 'envpan' },
+                    { name = 'envvol' },
+                    { name = 'dummy',   color = app.gui.st.col.buttons.env },
                     { name = 'sendName' }
                 }
             end
@@ -726,7 +777,7 @@ if OD_PrereqsOK({
             for j, part in ipairs(parts) do
                 r.ImGui_BeginGroup(ctx)
                 for i, s in OD_PairsByOrder(app.db.sends) do
-                    drawSend(s, part.name)
+                    drawSend(s, part)
                     r.ImGui_SameLine(ctx)
                 end
                 r.ImGui_EndGroup(ctx)
@@ -734,8 +785,9 @@ if OD_PrereqsOK({
             r.ImGui_EndGroup(ctx)
             r.ImGui_SameLine(ctx)
         end
-
         r.ImGui_PopFont(ctx)
+        r.ImGui_EndGroup(ctx)
+        if app.hint.main.text == '' then app:setHoveredHint('main', 'Hold '..app.gui.descModAlt.. ' for more controls. Hold shift for envelopes.' ) end
     end
 
     function app.drawSearch()

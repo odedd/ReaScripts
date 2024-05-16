@@ -63,6 +63,10 @@ DB = {
                     destTrack = reaper.GetTrackSendInfo_Value(self.track, 0, i, 'P_DESTTRACK'),
                     destInserts = {},
                     destInsertsCount = 0,
+                    delete = function(self)
+                        reaper.RemoveTrackSend(self.track, 0, self.order)
+                        self.db:sync(true)
+                    end,
                     setVolDB = function(self, dB)
                         if dB < self.db.app.settings.current.minSendVol then
                             dB = self.db.app.settings.current.minSendVol

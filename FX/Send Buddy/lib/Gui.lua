@@ -143,6 +143,12 @@ SM_Gui.init = function(self, fonts)
             },
             route = self.st.colpresets.midButton,
             add = self.st.colpresets.midButton,
+            deleteSend = {
+                [r.ImGui_Col_Button()] = self.st.basecolors.main,
+                [r.ImGui_Col_ButtonHovered()] = self.st.basecolors.mainBright,
+                [r.ImGui_Col_ButtonActive()] = self.st.basecolors.mainBrighter,  
+                [r.ImGui_Col_Text()] = 0x000000ff  
+            },
             topBarIcon = {
                 default = { [r.ImGui_Col_Text()] = self.st.basecolors.midBG },
                 hovered = { [r.ImGui_Col_Text()] = self.st.basecolors.active },
