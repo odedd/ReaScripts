@@ -168,6 +168,7 @@ if OD_PrereqsOK({
     function app.resetTemp()
         app.temp.confirmation = {}
     end
+
     function app.handlePageSwitch()
         if app.pageSwitched then
             app.resetTemp()
@@ -369,9 +370,6 @@ if OD_PrereqsOK({
             local drawVolLabel = function()
                 local v = OD_dBFromValue(s.vol)
                 ImGui.SetNextItemWidth(ctx, app.settings.current.sendWidth)
-                if v == app.minSendVol then
-                    v = '-inf'
-                end
                 local rv, v3 = ImGui.DragDouble(ctx, '##db', v, 0, 0, 0, '%.2f')
                 app:setHoveredHint('main', s.name .. ' - Send volume. Double-click to enter exact amount.')
                 if rv then
@@ -480,7 +478,7 @@ if OD_PrereqsOK({
                     end
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
                     for i = 1, 16 do
-                        if ImGui.MenuItem(ctx, i, nil, s.midiSrcChn == i and s.midiSrcBus == 0, true) then
+                        if ImGui.MenuItem(ctx, tostring(i), nil, s.midiSrcChn == i and s.midiSrcBus == 0, true) then
                             s:setMidiRouting(i, 0)
                         end
                     end
@@ -491,7 +489,7 @@ if OD_PrereqsOK({
                                 s:setMidiRouting(0, bus)
                             end
                             for i = 1, 16 do
-                                if ImGui.MenuItem(ctx, i, nil, s.midiSrcChn == i and s.midiSrcBus == bus, true) then
+                                if ImGui.MenuItem(ctx, tostring(i), nil, s.midiSrcChn == i and s.midiSrcBus == bus, true) then
                                     s:setMidiRouting(i, bus)
                                 end
                             end
@@ -508,7 +506,7 @@ if OD_PrereqsOK({
                     end
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
                     for i = 1, 16 do
-                        if ImGui.MenuItem(ctx, i, nil, s.midiDestChn == i and s.midiDestBus == 0, true) then
+                        if ImGui.MenuItem(ctx, tostring(i), nil, s.midiDestChn == i and s.midiDestBus == 0, true) then
                             s:setMidiRouting(nil, nil, i, 0)
                         end
                     end
@@ -519,7 +517,7 @@ if OD_PrereqsOK({
                                 s:setMidiRouting(nil, nil, 0, bus)
                             end
                             for i = 1, 16 do
-                                if ImGui.MenuItem(ctx, i, nil, s.midiDestChn == i and s.midiDestBus == bus, true) then
+                                if ImGui.MenuItem(ctx, tostring(i), nil, s.midiDestChn == i and s.midiDestBus == bus, true) then
                                     s:setMidiRouting(nil, nil, i, bus)
                                 end
                             end
@@ -675,48 +673,39 @@ if OD_PrereqsOK({
             local faderHeight = math.max(app.settings.current.minFaderHeight,
                 select(2, ImGui.GetContentRegionAvail(ctx)) - app.gui.TEXT_BASE_HEIGHT_SMALL * 2 -
                 app.gui.mainWindow.hintHeight - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2)
-            if s == nil then
-                if ImGui.BeginChild(ctx, '##' .. part.name .. 'Label', app.settings.current.sendWidth, select(2, ImGui.CalcTextSize(ctx, label or '')), nil, ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoScrollWithMouse) then
-                    if label then
-                        ImGui.AlignTextToFramePadding(ctx)
-                        ImGui.Text(ctx, label or '')
-                    end
-                    ImGui.EndChild(ctx)
-                end
-            else
-                if part.name == 'inserts' then
-                    drawInserts()
-                elseif part.name == 'dummy' then
-                    drawDummy(part.color)
-                elseif part.name == 'dummyFader' then
-                    drawDummy(app.gui.st.col.buttons.env, faderHeight)
-                elseif part.name == 'pan' then
-                    drawPan()
-                elseif part.name == 'envmute' then
-                    drawEnvMuteButton()
-                elseif part.name == 'solomute' then
-                    drawSoloMute()
-                elseif part.name == 'phasesolod' then
-                    drawPhaseSoloDefeat()
-                elseif part.name == 'modebutton' then
-                    drawModeButton()
-                elseif part.name == 'routebutton' then
-                    drawRouteButtons()
-                elseif part.name == 'midiroutebutton' then
-                    drawMIDIRouteButtons()
-                elseif part.name == 'envpan' then
-                    drawEnvPanButton()
-                elseif part.name == 'fader' then
-                    drawFader(faderHeight)
-                elseif part.name == 'deletesend' then
-                    drawDeleteSend(faderHeight)
-                elseif part.name == 'envvol' then
-                    drawEnvVolButton(faderHeight)
-                elseif part.name == 'volLabel' then
-                    drawVolLabel()
-                elseif part.name == 'sendName' then
-                    drawSendName()
-                end
+
+            if part.name == 'inserts' then
+                drawInserts()
+            elseif part.name == 'dummy' then
+                drawDummy(part.color)
+            elseif part.name == 'dummyFader' then
+                drawDummy(app.gui.st.col.buttons.env, faderHeight)
+            elseif part.name == 'pan' then
+                drawPan()
+            elseif part.name == 'envmute' then
+                drawEnvMuteButton()
+            elseif part.name == 'solomute' then
+                drawSoloMute()
+            elseif part.name == 'phasesolod' then
+                drawPhaseSoloDefeat()
+            elseif part.name == 'modebutton' then
+                drawModeButton()
+            elseif part.name == 'routebutton' then
+                drawRouteButtons()
+            elseif part.name == 'midiroutebutton' then
+                drawMIDIRouteButtons()
+            elseif part.name == 'envpan' then
+                drawEnvPanButton()
+            elseif part.name == 'fader' then
+                drawFader(faderHeight)
+            elseif part.name == 'deletesend' then
+                drawDeleteSend()
+            elseif part.name == 'envvol' then
+                drawEnvVolButton(faderHeight)
+            elseif part.name == 'volLabel' then
+                drawVolLabel()
+            elseif part.name == 'sendName' then
+                drawSendName()
             end
 
             ImGui.PopID(ctx)
@@ -747,7 +736,7 @@ if OD_PrereqsOK({
             end
             if ImGui.IsItemActive(ctx) then
                 ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeNS)
-                local value_with_lock_threshold_x, value_with_lock_threshold_y = ImGui.GetMouseDragDelta(ctx, 0, 0,
+                local value_with_lock_threshold_x, value_with_lock_threshold_y = ImGui.GetMouseDragDelta(ctx, nil, nil,
                     ImGui.MouseButton_Left)
                 if value_with_lock_threshold_y ~= 0 then
                     if value_with_lock_threshold_y > 0 + app.gui.TEXT_BASE_HEIGHT_SMALL then
@@ -809,8 +798,10 @@ if OD_PrereqsOK({
         end
         ImGui.PopFont(ctx)
         ImGui.EndGroup(ctx)
-        if app.hint.main.text == '' then app:setHoveredHint('main',
-                'Hold ' .. app.gui.descModAlt .. ' for more controls. Hold shift for envelopes.') end
+        if app.hint.main.text == '' then
+            app:setHoveredHint('main',
+                'Hold ' .. app.gui.descModAlt .. ' for more controls. Hold shift for envelopes.')
+        end
     end
 
     function app.drawSearch()
@@ -884,7 +875,7 @@ if OD_PrereqsOK({
             end
         end
 
-        local selectableFlags = ImGui.SelectableFlags_SpanAllColumns 
+        local selectableFlags = ImGui.SelectableFlags_SpanAllColumns
         local outer_size = { 0.0, app.gui.TEXT_BASE_HEIGHT_LARGE * h / (app.gui.TEXT_BASE_HEIGHT_LARGE) }
         local tableFlags = ImGui.TableFlags_ScrollY
         local lastGroup = nil
@@ -1239,7 +1230,7 @@ if OD_PrereqsOK({
         ImGui.PopFont(ctx)
         app.gui:popColors(app.gui.st.col.main)
         app.gui:popStyles(app.gui.st.vars.main)
-        if app.page.giveFocus and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow) and app.focusMainReaperWindow and not (ImGui.IsPopupOpen(ctx, ImGui.PopupFlags_AnyPopup) or ImGui.IsAnyMouseDown(ctx) or ImGui.IsAnyItemActive(ctx) or ImGui.IsKeyPressed(ctx, ImGui.Key_Escape)) then
+        if app.page.giveFocus and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow) and app.focusMainReaperWindow and not (ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) or ImGui.IsAnyMouseDown(ctx) or ImGui.IsAnyItemActive(ctx) or ImGui.IsKeyPressed(ctx, ImGui.Key_Escape)) then
             r.JS_Window_SetFocus(app.gui.reaperHWND)
         else
             app.focusMainReaperWindow = true
