@@ -48,7 +48,7 @@ DB = {
         self.track, self.changedTrack = self:getSelectedTrack()
         self.refresh = refresh or false
         if self.changedTrack then
-            if self.track == nil then
+            if self.track.object == nil then
                 self.app.setPage(APP_PAGE.NO_TRACK)
             end
             self.numSends = 0
@@ -261,7 +261,7 @@ end
 
 --- TRACKS
 DB.getSelectedTrack = function(self)
-    if self.app.settings.current.followSelectedTrack == false and self.track ~= nil and self.track ~= -1 then
+    if self.app.settings.current.followSelectedTrack == false and self.track ~= nil and self.track.object ~= nil and self.track ~= -1 then
         return
             self.track, false
     end
@@ -269,7 +269,7 @@ DB.getSelectedTrack = function(self)
     if track == nil and self.track ~= nil then
         self.trackName = nil
         self.sends = {}
-        return nil, true
+        return {object = nil}, true
     end
     for i, trk in ipairs(self.tracks) do
         if track == trk.object then

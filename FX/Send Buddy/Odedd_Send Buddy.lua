@@ -633,11 +633,11 @@ if OD_PrereqsOK({
                     app.gui:popColors(colors)
                     if rv then
                         -- r.Undo_BeginBlock()
-                        if ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd) and ImGui.IsKeyDown(ctx, ImGui.Mod_Shift()) then
+                        if ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd) and ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
                             insert:setOffline(not insert.offline)
-                        elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift()) then
+                        elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
                             insert:setEnabled(not insert.enabled)
-                        elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Alt()) then
+                        elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
                             insert:delete()
                         else
                             if insert:toggleShow() then app.focusMainReaperWindow = false end
@@ -1118,9 +1118,9 @@ if OD_PrereqsOK({
         ImGui.PushFont(ctx, app.gui.st.fonts.large)
         ImGui.SameLine(ctx)
         ImGui.BeginDisabled(ctx)
-        local caption = app.db.track and app.db.trackName or ''
+        local caption = app.db.track and app.db.track.name or ''
         if app.page == APP_PAGE.SEARCH_SEND then
-            caption = 'Add Send to track \'' .. app.db.trackName .. '\''
+            caption = 'Add Send to track \'' .. app.db.track.name .. '\''
         end
         ImGui.Text(ctx, ' ' .. caption)
         ImGui.EndDisabled(ctx)
