@@ -1,8 +1,9 @@
 -- @noindex
 -- ! OD_Gui
+
 OD_Gui = {
     font = nil,
-    mainWindow = {},
+    mainWindow = {min_w = 0, min_h = 0, max_w = select(2,r.ImGui_NumericLimits_Float()), max_h = select(2,r.ImGui_NumericLimits_Float())},
     st = {
         col = {
             warning = 0xf58e07FF,
