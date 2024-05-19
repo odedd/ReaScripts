@@ -19,7 +19,7 @@ function OD_FindContentKey(content, key, self)
             local key, val = match:match("(.-) (.+)")
             if val then
                 local url, description = matchUrlInString(val)
-                if url and description then
+                if url and description ~= '' then
                     Scr[key:lower()] = Scr[key:lower()] or {} 
                     -- val = {[description] = url}
                     Scr[key:lower()][description] = url

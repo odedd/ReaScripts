@@ -581,8 +581,8 @@ function MinimizeAndApplyMedia()
 
             -- Set the position and length for the new item
             -- r.SetMediaItemPosition(oc.newItem, oc.startTime + oc.section_offset - oc.startpadding, false)
-            r.SetMediaItemPosition(oc.newItem, oc.startTime - oc.startpadding, false)
-            r.SetMediaItemLength(oc.newItem, ocLength, false)
+            r.SetMediaItemPosition(oc.newItem, OD_Round(oc.startTime - oc.startpadding,9), false)
+            r.SetMediaItemLength(oc.newItem, OD_Round(ocLength,9), false)
             r.SetMediaItemInfo_Value(oc.newItem, "D_FADEINLEN", 0)
             r.SetMediaItemInfo_Value(oc.newItem, "D_FADEOUTLEN", 0)
             r.SetMediaItemInfo_Value(oc.newItem, "D_FADEINLEN_AUTO", -1)
@@ -743,30 +743,32 @@ function MinimizeAndApplyMedia()
                     local iitStart = reaper.GetMediaItemInfo_Value(itemInTrack, "D_POSITION")
                     local iitEnd = iitStart + reaper.GetMediaItemInfo_Value(itemInTrack, "D_LENGTH")
                     local selectedIIT = selItemGUID[reaper.BR_GetMediaItemGUID(itemInTrack)] or false
+                    local failed = false
                     -- do not compare item with itself, compare only with unselected items
                     if itemInTrack ~= selItems[i] and not selectedIIT then
                         ---- Cases: ----
 
-                        if iitStart >= startTime and iitEnd <= endTime then     -- checked item is contained
+                        if OD_Round(iitStart, 9) >= OD_Round(startTime, 9) and OD_Round(iitEnd, 9) <= OD_Round(endTime, 9) then -- checked item is contained
                             -- Store items in table for deletion after item iteration finishes
                             toDelete[#toDelete + 1] = { track = track, item = itemInTrack }
-                        elseif iitStart >= startTime and iitStart < endTime and iitEnd > endTime then     -- checked item touches item's End
+                        elseif OD_Round(iitStart, 9) >= OD_Round(startTime, 9) and OD_Round(iitStart, 9) < OD_Round(endTime, 9) and OD_Round(iitEnd, 9) > OD_Round(endTime, 9) then -- checked item touches item's End
                             reaper.SetMediaItemSelected(itemInTrack, true)
-                            reaper.ApplyNudge(0, 1, 1, 1, endTime, false, 0)
+                            reaper.ApplyNudge(0, 1, 1, 1, OD_Round(endTime, 9), false, 0)
                             reaper.SetMediaItemSelected(itemInTrack, false)
                             -- remove fade in of trimmed item
                             reaper.SetMediaItemInfo_Value(itemInTrack, "D_FADEINLEN", 0)
-                        elseif iitEnd > startTime and iitEnd <= endTime and iitStart < startTime then     -- checked item touches item's Start
+                        elseif OD_Round(iitEnd, 9) > OD_Round(startTime, 9) and OD_Round(iitEnd, 9) <= OD_Round(endTime, 9) and OD_Round(iitStart, 9) < OD_Round(startTime, 9) then -- checked item touches item's Start
                             reaper.SetMediaItemSelected(itemInTrack, true)
                             reaper.ApplyNudge(0, 1, 3, 1, startTime, false, 0)
                             reaper.SetMediaItemSelected(itemInTrack, false)
                             -- remove fade out of trimmed item
                             reaper.SetMediaItemInfo_Value(itemInTrack, "D_FADEOUTLEN", 0)
-                        elseif iitStart < startTime and iitEnd > endTime then     -- checked item encloses selected item
+                        elseif OD_Round(iitStart, 9) < OD_Round(startTime, 9) and OD_Round(iitEnd, 9) > OD_Round(endTime, 9) then -- checked item encloses selected item
                             local new_item = reaper.SplitMediaItem(itemInTrack, startTime)
-                            reaper.SetMediaItemSelected(new_item, true)
-                            reaper.ApplyNudge(0, 1, 1, 1, endTime, false, 0)
-                            reaper.SetMediaItemSelected(new_item, false)
+                                -- raise('encloses selected item')
+                                reaper.SetMediaItemSelected(new_item, true)
+                                reaper.ApplyNudge(0, 1, 1, 1, endTime, false, 0)
+                                reaper.SetMediaItemSelected(new_item, false)
                             -- checked item has nothing to do with selected item
                         else
                             -- do nothing
@@ -1153,13 +1155,14 @@ function Revert(cancel)
 end
 
 function Cancel(msg)
-    Op.app.logger:logError('-- Cancel(msg)', msg)
-    if msg then
-        Op.app:msg(msg .. T.CANCEL_RELOAD, 'Operation Cancelled')
-    end
-    -- if Op.app.coPerform then coroutine.close(Op.app.coPerform) end
-    Op.app.coPerform = nil
-    Op.app.revertCancelOnNextFrame = true -- to allow for the message to appear before loading the project
+    r.ShowConsoleMsg(msg)
+    -- Op.app.logger:logError('-- Cancel(msg)', msg)
+    -- if msg then
+    --     Op.app:msg(msg .. T.CANCEL_RELOAD, 'Operation Cancelled')
+    -- end
+    -- -- if Op.app.coPerform then coroutine.close(Op.app.coPerform) end
+    -- Op.app.coPerform = nil
+    -- Op.app.revertCancelOnNextFrame = true -- to allow for the message to appear before loading the project
 end
 
 function Prepare()
