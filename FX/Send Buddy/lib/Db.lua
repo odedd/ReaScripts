@@ -235,7 +235,7 @@ DB = {
 
 --- Sends
 
-DB.createNewSend = function(self, asset) -- TODO: reflect added send in solo states
+DB.createNewSend = function(self, asset, trackName) -- TODO: reflect added send in solo states
     if asset.type == ASSETS.TRACK then
         -- local sendTrackIndex = asset.load
         local sendTrack = OD_GetTrackFromGuid(0, asset.load)
@@ -246,7 +246,7 @@ DB.createNewSend = function(self, asset) -- TODO: reflect added send in solo sta
         local newTrackIndex = r.GetNumTracks()
         reaper.InsertTrackAtIndex(newTrackIndex, true)
         local newTrack = reaper.GetTrack(0, newTrackIndex)
-        reaper.GetSetMediaTrackInfo_String(newTrack, "P_NAME", asset.name, true)
+        reaper.GetSetMediaTrackInfo_String(newTrack, "P_NAME", trackName, true)
         reaper.CreateTrackSend(self.track.object, newTrack)
         self:sync(true)
         for _, send in ipairs(self.sends) do
@@ -475,7 +475,7 @@ DB.assembleAssets = function(self)
     for _, track in ipairs(self.tracks) do
         table.insert(self.assets, {
             type = ASSETS.TRACK,
-            name = track.name,
+            searchText = {{text = track.name}},
             load = track.guid,
             group = track.hasReceives and RECEIVES_GROUP or TRACKS_GROUP,
             order = track.order,
@@ -485,7 +485,7 @@ DB.assembleAssets = function(self)
     for _, plugin in ipairs(self.plugins) do
         table.insert(self.assets, {
             type = ASSETS.PLUGIN,
-            name = plugin.name,
+            searchText = {{text = plugin.name}, {text = plugin.vendor or ''}, {text = plugin.fx_type, hide = true}},
             load = plugin.full_name,
             group = plugin.group,
             vendor = plugin.vendor,
@@ -507,7 +507,7 @@ DB.sortAssets = function(self)
         if a.type == ASSETS['TRACK'] and b.type == ASSETS['TRACK'] and aPriority == bPriority then
             return a.order < b.order
         elseif aPriority == bPriority then
-            return a.name < b.name
+            return a.searchText[1].text < b.searchText[1].text
         else
             return aPriority < bPriority
         end

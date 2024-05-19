@@ -175,8 +175,6 @@ if OD_PrereqsOK({
             app.framesSincePageSwitch = (app.framesSincePageSwitch or 0) + 1
         end
         if app.framesSincePageSwitch == 1 then
-            -- r.ShowConsoleMsg('framesSincePageSwitch == 1 \n')
-            --  different pages have different window sizes. since the window gets automatically resized, we need to set the size to a small value first
             app.refreshWindowSize()
         end
         if app.framesSincePageSwitch and app.framesSincePageSwitch > 1 then
@@ -219,9 +217,6 @@ if OD_PrereqsOK({
         local altPressed = OD_IsKeyPressed('alt')
         local ctrlPressed = OD_IsKeyPressed('control')
         local shiftPressed = OD_IsKeyPressed('shift')
-        -- if OD_IsKeyPressed('control') then
-        --     r.ShowConsoleMsg('command pressed\n')
-        -- end
 
         app.db:sync()
         ImGui.PushFont(ctx, app.gui.st.fonts.small)
@@ -817,12 +812,29 @@ if OD_PrereqsOK({
             app.temp.searchInput = query
             app.temp.searchResults = {}
             query = query:gsub('%s+', ' ')
-            for i, asset in ipairs(app.db.assets) do
-                if app.page == APP_PAGE.SEARCH_SEND or (app.page == APP_PAGE.SEARCH_FX and asset.type ~= ASSETS.TRACK) then
-                    -- local numResults = #app.temp.searchResults
-                    local pat = OD_EscapePattern(query):lower():gsub('%% ', '.-[ -_]')
-                    if string.find(asset.name:lower(), pat) then
+            r.ClearConsole()
+            if app.page == APP_PAGE.SEARCH_SEND or (app.page == APP_PAGE.SEARCH_FX and asset.type ~= ASSETS.TRACK) then
+                for i, asset in ipairs(app.db.assets) do
+                    local foundIndexes = {}
+                    local allWordsFound = true
+                    for word in query:lower():gmatch("%S+") do
+                        local wordFound = false
+                        for j, assetWord in ipairs(asset.searchText) do
+                            local pos = string.find((assetWord.text):lower(), OD_EscapePattern(word))
+                            if pos then
+                                foundIndexes[j] = foundIndexes[j] or {}
+                                foundIndexes[j][pos] = #word
+                                wordFound = true
+                            end
+                        end
+                        if not wordFound then
+                            allWordsFound = false
+                            break
+                        end
+                    end
+                    if allWordsFound then
                         local result = OD_DeepCopy(asset)
+                        result.foundIndexes = foundIndexes
                         table.insert(app.temp.searchResults, result)
                     end
                 end
@@ -935,25 +947,42 @@ if OD_PrereqsOK({
 
                 -- draw result name, highlighting the search query
 
-                local text = result.name
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 0.0, 0.0)
-                for foundText in searchInput:gmatch('([^%s]+)') do
-                    local pat = nocase('(.-[ -_]-)(' .. OD_EscapePattern(foundText) .. ')(.*)')
-                    for notFound, found, rest in text:gmatch(pat) do
-                        if notFound then
-                            ImGui.Text(ctx, notFound)
+                for i, st in ipairs(result.searchText) do
+                    if not st.hide then
+                        if i > 1 then 
+                            ImGui.Text(ctx, ' ')
                             ImGui.SameLine(ctx)
+                            app.gui:pushColors(app.gui.st.col.search.secondaryResult)
+                        else
+
+                            app.gui:pushColors(app.gui.st.col.search.mainResult)
                         end
-                        if found then
+                        local curIndex = 1
+                        for k, v in pairs(result.foundIndexes[i] or {}) do
+                            if curIndex < k then
+                                ImGui.Text(ctx, (st.text):sub(curIndex, k - 1))
+                                ImGui.SameLine(ctx)
+                            end
                             app.gui:pushColors(app.gui.st.col.search.highlight)
-                            ImGui.Text(ctx, found)
+                            curIndex = k + v
+                            ImGui.Text(ctx, (st.text):sub(k, curIndex - 1))
                             app.gui:popColors(app.gui.st.col.search.highlight)
                             ImGui.SameLine(ctx)
+                            -- body
                         end
-                        text = rest
+                        if curIndex < #(st.text) then
+                            local txt = (st.text):sub(curIndex, #(st.text))
+                            ImGui.Text(ctx, txt)
+                            ImGui.SameLine(ctx)
+                        end
+                        if i > 1 then
+                            app.gui:popColors(app.gui.st.col.search.secondaryResult)
+                        else
+                            app.gui:popColors(app.gui.st.col.search.mainResult)
+                        end
                     end
                 end
-                ImGui.Text(ctx, text)
                 ImGui.PopStyleVar(ctx)
 
                 ImGui.PopID(ctx)
@@ -979,7 +1008,7 @@ if OD_PrereqsOK({
                 app.temp.addFxToSend:addInsert(selectedResult.load)
                 app.temp.addFxToSend = nil
             elseif app.page == APP_PAGE.SEARCH_SEND then
-                app.db:createNewSend(selectedResult)
+                app.db:createNewSend(selectedResult, selectedResult.searchText[1].text)
             end
             -- TODO: handle going back to a "no track" or "no sends" page
             app.setPage(APP_PAGE.MIXER)

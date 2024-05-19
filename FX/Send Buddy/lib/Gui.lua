@@ -33,6 +33,8 @@ SM_Gui.init = function(self, fonts)
         mainDark = 0x371f23ff,
         mainBright = 0xb73849ff,
         mainBrighter = 0xc74859ff,
+        textBright = 0xf7f7f7ff,
+        textDark = 0x7c7c7cff,
     }
     self.st.colpresets = {
         midButton = {
@@ -165,6 +167,12 @@ SM_Gui.init = function(self, fonts)
             [ImGui.Col_HeaderHovered] = self.st.basecolors.mainDark,
         },
         search = {
+            mainResult = {
+                [ImGui.Col_Text] = self.st.basecolors.textBright,
+            },
+            secondaryResult = {
+                [ImGui.Col_Text] = self.st.basecolors.textDark,
+            },
             highlight = {
                 [ImGui.Col_Text] = self.st.basecolors.mainBright,
             },
