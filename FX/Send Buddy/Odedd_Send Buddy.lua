@@ -823,7 +823,7 @@ if OD_PrereqsOK({
                             local pos = string.find((assetWord.text):lower(), OD_EscapePattern(word))
                             if pos then
                                 foundIndexes[j] = foundIndexes[j] or {}
-                                foundIndexes[j][pos] = #word
+                                table.insert(foundIndexes[j], { from = pos, to = pos + #word - 1, order = pos })
                                 wordFound = true
                             end
                         end
@@ -834,6 +834,7 @@ if OD_PrereqsOK({
                     end
                     if allWordsFound then
                         local result = OD_DeepCopy(asset)
+
                         result.foundIndexes = foundIndexes
                         table.insert(app.temp.searchResults, result)
                     end
@@ -948,35 +949,36 @@ if OD_PrereqsOK({
                 -- draw result name, highlighting the search query
 
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 0.0, 0.0)
-                for i, st in ipairs(result.searchText) do
+                for j, st in ipairs(result.searchText) do
                     if not st.hide then
-                        if i > 1 then 
+                        if j > 1 then
                             ImGui.Text(ctx, ' ')
                             ImGui.SameLine(ctx)
                             app.gui:pushColors(app.gui.st.col.search.secondaryResult)
                         else
-
                             app.gui:pushColors(app.gui.st.col.search.mainResult)
                         end
                         local curIndex = 1
-                        for k, v in pairs(result.foundIndexes[i] or {}) do
-                            if curIndex < k then
-                                ImGui.Text(ctx, (st.text):sub(curIndex, k - 1))
+                        for k, highlight in OD_PairsByOrder(result.foundIndexes[j] or {}) do
+                            if curIndex <= highlight.from then
+                                ImGui.Text(ctx, (st.text):sub(curIndex, highlight.from - 1))
                                 ImGui.SameLine(ctx)
                             end
-                            app.gui:pushColors(app.gui.st.col.search.highlight)
-                            curIndex = k + v
-                            ImGui.Text(ctx, (st.text):sub(k, curIndex - 1))
-                            app.gui:popColors(app.gui.st.col.search.highlight)
-                            ImGui.SameLine(ctx)
-                            -- body
+                            if curIndex <= highlight.to + 1 then
+                                app.gui:pushColors(app.gui.st.col.search.highlight)
+                                local txt = (st.text):sub(math.max(curIndex, highlight.from), highlight.to)
+                                ImGui.Text(ctx, txt)
+                                app.gui:popColors(app.gui.st.col.search.highlight)
+                                ImGui.SameLine(ctx)
+                                curIndex = highlight.to + 1
+                            end
                         end
-                        if curIndex < #(st.text) then
+                        if curIndex <= #(st.text) then
                             local txt = (st.text):sub(curIndex, #(st.text))
                             ImGui.Text(ctx, txt)
                             ImGui.SameLine(ctx)
                         end
-                        if i > 1 then
+                        if j > 1 then
                             app.gui:popColors(app.gui.st.col.search.secondaryResult)
                         else
                             app.gui:popColors(app.gui.st.col.search.mainResult)
