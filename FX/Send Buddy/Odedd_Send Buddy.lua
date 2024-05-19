@@ -813,8 +813,8 @@ if OD_PrereqsOK({
             app.temp.searchResults = {}
             query = query:gsub('%s+', ' ')
             r.ClearConsole()
-            if app.page == APP_PAGE.SEARCH_SEND or (app.page == APP_PAGE.SEARCH_FX and asset.type ~= ASSETS.TRACK) then
-                for i, asset in ipairs(app.db.assets) do
+            for i, asset in ipairs(app.db.assets) do
+                if app.page == APP_PAGE.SEARCH_SEND or (app.page == APP_PAGE.SEARCH_FX and asset.type ~= ASSETS.TRACK) then
                     local foundIndexes = {}
                     local allWordsFound = true
                     for word in query:lower():gmatch("%S+") do
