@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.7.8
+-- @version 0.7.9
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -13,7 +13,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Fixed a bug where items were not trimmed correctly
+--   Fixed a bug where items with sources whose start times are very close start times would not be trimmed correctly.
 
 ---------------------------------------
 -- SETUP ------------------------------

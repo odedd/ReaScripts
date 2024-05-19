@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 1.8.0
+-- @version 1.8.1
 -- @donation https://paypal.me/odedda
 -- @link https://forum.cockos.com/showthread.php?t=268512
 -- @license GNU GPL v3
@@ -20,8 +20,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Preset "directory" filed now gets properly loaded with preset.
---   Added ability to play sound after rendering.
+--   Donation link fixed ;)
 
 local r = reaper
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
