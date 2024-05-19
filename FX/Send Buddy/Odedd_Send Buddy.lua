@@ -184,6 +184,13 @@ if OD_PrereqsOK({
     end
 
     function app.setPage(page)
+        if page == APP_PAGE.MIXER then
+            if app.db.track.object == nil then
+                page = APP_PAGE.NO_TRACK
+            elseif app.db.numSends == 0 then
+                page = APP_PAGE.NO_SENDS
+            end
+        end
         if page ~= app.page then
             app.page = page
             app.pageSwitched = true

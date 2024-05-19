@@ -48,9 +48,9 @@ DB = {
         self.track, self.changedTrack = self:getSelectedTrack()
         self.refresh = refresh or false
         if self.changedTrack then
-            if self.track.object == nil then
-                self.app.setPage(APP_PAGE.NO_TRACK)
-            end
+            -- if self.track.object == nil then
+            --     self.app.setPage(APP_PAGE.NO_TRACK)
+            -- end
             self.numSends = 0
             self.soloedSends = {}
             self.refresh = true
@@ -221,11 +221,7 @@ DB = {
                 table.insert(self.sends, send)
             end
 
-            if self.numSends == 0 then
-                self.app.setPage(APP_PAGE.NO_SENDS)
-            else
-                self.app.setPage(APP_PAGE.MIXER)
-            end
+            self.app.setPage(APP_PAGE.MIXER)
             if oldNumSends ~= self.numSends then
                 self.app.refreshWindowSizeOnNextFrame = true
             end
