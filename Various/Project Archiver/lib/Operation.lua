@@ -369,7 +369,7 @@ function GetMediaFiles()
                         local fileNodes = source:findAllNodesByName("FILE")
                         assert(fileNodes ~= nil, 'Frozen file not found')
                         local filename = fileNodes[1]:getParam(1):getString()
-                        filename = OD_GetRelativeOrAbsoluteFile(filename, Op.app.projPath) -- convert path to relative if possible, to match the mediaFiles table
+                        -- filename = filename -- convert path to relative if possible, to match the mediaFiles table
                         Op.app.logger:logDebug('Found frozen file', filename)
                         Op.app.mediaFiles[filename] = nil
                         addMediaFile(filename, FILE_TYPES.AUDIO, true)
@@ -1155,14 +1155,14 @@ function Revert(cancel)
 end
 
 function Cancel(msg)
-    r.ShowConsoleMsg(msg)
-    -- Op.app.logger:logError('-- Cancel(msg)', msg)
-    -- if msg then
-    --     Op.app:msg(msg .. T.CANCEL_RELOAD, 'Operation Cancelled')
-    -- end
-    -- -- if Op.app.coPerform then coroutine.close(Op.app.coPerform) end
-    -- Op.app.coPerform = nil
-    -- Op.app.revertCancelOnNextFrame = true -- to allow for the message to appear before loading the project
+    -- r.ShowConsoleMsg(msg)
+    Op.app.logger:logError('-- Cancel(msg)', msg)
+    if msg then
+        Op.app:msg(msg .. T.CANCEL_RELOAD, 'Operation Cancelled')
+    end
+    -- if Op.app.coPerform then coroutine.close(Op.app.coPerform) end
+    Op.app.coPerform = nil
+    Op.app.revertCancelOnNextFrame = true -- to allow for the message to appear before loading the project
 end
 
 function Prepare()
@@ -1537,7 +1537,7 @@ function FixFrozenTracksFileAssociations()
                     local sourceType = source:getParam(1):getString()
                     if sourceType ~= 'WAVE' then break end
                     local filename = source:findAllNodesByName("FILE")[1]:getParam(1):getString()
-                    filename = OD_GetRelativeOrAbsoluteFile(filename, Op.app.projPath) -- convert path to relative if possible, to match the mediaFiles table
+                    -- filename = OD_GetRelativeOrAbsoluteFile(filename, Op.app.projPath) -- convert path to relative if possible, to match the mediaFiles table
                     local fileInfo = Op.app.mediaFiles[filename]
                     local newFilename = fileInfo.newfilename or filename
 

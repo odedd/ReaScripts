@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.7.10
+-- @version 0.7.11
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -13,7 +13,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Possible fix for frozen files not being handled correctly in windows
+--   Possible fix for frozen files handling
 
 ---------------------------------------
 -- SETUP ------------------------------
