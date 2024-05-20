@@ -63,7 +63,7 @@ end
 --   relPath - only path in relative form, if possible
 --   isRelative - true if relative, false if absolute
 function OD_GetRelativeOrAbsoluteFile(fileName, rootPath)
-    local relFile = fileName:gsub('^' .. OD_EscapePattern(rootPath), '')
+    local relFile = fileName:gsub('\\', '/'):gsub('^' .. OD_EscapePattern(rootPath:gsub('\\', '/')), '')
     local relPath = OD_DissectFilename(relFile)
     return (relFile and relFile or fileName), relPath, (relFile ~= fileName)
 end
