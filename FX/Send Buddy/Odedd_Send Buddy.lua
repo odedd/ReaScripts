@@ -393,8 +393,9 @@ if OD_PrereqsOK({
                 ImGui.SameLine(ctx)
                 local soloed = s:getSolo() -- OD_BfCheck(s.track.soloMatrix, 2^(s.order))
                 app.gui:pushColors(app.gui.st.col.buttons.solo[soloed])
-                if ImGui.Button(ctx, (soloed == SOLO_STATES.SOLO_DEFEAT and 'D' or 'S')..'##solo' .. s.order, w) then
-                    s:setSolo((soloed == SOLO_STATES.NONE) and SOLO_STATES.SOLO or SOLO_STATES.NONE, not ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd))
+                if ImGui.Button(ctx, (soloed == SOLO_STATES.SOLO_DEFEAT and 'D' or 'S') .. '##solo' .. s.order, w) then
+                    s:setSolo((soloed == SOLO_STATES.NONE) and SOLO_STATES.SOLO or SOLO_STATES.NONE,
+                        not ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd))
                 end
                 app:setHoveredHint('main', s.name .. ' - Solo send')
                 app.gui:popColors(app.gui.st.col.buttons.solo[soloed])
@@ -821,7 +822,10 @@ if OD_PrereqsOK({
             query = query:gsub('%s+', ' ')
             r.ClearConsole()
             for i, asset in ipairs(app.db.assets) do
-                if app.page == APP_PAGE.SEARCH_SEND or (app.page == APP_PAGE.SEARCH_FX and asset.type ~= ASSETS.TRACK) then
+                local skip = false
+                if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then skip = true end
+                if asset.type == ASSETS.TRACK and asset.load == app.db.track.guid then skip = true end
+                if not skip then
                     local foundIndexes = {}
                     local allWordsFound = true
                     for word in query:lower():gmatch("%S+") do
@@ -861,7 +865,7 @@ if OD_PrereqsOK({
         app.temp.searchResults = app.temp.searchResults or {}
 
         if app.pageSwitched then
-            -- app.db:init()
+            app.db:init()
             filterResults('')
             ImGui.SetKeyboardFocusHere(ctx, 0)
         end

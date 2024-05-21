@@ -64,8 +64,8 @@ DB = {
 
         if self.refresh and self.track.object then
             -- load savedSoloStates
-            self.savedSoloStates = {}
-            local i = 0
+            -- self.savedSoloStates = {}
+            -- local i = 0
             -- local retval, k, v = r.EnumProjExtState(0, Scr.ext_name .. '_SAVED_SOLO_STATES', i)
             -- while retval do
             --     self.savedSoloStates[k] = unpickle(v)
@@ -320,12 +320,15 @@ DB.createNewSend = function(self, asset, trackName) -- TODO: reflect added send 
         if sendTrack then
             reaper.CreateTrackSend(self.track.object, sendTrack)
         end
+        self:sync(true)
     elseif asset.type == ASSETS.PLUGIN then
         local newTrackIndex = r.GetNumTracks()
         reaper.InsertTrackAtIndex(newTrackIndex, true)
         local newTrack = reaper.GetTrack(0, newTrackIndex)
         reaper.GetSetMediaTrackInfo_String(newTrack, "P_NAME", trackName, true)
-        reaper.CreateTrackSend(self.track.object, newTrack)
+        local rv = reaper.CreateTrackSend(self.track.object, newTrack)
+        r.ShowConsoleMsg(tostring(rv)..'\n')
+        self:getTracks()
         self:sync(true)
         for _, send in ipairs(self.sends) do
             if send.destTrack.object == newTrack then
@@ -333,7 +336,7 @@ DB.createNewSend = function(self, asset, trackName) -- TODO: reflect added send 
             end
         end
     end
-    self:sync(true)
+    -- self:sync(true)
 end
 
 
