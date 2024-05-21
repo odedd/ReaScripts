@@ -46,7 +46,6 @@ SRC_CHANNELS[-1] = {
 
 SOLO_STATES = {
     ['NONE'] = 0,
-    ['MUTE'] = 1,
     ['SOLO'] = 2,
     ['SOLO_DEFEAT'] = 3,
 }

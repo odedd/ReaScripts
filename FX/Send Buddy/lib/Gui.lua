@@ -93,17 +93,23 @@ SM_Gui.init = function(self, fonts)
                 }
             },
             solo = {
-                [true] = {
+                [SOLO_STATES.SOLO] = {
                     [ImGui.Col_Button] = 0xd6be42FF,
                     [ImGui.Col_Text] = 0x000000ff,
                     [ImGui.Col_ButtonHovered] = 0xe6ce52FF,
                     [ImGui.Col_ButtonActive] = 0xf6de62FF
                 },
-                [false] = {
+                [SOLO_STATES.NONE] = {
                     [ImGui.Col_Text] = 0x000000ff,
                     [ImGui.Col_Button] = self.st.basecolors.widgetBG,
                     [ImGui.Col_ButtonHovered] = self.st.basecolors.hovered,
                     [ImGui.Col_ButtonActive] = self.st.basecolors.active
+                },
+                [SOLO_STATES.SOLO_DEFEAT] = {
+                    [ImGui.Col_Text] = 0x000000ff,
+                    [ImGui.Col_Button] = 0x58d43fff,
+                    [ImGui.Col_ButtonHovered] = 0x68e44fff,
+                    [ImGui.Col_ButtonActive] = 0x78f45fff
                 }
             },
             polarity = {

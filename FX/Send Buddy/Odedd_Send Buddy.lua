@@ -391,10 +391,10 @@ if OD_PrereqsOK({
                 app.gui:popColors(app.gui.st.col.buttons.mute[s.mute])
 
                 ImGui.SameLine(ctx)
-                local soloed = app.db.soloedSends[s.order] ~= nil
+                local soloed = s:getSolo() -- OD_BfCheck(s.track.soloMatrix, 2^(s.order))
                 app.gui:pushColors(app.gui.st.col.buttons.solo[soloed])
-                if ImGui.Button(ctx, 'S##solo' .. s.order, w) then
-                    s:setSolo(not soloed, not ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd))
+                if ImGui.Button(ctx, (soloed == SOLO_STATES.SOLO_DEFEAT and 'D' or 'S')..'##solo' .. s.order, w) then
+                    s:setSolo((soloed == SOLO_STATES.NONE) and SOLO_STATES.SOLO or SOLO_STATES.NONE, not ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd))
                 end
                 app:setHoveredHint('main', s.name .. ' - Solo send')
                 app.gui:popColors(app.gui.st.col.buttons.solo[soloed])
@@ -411,13 +411,13 @@ if OD_PrereqsOK({
                 ImGui.PopFont(ctx)
                 app.gui:popColors(app.gui.st.col.buttons.mute[s.mute])
                 ImGui.SameLine(ctx)
-                local soloed = app.db.soloedSends[s.order] ~= nil
-                app.gui:pushColors(app.gui.st.col.buttons.solo[soloed])
+                local soloed = s:getSolo() == SOLO_STATES.SOLO_DEFEAT
+                app.gui:pushColors(app.gui.st.col.buttons.solo[soloed and SOLO_STATES.SOLO_DEFEAT or SOLO_STATES.NONE])
                 if ImGui.Button(ctx, 'D##solodefeat' .. s.order, w) then -- TODO: Implement
-                    s:setSolo(not soloed, not ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd))
+                    s:setSolo(soloed and SOLO_STATES.NONE or SOLO_STATES.SOLO_DEFEAT)
                 end
                 app:setHoveredHint('main', s.name .. ' - Solo defeat')
-                app.gui:popColors(app.gui.st.col.buttons.solo[soloed])
+                app.gui:popColors(app.gui.st.col.buttons.solo[soloed and SOLO_STATES.SOLO_DEFEAT or SOLO_STATES.NONE])
             end
             local drawModeButton = function()
                 local w = app.settings.current.sendWidth
@@ -721,7 +721,7 @@ if OD_PrereqsOK({
                 (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2)
             -- local rv =
             if ImGui.BeginChild(ctx, "##inserts", nil, h, ImGui.ChildFlags_None) then
-                for i, s in OD_PairsByOrder(app.db.sends) do
+                for i, s in ipairs(app.db.sends) do
                     ImGui.BeginGroup(ctx)
                     drawSend(s, { name = 'inserts' })
                     ImGui.EndGroup(ctx)
@@ -1288,5 +1288,6 @@ if OD_PrereqsOK({
     -- app.settings:save()
     app.db:init()
     app.db:sync()
+    app.setPage(APP_PAGE.MIXER)
     r.defer(app.loop)
 end
