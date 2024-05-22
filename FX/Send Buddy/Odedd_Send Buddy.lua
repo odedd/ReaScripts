@@ -1232,11 +1232,10 @@ if OD_PrereqsOK({
         app.gui.mainWindow.size = { ImGui.GetWindowSize(ctx) }
 
 
-        -- BUG when undocking with the button, I can re-dock with the button, but when undocking with the mouse, I can't re-dock with the button
         if ImGui.GetWindowDockID(ctx) ~= app.gui.mainWindow.dockId then
             app.refreshWindowSizeOnNextFrame = true
             app.gui.mainWindow.dockId = ImGui.GetWindowDockID(ctx)
-            if app.gui.mainWindow.dockId ~= 0 then
+            if app.gui.mainWindow.dockId < 0 then
                 app.settings.current.lastDockId = app.gui.mainWindow.dockId
                 app.settings:save()
             end
