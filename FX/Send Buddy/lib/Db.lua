@@ -278,6 +278,7 @@ DB = {
                             return false
                         end
                         self.db:sync(true)
+                        self.db.app.focusMainReaperWindow = false
                         return true
                     end,
                     toggleVolEnv = function(self, show)
@@ -322,21 +323,42 @@ DB.createNewSend = function(self, asset, trackName) -- TODO: reflect added send 
         end
         self:sync(true)
     elseif asset.type == ASSETS.PLUGIN then
-        local newTrackIndex = r.GetNumTracks()
-        reaper.InsertTrackAtIndex(newTrackIndex, true)
-        local newTrack = reaper.GetTrack(0, newTrackIndex)
-        reaper.GetSetMediaTrackInfo_String(newTrack, "P_NAME", trackName, true)
-        local rv = reaper.CreateTrackSend(self.track.object, newTrack)
-        r.ShowConsoleMsg(tostring(rv)..'\n')
-        self:getTracks()
-        self:sync(true)
-        for _, send in ipairs(self.sends) do
-            if send.destTrack.object == newTrack then
-                send:addInsert(asset.load)
+        local newTrack = nil
+        local numTracks = r.CountTracks(0)
+        if self.app.settings.current.createInsideFolder then
+            local folderFound = false
+            for i = 0, numTracks - 1 do
+                local track = r.GetTrack(0, i)
+                local _, trackName = r.GetTrackName(track)
+                if trackName == self.app.settings.current.sendFolderName then
+                    folderFound = true
+                    newTrack = OD_InsertTrackAtFolder(track)
+                    break
+                end
+            end
+
+            if not folderFound then
+                r.InsertTrackAtIndex(numTracks, true)
+                local folder = r.GetTrack(0, numTracks)
+                r.GetSetMediaTrackInfo_String(folder, 'P_NAME', self.app.settings.current.sendFolderName, true)
+                newTrack = OD_InsertTrackAtFolder(folder)
+            end
+        else
+            r.InsertTrackAtIndex(numTracks, true)
+            newTrack = r.GetTrack(0, numTracks)
+        end
+        if newTrack then
+            reaper.GetSetMediaTrackInfo_String(newTrack, "P_NAME", trackName, true)
+            local rv = reaper.CreateTrackSend(self.track.object, newTrack)
+            self:getTracks()
+            self:sync(true)
+            for _, send in ipairs(self.sends) do
+                if send.destTrack.object == newTrack then
+                    send:addInsert(asset.load)
+                end
             end
         end
     end
-    -- self:sync(true)
 end
 
 
@@ -493,7 +515,6 @@ DB.addPlugin = function(self, full_name, fx_type, instrument, ident)
 
         name = (fx_type == 'Internal') and full_name or full_name:match(fx_type .. ': (.+)$')
         if not fx_type:match('^JS') and fx_type ~= 'Internal' and fx_type ~= 'ReWire' then
-            -- fx_type:match('^VST') then
             local counter = 1
             for w in string.gmatch(full_name, "%b()") do
                 t[counter] = w:match("%((.+)%)")

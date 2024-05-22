@@ -275,21 +275,17 @@ if OD_PrereqsOK({
             end
             local drawEnvMuteButton = function()
                 app.gui:pushColors(app.gui.st.col.buttons.mute[false])
-                -- ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)     -- TODO: Fix Icon
                 if ImGui.Button(ctx, 'MUTE\nENV##mEnvelope' .. s.order, app.settings.current.sendWidth, app.gui.TEXT_BASE_HEIGHT_SMALL * 2.5 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)) * 2.5) then
                     s:toggleMuteEnv()
                 end
-                -- ImGui.PopFont(ctx)
                 app:setHoveredHint('main', s.name .. ' - Show/hide send mute envelope')
                 app.gui:popColors(app.gui.st.col.buttons.mute[false])
             end
             local drawEnvPanButton = function()
                 app.gui:pushColors(app.gui.st.col.buttons.route)
-                -- ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)     -- TODO: Fix Icon
                 if ImGui.Button(ctx, 'PAN\nENV##pEnvelope' .. s.order, app.settings.current.sendWidth, app.gui.TEXT_BASE_HEIGHT_SMALL * 2.5 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)) * 2.5) then
                     s:togglePanEnv()
                 end
-                -- ImGui.PopFont(ctx)
                 app:setHoveredHint('main', s.name .. ' - Show/hide send pan envelope')
                 app.gui:popColors(app.gui.st.col.buttons.route)
             end
@@ -414,7 +410,7 @@ if OD_PrereqsOK({
                 ImGui.SameLine(ctx)
                 local soloed = s:getSolo() == SOLO_STATES.SOLO_DEFEAT
                 app.gui:pushColors(app.gui.st.col.buttons.solo[soloed and SOLO_STATES.SOLO_DEFEAT or SOLO_STATES.NONE])
-                if ImGui.Button(ctx, 'D##solodefeat' .. s.order, w) then -- TODO: Implement
+                if ImGui.Button(ctx, 'D##solodefeat' .. s.order, w) then
                     s:setSolo(soloed and SOLO_STATES.NONE or SOLO_STATES.SOLO_DEFEAT)
                 end
                 app:setHoveredHint('main', s.name .. ' - Solo defeat')
@@ -744,10 +740,12 @@ if OD_PrereqsOK({
                 if value_with_lock_threshold_y ~= 0 then
                     if value_with_lock_threshold_y > 0 + app.gui.TEXT_BASE_HEIGHT_SMALL then
                         app.settings.current.maxNumInserts = app.settings.current.maxNumInserts + 1
+                        app.settings:save()
                         ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
                         app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.calculateMixerSize()
                     elseif app.settings.current.maxNumInserts > 0 and value_with_lock_threshold_y < 0 - app.gui.TEXT_BASE_HEIGHT_SMALL then
                         app.settings.current.maxNumInserts = app.settings.current.maxNumInserts - 1
+                        app.settings:save()
                         ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
                         app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.calculateMixerSize()
                     end
@@ -761,13 +759,13 @@ if OD_PrereqsOK({
             local parts = {
                 { name = 'solomute' },
                 { name = 'modebutton' },
-                { name = 'routebutton' }, -- TODO: Maybe make alternate and implement envelopes instead
+                { name = 'routebutton' },
                 { name = 'pan' },
                 { name = 'fader' },
                 { name = 'volLabel' },
                 { name = 'sendName' }
             }
-            if altPressed then -- TODO: Implement
+            if altPressed then -- TODO: Implement listen to FX only
                 parts = {
                     { name = 'phasesolod' },
                     { name = 'dummy',          color = app.gui.st.col.buttons.mode[0] },
@@ -778,7 +776,7 @@ if OD_PrereqsOK({
                     { name = 'sendName' }
                 }
             end
-            if shiftPressed then -- TODO: Implement
+            if shiftPressed then
                 parts = {
                     { name = 'envmute' },
                     { name = 'envpan' },
@@ -1023,7 +1021,6 @@ if OD_PrereqsOK({
             elseif app.page == APP_PAGE.SEARCH_SEND then
                 app.db:createNewSend(selectedResult, selectedResult.searchText[1].text)
             end
-            -- TODO: handle going back to a "no track" or "no sends" page
             app.setPage(APP_PAGE.MIXER)
         end
     end
@@ -1189,7 +1186,7 @@ if OD_PrereqsOK({
                 app.gui.mainWindow.dockTo = app.settings.current.lastDockId
             elseif btn == 'plus' then
                 app.setPage(APP_PAGE.SEARCH_SEND)
-            elseif btn == 'gear' then
+            elseif btn == 'gear' then -- TODO: Settings window!
                 -- app.setPage(APP_PAGE.SETTINGS)
             elseif btn == 'right' then
                 app.setPage(APP_PAGE.MIXER)
@@ -1234,6 +1231,8 @@ if OD_PrereqsOK({
         app.gui.mainWindow.pos = { ImGui.GetWindowPos(ctx) }
         app.gui.mainWindow.size = { ImGui.GetWindowSize(ctx) }
 
+
+        -- BUG when undocking with the button, I can re-dock with the button, but when undocking with the mouse, I can't re-dock with the button
         if ImGui.GetWindowDockID(ctx) ~= app.gui.mainWindow.dockId then
             app.refreshWindowSizeOnNextFrame = true
             app.gui.mainWindow.dockId = ImGui.GetWindowDockID(ctx)

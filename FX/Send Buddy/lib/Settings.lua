@@ -9,13 +9,15 @@ SM_Settings = OD_Settings:new({
         maxNumInserts = 4,
         followSelectedTrack = true,
         lastDockId = nil,
+        createInsideFolder = true,
+        sendFolderName = 'FX BUS',
         
         -- Permanent settings
         sendWidth = 60,
         minFaderHeight = 100,
         scaleFactor = 2, -- fader scale factor above scaleLevel
         scaleLevel = -20,
-        favorites = {
+        favorites = { -- TODO allow editing from GUI
             'VST3: Pro-Q 3 (FabFilter)',
             'VST3: ValhallaVintageVerb (Valhalla DSP, LLC)'
         },
