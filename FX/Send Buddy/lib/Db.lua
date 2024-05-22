@@ -26,6 +26,10 @@ DB = {
                     end
                 end
             end
+            local retval = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. Scr.ext_name .. '_MASTER_SEND_STATE',
+                foundTrackInfo.masterSendState and '1' or '', true)
+            local retval = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. Scr.ext_name .. '_SEND_LISTEN',
+                foundTrackInfo.sendListen or '', true)
             if foundTrackInfo.soloMatrix and not (foundTrackInfo.soloMatrix == 0) then
                 local retval = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. Scr.ext_name .. '_SOLO_MATRIX',
                     pickle(foundTrackInfo.soloMatrix), true)
@@ -99,7 +103,7 @@ DB = {
                     midiDestChn = midiRouting >> 5 & 0x1f,
                     midiDestBus = midiRouting >> 22 & 0xff,
                     destChan = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, 0, i, 'I_DSTCHAN')),
-                    destTrack = self:getTrack(reaper.GetTrackSendInfo_Value(self.track.object, 0, i, 'P_DESTTRACK')),
+                    destTrack = self:_getTrack(reaper.GetTrackSendInfo_Value(self.track.object, 0, i, 'P_DESTTRACK')),
                     destInserts = {},
                     destInsertsCount = 0,
                     delete = function(self) -- TODO: reflect removed send in solo states
@@ -169,35 +173,6 @@ DB = {
                         reaper.SetTrackSendInfo_Value(self.track.object, 0, self.order, 'B_MUTE', mute and 1 or 0)
                         if not skipRefresh then self.db:sync(true) end
                     end,
-                    _getSoloMatrix = function(self)
-                        local counter = 0
-                        for i, send in ipairs(self.db.sends) do
-                            if send.order == self.order then break end
-                            if send.destTrack == self.destTrack then
-                                counter = counter + 1
-                            end
-                        end
-                        if self.destTrack.soloMatrix[self.track.guid] == nil then
-                            self.destTrack.soloMatrix[self.track.guid] = {}
-                        end
-                        return self.destTrack.soloMatrix[self.track.guid], counter
-                    end,
-                    sayHi = function(self)
-                        return 'hi'
-                    end,
-                    _getOrigMuteState = function(self)
-                        local counter = 0
-                        for i, send in ipairs(self.db.sends) do
-                            if send.order == self.order then break end
-                            if send.destTrack == self.destTrack then
-                                counter = counter + 1
-                            end
-                        end
-                        if self.destTrack.origMuteMatrix[self.track.guid] == nil then
-                            self.destTrack.origMuteMatrix[self.track.guid] = {}
-                        end
-                        return self.destTrack.origMuteMatrix[self.track.guid][counter] or false
-                    end,
                     getSolo = function(self)
                         -- self.destTrack.soloMatrix[self.track.guid] = {}
                         local sm, counter = self:_getSoloMatrix()
@@ -227,21 +202,77 @@ DB = {
                         end
                         sm[counter] = solo
 
-                        self:_reflectSolos(true)
+                        self.db:_reflectSolos(true)
                         self.db:save()
                     end,
-                    _numSolos = function(self)
-                        local numOfSolos = 0
+                    toggleListen = function(self)
+                        if self.track.sendListen ~= self.destTrack.guid then
+                            if not self.db:isListenOn() then
+                                self.track.masterSendState = r.GetMediaTrackInfo_Value(self.track.object, 'B_MAINSEND') ==
+                                1
+                            end
+                            if self.track.masterSendState then
+                                r.SetMediaTrackInfo_Value(self.track.object, 'B_MAINSEND', 0)
+                            end
+                            -- Solo this track and the destTrack
+                            r.SetMediaTrackInfo_Value(self.track.object, 'I_SOLO', 2)
+                            r.SetMediaTrackInfo_Value(self.destTrack.object, 'I_SOLO', 2)
+
+                            -- Un-solo any other track if it's soloed
+                            for i, track in ipairs(self.db.tracks) do
+                                if track.guid ~= self.track.guid and track.guid ~= self.destTrack.guid then
+                                    local soloState = r.GetMediaTrackInfo_Value(track.object, 'I_SOLO')
+                                    if soloState ~= 0 then
+                                        r.SetMediaTrackInfo_Value(track.object, 'I_SOLO', 0)
+                                    end
+                                end
+                            end
+                            self:setSolo(SOLO_STATES.SOLO, true)
+
+                            self.track.sendListen = self.destTrack.guid
+                        else
+                            if self.db:isListenOn() then
+                                if self.track.masterSendState then
+                                    r.SetMediaTrackInfo_Value(self.track.object, 'B_MAINSEND', 1)
+                                    self.track.masterSendState = nil
+                                end
+                            end
+                            self.track.sendListen = nil
+                            -- Un-solo this track and the destTrack
+                            r.SetMediaTrackInfo_Value(self.track.object, 'I_SOLO', 0)
+                            r.SetMediaTrackInfo_Value(self.destTrack.object, 'I_SOLO', 0)
+                            self:setSolo(SOLO_STATES.NONE)
+                        end
+                        self.db:save()
+                    end,
+                    _getSoloMatrix = function(self)
+                        local counter = 0
                         for i, send in ipairs(self.db.sends) do
-                            local sm, j = send:_getSoloMatrix()
-                            if sm[j] == SOLO_STATES.SOLO then
-                                numOfSolos = numOfSolos + 1
+                            if send.order == self.order then break end
+                            if send.destTrack == self.destTrack then
+                                counter = counter + 1
                             end
                         end
-                        return numOfSolos
+                        if self.destTrack.soloMatrix[self.track.guid] == nil then
+                            self.destTrack.soloMatrix[self.track.guid] = {}
+                        end
+                        return self.destTrack.soloMatrix[self.track.guid], counter
+                    end,
+                    _getOrigMuteState = function(self)
+                        local counter = 0
+                        for i, send in ipairs(self.db.sends) do
+                            if send.order == self.order then break end
+                            if send.destTrack == self.destTrack then
+                                counter = counter + 1
+                            end
+                        end
+                        if self.destTrack.origMuteMatrix[self.track.guid] == nil then
+                            self.destTrack.origMuteMatrix[self.track.guid] = {}
+                        end
+                        return self.destTrack.origMuteMatrix[self.track.guid][counter] or false
                     end,
                     _saveOrigMuteState = function(self)
-                        local numOfSolos = self:_numSolos()
+                        local numOfSolos = self.db:_numSolos()
                         local prevDeskTrack = nil
                         local j = 0
                         for i, send in ipairs(self.db.sends) do
@@ -256,19 +287,6 @@ DB = {
                                 send.destTrack.origMuteMatrix[self.track.guid][j] = send.mute
                             end
                             prevDeskTrack = send.destTrack
-                        end
-                    end,
-                    _reflectSolos = function(self, resetIfNeeded)
-                        local numSolos = self:_numSolos()
-                        if numSolos > 0 then
-                            for j, send in ipairs(self.db.sends) do
-                                send:setMute(send:getSolo() == SOLO_STATES.NONE)
-                            end
-                        end
-                        if resetIfNeeded and numSolos == 0 then
-                            for j, send in ipairs(self.db.sends) do
-                                send:setMute(send:_getOrigMuteState())
-                            end
                         end
                     end,
                     addInsert = function(self, fxName)
@@ -361,7 +379,6 @@ DB.createNewSend = function(self, asset, trackName) -- TODO: reflect added send 
     end
 end
 
-
 --- TRACKS
 DB.getSelectedTrack = function(self)
     if self.app.settings.current.followSelectedTrack == false and self.track ~= nil and self.track.object ~= nil and self.track ~= -1 then
@@ -400,8 +417,14 @@ DB.getTracks = function(self)
             '_SOLO_MATRIX', "", false)
         local _, rawOrigMuteMatrix = r.GetSetMediaTrackInfo_String(track, "P_EXT:" .. Scr.ext_name ..
             '_ORIG_MUTE_MATRIX', "", false)
+        local _, rawMasterSendState = r.GetSetMediaTrackInfo_String(track, "P_EXT:" .. Scr.ext_name ..
+            '_MASTER_SEND_STATE', "", false)
+        local _, rawSendListen = r.GetSetMediaTrackInfo_String(track, "P_EXT:" .. Scr.ext_name ..
+            '_SEND_LISTEN', "", false)
         local soloMatrix = rawSsoloMatrix and unpickle(rawSsoloMatrix) or {}
         local origMuteMatrix = rawOrigMuteMatrix and unpickle(rawOrigMuteMatrix) or {}
+        local masterSendState = (rawMasterSendState == '1')
+        local sendListen = rawSendListen ~= '' and rawSendListen or nil
         table.insert(self.tracks, {
             object = track,
             name = trackName,
@@ -410,12 +433,21 @@ DB.getTracks = function(self)
             hasReceives = hasReceives,
             soloMatrix = soloMatrix,
             origMuteMatrix = origMuteMatrix,
+            masterSendState = masterSendState,
+            sendListen = sendListen,
             order = i,
         })
         -- end
     end
 end
 
+DB._getTrack = function(self, track)
+    for i, trk in ipairs(self.tracks) do
+        if track == trk.object then
+            return trk
+        end
+    end
+end
 
 --- SOLOS
 
@@ -447,12 +479,38 @@ DB.recallSoloState = function(self)
         end
     end
 end
-DB.getTrack = function(self, track)
-    for i, trk in ipairs(self.tracks) do
-        if track == trk.object then
-            return trk
+
+DB._numSolos = function(self)
+    local numOfSolos = 0
+    for i, send in ipairs(self.sends) do
+        local sm, j = send:_getSoloMatrix()
+        if sm[j] == SOLO_STATES.SOLO then
+            numOfSolos = numOfSolos + 1
         end
     end
+    return numOfSolos
+end
+DB._reflectSolos = function(self, resetIfNeeded)
+    local numSolos = self:_numSolos()
+    if numSolos > 0 then
+        for j, send in ipairs(self.sends) do
+            send:setMute(send:getSolo() == SOLO_STATES.NONE)
+        end
+    end
+    if resetIfNeeded and numSolos == 0 then
+        for j, send in ipairs(self.sends) do
+            send:setMute(send:_getOrigMuteState())
+        end
+    end
+end
+
+DB.isListenOn = function(self)
+    for i, send in ipairs(self.sends) do
+        if send.track.sendListen then
+            return true
+        end
+    end
+    return false
 end
 
 --- INSERTS

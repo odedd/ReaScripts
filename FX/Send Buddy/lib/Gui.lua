@@ -10,7 +10,7 @@ SM_Gui.init = function(self, fonts)
     OD_Gui.init(self)
     ImGui.PushFont(self.ctx, self.st.fonts.default)
     self.mainWindow.hintHeight = ImGui.GetTextLineHeightWithSpacing(self.ctx) +
-        select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_FramePadding))*2 +
+        select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_FramePadding)) * 2 +
         select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_WindowPadding)) +
         select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_ItemSpacing))
     ImGui.PopFont(self.ctx)
@@ -126,6 +126,29 @@ SM_Gui.init = function(self, fonts)
                     [ImGui.Col_ButtonActive] = self.st.basecolors.active
                 }
             },
+            listen = {
+                [true] = {
+                    [ImGui.Col_Button] = 0x763fd4FF,
+                    [ImGui.Col_Text] = 0x000000ff,
+                    [ImGui.Col_ButtonHovered] = 0x864fe4ff,
+                    [ImGui.Col_ButtonActive] = 0x965ff4ff
+                },
+                [false] = {
+                    [ImGui.Col_Text] = self.st.basecolors.widgetBG,
+                    [ImGui.Col_Button] = self.st.basecolors.darkBG,
+                    [ImGui.Col_ButtonHovered] = self.st.basecolors.darkHovered,
+                    [ImGui.Col_ButtonActive] = self.st.basecolors.darkActive
+                }
+            },
+            fader = {
+                listen = {
+                    [true] = {
+                        [ImGui.Col_SliderGrab] = 0x864fe4ff,
+                        [ImGui.Col_SliderGrabActive] = 0x965ff4ff
+                    },
+                    [false] = {}
+                }
+            },
             mode = {
                 [0] = {
                     [ImGui.Col_Text] = 0x000000ff,
@@ -150,15 +173,15 @@ SM_Gui.init = function(self, fonts)
                 [ImGui.Col_Button] = self.st.basecolors.darkBG,
                 [ImGui.Col_ButtonHovered] = self.st.basecolors.darkHovered,
                 [ImGui.Col_ButtonActive] = self.st.basecolors.darkActive,
-                [ImGui.Col_Text] = self.st.basecolors.widgetBG,    
+                [ImGui.Col_Text] = self.st.basecolors.widgetBG,
             },
             route = self.st.colpresets.midButton,
             add = self.st.colpresets.midButton,
             deleteSend = {
                 [ImGui.Col_Button] = self.st.basecolors.main,
                 [ImGui.Col_ButtonHovered] = self.st.basecolors.mainBright,
-                [ImGui.Col_ButtonActive] = self.st.basecolors.mainBrighter,  
-                [ImGui.Col_Text] = 0x000000ff  
+                [ImGui.Col_ButtonActive] = self.st.basecolors.mainBrighter,
+                [ImGui.Col_Text] = 0x000000ff
             },
             topBarIcon = {
                 default = { [ImGui.Col_Text] = self.st.basecolors.midBG },
