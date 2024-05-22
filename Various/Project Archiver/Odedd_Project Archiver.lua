@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.7.11
+-- @version 0.7.12
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -13,7 +13,8 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Possible fix for frozen files handling
+--   Better handling of file deletion in windows
+--   Properly detect relative file paths in windows (error introduced in 0.7.11)
 
 ---------------------------------------
 -- SETUP ------------------------------
