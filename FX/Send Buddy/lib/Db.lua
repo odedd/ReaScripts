@@ -10,6 +10,7 @@ DB = {
     init = function(self, app)
         self.plugins = {}
         self.tracks = {}
+        self.masterTrack = reaper.GetMasterTrack(0)
         self:getPlugins()
         self:getTracks()
         self:assembleAssets()
@@ -391,7 +392,7 @@ DB.getSelectedTrack = function(self)
             self.track, false
     end
     local track = reaper.GetLastTouchedTrack()
-    if track == nil and self.track ~= nil then
+    if (track == nil and self.track ~= nil) or track == self.masterTrack then
         self.trackName = nil
         self.sends = {}
         return { object = nil }, true
