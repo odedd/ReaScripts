@@ -1283,6 +1283,7 @@ function CreateBackupProject()
             local target = (targetPath ..
                 (fileInfo.collectBackupTargetPath or Op.app.relProjectRecordingPath) ..
                 OD_FolderSep() .. newFN .. (newExt and ('.' .. newExt) or '')):gsub('\\\\', '\\')
+            if OS_is.win then r.reduce_open_files(2) end -- windows won't delete/move files that are in use. not sure it's needed
             if OD_MoveFile(fileInfo.newfilename, target, Op.app.logger) then
                 Op.app.logger:logInfo('File backup (Move) successful', (fileInfo.newfilename .. ' -> ' .. target))
                 fileInfo.status = STATUS.DONE

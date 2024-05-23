@@ -148,7 +148,7 @@ function OD_MoveFile(old_path, new_path, logger)
         return true
     else -- if moving using rename failed, resort to copy + delete
         if logger then logger:logDebug(('OD_MoveFile - Move failed, resorting to copy+delete'), true, 1) end
-        if OD_CopyFile(old_path, new_path) then
+        if OD_CopyFile(old_path, new_path, logger) then
             if win then r.reduce_open_files(2) end
             local success = os.remove(old_path)
             if logger then
