@@ -27,6 +27,7 @@ ICONS = {
     ['TRASH'] = 'T',
     ['UNDO'] = 'U',
     ['ENVELOPE'] = 'V',
+    ['ARROW_RIGHT'] = 'W',
     ['CLOSE'] = 'X',
 }
 
@@ -49,6 +50,11 @@ SOLO_STATES = {
     ['SOLO'] = 2,
     ['SOLO_DEFEAT'] = 3,
 }
+SEND_LISTEN_MODES = {
+    ['NONE'] = -1,
+    ['NORMAL'] = 0,
+    ['RETURN_ONLY'] = 1
+} 
 
 for i = 0, NUM_CHANNELS - 1 do
     -- Stereo

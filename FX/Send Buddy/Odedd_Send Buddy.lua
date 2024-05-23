@@ -207,7 +207,7 @@ if OD_PrereqsOK({
             (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2)
         local separatorH = 5
         -- sends
-        local sendsH = 7 * (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2) + vSpacing +
+        local sendsH = 8 * (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2) + vSpacing +
             app.settings.current.minFaderHeight
         local h = wPadding + topBarH + insertsH + vSpacing + separatorH + vSpacing + sendsH + vSpacing +
             app.gui.mainWindow.hintHeight + wPadding
@@ -254,23 +254,23 @@ if OD_PrereqsOK({
                     if reaper.time_precise() - app.temp.confirmation[confirmationKey] > deleteTimeOut then
                         app.temp.confirmation[confirmationKey] = nil
                     else
-                        app.gui:pushColors(app.gui.st.col.buttons.deleteSend)
+                        app.gui:pushColors(app.gui.st.col.buttons.deleteSend.confirm)
                         if ImGui.Button(ctx, 'Sure?##deleteSend', w) then
                             s:delete()
                         end
                         app:setHoveredHint('main', s.name .. ' - Click again to confirm')
-                        app.gui:popColors(app.gui.st.col.buttons.deleteSend)
+                        app.gui:popColors(app.gui.st.col.buttons.deleteSend.confirm)
                     end
                 end
                 if app.temp.confirmation[confirmationKey] == nil then -- not else because then I miss a frame after the timeout just passed
-                    app.gui:pushColors(app.gui.st.col.buttons.env)
+                    app.gui:pushColors(app.gui.st.col.buttons.deleteSend.initial)
                     ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
                     if ImGui.Button(ctx, ICONS.TRASH .. '##deleteSend', w) then
                         app.temp.confirmation[confirmationKey] = reaper.time_precise()
                     end
                     app:setHoveredHint('main', s.name .. ' - Delete send')
                     ImGui.PopFont(ctx)
-                    app.gui:popColors(app.gui.st.col.buttons.env)
+                    app.gui:popColors(app.gui.st.col.buttons.deleteSend.initial)
                 end
             end
             local drawEnvMuteButton = function(w)
@@ -289,7 +289,7 @@ if OD_PrereqsOK({
                 app:setHoveredHint('main', s.name .. ' - Show/hide send pan envelope')
                 app.gui:popColors(app.gui.st.col.buttons.route)
             end
-            local drawFader = function(w,h)
+            local drawFader = function(w, h)
                 local v = OD_dBFromValue(s.vol)
                 local mw = ImGui.GetMouseWheel(ctx)
                 local scaledV = (v >= app.settings.current.scaleLevel) and (v / app.settings.current.scaleFactor) or
@@ -302,14 +302,12 @@ if OD_PrereqsOK({
                         ((app.settings.current.minSendVol - app.settings.current.scaleLevel) / (app.settings.current.minSendVol - (app.settings.current.scaleLevel * app.settings.current.scaleFactor)))
                 end
                 app.gui:pushStyles(app.gui.st.vars.vol)
-                app.gui:pushColors(app.gui.st.col.buttons.fader.listen[s.track.sendListen == s.destTrack.guid])
                 local rv, v2 = ImGui.VSliderDouble(ctx, '##v', w,
                     h,
                     scaledV,
                     app.settings.current.minSendVol,
                     app.settings.current.maxSendVol * app.settings.current.scaleFactor,
                     '')
-                app.gui:popColors(app.gui.st.col.buttons.fader.listen[s.track.sendListen == s.destTrack.guid])
                 app.gui:popStyles(app.gui.st.vars.vol)
                 app:setHoveredHint('main', s.name .. ' - Send volume')
                 if (v2 < app.settings.current.scaleLevel * app.settings.current.scaleFactor) then
@@ -347,12 +345,10 @@ if OD_PrereqsOK({
                 local mw = ImGui.GetMouseWheel(ctx)
                 ImGui.SetNextItemWidth(ctx, w)
 
-                app.gui:pushColors(app.gui.st.col.buttons.fader.listen[s.track.sendListen == s.destTrack.guid])
                 app.gui:pushStyles(app.gui.st.vars.pan)
                 local rv, v2 = ImGui.SliderDouble(ctx, '##p', s.pan, -1, 1, '')
                 app:setHoveredHint('main', s.name .. ' - Send panning')
                 app.gui:popStyles(app.gui.st.vars.pan)
-                app.gui:popColors(app.gui.st.col.buttons.fader.listen[s.track.sendListen == s.destTrack.guid])
                 if rv then
                     s:setPan(v2)
                 end
@@ -402,7 +398,7 @@ if OD_PrereqsOK({
                 if ImGui.Button(ctx, 'D##solodefeat' .. s.order, w) then
                     s:setSolo(soloed and SOLO_STATES.NONE or SOLO_STATES.SOLO_DEFEAT)
                 end
-                app:setHoveredHint('main', s.name .. ' - Solo defeat')
+                app:setHoveredHint('main', s.name .. ' - Toggle solo defeat')
                 app.gui:popColors(app.gui.st.col.buttons.solo[soloed and SOLO_STATES.SOLO_DEFEAT or SOLO_STATES.NONE])
             end
             local drawPhase = function(w)
@@ -415,15 +411,31 @@ if OD_PrereqsOK({
                 ImGui.PopFont(ctx)
                 app.gui:popColors(app.gui.st.col.buttons.mute[s.mute])
             end
-            local drawListen = function(w)
-                app.gui:pushColors(app.gui.st.col.buttons.listen[s.track.sendListen == s.destTrack.guid])
+            local drawGoToDestTrack = function(w)
+                app.gui:pushColors(app.gui.st.col.buttons.scrollToTrack)
+                ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                if ImGui.Button(ctx, ICONS.ARROW_RIGHT .. '##goToDest' .. s.order, w) then
+                    r.SetMediaTrackInfo_Value(s.destTrack.object, 'B_SHOWINMIXER', 1)                    
+                    r.SetMediaTrackInfo_Value(s.destTrack.object, 'B_SHOWINTCP', 1)                    
+                    r.SetMixerScroll(s.destTrack.object)
+                    r.SetOnlyTrackSelected(s.destTrack.object)
+                    r.Main_OnCommand(40913, 0)
+                end
+                app:setHoveredHint('main', s.name .. ' - Scroll to destination track')
+                ImGui.PopFont(ctx)
+                app.gui:popColors(app.gui.st.col.buttons.scrollToTrack)
+            end
+            local drawListen = function(w,listenMode)
+                local state = (s.track.sendListen == s.destTrack.guid)
+                app.gui:pushColors(app.gui.st.col.buttons.listen[state and s.track.sendListenMode or listenMode][state])
                 ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
                 if ImGui.Button(ctx, ICONS.HEADPHONES .. '##listen' .. s.order, w) then
-                    s:toggleListen(not s.track.sendListen ~= s.destTrack.guid)
+                    s:toggleListen(listenMode)
                 end
-                app:setHoveredHint('main', s.name .. ' - Listen')
+                app:setHoveredHint('main', s.name .. ' - Listen to return ' .. (listenMode == SEND_LISTEN_MODES.NORMAL and 'and original tracks ' or 'track ') ..'only')
                 ImGui.PopFont(ctx)
-                app.gui:popColors(app.gui.st.col.buttons.listen[s.track.sendListen == s.destTrack.guid])
+                app.gui:popColors(app.gui.st.col.buttons.listen
+                [state and s.track.sendListenMode or listenMode][state])
             end
             local drawModeButton = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.mode[s.mode])
@@ -679,23 +691,23 @@ if OD_PrereqsOK({
                 select(2, ImGui.GetContentRegionAvail(ctx)) - app.gui.TEXT_BASE_HEIGHT_SMALL * 2 -
                 app.gui.mainWindow.hintHeight - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2)
 
-                
+
             local w = app.settings.current.sendWidth
-            if parts.name then 
-                parts = { parts } 
+            if parts.name then
+                parts = { parts }
             else
-                w = app.settings.current.sendWidth / #parts - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) / #parts
+                w = app.settings.current.sendWidth / #parts - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) / #
+                    parts
             end
-            
+
             for i, part in ipairs(parts) do
-                
                 if part.sameLine == true then ImGui.SameLine(ctx) end
                 if part.name == 'inserts' then
                     drawInserts(w)
                 elseif part.name == 'dummy' then
-                    drawDummy(w,part.color)
+                    drawDummy(w, part.color)
                 elseif part.name == 'dummyFader' then
-                    drawDummy(w,app.gui.st.col.buttons.env, faderHeight)
+                    drawDummy(w, app.gui.st.col.buttons.env, faderHeight)
                 elseif part.name == 'pan' then
                     drawPan(w)
                 elseif part.name == 'envmute' then
@@ -708,8 +720,10 @@ if OD_PrereqsOK({
                     drawSoloDefeat(w)
                 elseif part.name == 'phase' then
                     drawPhase(w)
+                elseif part.name == 'scrollToTrack' then
+                    drawGoToDestTrack(w)
                 elseif part.name == 'listen' then
-                    drawListen(w)
+                    drawListen(w, part.listenMode)
                 elseif part.name == 'modebutton' then
                     drawModeButton(w)
                 elseif part.name == 'routebutton' then
@@ -723,7 +737,7 @@ if OD_PrereqsOK({
                 elseif part.name == 'deletesend' then
                     drawDeleteSend(w)
                 elseif part.name == 'envvol' then
-                    drawEnvVolButton(w,faderHeight)
+                    drawEnvVolButton(w, faderHeight)
                 elseif part.name == 'volLabel' then
                     drawVolLabel(w)
                 elseif part.name == 'sendName' then
@@ -786,8 +800,8 @@ if OD_PrereqsOK({
             ImGui.SetCursorPosY(ctx,
                 ImGui.GetCursorPosY(ctx) + 2 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)))
             local parts = {
-                {{name = 'mute' },
-                { name = 'solo' }},
+                { { name = 'mute' },  { name = 'solo' } },
+                { { name = 'phase' }, { name = 'listen', listenMode = SEND_LISTEN_MODES.NORMAL } },
                 { name = 'modebutton' },
                 { name = 'routebutton' },
                 { name = 'pan' },
@@ -797,12 +811,12 @@ if OD_PrereqsOK({
             }
             if altPressed then
                 parts = {
-                    { { name = 'listen' },
-                        { name = 'solod' } },
-                    { name = 'phase',          color = app.gui.st.col.buttons.mode[0] },
+                    { { name = 'mute' },       { name = 'solod' } },
+                    { { name = 'phase' },      { name = 'listen', listenMode = SEND_LISTEN_MODES.RETURN_ONLY } },
+                    { name = 'scrollToTrack' },
                     { name = 'midiroutebutton' },
-                    { name = 'dummy',          color = app.gui.st.col.buttons.env },
-                    { name = 'dummyFader' },
+                    { name = 'pan' },
+                    { name = 'fader' },
                     { name = 'deletesend' },
                     { name = 'sendName' }
                 }

@@ -29,7 +29,8 @@ DB = {
             local retval = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. Scr.ext_name .. '_MASTER_SEND_STATE',
                 foundTrackInfo.masterSendState and '1' or '', true)
             local retval = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. Scr.ext_name .. '_SEND_LISTEN',
-                foundTrackInfo.sendListen or '', true)
+                foundTrackInfo.sendListen and (foundTrackInfo.sendListen .. ' ' .. foundTrackInfo.sendListenMode) or '',
+                true)
             if foundTrackInfo.soloMatrix and not (foundTrackInfo.soloMatrix == 0) then
                 local retval = r.GetSetMediaTrackInfo_String(rTrack, "P_EXT:" .. Scr.ext_name .. '_SOLO_MATRIX',
                     pickle(foundTrackInfo.soloMatrix), true)
@@ -205,14 +206,16 @@ DB = {
                         self.db:_reflectSolos(true)
                         self.db:save()
                     end,
-                    toggleListen = function(self)
+                    toggleListen = function(self, listenMode)
                         if self.track.sendListen ~= self.destTrack.guid then
-                            if not self.db:isListenOn() then
-                                self.track.masterSendState = r.GetMediaTrackInfo_Value(self.track.object, 'B_MAINSEND') ==
-                                1
-                            end
-                            if self.track.masterSendState then
-                                r.SetMediaTrackInfo_Value(self.track.object, 'B_MAINSEND', 0)
+                            if listenMode == SEND_LISTEN_MODES.RETURN_ONLY then
+                                if not self.track.masterSendState then
+                                    self.track.masterSendState = r.GetMediaTrackInfo_Value(self.track.object,
+                                            'B_MAINSEND') == 1
+                                end
+                                if self.track.masterSendState then
+                                    r.SetMediaTrackInfo_Value(self.track.object, 'B_MAINSEND', 0)
+                                end
                             end
                             -- Solo this track and the destTrack
                             r.SetMediaTrackInfo_Value(self.track.object, 'I_SOLO', 2)
@@ -230,6 +233,7 @@ DB = {
                             self:setSolo(SOLO_STATES.SOLO, true)
 
                             self.track.sendListen = self.destTrack.guid
+                            self.track.sendListenMode = listenMode
                         else
                             if self.db:isListenOn() then
                                 if self.track.masterSendState then
@@ -238,6 +242,7 @@ DB = {
                                 end
                             end
                             self.track.sendListen = nil
+                            self.track.sendListenMode = nil
                             -- Un-solo this track and the destTrack
                             r.SetMediaTrackInfo_Value(self.track.object, 'I_SOLO', 0)
                             r.SetMediaTrackInfo_Value(self.destTrack.object, 'I_SOLO', 0)
@@ -424,7 +429,8 @@ DB.getTracks = function(self)
         local soloMatrix = rawSsoloMatrix and unpickle(rawSsoloMatrix) or {}
         local origMuteMatrix = rawOrigMuteMatrix and unpickle(rawOrigMuteMatrix) or {}
         local masterSendState = (rawMasterSendState == '1')
-        local sendListen = rawSendListen ~= '' and rawSendListen or nil
+        local sendListen = rawSendListen ~= '' and rawSendListen:match('(.-)%s') or nil
+        local sendListenMode = rawSendListen ~= '' and tonumber(rawSendListen:match('.-%s(%d)')) or nil
         table.insert(self.tracks, {
             object = track,
             name = trackName,
@@ -435,6 +441,7 @@ DB.getTracks = function(self)
             origMuteMatrix = origMuteMatrix,
             masterSendState = masterSendState,
             sendListen = sendListen,
+            sendListenMode = sendListenMode,
             order = i,
         })
         -- end

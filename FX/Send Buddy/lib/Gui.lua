@@ -127,35 +127,39 @@ SM_Gui.init = function(self, fonts)
                 }
             },
             listen = {
-                [true] = {
+                [SEND_LISTEN_MODES.NORMAL] = {
+                    [false] = {
+                        [ImGui.Col_Text] = 0x000000ff,
+                        [ImGui.Col_Button] = self.st.basecolors.widgetBG,
+                        [ImGui.Col_ButtonHovered] = self.st.basecolors.hovered,
+                        [ImGui.Col_ButtonActive] = self.st.basecolors.active
+    
+                    },
+                    [true] = {
                     [ImGui.Col_Button] = 0x763fd4FF,
                     [ImGui.Col_Text] = 0x000000ff,
                     [ImGui.Col_ButtonHovered] = 0x864fe4ff,
-                    [ImGui.Col_ButtonActive] = 0x965ff4ff
-                },
-                [false] = {
-                    [ImGui.Col_Text] = self.st.basecolors.widgetBG,
-                    [ImGui.Col_Button] = self.st.basecolors.darkBG,
-                    [ImGui.Col_ButtonHovered] = self.st.basecolors.darkHovered,
-                    [ImGui.Col_ButtonActive] = self.st.basecolors.darkActive
+                    [ImGui.Col_ButtonActive] = 0x965ff4ff,
                 }
-            },
-            fader = {
-                listen = {
-                    [true] = {
-                        [ImGui.Col_SliderGrab] = 0x864fe4ff,
-                        [ImGui.Col_SliderGrabActive] = 0x965ff4ff
+                },
+                [SEND_LISTEN_MODES.RETURN_ONLY] = {
+                    [false] = {
+                        [ImGui.Col_Text] = 0x421441ff,
+                        [ImGui.Col_Button] = 0x917a87ff,
+                        [ImGui.Col_ButtonHovered] = 0xa18a97ff,
+                        [ImGui.Col_ButtonActive] = 0xb19aa7ff
+    
                     },
-                    [false] = {}
+                    [true] = {
+                    [ImGui.Col_Button] = 0xd43f93FF,
+                    [ImGui.Col_Text] = 0x000000ff,
+                    [ImGui.Col_ButtonHovered] = 0xe44fa3ff,
+                    [ImGui.Col_ButtonActive] = 0xf45fb3ff,
+                    }
                 }
             },
             mode = {
-                [0] = {
-                    [ImGui.Col_Text] = 0x000000ff,
-                    [ImGui.Col_Button] = self.st.basecolors.widgetBG,
-                    [ImGui.Col_ButtonHovered] = self.st.basecolors.hovered,
-                    [ImGui.Col_ButtonActive] = self.st.basecolors.active
-                },
+                [0] = self.st.colpresets.midButton,
                 [1] = {
                     [ImGui.Col_Button] = 0x4291d6ff,
                     [ImGui.Col_ButtonHovered] = 0x52A1e6ff,
@@ -177,11 +181,20 @@ SM_Gui.init = function(self, fonts)
             },
             route = self.st.colpresets.midButton,
             add = self.st.colpresets.midButton,
+            scrollToTrack = self.st.colpresets.midButton,
             deleteSend = {
-                [ImGui.Col_Button] = self.st.basecolors.main,
-                [ImGui.Col_ButtonHovered] = self.st.basecolors.mainBright,
-                [ImGui.Col_ButtonActive] = self.st.basecolors.mainBrighter,
-                [ImGui.Col_Text] = 0x000000ff
+                ['initial'] = {
+                    [ImGui.Col_Button] = self.st.basecolors.darkBG,
+                    [ImGui.Col_ButtonHovered] = self.st.basecolors.darkHovered,
+                    [ImGui.Col_ButtonActive] = self.st.basecolors.darkActive,
+                    [ImGui.Col_Text] = self.st.basecolors.mainBright,
+                },
+                ['confirm'] = {
+                    [ImGui.Col_Button] = self.st.basecolors.main,
+                    [ImGui.Col_ButtonHovered] = self.st.basecolors.mainBright,
+                    [ImGui.Col_ButtonActive] = self.st.basecolors.mainBrighter,
+                    [ImGui.Col_Text] = 0x000000ff
+                }
             },
             topBarIcon = {
                 default = { [ImGui.Col_Text] = self.st.basecolors.midBG },
