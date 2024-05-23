@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.7.12
+-- @version 0.8.0
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -13,8 +13,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Better handling of file deletion in windows
---   Properly detect relative file paths in windows (error introduced in 0.7.11)
+--   Many changes and fixes related to frozen tracks handling (thanks Coachz!)
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -297,7 +296,9 @@ if OD_PrereqsOK({
                             r.ImGui_TableNextColumn(ctx) -- keep size
                             if fileInfo.newFileSize and fileInfo.sourceFileSize then
                                 r.ImGui_Text(ctx,
-                                    string.format("%.f %%", fileInfo.sourceFileSize == 0 and 100 or (fileInfo.newFileSize / fileInfo.sourceFileSize * 100)))
+                                    string.format("%.f %%",
+                                        fileInfo.sourceFileSize == 0 and 100 or
+                                        (fileInfo.newFileSize / fileInfo.sourceFileSize * 100)))
                             end
                             r.ImGui_TableNextColumn(ctx) -- status
                             if Gui.st.col.status[fileInfo.status] then

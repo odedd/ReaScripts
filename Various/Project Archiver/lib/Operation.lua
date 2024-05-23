@@ -365,7 +365,8 @@ function GetMediaFiles()
                     local sources = item:findAllChunksByName("SOURCE")
                     for s, source in ipairs(sources) do
                         local sourceType = source:getParam(1):getString()
-                        if sourceType ~= 'WAVE' then break end
+                        if ALL_FORMATS[sourceType] == nil then break end
+                        if ALL_FORMATS[sourceType].type == 'INCOMPATIBLE' then break end
                         local fileNodes = source:findAllNodesByName("FILE")
                         assert(fileNodes ~= nil, 'Frozen file not found')
                         local filename = fileNodes[1]:getParam(1):getString()
@@ -996,6 +997,11 @@ function MinimizeAndApplyMedia()
 
                     r.SetMediaItemTake_Source(oc.take, newSrc)
                     r.SetMediaItemTakeInfo_Value(oc.take, "D_STARTOFFS", oc.newItemPosition)
+                    local rv, chunk = r.GetItemStateChunk(oc.item, '', false)
+                    if rv and chunk:match('FREEZE .-%s.-%s(.-)\n') then 
+                        chunk = chunk:gsub('(FREEZE .-%s.-%s).-(\n)','%1'..tostring(oc.newItemPosition)..'%2')
+                        r.SetItemStateChunk(oc.item, chunk, false)
+                    end
                     local _, oldTakeName = r.GetSetMediaItemTakeInfo_String(oc.take, 'P_NAME', '', false)
                     if oldTakeName:match(fileInfo.filenameWithoutPath) then
                         local _, newBasename, newExt = OD_DissectFilename(uniqueName)
@@ -1129,11 +1135,11 @@ function Revert(cancel)
     else
         Op.app.logger:logError('Temporary RPP backup file not restored', Op.app.revert.tmpBackupFileName)
     end
-    r.reduce_open_files(2) -- seems ok. might be needed for win, but I tested and I'm pretty sure it's not needed.
     -- delete files created but not used
     for filename, fileInfo in pairs(Op.app.mediaFiles) do
         if fileInfo.newfilename and fileInfo.status ~= STATUS.DONE then
             if OD_FileExists(fileInfo.newfilename) then
+                r.reduce_open_files(2) 
                 local success = os.remove(fileInfo.newfilename)
                 if success then
                     Op.app.logger:logInfo('Temporary file deleted', fileInfo.newfilename)
@@ -1353,7 +1359,7 @@ function DeleteOriginals()
                 coroutine.yield(stat)
                 if OS_is.win then
                     if settings.deleteMethod ~= DELETE_METHOD.MOVE_TO_TRASH then
-                        r.reduce_open_files(2) -- windows won't delete/move files that are in use
+                        if OS_is.win then r.reduce_open_files(2) end -- windows won't delete/move files that are in use
                         if os.remove(fileInfo.filenameWithPath) then
                             Op.app.logger:logInfo('Delete successful', fileInfo.filenameWithPath)
                             Op.app.usedFiles[fileInfo.filenameWithPath] = nil
@@ -1536,7 +1542,8 @@ function FixFrozenTracksFileAssociations()
                 local sources = item:findAllChunksByName("SOURCE")
                 for s, source in ipairs(sources) do
                     local sourceType = source:getParam(1):getString()
-                    if sourceType ~= 'WAVE' then break end
+                    if ALL_FORMATS[sourceType] == nil then break end
+                    if ALL_FORMATS[sourceType].type == 'INCOMPATIBLE' then break end
                     local filename = source:findAllNodesByName("FILE")[1]:getParam(1):getString()
                     -- filename = OD_GetRelativeOrAbsoluteFile(filename, Op.app.projPath) -- convert path to relative if possible, to match the mediaFiles table
                     local fileInfo = Op.app.mediaFiles[filename]
@@ -1552,6 +1559,7 @@ function FixFrozenTracksFileAssociations()
                         newFilename = targetPathInBackupDestination ..
                             unqBasename .. (unqExt and ('.' .. unqExt) or '')
                     end
+                    newFilename = OS_is.win and newFilename:gsub('/', '\\') or newFilename
                     Op.app.logger:logDebug('Fixing frozen file association', filename .. ' -> ' .. newFilename)
                     source:findAllNodesByName("FILE")[1]:getParam(1):setString(newFilename)
                     if filename ~= newFilename then filenameUpdated = true end
