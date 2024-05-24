@@ -1,7 +1,8 @@
 DB = {
     sends = {},
     track = -1, -- this is to force a track change when loading the script
-    numSends = 0,
+    numSends = { [SEND_TYPE.SEND] = 0, [SEND_TYPE.RECV] = 0, [SEND_TYPE.HW] = 0 },
+    totalSends = 0,
     maxNumInserts = 0,
     changedTrack = true,
     soloedSends = {},
@@ -57,7 +58,8 @@ DB = {
             if self.track.object == nil then
                 self.app.setPage(APP_PAGE.NO_TRACK)
             end
-            self.numSends = 0
+            self.numSends = { [SEND_TYPE.SEND] = 0, [SEND_TYPE.RECV] = 0, [SEND_TYPE.HW] = 0 }
+            self.totalSends = 0
             self.soloedSends = {}
             self.refresh = true
         end
@@ -79,259 +81,269 @@ DB = {
             --     retval, k, v = r.EnumProjExtState(0, Scr.ext_name .. '_SAVED_SOLO_STATES', i)
             -- end
             -- self.savedSoloStates = self.savedSoloStates or {}
-
-            local oldNumSends = self.numSends
-            self.numSends = reaper.GetTrackNumSends(self.track.object, 0)
-            self.sends = {}
+            local oldNumSends = {}
+            self.totalSends = 0
             self.maxNumInserts = 0
-            for i = 0, self.numSends - 1 do
-                local _, sendName = reaper.GetTrackSendName(self.track.object, i)
-                local midiRouting = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, 0, i, 'I_MIDIFLAGS'))
-                local send = {
-                    order = i,
-                    name = sendName,
-                    db = self,
-                    track = self.track,
-                    mute = reaper.GetTrackSendInfo_Value(self.track.object, 0, i, 'B_MUTE') == 1.0,
-                    vol = reaper.GetTrackSendInfo_Value(self.track.object, 0, i, 'D_VOL'),
-                    pan = reaper.GetTrackSendInfo_Value(self.track.object, 0, i, 'D_PAN'),
-                    panLaw = reaper.GetTrackSendInfo_Value(self.track.object, 0, i, 'D_PANLAW'),
-                    mono = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, 0, i, 'B_MONO')),
-                    polarity = reaper.GetTrackSendInfo_Value(self.track.object, 0, i, 'B_PHASE') == 1.0,
-                    srcChan = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, 0, i, 'I_SRCCHAN')),
-                    mode = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, 0, i, 'I_SENDMODE')),
-                    midiSrcChn = midiRouting & 0x1f,
-                    midiSrcBus = midiRouting >> 14 & 0xff,
-                    midiDestChn = midiRouting >> 5 & 0x1f,
-                    midiDestBus = midiRouting >> 22 & 0xff,
-                    destChan = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, 0, i, 'I_DSTCHAN')),
-                    destTrack = self:_getTrack(reaper.GetTrackSendInfo_Value(self.track.object, 0, i, 'P_DESTTRACK')),
-                    destInserts = {},
-                    destInsertsCount = 0,
-                    delete = function(self) -- TODO: reflect removed send in solo states
-                        reaper.RemoveTrackSend(self.track.object, 0, self.order)
-                        self.db:sync(true)
-                    end,
-                    setVolDB = function(self, dB)
-                        if dB < self.db.app.settings.current.minSendVol then
-                            dB = self.db.app.settings.current.minSendVol
-                        elseif dB > self.db.app.settings.current.maxSendVol then
-                            dB = self.db.app.settings.current.maxSendVol
-                        end
-                        reaper.SetTrackSendInfo_Value(self.track.object, 0, self.order, 'D_VOL',
-                            (dB <= self.db.app.settings.current.minSendVol and 0 or OD_ValFromdB(dB)))
-                        self.db:sync(true)
-                    end,
-                    setPan = function(self, pan)
-                        if pan < -1 then
-                            pan = -1
-                        elseif pan > 1 then
-                            pan = 1
-                        end
-                        reaper.SetTrackSendInfo_Value(self.track.object, 0, self.order, 'D_PAN', pan)
-                        self.db:sync(true)
-                    end,
-                    setPanLaw = function(self, panLaw)
-                        reaper.SetTrackSendInfo_Value(self.track.object, 0, self.order, 'D_PANLAW', panLaw)
-                        self.db:sync(true)
-                    end,
-                    setMono = function(self, mono)
-                        reaper.SetTrackSendInfo_Value(self.track.object, 0, self.order, 'B_MONO', mono)
-                        self.db:sync(true)
-                    end,
-                    setPolarity = function(self, polarity)
-                        reaper.SetTrackSendInfo_Value(self.track.object, 0, self.order, 'B_PHASE', polarity and 1 or 0)
-                        self.db:sync(true)
-                    end,
-                    setSrcChan = function(self, srcChan)
-                        reaper.SetTrackSendInfo_Value(self.track.object, 0, self.order, 'I_SRCCHAN', srcChan)
-                        self.db:sync(true)
-                    end,
-                    setMidiRouting = function(self, srcChn, srcBus, destChn, destBus)
-                        srcChn = srcChn or self.midiSrcChn
-                        srcBus = srcBus or self.midiSrcBus
-                        destChn = destChn or self.midiDestChn
-                        destBus = destBus or self.midiDestBus
-                        local midiRouting = srcChn + (srcBus << 14) | (destChn) << 5 | (destBus << 22)
-                        reaper.SetTrackSendInfo_Value(self.track.object, 0, self.order, 'I_MIDIFLAGS', midiRouting)
-                        self.db:sync(true)
-                    end,
-                    setMode = function(self, mode)
-                        reaper.SetTrackSendInfo_Value(self.track.object, 0, self.order, 'I_SENDMODE', mode)
-                        self.db:sync(true)
-                    end,
-                    setDestChan = function(self, destChan)
-                        local numChannels = SRC_CHANNELS[self.srcChan].numChannels +
-                            (destChan >= 1024 and destChan - 1024 or destChan)
-                        local nearestEvenChannel = math.ceil(numChannels / 2) * 2
-                        local destChanChannelCount = reaper.GetMediaTrackInfo_Value(self.destTrack.object, 'I_NCHAN')
-                        if destChanChannelCount < numChannels then
-                            reaper.SetMediaTrackInfo_Value(self.destTrack.object, 'I_NCHAN', nearestEvenChannel)
-                        end
-                        reaper.SetTrackSendInfo_Value(self.track.object, 0, self.order, 'I_DSTCHAN', destChan)
-                        self.db:sync(true)
-                    end,
-                    setMute = function(self, mute, skipRefresh)
-                        reaper.SetTrackSendInfo_Value(self.track.object, 0, self.order, 'B_MUTE', mute and 1 or 0)
-                        if not skipRefresh then self.db:sync(true) end
-                    end,
-                    getSolo = function(self)
-                        -- self.destTrack.soloMatrix[self.track.guid] = {}
-                        local sm, counter = self:_getSoloMatrix()
-                        return sm[counter] or SOLO_STATES.NONE
-                    end,
-                    setSolo = function(self, solo, exclusive)
-                        -- deafult to true if solo == SOLO_STATES.SOLO
-                        local exclusive = (exclusive ~= false) and (solo == SOLO_STATES.SOLO) or false
-                        self:_saveOrigMuteState()
-                        local sm, counter = self:_getSoloMatrix()
-                        local prevDeskTrack = nil
-                        -- turn off all solos if exclusive == true
-                        local j = 0
-                        for i, send in ipairs(self.db.sends) do
-                            if send.destTrack == prevDeskTrack then
-                                j = j + 1
-                            else
-                                j = 0
+            self.sends = {}
+            for i, type in pairs(SEND_TYPE) do
+                oldNumSends[type] = self.numSends[type]
+                self.numSends[type] = reaper.GetTrackNumSends(self.track.object, type)
+                self.totalSends = self.totalSends + self.numSends[type]
+                for i = 0, self.numSends[type] - 1 do
+                    local _, sendName = reaper.GetTrackSendName(self.track.object, i)
+                    local midiRouting = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i,
+                        'I_MIDIFLAGS'))
+                    local send = {
+                        type = type,
+                        order = i,
+                        name = sendName,
+                        db = self,
+                        track = self.track,
+                        mute = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'B_MUTE') == 1.0,
+                        vol = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'D_VOL'),
+                        pan = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'D_PAN'),
+                        panLaw = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'D_PANLAW'),
+                        mono = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'B_MONO')),
+                        polarity = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'B_PHASE') == 1.0,
+                        srcChan = (type ~= SEND_TYPE.HW) and
+                        math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'I_SRCCHAN')) or nil,
+                        mode = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'I_SENDMODE')),
+                        midiSrcChn = midiRouting & 0x1f,
+                        midiSrcBus = midiRouting >> 14 & 0xff,
+                        midiDestChn = midiRouting >> 5 & 0x1f,
+                        midiDestBus = midiRouting >> 22 & 0xff,
+                        destChan = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'I_DSTCHAN')),
+                        destTrack = (type ~= SEND_TYPE.HW) and
+                        self:_getTrack(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'P_DESTTRACK')) or nil,
+                        destInserts = {},
+                        destInsertsCount = 0,
+                        delete = function(self) -- TODO: reflect removed send in solo states
+                            reaper.RemoveTrackSend(self.track.object, self.type, self.order)
+                            self.db:sync(true)
+                        end,
+                        setVolDB = function(self, dB)
+                            if dB < self.db.app.settings.current.minSendVol then
+                                dB = self.db.app.settings.current.minSendVol
+                            elseif dB > self.db.app.settings.current.maxSendVol then
+                                dB = self.db.app.settings.current.maxSendVol
                             end
-                            if exclusive and (send ~= self) then
-                                local sm, j = send:_getSoloMatrix()
-                                if sm[j] == SOLO_STATES.SOLO then
-                                    sm[j] = SOLO_STATES.NONE
-                                end
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'D_VOL',
+                                (dB <= self.db.app.settings.current.minSendVol and 0 or OD_ValFromdB(dB)))
+                            self.db:sync(true)
+                        end,
+                        setPan = function(self, pan)
+                            if pan < -1 then
+                                pan = -1
+                            elseif pan > 1 then
+                                pan = 1
                             end
-                            prevDeskTrack = send.destTrack
-                        end
-                        sm[counter] = solo
-
-                        self.db:_reflectSolos(true)
-                        self.db:save()
-                    end,
-                    toggleListen = function(self, listenMode)
-                        if self.track.sendListen ~= self.destTrack.guid then
-                            if listenMode == SEND_LISTEN_MODES.RETURN_ONLY then
-                                if not self.track.masterSendState then
-                                    self.track.masterSendState = r.GetMediaTrackInfo_Value(self.track.object,
-                                            'B_MAINSEND') == 1
-                                end
-                                if self.track.masterSendState then
-                                    r.SetMediaTrackInfo_Value(self.track.object, 'B_MAINSEND', 0)
-                                end
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'D_PAN', pan)
+                            self.db:sync(true)
+                        end,
+                        setPanLaw = function(self, panLaw)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'D_PANLAW', panLaw)
+                            self.db:sync(true)
+                        end,
+                        setMono = function(self, mono)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'B_MONO', mono)
+                            self.db:sync(true)
+                        end,
+                        setPolarity = function(self, polarity)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'B_PHASE',
+                                polarity and 1 or 0)
+                            self.db:sync(true)
+                        end,
+                        setSrcChan = function(self, srcChan)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'I_SRCCHAN', srcChan)
+                            self.db:sync(true)
+                        end,
+                        setMidiRouting = function(self, srcChn, srcBus, destChn, destBus)
+                            srcChn = srcChn or self.midiSrcChn
+                            srcBus = srcBus or self.midiSrcBus
+                            destChn = destChn or self.midiDestChn
+                            destBus = destBus or self.midiDestBus
+                            local midiRouting = srcChn + (srcBus << 14) | (destChn) << 5 | (destBus << 22)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'I_MIDIFLAGS',
+                                midiRouting)
+                            self.db:sync(true)
+                        end,
+                        setMode = function(self, mode)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'I_SENDMODE', mode)
+                            self.db:sync(true)
+                        end,
+                        setDestChan = function(self, destChan)
+                            local numChannels = SRC_CHANNELS[self.srcChan].numChannels +
+                                (destChan >= 1024 and destChan - 1024 or destChan)
+                            local nearestEvenChannel = math.ceil(numChannels / 2) * 2
+                            local destChanChannelCount = reaper.GetMediaTrackInfo_Value(self.destTrack.object, 'I_NCHAN')
+                            if destChanChannelCount < numChannels then
+                                reaper.SetMediaTrackInfo_Value(self.destTrack.object, 'I_NCHAN', nearestEvenChannel)
                             end
-                            -- Solo this track and the destTrack
-                            r.SetMediaTrackInfo_Value(self.track.object, 'I_SOLO', 2)
-                            r.SetMediaTrackInfo_Value(self.destTrack.object, 'I_SOLO', 2)
-
-                            -- Un-solo any other track if it's soloed
-                            for i, track in ipairs(self.db.tracks) do
-                                if track.guid ~= self.track.guid and track.guid ~= self.destTrack.guid then
-                                    local soloState = r.GetMediaTrackInfo_Value(track.object, 'I_SOLO')
-                                    if soloState ~= 0 then
-                                        r.SetMediaTrackInfo_Value(track.object, 'I_SOLO', 0)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'I_DSTCHAN', destChan)
+                            self.db:sync(true)
+                        end,
+                        setMute = function(self, mute, skipRefresh)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'B_MUTE',
+                                mute and 1 or 0)
+                            if not skipRefresh then self.db:sync(true) end
+                        end,
+                        getSolo = function(self)
+                            local sm, counter = self:_getSoloMatrix()
+                            return sm[counter] or SOLO_STATES.NONE
+                        end,
+                        setSolo = function(self, solo, exclusive)
+                            -- deafult to true if solo == SOLO_STATES.SOLO
+                            local exclusive = (exclusive ~= false) and (solo == SOLO_STATES.SOLO) or false
+                            self:_saveOrigMuteState()
+                            local sm, counter = self:_getSoloMatrix()
+                            local prevDeskTrack = nil
+                            -- turn off all solos if exclusive == true
+                            local j = 0
+                            for i, send in ipairs(self.db.sends) do
+                                if send.destTrack == prevDeskTrack then
+                                    j = j + 1
+                                else
+                                    j = 0
+                                end
+                                if exclusive and (send ~= self) then
+                                    local sm, j = send:_getSoloMatrix()
+                                    if sm[j] == SOLO_STATES.SOLO then
+                                        sm[j] = SOLO_STATES.NONE
                                     end
                                 end
+                                prevDeskTrack = send.destTrack
                             end
-                            self:setSolo(SOLO_STATES.SOLO, true)
+                            sm[counter] = solo
 
-                            self.track.sendListen = self.destTrack.guid
-                            self.track.sendListenMode = listenMode
-                        else
-                            if self.db:isListenOn() then
-                                if self.track.masterSendState then
-                                    r.SetMediaTrackInfo_Value(self.track.object, 'B_MAINSEND', 1)
-                                    self.track.masterSendState = nil
+                            self.db:_reflectSolos(true)
+                            self.db:save()
+                        end,
+                        toggleListen = function(self, listenMode)
+                            if self.track.sendListen ~= self.destTrack.guid then
+                                if listenMode == SEND_LISTEN_MODES.RETURN_ONLY then
+                                    if not self.track.masterSendState then
+                                        self.track.masterSendState = r.GetMediaTrackInfo_Value(self.track.object,
+                                            'B_MAINSEND') == 1
+                                    end
+                                    if self.track.masterSendState then
+                                        r.SetMediaTrackInfo_Value(self.track.object, 'B_MAINSEND', 0)
+                                    end
+                                end
+                                -- Solo this track and the destTrack
+                                r.SetMediaTrackInfo_Value(self.track.object, 'I_SOLO', 2)
+                                r.SetMediaTrackInfo_Value(self.destTrack.object, 'I_SOLO', 2)
+
+                                -- Un-solo any other track if it's soloed
+                                for i, track in ipairs(self.db.tracks) do
+                                    if track.guid ~= self.track.guid and track.guid ~= self.destTrack.guid then
+                                        local soloState = r.GetMediaTrackInfo_Value(track.object, 'I_SOLO')
+                                        if soloState ~= 0 then
+                                            r.SetMediaTrackInfo_Value(track.object, 'I_SOLO', 0)
+                                        end
+                                    end
+                                end
+                                self:setSolo(SOLO_STATES.SOLO, true)
+
+                                self.track.sendListen = self.destTrack.guid
+                                self.track.sendListenMode = listenMode
+                            else
+                                if self.db:isListenOn() then
+                                    if self.track.masterSendState then
+                                        r.SetMediaTrackInfo_Value(self.track.object, 'B_MAINSEND', 1)
+                                        self.track.masterSendState = nil
+                                    end
+                                end
+                                self.track.sendListen = nil
+                                self.track.sendListenMode = nil
+                                -- Un-solo this track and the destTrack
+                                r.SetMediaTrackInfo_Value(self.track.object, 'I_SOLO', 0)
+                                r.SetMediaTrackInfo_Value(self.destTrack.object, 'I_SOLO', 0)
+                                self:setSolo(SOLO_STATES.NONE)
+                            end
+                            self.db:save()
+                        end,
+                        _getSoloMatrix = function(self)
+                            local counter = 0
+                            for i, send in ipairs(self.db.sends) do
+                                if send.order == self.order then break end
+                                if send.destTrack == self.destTrack then
+                                    counter = counter + 1
                                 end
                             end
-                            self.track.sendListen = nil
-                            self.track.sendListenMode = nil
-                            -- Un-solo this track and the destTrack
-                            r.SetMediaTrackInfo_Value(self.track.object, 'I_SOLO', 0)
-                            r.SetMediaTrackInfo_Value(self.destTrack.object, 'I_SOLO', 0)
-                            self:setSolo(SOLO_STATES.NONE)
-                        end
-                        self.db:save()
-                    end,
-                    _getSoloMatrix = function(self)
-                        local counter = 0
-                        for i, send in ipairs(self.db.sends) do
-                            if send.order == self.order then break end
-                            if send.destTrack == self.destTrack then
-                                counter = counter + 1
+                            if self.destTrack.soloMatrix[self.track.guid] == nil then
+                                self.destTrack.soloMatrix[self.track.guid] = {}
                             end
-                        end
-                        if self.destTrack.soloMatrix[self.track.guid] == nil then
-                            self.destTrack.soloMatrix[self.track.guid] = {}
-                        end
-                        return self.destTrack.soloMatrix[self.track.guid], counter
-                    end,
-                    _getOrigMuteState = function(self)
-                        local counter = 0
-                        for i, send in ipairs(self.db.sends) do
-                            if send.order == self.order then break end
-                            if send.destTrack == self.destTrack then
-                                counter = counter + 1
+                            return self.destTrack.soloMatrix[self.track.guid], counter
+                        end,
+                        _getOrigMuteState = function(self)
+                            local counter = 0
+                            for i, send in ipairs(self.db.sends) do
+                                if send.order == self.order then break end
+                                if send.destTrack == self.destTrack then
+                                    counter = counter + 1
+                                end
                             end
-                        end
-                        if self.destTrack.origMuteMatrix[self.track.guid] == nil then
-                            self.destTrack.origMuteMatrix[self.track.guid] = {}
-                        end
-                        return self.destTrack.origMuteMatrix[self.track.guid][counter] or false
-                    end,
-                    _saveOrigMuteState = function(self)
-                        local numOfSolos = self.db:_numSolos()
-                        local prevDeskTrack = nil
-                        local j = 0
-                        for i, send in ipairs(self.db.sends) do
-                            if send.destTrack == prevDeskTrack then
-                                j = j + 1
-                            else
-                                j = 0
+                            if self.destTrack.origMuteMatrix[self.track.guid] == nil then
+                                self.destTrack.origMuteMatrix[self.track.guid] = {}
                             end
-                            if numOfSolos == 0 then
-                                send.destTrack.origMuteMatrix[self.track.guid] = send.destTrack.origMuteMatrix
-                                    [self.track.guid] or {}
-                                send.destTrack.origMuteMatrix[self.track.guid][j] = send.mute
+                            return self.destTrack.origMuteMatrix[self.track.guid][counter] or false
+                        end,
+                        _saveOrigMuteState = function(self)
+                            local numOfSolos = self.db:_numSolos()
+                            local prevDeskTrack = nil
+                            local j = 0
+                            for i, send in ipairs(self.db.sends) do
+                                if send.destTrack == prevDeskTrack then
+                                    j = j + 1
+                                else
+                                    j = 0
+                                end
+                                if numOfSolos == 0 then
+                                    send.destTrack.origMuteMatrix[self.track.guid] = send.destTrack.origMuteMatrix
+                                        [self.track.guid] or {}
+                                    send.destTrack.origMuteMatrix[self.track.guid][j] = send.mute
+                                end
+                                prevDeskTrack = send.destTrack
                             end
-                            prevDeskTrack = send.destTrack
+                        end,
+                        addInsert = function(self, fxName)
+                            local fxIndex = r.TrackFX_AddByName(self.destTrack.object, fxName, false, -1)
+                            if fxIndex == -1 then
+                                self.db.app.logger:logError('Cannot add ' .. fxName .. ' to ' .. self.destTrack.object)
+                                return false
+                            end
+                            self.db:sync(true)
+                            self.db.app.focusMainReaperWindow = false
+                            return true
+                        end,
+                        toggleVolEnv = function(self, show)
+                            local env = reaper.GetTrackSendInfo_Value(self.track.object, self.type, i, "P_ENV:<VOLENV")
+                            OD_ToggleShowEnvelope(env, show)
+                        end,
+                        togglePanEnv = function(self, show)
+                            local env = reaper.GetTrackSendInfo_Value(self.track.object, self.type, i, "P_ENV:<PANENV")
+                            OD_ToggleShowEnvelope(env, show)
+                        end,
+                        toggleMuteEnv = function(self, show)
+                            local env = reaper.GetTrackSendInfo_Value(self.track.object, self.type, i, "P_ENV:<MUTEENV")
+                            OD_ToggleShowEnvelope(env, show)
+                        end,
+                    }
+                    if send.destTrack then
+                        send.destInsertsCount = r.TrackFX_GetCount(send.destTrack.object)
+                        send.destInserts, send.destInsertsCount = self:getInserts(send.destTrack.object)
+                        if send.destInsertsCount > self.maxNumInserts then
+                            self.maxNumInserts = send.destInsertsCount
                         end
-                    end,
-                    addInsert = function(self, fxName)
-                        local fxIndex = r.TrackFX_AddByName(self.destTrack.object, fxName, false, -1)
-                        if fxIndex == -1 then
-                            self.db.app.logger:logError('Cannot add ' .. fxName .. ' to ' .. self.destTrack.object)
-                            return false
-                        end
-                        self.db:sync(true)
-                        self.db.app.focusMainReaperWindow = false
-                        return true
-                    end,
-                    toggleVolEnv = function(self, show)
-                        local env = reaper.GetTrackSendInfo_Value(self.track.object, 0, i, "P_ENV:<VOLENV")
-                        OD_ToggleShowEnvelope(env, show)
-                    end,
-                    togglePanEnv = function(self, show)
-                        local env = reaper.GetTrackSendInfo_Value(self.track.object, 0, i, "P_ENV:<PANENV")
-                        OD_ToggleShowEnvelope(env, show)
-                    end,
-                    toggleMuteEnv = function(self, show)
-                        local env = reaper.GetTrackSendInfo_Value(self.track.object, 0, i, "P_ENV:<MUTEENV")
-                        OD_ToggleShowEnvelope(env, show)
-                    end,
-                }
-                send.destInsertsCount = r.TrackFX_GetCount(send.destTrack.object)
-                -- local maxW = (app.gui.TEXT_BASE_HEIGHT*fxCount<=h) and (app.settings.current.sendWidth) or (app.settings.current.sendWidth - r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ScrollbarSize()))
-                send.destInserts, send.destInsertsCount = self:getInserts(send.destTrack.object)
-                if send.destInsertsCount > self.maxNumInserts then
-                    self.maxNumInserts = send.destInsertsCount
+                    end
+
+                    table.insert(self.sends, send)
                 end
-
-                table.insert(self.sends, send)
+                if oldNumSends ~= self.numSends[type] then
+                    self.app.refreshWindowSizeOnNextFrame = true
+                end
             end
-
             self.app.setPage(APP_PAGE.MIXER)
-            if oldNumSends ~= self.numSends then
-                self.app.refreshWindowSizeOnNextFrame = true
-            end
         end
     end
 }

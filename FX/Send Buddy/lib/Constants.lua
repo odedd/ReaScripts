@@ -5,6 +5,13 @@ ImGui = require 'imgui' '0.9.1'
 -- ! CONSTANTS
 DB_SCALE = math.log(10.0) * 0.05
 
+SEND_TYPE = {
+    ['SEND'] = 0,
+    ['RECV'] = -1,
+    ['HW'] = 1,
+}
+
+
 APP_PAGE = {
     ['MIXER'] = {width = 500, minHeight = 407, windowFlags = ImGui.WindowFlags_None, giveFocus = true},
     ['SEARCH_SEND'] = {width = 900, height = 409, minHeight = 409, windowFlags = ImGui.WindowFlags_None},

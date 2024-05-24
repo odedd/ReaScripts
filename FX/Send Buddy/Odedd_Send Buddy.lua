@@ -187,7 +187,7 @@ if OD_PrereqsOK({
         if page == APP_PAGE.MIXER then
             if app.db.track.object == nil then
                 page = APP_PAGE.NO_TRACK
-            elseif app.db.numSends == 0 then
+            elseif app.db.totalSends == 0 then
                 page = APP_PAGE.NO_SENDS
             end
         end
@@ -213,7 +213,11 @@ if OD_PrereqsOK({
             app.gui.mainWindow.hintHeight + wPadding
 
         local shouldScroll = app.db.maxNumInserts > app.settings.current.maxNumInserts
-        local w = app.settings.current.sendWidth * (app.db.numSends + 1) +
+        local visibleSendNum = 0
+        for i, type in pairs(SEND_TYPE) do
+            visibleSendNum = visibleSendNum + (app.settings.current.sendTypeVisibility[type] and app.db.numSends[type] or 0)
+        end
+        local w = app.settings.current.sendWidth * (visibleSendNum + 1) +
             ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_WindowPadding) +
             (shouldScroll and ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ScrollbarSize) or 0)
         return w, h

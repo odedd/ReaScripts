@@ -11,6 +11,11 @@ SM_Settings = OD_Settings:new({
         lastDockId = nil,
         createInsideFolder = true,
         sendFolderName = 'FX BUS',
+        sendTypeVisibility = {
+            [SEND_TYPE.SEND] = true,
+            [SEND_TYPE.RECV] = true,
+            [SEND_TYPE.HW] = true
+        },
         
         -- Permanent settings
         sendWidth = 60,
