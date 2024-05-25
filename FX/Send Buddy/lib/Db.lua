@@ -85,17 +85,27 @@ DB = {
             self.totalSends = 0
             self.maxNumInserts = 0
             self.sends = {}
-            for i, type in pairs(SEND_TYPE) do
+            local numOfHWSends = reaper.GetTrackNumSends(self.track.object, 1)
+            local overallOrder = 0
+            for _, type in pairs(SEND_TYPE) do
                 oldNumSends[type] = self.numSends[type]
                 self.numSends[type] = reaper.GetTrackNumSends(self.track.object, type)
                 self.totalSends = self.totalSends + self.numSends[type]
                 for i = 0, self.numSends[type] - 1 do
-                    local _, sendName = reaper.GetTrackSendName(self.track.object, i)
+                    local sendName
+                    if type == SEND_TYPE.SEND then
+                        _, sendName = reaper.GetTrackSendName(self.track.object, i + numOfHWSends)
+                    elseif type == SEND_TYPE.RECV then
+                        _, sendName = reaper.GetTrackReceiveName(self.track.object, i)
+                    else
+                        _, sendName = reaper.GetTrackSendName(self.track.object, i)
+                    end
                     local midiRouting = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i,
                         'I_MIDIFLAGS'))
                     local send = {
                         type = type,
-                        order = i,
+                        order = overallOrder,
+                        index = i,
                         name = sendName,
                         db = self,
                         track = self.track,
@@ -121,7 +131,7 @@ DB = {
                         destInserts = {},
                         destInsertsCount = 0,
                         delete = function(self) -- TODO: reflect removed send in solo states
-                            reaper.RemoveTrackSend(self.track.object, self.type, self.order)
+                            reaper.RemoveTrackSend(self.track.object, self.type, self.index)
                             self.db:sync(true)
                         end,
                         setVolDB = function(self, dB)
@@ -130,7 +140,7 @@ DB = {
                             elseif dB > self.db.app.settings.current.maxSendVol then
                                 dB = self.db.app.settings.current.maxSendVol
                             end
-                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'D_VOL',
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_VOL',
                                 (dB <= self.db.app.settings.current.minSendVol and 0 or OD_ValFromdB(dB)))
                             self.db:sync(true)
                         end,
@@ -140,24 +150,24 @@ DB = {
                             elseif pan > 1 then
                                 pan = 1
                             end
-                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'D_PAN', pan)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_PAN', pan)
                             self.db:sync(true)
                         end,
                         setPanLaw = function(self, panLaw)
-                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'D_PANLAW', panLaw)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_PANLAW', panLaw)
                             self.db:sync(true)
                         end,
                         setMono = function(self, mono)
-                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'B_MONO', mono)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'B_MONO', mono)
                             self.db:sync(true)
                         end,
                         setPolarity = function(self, polarity)
-                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'B_PHASE',
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'B_PHASE',
                                 polarity and 1 or 0)
                             self.db:sync(true)
                         end,
                         setSrcChan = function(self, srcChan)
-                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'I_SRCCHAN', srcChan)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_SRCCHAN', srcChan)
                             self.db:sync(true)
                         end,
                         setMidiRouting = function(self, srcChn, srcBus, destChn, destBus)
@@ -166,12 +176,12 @@ DB = {
                             destChn = destChn or self.midiDestChn
                             destBus = destBus or self.midiDestBus
                             local midiRouting = srcChn + (srcBus << 14) | (destChn) << 5 | (destBus << 22)
-                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'I_MIDIFLAGS',
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_MIDIFLAGS',
                                 midiRouting)
                             self.db:sync(true)
                         end,
                         setMode = function(self, mode)
-                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'I_SENDMODE', mode)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_SENDMODE', mode)
                             self.db:sync(true)
                         end,
                         setDestChan = function(self, destChan)
@@ -182,11 +192,11 @@ DB = {
                             if destChanChannelCount < numChannels then
                                 reaper.SetMediaTrackInfo_Value(self.destTrack.object, 'I_NCHAN', nearestEvenChannel)
                             end
-                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'I_DSTCHAN', destChan)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_DSTCHAN', destChan)
                             self.db:sync(true)
                         end,
                         setMute = function(self, mute, skipRefresh)
-                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.order, 'B_MUTE',
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'B_MUTE',
                                 mute and 1 or 0)
                             if not skipRefresh then self.db:sync(true) end
                         end,
@@ -199,15 +209,16 @@ DB = {
                             local exclusive = (exclusive ~= false) and (solo == SOLO_STATES.SOLO) or false
                             self:_saveOrigMuteState()
                             local sm, counter = self:_getSoloMatrix()
-                            local prevDestTrack = nil
-                            local prevSrcTrack = nil
-                            local prevDestChan = nil
+                            local prevDestTracks = {}
+                            local prevSrcTracks = {}
+                            local prevDestChans = {}
+
                             -- turn off all solos if exclusive == true
                             local j = 0
                             for i, send in ipairs(self.db.sends) do
-                                if ((send.type == SEND_TYPE.SEND) and send.destTrack == prevDestTrack) or
-                                    ((send.type == SEND_TYPE.RECV) and send.srcTrack == prevSrcTrack) or
-                                    ((send.type == SEND_TYPE.HW) and send.destChan == prevDestChan) then
+                                if ((send.type == SEND_TYPE.SEND) and OD_HasValue(prevDestTracks, send.destTrack)) or
+                                    ((send.type == SEND_TYPE.RECV) and OD_HasValue(prevSrcTracks, send.srcTrack)) or
+                                    ((send.type == SEND_TYPE.HW) and OD_HasValue(prevDestChans, send.destChan)) then
                                     j = j + 1
                                 else
                                     j = 0
@@ -218,16 +229,16 @@ DB = {
                                         sm[j] = SOLO_STATES.NONE
                                     end
                                 end
-                                prevDestTrack = send.destTrack
-                                prevSrcTrack = send.srcTrack
-                                prevDestChan = send.destChan
+                                table.insert(prevDestTracks, send.destTrack)
+                                table.insert(prevSrcTracks, send.srcTrack)
+                                table.insert(prevDestChans, send.destChan)
                             end
                             sm[counter] = solo
 
                             self.db:_reflectSolos(true)
                             self.db:save()
                         end,
-                        isListening = function(self)
+                        isListening = function(self) -- TODO Should add a counter to check if there are any other sends to the same destination
                             return self.track.sendListen == self:_getListenId()
                         end,
                         toggleListen = function(self, listenMode)
@@ -278,7 +289,7 @@ DB = {
                                 elseif self.type == SEND_TYPE.RECV then
                                     r.SetMediaTrackInfo_Value(self.srcTrack.object, 'I_SOLO', 0)
                                 end
-                                -- Un-solo 
+                                -- Un-solo
                                 self:setSolo(SOLO_STATES.NONE)
                             end
                             self.db:save()
@@ -341,15 +352,15 @@ DB = {
                         end,
                         _saveOrigMuteState = function(self)
                             local numOfSolos = self.db:_numSolos()
-                            local prevDestTrack = nil
-                            local prevSrcTrack = nil
-                            local prevDestChan = nil
+                            local prevDestTracks = {}
+                            local prevSrcTracks = {}
+                            local prevDestChans = {}
                             local j = 0
                             for i, send in ipairs(self.db.sends) do
                                 if
-                                    ((send.type == SEND_TYPE.SEND) and send.destTrack == prevDestTrack) or
-                                    ((send.type == SEND_TYPE.RECV) and send.srcTrack == prevSrcTrack) or
-                                    ((send.type == SEND_TYPE.HW) and send.destChan == prevDestChan) then
+                                    ((send.type == SEND_TYPE.SEND) and OD_HasValue(prevDestTracks, send.destTrack)) or
+                                    ((send.type == SEND_TYPE.RECV) and OD_HasValue(prevSrcTracks, send.srcTrack)) or
+                                    ((send.type == SEND_TYPE.HW) and OD_HasValue(prevDestChans, send.destChan)) then
                                     j = j + 1
                                 else
                                     j = 0
@@ -360,9 +371,9 @@ DB = {
                                         [id] or {}
                                     send.track.origMuteMatrix[id][j] = send.mute
                                 end
-                                prevDestTrack = send.destTrack
-                                prevSrcTrack = send.srcTrack
-                                prevDestChan = send.destChan
+                                table.insert(prevDestTracks, send.destTrack)
+                                table.insert(prevSrcTracks, send.srcTrack)
+                                table.insert(prevDestChans, send.destChan)
                             end
                         end,
                         addInsert = function(self, fxName)
@@ -397,6 +408,7 @@ DB = {
                     end
 
                     table.insert(self.sends, send)
+                    overallOrder = overallOrder + 1
                 end
                 if oldNumSends ~= self.numSends[type] then
                     self.app.refreshWindowSizeOnNextFrame = true

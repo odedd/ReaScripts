@@ -765,7 +765,7 @@ if OD_PrereqsOK({
 
             -- local rv =
             if ImGui.BeginChild(ctx, "##inserts", nil, h, ImGui.ChildFlags_None) then
-                for i, s in ipairs(app.db.sends) do
+                for i, s in OD_PairsByOrder(app.db.sends) do
                     ImGui.BeginGroup(ctx)
                     drawSend(s, { name = 'inserts' })
                     ImGui.EndGroup(ctx)
@@ -1320,7 +1320,7 @@ if OD_PrereqsOK({
         app.gui:popColors(app.gui.st.col.main)
         app.gui:popStyles(app.gui.st.vars.main)
         if app.page.giveFocus and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow) and app.focusMainReaperWindow and not (ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) or ImGui.IsAnyMouseDown(ctx) or ImGui.IsAnyItemActive(ctx) or ImGui.IsKeyPressed(ctx, ImGui.Key_Escape)) then
-            r.JS_Window_SetFocus(app.gui.reaperHWND)
+            -- r.JS_Window_SetFocus(app.gui.reaperHWND)
         else
             app.focusMainReaperWindow = true
         end
