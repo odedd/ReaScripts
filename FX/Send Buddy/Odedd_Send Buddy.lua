@@ -430,7 +430,7 @@ if OD_PrereqsOK({
                 app.gui:popColors(app.gui.st.col.buttons.scrollToTrack)
             end
             local drawListen = function(w,listenMode)
-                local state = (s.track.sendListen == s.destTrack.guid)
+                local state = s:isListening()
                 app.gui:pushColors(app.gui.st.col.buttons.listen[state and s.track.sendListenMode or listenMode][state])
                 ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
                 if ImGui.Button(ctx, ICONS.HEADPHONES .. '##listen' .. s.order, w) then

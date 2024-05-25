@@ -105,8 +105,7 @@ DB = {
                         panLaw = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'D_PANLAW'),
                         mono = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'B_MONO')),
                         polarity = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'B_PHASE') == 1.0,
-                        srcChan = (type ~= SEND_TYPE.HW) and
-                        math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'I_SRCCHAN')) or nil,
+                        srcChan = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'I_SRCCHAN')),
                         mode = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'I_SENDMODE')),
                         midiSrcChn = midiRouting & 0x1f,
                         midiSrcBus = midiRouting >> 14 & 0xff,
@@ -114,7 +113,11 @@ DB = {
                         midiDestBus = midiRouting >> 22 & 0xff,
                         destChan = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'I_DSTCHAN')),
                         destTrack = (type ~= SEND_TYPE.HW) and
-                        self:_getTrack(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'P_DESTTRACK')) or nil,
+                            self:_getTrack(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'P_DESTTRACK')) or
+                            nil,
+                        srcTrack = (type ~= SEND_TYPE.HW) and
+                            self:_getTrack(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'P_SRCTRACK')) or
+                            nil,
                         destInserts = {},
                         destInsertsCount = 0,
                         delete = function(self) -- TODO: reflect removed send in solo states
@@ -196,11 +199,15 @@ DB = {
                             local exclusive = (exclusive ~= false) and (solo == SOLO_STATES.SOLO) or false
                             self:_saveOrigMuteState()
                             local sm, counter = self:_getSoloMatrix()
-                            local prevDeskTrack = nil
+                            local prevDestTrack = nil
+                            local prevSrcTrack = nil
+                            local prevDestChan = nil
                             -- turn off all solos if exclusive == true
                             local j = 0
                             for i, send in ipairs(self.db.sends) do
-                                if send.destTrack == prevDeskTrack then
+                                if ((send.type == SEND_TYPE.SEND) and send.destTrack == prevDestTrack) or
+                                    ((send.type == SEND_TYPE.RECV) and send.srcTrack == prevSrcTrack) or
+                                    ((send.type == SEND_TYPE.HW) and send.destChan == prevDestChan) then
                                     j = j + 1
                                 else
                                     j = 0
@@ -211,15 +218,21 @@ DB = {
                                         sm[j] = SOLO_STATES.NONE
                                     end
                                 end
-                                prevDeskTrack = send.destTrack
+                                prevDestTrack = send.destTrack
+                                prevSrcTrack = send.srcTrack
+                                prevDestChan = send.destChan
                             end
                             sm[counter] = solo
 
                             self.db:_reflectSolos(true)
                             self.db:save()
                         end,
+                        isListening = function(self)
+                            return self.track.sendListen == self:_getListenId()
+                        end,
                         toggleListen = function(self, listenMode)
-                            if self.track.sendListen ~= self.destTrack.guid then
+                            local listenId = self:_getListenId()
+                            if self.track.sendListen ~= listenId then
                                 if listenMode == SEND_LISTEN_MODES.RETURN_ONLY then
                                     if not self.track.masterSendState then
                                         self.track.masterSendState = r.GetMediaTrackInfo_Value(self.track.object,
@@ -231,11 +244,14 @@ DB = {
                                 end
                                 -- Solo this track and the destTrack
                                 r.SetMediaTrackInfo_Value(self.track.object, 'I_SOLO', 2)
-                                r.SetMediaTrackInfo_Value(self.destTrack.object, 'I_SOLO', 2)
-
+                                if self.type == SEND_TYPE.SEND then
+                                    r.SetMediaTrackInfo_Value(self.destTrack.object, 'I_SOLO', 2)
+                                elseif self.type == SEND_TYPE.RECV then
+                                    r.SetMediaTrackInfo_Value(self.srcTrack.object, 'I_SOLO', 2)
+                                end
                                 -- Un-solo any other track if it's soloed
                                 for i, track in ipairs(self.db.tracks) do
-                                    if track.guid ~= self.track.guid and track.guid ~= self.destTrack.guid then
+                                    if track.guid ~= self.track.guid and track.guid ~= listenId then
                                         local soloState = r.GetMediaTrackInfo_Value(track.object, 'I_SOLO')
                                         if soloState ~= 0 then
                                             r.SetMediaTrackInfo_Value(track.object, 'I_SOLO', 0)
@@ -244,7 +260,7 @@ DB = {
                                 end
                                 self:setSolo(SOLO_STATES.SOLO, true)
 
-                                self.track.sendListen = self.destTrack.guid
+                                self.track.sendListen = listenId
                                 self.track.sendListenMode = listenMode
                             else
                                 if self.db:isListenOn() then
@@ -257,7 +273,12 @@ DB = {
                                 self.track.sendListenMode = nil
                                 -- Un-solo this track and the destTrack
                                 r.SetMediaTrackInfo_Value(self.track.object, 'I_SOLO', 0)
-                                r.SetMediaTrackInfo_Value(self.destTrack.object, 'I_SOLO', 0)
+                                if self.type == SEND_TYPE.SEND then
+                                    r.SetMediaTrackInfo_Value(self.destTrack.object, 'I_SOLO', 0)
+                                elseif self.type == SEND_TYPE.RECV then
+                                    r.SetMediaTrackInfo_Value(self.srcTrack.object, 'I_SOLO', 0)
+                                end
+                                -- Un-solo 
                                 self:setSolo(SOLO_STATES.NONE)
                             end
                             self.db:save()
@@ -266,44 +287,82 @@ DB = {
                             local counter = 0
                             for i, send in ipairs(self.db.sends) do
                                 if send.order == self.order then break end
-                                if send.destTrack == self.destTrack then
-                                    counter = counter + 1
+                                if send.type == SEND_TYPE.SEND then
+                                    if send.destTrack == self.destTrack then
+                                        counter = counter + 1
+                                    end
+                                elseif send.type == SEND_TYPE.RECV then
+                                    if send.srcTrack == self.srcTrack then
+                                        counter = counter + 1
+                                    end
+                                elseif send.type == SEND_TYPE.HW then
+                                    if send.destChan == self.destChan then
+                                        counter = counter + 1
+                                    end
                                 end
                             end
-                            if self.destTrack.soloMatrix[self.track.guid] == nil then
-                                self.destTrack.soloMatrix[self.track.guid] = {}
+                            local id = self:_getSoloId()
+                            if self.track.soloMatrix[id] == nil then
+                                self.track.soloMatrix[id] = {}
                             end
-                            return self.destTrack.soloMatrix[self.track.guid], counter
+                            return self.track.soloMatrix[id], counter
                         end,
                         _getOrigMuteState = function(self)
                             local counter = 0
                             for i, send in ipairs(self.db.sends) do
                                 if send.order == self.order then break end
-                                if send.destTrack == self.destTrack then
-                                    counter = counter + 1
+                                if send.type == SEND_TYPE.SEND then
+                                    if send.destTrack == self.destTrack then
+                                        counter = counter + 1
+                                    end
+                                elseif send.type == SEND_TYPE.RECV then
+                                    if send.srcTrack == self.srcTrack then
+                                        counter = counter + 1
+                                    end
+                                elseif send.type == SEND_TYPE.HW then
+                                    if send.destChan == self.destChan then
+                                        counter = counter + 1
+                                    end
                                 end
                             end
-                            if self.destTrack.origMuteMatrix[self.track.guid] == nil then
-                                self.destTrack.origMuteMatrix[self.track.guid] = {}
+                            local id = self:_getSoloId()
+                            if self.track.origMuteMatrix[id] == nil then
+                                self.track.origMuteMatrix[id] = {}
                             end
-                            return self.destTrack.origMuteMatrix[self.track.guid][counter] or false
+                            return self.track.origMuteMatrix[id][counter] or false
+                        end,
+                        _getListenId = function(self)
+                            return (self.type == SEND_TYPE.SEND) and self.destTrack.guid or
+                                (self.type == SEND_TYPE.RECV) and self.srcTrack.guid or self.destChan
+                        end,
+                        _getSoloId = function(self)
+                            return (self.type == SEND_TYPE.SEND) and self.destTrack.guid or
+                                (self.type == SEND_TYPE.RECV) and self.srcTrack.guid or self.destChan
                         end,
                         _saveOrigMuteState = function(self)
                             local numOfSolos = self.db:_numSolos()
-                            local prevDeskTrack = nil
+                            local prevDestTrack = nil
+                            local prevSrcTrack = nil
+                            local prevDestChan = nil
                             local j = 0
                             for i, send in ipairs(self.db.sends) do
-                                if send.destTrack == prevDeskTrack then
+                                if
+                                    ((send.type == SEND_TYPE.SEND) and send.destTrack == prevDestTrack) or
+                                    ((send.type == SEND_TYPE.RECV) and send.srcTrack == prevSrcTrack) or
+                                    ((send.type == SEND_TYPE.HW) and send.destChan == prevDestChan) then
                                     j = j + 1
                                 else
                                     j = 0
                                 end
                                 if numOfSolos == 0 then
-                                    send.destTrack.origMuteMatrix[self.track.guid] = send.destTrack.origMuteMatrix
-                                        [self.track.guid] or {}
-                                    send.destTrack.origMuteMatrix[self.track.guid][j] = send.mute
+                                    local id = send:_getSoloId()
+                                    send.track.origMuteMatrix[id] = send.track.origMuteMatrix
+                                        [id] or {}
+                                    send.track.origMuteMatrix[id][j] = send.mute
                                 end
-                                prevDeskTrack = send.destTrack
+                                prevDestTrack = send.destTrack
+                                prevSrcTrack = send.srcTrack
+                                prevDestChan = send.destChan
                             end
                         end,
                         addInsert = function(self, fxName)
