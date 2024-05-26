@@ -443,7 +443,7 @@ DB.createNewSend = function(self, asset, trackName) -- TODO: reflect added send 
             self:getTracks()
             self:sync(true)
             for _, send in ipairs(self.sends) do
-                if send.destTrack.object == newTrack then
+                if send.destTrack ~= nil and (send.destTrack.object == newTrack) then
                     send:addInsert(asset.load)
                 end
             end

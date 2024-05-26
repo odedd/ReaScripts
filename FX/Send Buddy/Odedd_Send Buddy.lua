@@ -978,13 +978,13 @@ if OD_PrereqsOK({
     end
 
     function app.drawSearch()
-        local function nocase(s)
-            s = string.gsub(s, "%a", function(c)
-                return string.format("[%s%s]", string.lower(c),
-                    string.upper(c))
-            end)
-            return s
-        end
+        -- local function nocase(s)
+        --     s = string.gsub(s, "%a", function(c)
+        --         return string.format("[%s%s]", string.lower(c),
+        --             string.upper(c))
+        --     end)
+        --     return s
+        -- end
 
         local function filterResults(query)
             app.temp.searchInput = query
@@ -1042,10 +1042,13 @@ if OD_PrereqsOK({
         ImGui.SetNextItemWidth(ctx, w)
         local rv, searchInput = ImGui.InputText(ctx, "##searchInput", app.temp.searchInput)
 
-        local h = select(2, ImGui.GetContentRegionAvail(ctx)) - app.gui.mainWindow.hintHeight
+        local h = select(2, ImGui.GetContentRegionAvail(ctx))
         local maxSearchResults = math.floor(h / (app.gui.TEXT_BASE_HEIGHT_LARGE))
 
-        if rv then filterResults(searchInput) end
+        if rv then 
+            filterResults(searchInput)
+            app.temp.scrollToTop = true
+        end
 
         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
             app.setPage(APP_PAGE.MIXER)
@@ -1077,7 +1080,10 @@ if OD_PrereqsOK({
         local upperRowY = select(2, ImGui.GetCursorScreenPos(ctx))
         if ImGui.BeginTable(ctx, "##searchResults", 1, tableFlags, table.unpack(outer_size)) then
             ImGui.TableSetupScrollFreeze(ctx, 0, 1)
-            local firstVisibleAbsIndex = nil
+            if app.temp.scrollToTop == true then
+                ImGui.SetScrollY(ctx, 0)
+                app.temp.scrollToTop = false
+            end
             local highlightedY = 0
             local foundInvisibleGroup = false
             local absIndex = 0
