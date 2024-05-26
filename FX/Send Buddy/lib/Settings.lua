@@ -16,9 +16,15 @@ SM_Settings = OD_Settings:new({
             [SEND_TYPE.RECV] = true,
             [SEND_TYPE.HW] = true
         },
-        
+        sendTypeOrder = {
+            SEND_TYPE.SEND,
+            SEND_TYPE.HW,
+            SEND_TYPE.RECV,
+        },
         -- Permanent settings
         sendWidth = 60,
+        sendTypeSeparatorWidth = 22,
+        sendTypeSeparatorHeight = 95,
         minFaderHeight = 100,
         scaleFactor = 2, -- fader scale factor above scaleLevel
         scaleLevel = -20,

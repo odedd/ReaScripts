@@ -3,7 +3,7 @@
 
 OD_Gui = {
     font = nil,
-    mainWindow = {min_w = 0, min_h = 0, max_w = select(2,r.ImGui_NumericLimits_Float()), max_h = select(2,r.ImGui_NumericLimits_Float())},
+    mainWindow = { min_w = 0, min_h = 0, max_w = select(2, r.ImGui_NumericLimits_Float()), max_h = select(2, r.ImGui_NumericLimits_Float()) },
     st = {
         col = {
             warning = 0xf58e07FF,
@@ -24,14 +24,21 @@ function OD_Gui:new(o)
 end
 
 function OD_Gui:createFonts(fonts)
-    self.st.fonts = {}
+    self.st.fonts = self.st.fonts or {}
     for k, font in pairs(fonts) do
-        self.st.fonts[k] = r.ImGui_CreateFont(OD_LocalOrCommon(font.file, self.app.scr.dir), font.size)
+        self:addFont(k, font.file, font.size)
+        -- self.st.fonts[k] = r.ImGui_CreateFont(OD_LocalOrCommon(font.file, self.app.scr.dir), font.size)
     end
 end
 
-function OD_Gui:init()
-    if not self.st.fonts then
+function OD_Gui:addFont(key, file, size)
+    self.st.fonts = self.st.fonts or {}
+    self.st.fonts[key] = r.ImGui_CreateFont(OD_LocalOrCommon(file, self.app.scr.dir), size)
+end
+
+function OD_Gui:init(addDefaultFonts)
+    local addDefaultFonts = (addDefaultFonts == nil) and (not self.st.fonts) or addDefaultFonts
+    if addDefaultFonts then
         local small = 16
         local default = 18
         local medium = 20
@@ -51,8 +58,8 @@ function OD_Gui:init()
             icons_large = { file = 'Resources/Fonts/Icons-Regular.otf', size = large }
         })
     end
-    
-    self.ctx = r.ImGui_CreateContext(self.app.scr.context_name .. '_MAIN') --, reaper.ImGui_ConfigFlags_DockingEnable())    
+
+    self.ctx = r.ImGui_CreateContext(self.app.scr.context_name .. '_MAIN') --, reaper.ImGui_ConfigFlags_DockingEnable())
     for k, font in pairs(self.st.fonts) do
         r.ImGui_Attach(self.ctx, font)
     end
@@ -73,26 +80,36 @@ function OD_Gui:init()
         }
     }
 
-    r.ImGui_PushFont(self.ctx, self.st.fonts.default)
-    self.TEXT_BASE_WIDTH, self.TEXT_BASE_HEIGHT = r.ImGui_CalcTextSize(self.ctx, 'A'),
-        r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
-    r.ImGui_PopFont(self.ctx)
-    r.ImGui_PushFont(self.ctx, self.st.fonts.small)
-    self.TEXT_BASE_WIDTH_SMALL, self.TEXT_BASE_HEIGHT_SMALL = r.ImGui_CalcTextSize(self.ctx, 'A'),
-        r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
-    r.ImGui_PopFont(self.ctx)
-    r.ImGui_PushFont(self.ctx, self.st.fonts.bold)
-    self.TEXT_BASE_WIDTH_BOLD, self.TEXT_BASE_HEIGHT_BOLD = r.ImGui_CalcTextSize(self.ctx, 'A'),
-        r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
-    r.ImGui_PopFont(self.ctx)
-    r.ImGui_PushFont(self.ctx, self.st.fonts.large)
-    self.TEXT_BASE_WIDTH_LARGE, self.TEXT_BASE_HEIGHT_LARGE = r.ImGui_CalcTextSize(self.ctx, 'A'),
-        r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
-    r.ImGui_PopFont(self.ctx)
-    r.ImGui_PushFont(self.ctx, self.st.fonts.large_bold)
-    self.TEXT_BASE_WIDTH_LARGE_BOLD, self.TEXT_BASE_HEIGHT_LARGE_BOLD = r.ImGui_CalcTextSize(self.ctx, 'A'),
-        r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
-    r.ImGui_PopFont(self.ctx)
+    if self.st.fonts.default then
+        r.ImGui_PushFont(self.ctx, self.st.fonts.default)
+        self.TEXT_BASE_WIDTH, self.TEXT_BASE_HEIGHT = r.ImGui_CalcTextSize(self.ctx, 'A'),
+            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+        r.ImGui_PopFont(self.ctx)
+    end
+    if self.st.fonts.small then
+        r.ImGui_PushFont(self.ctx, self.st.fonts.small)
+        self.TEXT_BASE_WIDTH_SMALL, self.TEXT_BASE_HEIGHT_SMALL = r.ImGui_CalcTextSize(self.ctx, 'A'),
+            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+        r.ImGui_PopFont(self.ctx)
+    end
+    if self.st.fonts.bold then
+        r.ImGui_PushFont(self.ctx, self.st.fonts.bold)
+        self.TEXT_BASE_WIDTH_BOLD, self.TEXT_BASE_HEIGHT_BOLD = r.ImGui_CalcTextSize(self.ctx, 'A'),
+            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+        r.ImGui_PopFont(self.ctx)
+    end
+    if self.st.fonts.large then
+        r.ImGui_PushFont(self.ctx, self.st.fonts.large)
+        self.TEXT_BASE_WIDTH_LARGE, self.TEXT_BASE_HEIGHT_LARGE = r.ImGui_CalcTextSize(self.ctx, 'A'),
+            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+        r.ImGui_PopFont(self.ctx)
+    end
+    if self.st.fonts.large_bold then
+        r.ImGui_PushFont(self.ctx, self.st.fonts.large_bold)
+        self.TEXT_BASE_WIDTH_LARGE_BOLD, self.TEXT_BASE_HEIGHT_LARGE_BOLD = r.ImGui_CalcTextSize(self.ctx, 'A'),
+            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+        r.ImGui_PopFont(self.ctx)
+    end
 
     self.icons = {
         caution = r.ImGui_CreateImage(OD_LocalOrCommon('Resources/Icons/caution.png', self.app.scr.dir)),

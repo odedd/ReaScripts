@@ -7,7 +7,8 @@ SM_Gui = OD_Gui:new({
 })
 
 SM_Gui.init = function(self, fonts)
-    OD_Gui.init(self)
+    OD_Gui.addFont(self, 'vertical', 'Resources/Fonts/Cousine-90deg.otf', 11)
+    OD_Gui.init(self, true)
     ImGui.PushFont(self.ctx, self.st.fonts.default)
     self.mainWindow.hintHeight = ImGui.GetTextLineHeightWithSpacing(self.ctx) +
         select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_FramePadding)) * 2 +
@@ -16,6 +17,8 @@ SM_Gui.init = function(self, fonts)
     ImGui.PopFont(self.ctx)
 
     self.st.basecolors = {
+        darkestBG = 0x131313ff,
+        darkerBG = 0x212123ff,
         darkBG = 0x242429ff,
         darkHovered = 0x2d2d35ff,
         darkActive = 0x35353cff,
@@ -75,6 +78,9 @@ SM_Gui.init = function(self, fonts)
                 [ImGui.Col_Text] = 0x878787ff,
                 [ImGui.Col_ButtonHovered] = self.st.basecolors.darkHovered,
                 [ImGui.Col_ButtonActive] = self.st.basecolors.darkActive
+            },
+            blank = {
+                [ImGui.Col_Button] = self.st.basecolors.darkestBG,
             },
         },
         buttons = {
@@ -266,6 +272,10 @@ SM_Gui.init = function(self, fonts)
             [ImGui.StyleVar_FramePadding] = { 20, 10 },
         }
     }
+    ImGui.PushFont(self.ctx, self.st.fonts.vertical)
+    self.VERTICAL_TEXT_BASE_WIDTH, self.VERTICAL_TEXT_BASE_HEIGHT = ImGui.CalcTextSize(self.ctx, 'A')
+    self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET = -2
+    ImGui.PopFont(self.ctx)
 
     self.drawSadFace = function(self, sizeFactor, color)
         local x, y = ImGui.GetCursorScreenPos(self.ctx)
@@ -275,4 +285,30 @@ SM_Gui.init = function(self, fonts)
         ImGui.DrawList_AddCircleFilled(self.draw_list, x + sz / 3.5, y - sz / 5, sz / 9, 0x000000ff, 36)
         ImGui.DrawList_AddLine(self.draw_list, x + sz / 2, y + sz / 10, x - sz / 2, y + sz / 2.5, 0x000000ff, sz / 9)
     end
+
+    self.verticalText = function(self, text)
+        ImGui.PushFont(self.ctx, self.st.fonts.vertical)
+        local letterspacing = (self.VERTICAL_TEXT_BASE_HEIGHT + self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET)
+        local posX, posY = ImGui.GetCursorPosX(self.ctx), ImGui.GetCursorPosY(self.ctx) - letterspacing * #text
+        text = text:reverse()
+        for ci = 1, #text do
+            ImGui.SetCursorPos(self.ctx, posX, posY + letterspacing * (ci - 1))
+            ImGui.Text(self.ctx, text:sub(ci, ci))
+        end
+        ImGui.PopFont(self.ctx)
+    end
+    self.drawVerticalText = function(self, drawList, text, x, y, color)
+        local color = color or 0xffffffff
+        ImGui.PushFont(self.ctx, self.st.fonts.vertical)
+        local letterspacing = (self.VERTICAL_TEXT_BASE_HEIGHT + self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET)
+        local posX, posY = (x or select(1,ImGui.GetCursorScreenPos(self.ctx))), (y or select(2,ImGui.GetCursorScreenPos(self.ctx))) - letterspacing * #text
+        text = text:reverse()
+        for ci = 1, #text do
+            -- ImGui.SetCursorPos(self.ctx, posX, posY + letterspacing * (ci - 1))
+            -- ImGui.Text(self.ctx, text:sub(ci, ci))
+            ImGui.DrawList_AddText(drawList, posX, posY + letterspacing * (ci - 1), color, text:sub(ci, ci))
+        end
+        ImGui.PopFont(self.ctx)
+    end
+
 end
