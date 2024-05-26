@@ -12,7 +12,8 @@ SM_Gui.init = function(self, fonts)
     ImGui.PushFont(self.ctx, self.st.fonts.default)
     self.mainWindow.hintHeight = ImGui.GetTextLineHeightWithSpacing(self.ctx) +
         select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_FramePadding)) +
-        select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_WindowPadding))
+        select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_ItemSpacing)) +
+        select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_WindowPadding))-1
 
     ImGui.PopFont(self.ctx)
 

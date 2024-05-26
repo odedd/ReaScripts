@@ -158,7 +158,7 @@ if OD_PrereqsOK({
             end
             app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.page.width,
                 (minHeight or app.page.minHeight or 0) or 0
-            ImGui.SetNextWindowSize(app.gui.ctx, math.max(app.settings.current.lastWindowWidth, app.page.width),
+            ImGui.SetNextWindowSize(app.gui.ctx, math.max(app.settings.current.lastWindowWidth or 0, app.page.width),
                 math.max(app.settings.current.lastWindowHeight or 0, app.page.height or 0))
             app.refreshWindowSizeOnNextFrame = false
         end
@@ -445,7 +445,7 @@ if OD_PrereqsOK({
                 app.gui:pushColors(app.gui.st.col.buttons.listen[state and s.track.sendListenMode or listenMode][state])
                 ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
                 if ImGui.Button(ctx, ICONS.HEADPHONES .. '##listen' .. s.order, w) then
-                    s:toggleListen(listenMode)
+                    s:gn(listenMode)
                 end
                 app:setHoveredHint('main',
                     s.name ..
@@ -1375,11 +1375,12 @@ if OD_PrereqsOK({
     function app.drawHint(window)
         local ctx = app.gui.ctx
         local status, col = app:getHint(window)
-        ImGui.Spacing(ctx)
+        -- ImGui.Spacing(ctx)
         ImGui.Separator(ctx)
         ImGui.Spacing(ctx)
         if col then app.gui:pushColors(app.gui.st.col[col]) end
         ImGui.PushFont(ctx, app.gui.st.fonts.default)
+        ImGui.AlignTextToFramePadding(ctx)
         ImGui.Text(ctx, status)
         ImGui.PopFont(ctx)
         if col then app.gui:popColors(app.gui.st.col[col]) end
