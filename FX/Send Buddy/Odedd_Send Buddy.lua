@@ -841,7 +841,7 @@ if OD_PrereqsOK({
                 end
                 ImGui.EndChild(ctx)
             end
-            -- local w = math.max(w, select(1, ImGui.GetContentRegionAvail(ctx)))
+            local w = math.max(w, select(1, ImGui.GetContentRegionAvail(ctx)))
             -- w = 200
             ImGui.InvisibleButton(ctx, '##separator', w, 3)
 

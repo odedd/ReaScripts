@@ -64,6 +64,7 @@ DB = {
 
         self.current_project = r.GetProjectStateChangeCount(0) -- if project changed, force full sync
         if self.current_project ~= self.previous_project then
+            self:getTracks()
             self.previous_project = self.current_project
             self.refresh = true
         end
