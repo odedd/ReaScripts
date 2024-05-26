@@ -270,6 +270,7 @@ if OD_PrereqsOK({
                         app.gui:pushColors(app.gui.st.col.buttons.deleteSend.confirm)
                         if ImGui.Button(ctx, 'Sure?##deleteSend', w) then
                             s:delete()
+                            app.temp.confirmation[confirmationKey] = nil
                         end
                         app:setHoveredHint('main', s.name .. ' - Click again to confirm')
                         app.gui:popColors(app.gui.st.col.buttons.deleteSend.confirm)

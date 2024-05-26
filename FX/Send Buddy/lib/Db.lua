@@ -151,6 +151,7 @@ DB = {
                                     table.insert(self.db.lastGuids, send.guid)
                                 end
                             end
+                            self.db:sync(true)
                         end,
                         setVolDB = function(self, dB)
                             if dB < self.db.app.settings.current.minSendVol then
