@@ -243,7 +243,9 @@ if OD_PrereqsOK({
             local drawDummy = function(w, col, h)
                 app.gui:pushColors(col)
                 ImGui.BeginDisabled(ctx)
+                ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 1.0)
                 ImGui.Button(ctx, '##dummy', w, h)
+                ImGui.PopStyleVar(ctx)
                 ImGui.EndDisabled(ctx)
                 app:setHoveredHint('main', ' ')
                 app.gui:popColors(col)
@@ -423,18 +425,19 @@ if OD_PrereqsOK({
                 app.gui:popColors(app.gui.st.col.buttons.mute[s.mute])
             end
             local drawGoToDestTrack = function(w)
-                app.gui:pushColors(app.gui.st.col.buttons.scrollToTrack)
-                ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
-                if ImGui.Button(ctx, ICONS.ARROW_RIGHT .. '##goToDest' .. s.order, w) then
-                    r.SetMediaTrackInfo_Value(s.destTrack.object, 'B_SHOWINMIXER', 1)
-                    r.SetMediaTrackInfo_Value(s.destTrack.object, 'B_SHOWINTCP', 1)
-                    r.SetMixerScroll(s.destTrack.object)
-                    r.SetOnlyTrackSelected(s.destTrack.object)
-                    r.Main_OnCommand(40913, 0)
+                if s.type == SEND_TYPE.SEND or s.type == SEND_TYPE.RECV then
+                    app.gui:pushColors(app.gui.st.col.buttons.scrollToTrack)
+                    ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                    if ImGui.Button(ctx, ICONS.ARROW_RIGHT .. '##goToDest' .. s.order, w) then
+                        s:goToDestTrack()
+                    end
+                    app:setHoveredHint('main',
+                        (s.name .. ' - Scroll to %s track'):format(s.type == SEND_TYPE.SEND and 'destination' or 'source'))
+                    ImGui.PopFont(ctx)
+                    app.gui:popColors(app.gui.st.col.buttons.scrollToTrack)
+                else
+                    drawDummy(w, app.gui.st.col.buttons.scrollToTrack, nil)
                 end
-                app:setHoveredHint('main', s.name .. ' - Scroll to destination track')
-                ImGui.PopFont(ctx)
-                app.gui:popColors(app.gui.st.col.buttons.scrollToTrack)
             end
             local drawListen = function(w, listenMode)
                 local state = s:isListening()
@@ -461,103 +464,108 @@ if OD_PrereqsOK({
                 app.gui:popColors(app.gui.st.col.buttons.mode[s.mode])
             end
             local drawMIDIRouteButtons = function(w)
-                app.gui:pushColors(app.gui.st.col.buttons.route)
-                ImGui.BeginGroup(ctx)
-                local label
-                if s.midiSrcChn == 0 and s.midiSrcBus == 0 then
-                    label = 'all'
-                elseif s.midiSrcChn == 0 and s.midiSrcBus > 0 then
-                    label = 'B' .. s.midiSrcBus
-                elseif s.midiSrcBus > 0 then
-                    label = s.midiSrcBus .. '/' .. s.midiSrcChn
+                if s.type == SEND_TYPE.HW then
+                    drawDummy(w, app.gui.st.col.buttons.route, nil)
+                    drawDummy(w, app.gui.st.col.buttons.route, nil)
                 else
-                    label = s.midiSrcChn
-                end
-                if s.midiSrcBus == 255 then
-                    label = 'None'
-                end
-                if ImGui.Button(ctx, label .. '##srcMidiChan' .. s.order, w) then
-                    ImGui.OpenPopup(ctx, '##srcMidiChanMenu' .. s.order)
-                end
-                app:setHoveredHint('main', s.name .. ' - Source MIDI channel')
-                if s.midiSrcBus == 255 then
-                    label = ''
-                    ImGui.BeginDisabled(ctx)
-                elseif s.midiDestChn == 0 and s.midiDestBus == 0 then
-                    label = 'all'
-                elseif s.midiDestChn == 0 and s.midiDestBus > 0 then
-                    label = 'B' .. s.midiDestBus
-                elseif s.midiDestBus > 0 then
-                    label = s.midiDestBus .. '/' .. s.midiDestChn
-                else
-                    label = s.midiDestChn
-                end
+                    app.gui:pushColors(app.gui.st.col.buttons.route)
+                    ImGui.BeginGroup(ctx)
+                    local label
+                    if s.midiSrcChn == 0 and s.midiSrcBus == 0 then
+                        label = 'all'
+                    elseif s.midiSrcChn == 0 and s.midiSrcBus > 0 then
+                        label = 'B' .. s.midiSrcBus
+                    elseif s.midiSrcBus > 0 then
+                        label = s.midiSrcBus .. '/' .. s.midiSrcChn
+                    else
+                        label = s.midiSrcChn
+                    end
+                    if s.midiSrcBus == 255 then
+                        label = 'None'
+                    end
+                    if ImGui.Button(ctx, label .. '##srcMidiChan' .. s.order, w) then
+                        ImGui.OpenPopup(ctx, '##srcMidiChanMenu' .. s.order)
+                    end
+                    app:setHoveredHint('main', s.name .. ' - Source MIDI channel')
+                    if s.midiSrcBus == 255 then
+                        label = ''
+                        ImGui.BeginDisabled(ctx)
+                    elseif s.midiDestChn == 0 and s.midiDestBus == 0 then
+                        label = 'all'
+                    elseif s.midiDestChn == 0 and s.midiDestBus > 0 then
+                        label = 'B' .. s.midiDestBus
+                    elseif s.midiDestBus > 0 then
+                        label = s.midiDestBus .. '/' .. s.midiDestChn
+                    else
+                        label = s.midiDestChn
+                    end
 
-                if ImGui.Button(ctx, label .. '##destMidiChan' .. s.order, w) then
-                    ImGui.OpenPopup(ctx, '##destMidiChanMenu' .. s.order)
-                end
-                app:setHoveredHint('main', s.name .. ' - Destination MIDI channel')
-                if s.midiSrcBus == 255 then
-                    ImGui.EndDisabled(ctx)
-                end
-                app.gui:popColors(app.gui.st.col.buttons.route)
-                ImGui.EndGroup(ctx)
-                ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
-                if ImGui.BeginPopup(ctx, '##srcMidiChanMenu' .. s.order) then
-                    if ImGui.MenuItem(ctx, 'None', nil, s.midiSrcBus == 255, true) then s:setMidiRouting(0x1f, 0xff) end
-                    if ImGui.MenuItem(ctx, 'All', nil, s.midiSrcChn == 0 and s.midiSrcBus == 0, true) then
-                        s:setMidiRouting(0, 0)
+                    if ImGui.Button(ctx, label .. '##destMidiChan' .. s.order, w) then
+                        ImGui.OpenPopup(ctx, '##destMidiChanMenu' .. s.order)
                     end
-                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
-                    for i = 1, 16 do
-                        if ImGui.MenuItem(ctx, tostring(i), nil, s.midiSrcChn == i and s.midiSrcBus == 0, true) then
-                            s:setMidiRouting(i, 0)
+                    app:setHoveredHint('main', s.name .. ' - Destination MIDI channel')
+                    if s.midiSrcBus == 255 then
+                        ImGui.EndDisabled(ctx)
+                    end
+                    app.gui:popColors(app.gui.st.col.buttons.route)
+                    ImGui.EndGroup(ctx)
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
+                    if ImGui.BeginPopup(ctx, '##srcMidiChanMenu' .. s.order) then
+                        if ImGui.MenuItem(ctx, 'None', nil, s.midiSrcBus == 255, true) then s:setMidiRouting(0x1f, 0xff) end
+                        if ImGui.MenuItem(ctx, 'All', nil, s.midiSrcChn == 0 and s.midiSrcBus == 0, true) then
+                            s:setMidiRouting(0, 0)
                         end
-                    end
-                    for bus = 1, 128 do
                         ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
-                        if ImGui.BeginMenu(ctx, "Bus " .. bus) then
-                            if ImGui.MenuItem(ctx, 'All', nil, s.midiSrcChn == 0 and s.midiSrcBus == bus, true) then
-                                s:setMidiRouting(0, bus)
+                        for i = 1, 16 do
+                            if ImGui.MenuItem(ctx, tostring(i), nil, s.midiSrcChn == i and s.midiSrcBus == 0, true) then
+                                s:setMidiRouting(i, 0)
                             end
-                            for i = 1, 16 do
-                                if ImGui.MenuItem(ctx, tostring(i), nil, s.midiSrcChn == i and s.midiSrcBus == bus, true) then
-                                    s:setMidiRouting(i, bus)
+                        end
+                        for bus = 1, 128 do
+                            ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                            if ImGui.BeginMenu(ctx, "Bus " .. bus) then
+                                if ImGui.MenuItem(ctx, 'All', nil, s.midiSrcChn == 0 and s.midiSrcBus == bus, true) then
+                                    s:setMidiRouting(0, bus)
                                 end
+                                for i = 1, 16 do
+                                    if ImGui.MenuItem(ctx, tostring(i), nil, s.midiSrcChn == i and s.midiSrcBus == bus, true) then
+                                        s:setMidiRouting(i, bus)
+                                    end
+                                end
+                                ImGui.EndMenu(ctx)
                             end
-                            ImGui.EndMenu(ctx)
                         end
+                        app.focusMainReaperWindow = false
+                        ImGui.EndPopup(ctx)
                     end
-                    app.focusMainReaperWindow = false
-                    ImGui.EndPopup(ctx)
-                end
-                ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
-                if ImGui.BeginPopup(ctx, '##destMidiChanMenu' .. s.order) then
-                    if ImGui.MenuItem(ctx, 'All', nil, s.midiDestChn == 0 and s.midiDestBus == 0, true) then
-                        s:setMidiRouting(nil, nil, 0, 0)
-                    end
-                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
-                    for i = 1, 16 do
-                        if ImGui.MenuItem(ctx, tostring(i), nil, s.midiDestChn == i and s.midiDestBus == 0, true) then
-                            s:setMidiRouting(nil, nil, i, 0)
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
+                    if ImGui.BeginPopup(ctx, '##destMidiChanMenu' .. s.order) then
+                        if ImGui.MenuItem(ctx, 'All', nil, s.midiDestChn == 0 and s.midiDestBus == 0, true) then
+                            s:setMidiRouting(nil, nil, 0, 0)
                         end
-                    end
-                    for bus = 1, 128 do
                         ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
-                        if ImGui.BeginMenu(ctx, "Bus " .. bus) then
-                            if ImGui.MenuItem(ctx, 'All', nil, s.midiDestChn == 0 and s.midiDestBus == bus, true) then
-                                s:setMidiRouting(nil, nil, 0, bus)
+                        for i = 1, 16 do
+                            if ImGui.MenuItem(ctx, tostring(i), nil, s.midiDestChn == i and s.midiDestBus == 0, true) then
+                                s:setMidiRouting(nil, nil, i, 0)
                             end
-                            for i = 1, 16 do
-                                if ImGui.MenuItem(ctx, tostring(i), nil, s.midiDestChn == i and s.midiDestBus == bus, true) then
-                                    s:setMidiRouting(nil, nil, i, bus)
-                                end
-                            end
-                            ImGui.EndMenu(ctx)
                         end
+                        for bus = 1, 128 do
+                            ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                            if ImGui.BeginMenu(ctx, "Bus " .. bus) then
+                                if ImGui.MenuItem(ctx, 'All', nil, s.midiDestChn == 0 and s.midiDestBus == bus, true) then
+                                    s:setMidiRouting(nil, nil, 0, bus)
+                                end
+                                for i = 1, 16 do
+                                    if ImGui.MenuItem(ctx, tostring(i), nil, s.midiDestChn == i and s.midiDestBus == bus, true) then
+                                        s:setMidiRouting(nil, nil, i, bus)
+                                    end
+                                end
+                                ImGui.EndMenu(ctx)
+                            end
+                        end
+                        app.focusMainReaperWindow = false
+                        ImGui.EndPopup(ctx)
                     end
-                    app.focusMainReaperWindow = false
-                    ImGui.EndPopup(ctx)
                 end
             end
             local drawRouteButtons = function(w)
@@ -648,7 +656,7 @@ if OD_PrereqsOK({
                 app.gui:pushColors(app.gui.st.col.insert.blank)
                 ImGui.BeginDisabled(ctx)
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 1.0)
-                ImGui.Button(ctx, shortName.."##sendName", w)
+                ImGui.Button(ctx, shortName .. "##sendName", w)
                 ImGui.PopStyleVar(ctx)
                 ImGui.EndDisabled(ctx)
                 app.gui:popColors(app.gui.st.col.insert.blank)
@@ -718,7 +726,7 @@ if OD_PrereqsOK({
 
             local faderHeight = math.max(app.settings.current.minFaderHeight,
                 select(2, ImGui.GetContentRegionAvail(ctx)) - app.gui.TEXT_BASE_HEIGHT_SMALL * 2 -
-                ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)*3)
+                ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 3)
 
 
             local w = app.settings.current.sendWidth
@@ -787,10 +795,10 @@ if OD_PrereqsOK({
                 (app.settings.current.maxNumInserts + 1) *
                 (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2)
             -- local w = math.max(app.gui.mainWindow.max_w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2,
-                -- select(1, ImGui.GetContentRegionAvail(ctx)))
-                -- r.ShowConsoleMsg(w .. '\n')
-                local w = app.gui.mainWindow.mixer_w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2
-                -- r.ShowConsoleMsg(w .. '\n')
+            -- select(1, ImGui.GetContentRegionAvail(ctx)))
+            -- r.ShowConsoleMsg(w .. '\n')
+            local w = app.gui.mainWindow.mixer_w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2
+            -- r.ShowConsoleMsg(w .. '\n')
             if ImGui.BeginChild(ctx, "##inserts", w, h, ImGui.ChildFlags_None) then
                 for _, type in ipairs(app.settings.current.sendTypeOrder) do
                     local count = 0
@@ -1429,7 +1437,7 @@ if OD_PrereqsOK({
 
     function app.loop()
         local ctx = app.gui.ctx
-        
+
         app.gui:pushColors(app.gui.st.col.main)
         app.gui:pushStyles(app.gui.st.vars.main)
         ImGui.PushFont(ctx, app.gui.st.fonts.large)

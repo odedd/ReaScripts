@@ -220,6 +220,15 @@ DB = {
                         getSolo = function(self)
                             return self.track.soloMatrix[self.guid] or SOLO_STATES.NONE
                         end,
+                        goToDestTrack = function(self)
+                            if self.type == SEND_TYPE.HW then return end
+                            local target = (self.type == SEND_TYPE.SEND) and self.destTrack or self.srcTrack
+                            r.SetMediaTrackInfo_Value(target.object, 'B_SHOWINMIXER', 1)
+                            r.SetMediaTrackInfo_Value(target.object, 'B_SHOWINTCP', 1)
+                            r.SetMixerScroll(target.object)
+                            r.SetOnlyTrackSelected(target.object)
+                            r.Main_OnCommand(40913, 0)
+                        end,
                         setSolo = function(self, solo, exclusive)
                             -- deafult to true if solo == SOLO_STATES.SOLO
                             local exclusive = (exclusive ~= false) and (solo == SOLO_STATES.SOLO) or false
@@ -265,7 +274,7 @@ DB = {
                                 if targetTrack then r.SetMediaTrackInfo_Value(targetTrack.object, 'I_SOLO', 2) end
                                 -- Un-solo any other track if it's soloed
                                 for i, track in ipairs(self.db.tracks) do
-                                    if (track.guid ~= self.track.guid) and ((targetTrack == nil) or (track.guid~=targetTrack.guid)) then
+                                    if (track.guid ~= self.track.guid) and ((targetTrack == nil) or (track.guid ~= targetTrack.guid)) then
                                         local soloState = r.GetMediaTrackInfo_Value(track.object, 'I_SOLO')
                                         if soloState ~= 0 then
                                             r.SetMediaTrackInfo_Value(track.object, 'I_SOLO', 0)
