@@ -11,9 +11,9 @@ SM_Gui.init = function(self, fonts)
     OD_Gui.init(self, true)
     ImGui.PushFont(self.ctx, self.st.fonts.default)
     self.mainWindow.hintHeight = ImGui.GetTextLineHeightWithSpacing(self.ctx) +
-        select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_FramePadding)) * 2 +
-        select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_WindowPadding)) +
-        select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_ItemSpacing))
+        select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_FramePadding)) +
+        select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_WindowPadding))
+
     ImGui.PopFont(self.ctx)
 
     self.st.basecolors = {

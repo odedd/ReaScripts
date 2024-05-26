@@ -271,7 +271,7 @@ DB = {
                                 if self.type == SEND_TYPE.SEND then
                                     targetTrack = self.destTrack
                                 elseif self.type == SEND_TYPE.RECV then
-                                    self.destTrack = self.srcTrack
+                                    targetTrack = self.srcTrack
                                 end
                                 if targetTrack then r.SetMediaTrackInfo_Value(targetTrack.object, 'I_SOLO', 2) end
                                 -- Un-solo any other track if it's soloed

@@ -256,7 +256,7 @@ if OD_PrereqsOK({
                 if ImGui.Button(ctx, 'VOL\nENV##vEnvelope', w, h) then
                     s:toggleVolEnv()
                 end
-                app:setHoveredHint('main', s.name .. ' - Show/hide send volume envelope')
+                app:setHoveredHint('main', (s.name .. ' - Show/hide %s volume envelope'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                 -- ImGui.PopFont(ctx)
                 app.gui:popColors(app.gui.st.col.buttons.env)
             end
@@ -282,7 +282,7 @@ if OD_PrereqsOK({
                     if ImGui.Button(ctx, ICONS.TRASH .. '##deleteSend', w) then
                         app.temp.confirmation[confirmationKey] = reaper.time_precise()
                     end
-                    app:setHoveredHint('main', s.name .. ' - Delete send')
+                    app:setHoveredHint('main', (s.name .. ' - Delete %s'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                     ImGui.PopFont(ctx)
                     app.gui:popColors(app.gui.st.col.buttons.deleteSend.initial)
                 end
@@ -292,7 +292,7 @@ if OD_PrereqsOK({
                 if ImGui.Button(ctx, 'MUTE\nENV##mEnvelope' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL * 2.5 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)) * 2.5) then
                     s:toggleMuteEnv()
                 end
-                app:setHoveredHint('main', s.name .. ' - Show/hide send mute envelope')
+                app:setHoveredHint('main', (s.name .. ' - Show/hide %s mute envelope'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                 app.gui:popColors(app.gui.st.col.buttons.mute[false])
             end
             local drawEnvPanButton = function(w)
@@ -300,7 +300,7 @@ if OD_PrereqsOK({
                 if ImGui.Button(ctx, 'PAN\nENV##pEnvelope' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL * 2.5 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)) * 2.5) then
                     s:togglePanEnv()
                 end
-                app:setHoveredHint('main', s.name .. ' - Show/hide send pan envelope')
+                app:setHoveredHint('main', (s.name .. ' - Show/hide %s pan envelope'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                 app.gui:popColors(app.gui.st.col.buttons.route)
             end
             local drawFader = function(w, h)
@@ -323,7 +323,7 @@ if OD_PrereqsOK({
                     app.settings.current.maxSendVol * app.settings.current.scaleFactor,
                     '')
                 app.gui:popStyles(app.gui.st.vars.vol)
-                app:setHoveredHint('main', s.name .. ' - Send volume')
+                app:setHoveredHint('main', (s.name .. ' - Send volume'):format((s.type == SEND_TYPE.RECV) and 'Receive' or 'Send'))
                 if (v2 < app.settings.current.scaleLevel * app.settings.current.scaleFactor) then
                     v2 = app.settings.current.scaleLevel +
                         (v2 - app.settings.current.scaleLevel * app.settings.current.scaleFactor) *
@@ -361,7 +361,7 @@ if OD_PrereqsOK({
 
                 app.gui:pushStyles(app.gui.st.vars.pan)
                 local rv, v2 = ImGui.SliderDouble(ctx, '##p', s.pan, -1, 1, '')
-                app:setHoveredHint('main', s.name .. ' - Send panning')
+                app:setHoveredHint('main', (s.name .. ' - %s panning'):format((s.type == SEND_TYPE.RECV) and 'Receive' or 'Send'))
                 app.gui:popStyles(app.gui.st.vars.pan)
                 if rv then
                     s:setPan(v2)
@@ -383,7 +383,7 @@ if OD_PrereqsOK({
                 local v = OD_dBFromValue(s.vol)
                 ImGui.SetNextItemWidth(ctx, w)
                 local rv, v3 = ImGui.DragDouble(ctx, '##db', v, 0, 0, 0, '%.2f')
-                app:setHoveredHint('main', s.name .. ' - Send volume. Double-click to enter exact amount.')
+                app:setHoveredHint('main', (s.name .. ' - %s volume. Double-click to enter exact amount.'):format((s.type == SEND_TYPE.RECV) and 'Receive' or 'Send'))
                 if rv then
                     s:setVolDB(v3)
                 end
@@ -393,7 +393,7 @@ if OD_PrereqsOK({
                 if ImGui.Button(ctx, 'M##mute' .. s.order, w) then
                     s:setMute(not s.mute)
                 end
-                app:setHoveredHint('main', s.name .. ' - Mute send')
+                app:setHoveredHint('main', (s.name .. ' - Mute %s'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                 app.gui:popColors(app.gui.st.col.buttons.mute[s.mute])
             end
             local drawSolo = function(w)
@@ -403,7 +403,7 @@ if OD_PrereqsOK({
                     s:setSolo((soloed == SOLO_STATES.NONE) and SOLO_STATES.SOLO or SOLO_STATES.NONE,
                         not ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd))
                 end
-                app:setHoveredHint('main', s.name .. ' - Solo send')
+                app:setHoveredHint('main', (s.name .. ' - Solo %s'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                 app.gui:popColors(app.gui.st.col.buttons.solo[soloed])
             end
             local drawSoloDefeat = function(w)
