@@ -868,7 +868,7 @@ if OD_PrereqsOK({
                     app.gui:popColors(app.gui.st.col.buttons.addSend)
                     app.gui:popStyles(app.gui.st.vars.addSendButton)
                     ImGui.PopFont(ctx)
-                    -- ImGui.Dummy(ctx, app.gui.st.sizes.sendTypeSeparatorWidth, 1)
+                    -- ImGui.Dummy(ctx, app.gui.st.sizes.sendTypeSeparatorWidth, 0)
                     ImGui.EndGroup(ctx)
                     ImGui.SameLine(ctx)
                     if count > 0 then
