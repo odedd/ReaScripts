@@ -98,8 +98,6 @@ DB = {
                         _, sendName = reaper.GetTrackSendName(self.track.object, i + numOfHWSends)
                     elseif type == SEND_TYPE.RECV then
                         _, sendName = reaper.GetTrackReceiveName(self.track.object, i)
-                    else
-                        _, sendName = reaper.GetTrackSendName(self.track.object, i)
                     end
                     local midiRouting = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i,
                         'I_MIDIFLAGS'))
@@ -186,6 +184,14 @@ DB = {
                             self.db:sync(true)
                         end,
                         setSrcChan = function(self, srcChan)
+                            local targetTrack = (self.type == SEND_TYPE.HW) and self.track or self.srcTrack
+                            local numChannels = SRC_CHANNELS[srcChan].numChannels +
+                            (srcChan >= 1024 and math.fmod(srcChan, 512) or srcChan)
+                            local nearestEvenChannel = math.ceil(numChannels / 2) * 2
+                            local srcChanChannelCount = reaper.GetMediaTrackInfo_Value(targetTrack.object, 'I_NCHAN')
+                            if srcChanChannelCount < numChannels then
+                                reaper.SetMediaTrackInfo_Value(targetTrack.object, 'I_NCHAN', nearestEvenChannel)
+                            end
                             reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_SRCCHAN', srcChan)
                             self.db:sync(true)
                         end,
@@ -204,6 +210,11 @@ DB = {
                             self.db:sync(true)
                         end,
                         setDestChan = function(self, destChan)
+                            if self.type == SEND_TYPE.HW then 
+                                reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_DSTCHAN', destChan)
+                                self.db:sync(true)
+                                return
+                            end
                             local numChannels = SRC_CHANNELS[self.srcChan].numChannels +
                                 (destChan >= 1024 and destChan - 1024 or destChan)
                             local nearestEvenChannel = math.ceil(numChannels / 2) * 2
@@ -308,6 +319,20 @@ DB = {
                             end
                             self.db:save()
                         end,
+                        _getChannelAlias = function(self)
+                            if self.srcChan == -1 then return '' end
+                            local chn1, chn2 = self.destChan + 1 - ((self.destChan >= 1024) and 1024 or 0), (self.destChan < 1024) and (self.destChan + SRC_CHANNELS[self.srcChan].numChannels ) or nil
+                            if chn2 and chn2-chn1 > 0 then
+                                if (chn2 - chn1) >= 2 then
+                                    return OUTPUT_CHANNEL_NAMES[chn1] .. '..' .. OUTPUT_CHANNEL_NAMES[chn2]
+                                else
+                                    return OUTPUT_CHANNEL_NAMES[chn1] .. '/' .. OUTPUT_CHANNEL_NAMES[chn2]
+                                end
+                            else
+                                return OUTPUT_CHANNEL_NAMES[chn1]
+                            end
+                            
+                        end,
                         _saveOrigMuteState = function(self)
                             local numOfSolos = self.db:_numSolos()
                             if numOfSolos == 0 then
@@ -339,6 +364,12 @@ DB = {
                             OD_ToggleShowEnvelope(env, show)
                         end,
                     }
+
+                    if send.type == SEND_TYPE.HW then 
+                        send.name = send:_getChannelAlias() 
+                    end
+                    send.shortName = self.app.minimizeText(send.name, self.app.settings.current.sendWidth-r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
+                    
                     if send.destTrack then
                         send.destInsertsCount = r.TrackFX_GetCount(send.destTrack.object)
                         send.destInserts, send.destInsertsCount = self:getInserts(send.destTrack.object)
@@ -524,35 +555,6 @@ DB._getTrack = function(self, track)
 end
 
 --- SOLOS
-
--- DB.saveSoloState = -- save current projects solo state to a temporary variable,
--- -- for use after unsoloing sends
---     function(self)
---         -- self.savedSoloStates = {}
---         -- for i = 0, r.CountTracks(0) - 1 do
---         --     local track = r.GetTrack(0, i)
---         --     self.savedSoloStates[r.GetTrackGUID(track)] = {
---         --         ['solo'] = r.GetMediaTrackInfo_Value(track, 'I_SOLO'),
---         --         ['mute'] = r.GetMediaTrackInfo_Value(track, 'B_MUTE')
---         --     }
---         -- end
---         self:save()
---     end
--- DB.recallSoloState = function(self)
---     for i = 0, r.CountTracks(0) - 1 do
---         local track = r.GetTrack(0, i)
---         local trackGUID = r.GetTrackGUID(track)
---         local savedState = self.savedSoloStates[trackGUID]
---         if savedState then
---             if r.GetMediaTrackInfo_Value(track, 'I_SOLO') ~= savedState.solo then
---                 r.SetMediaTrackInfo_Value(track, 'I_SOLO', savedState.solo)
---             end
---             if r.GetMediaTrackInfo_Value(track, 'B_MUTE') ~= savedState.mute then
---                 r.SetMediaTrackInfo_Value(track, 'B_MUTE', savedState.mute)
---             end
---         end
---     end
--- end
 
 DB._numSolos = function(self)
     local numOfSolos = 0

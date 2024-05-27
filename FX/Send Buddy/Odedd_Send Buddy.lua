@@ -87,24 +87,43 @@ if OD_PrereqsOK({
 
 
     function app.minimizeText(text, maxWidth)
-        if app.maxTextLen == nil then
+        app.maxTextLen = app.maxTextLen or {}
+        if app.maxTextLen[maxWidth] == nil then
+            
             local i = 0
             while app.gui.TEXT_BASE_WIDTH * i <= maxWidth do
                 i = i + 1
             end
-            app.maxTextLen = i
+            app.maxTextLen[maxWidth] = i
         end
-        if text:len() > app.maxTextLen then
+        if text:len() > app.maxTextLen[maxWidth] then
             -- text = text:gsub(' ', '')
-            text = text:len() <= app.maxTextLen and text or text:gsub('[^%a%d]', '')
-            text = text:len() <= app.maxTextLen and text or text:gsub(' ', '')
-            text = text:len() <= app.maxTextLen and text or text:gsub('a', '')
-            text = text:len() <= app.maxTextLen and text or text:gsub('e', '')
-            text = text:len() <= app.maxTextLen and text or text:gsub('i', '')
-            text = text:len() <= app.maxTextLen and text or text:gsub('o', '')
-            text = text:len() <= app.maxTextLen and text or text:gsub('u', '')
-            text = text:len() <= app.maxTextLen and text or text:gsub('%d', '')
-            return text:sub(1, app.maxTextLen), true
+            text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('[^%a%d%/%.]', '')
+            text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub(' ', '')
+            text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('a', '')
+            text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('e', '')
+            text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('i', '')
+            text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('o', '')
+            text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('u', '')
+            local lastLen = text:len()
+            while text:len() > app.maxTextLen[maxWidth] do -- remove lowercase one by one
+                text = text:gsub('[a-z]?([a-z]?)', '%1')
+                if lastLen == text:len() then
+                    lastLen = text:len()
+                    break
+                else 
+                    lastLen = text:len()
+                end
+            end
+            while text:len() > app.maxTextLen[maxWidth] do -- remove uppercase one by one
+                text = text:gsub('[A-Z]?([A-Z]?)', '%1')
+                if lastLen == text:len() then
+                    break
+                else 
+                    lastLen = text:len()
+                end
+            end
+            return text:sub(1, app.maxTextLen[maxWidth]), true -- trim to max length
         end
         return text, false
     end
@@ -576,10 +595,15 @@ if OD_PrereqsOK({
                     ImGui.OpenPopup(ctx, '##srcChanMenu' .. s.order)
                 end
                 app:setHoveredHint('main', s.name .. ' - Source audio channel')
-                local label = s.srcChan == -1 and '' or
+                local label
+                if s.type == SEND_TYPE.HW then
+                    label = s.shortName
+                else
+                label = s.srcChan == -1 and '' or
                     (s.destChan < 1024) and (s.destChan + 1 .. '/' .. (s.destChan + SRC_CHANNELS[s.srcChan].numChannels)) or
                     s.destChan + 1 - 1024
-                if s.srcChan == -1 then
+                end
+                    if s.srcChan == -1 then
                     ImGui.BeginDisabled(ctx)
                 end
                 if ImGui.Button(ctx, label .. '##destChan' .. s.order, w) then
@@ -630,12 +654,13 @@ if OD_PrereqsOK({
                     app.focusMainReaperWindow = false
                     ImGui.EndPopup(ctx)
                 end
-                ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
+                ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 350, 300.0, nil)
                 if ImGui.BeginPopup(ctx, '##destChanMenu' .. s.order) then
-                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 350, 300.0, nil)
                     if ImGui.BeginMenu(ctx, 'Downmix to mono') then
                         for i = 0, NUM_CHANNELS - 1 do
-                            if ImGui.MenuItem(ctx, tostring(i + 1), nil, s.destChan == i + 1024, true) then
+                            local label = s.type == SEND_TYPE.HW and OUTPUT_CHANNEL_NAMES[i+1] or (i + 1)
+                            if ImGui.MenuItem(ctx, label, nil, s.destChan == i + 1024, true) then
                                 s:setDestChan(i + 1024)
                             end
                         end
@@ -643,7 +668,12 @@ if OD_PrereqsOK({
                     end
 
                     for i = 0, NUM_CHANNELS - SRC_CHANNELS[s.srcChan].numChannels do
-                        if ImGui.MenuItem(ctx, (i + 1 .. '/' .. (i + SRC_CHANNELS[s.srcChan].numChannels)), nil, s.destChan == i, true) then
+                        local label = s.type == SEND_TYPE.HW and 
+                        SRC_CHANNELS[s.srcChan].numChannels == 1 and OUTPUT_CHANNEL_NAMES[i+1] or
+                        ((OUTPUT_CHANNEL_NAMES[i+1] .. (SRC_CHANNELS[s.srcChan].numChannels > 2 and '..' or '/') .. OUTPUT_CHANNEL_NAMES[i + SRC_CHANNELS[s.srcChan].numChannels]))
+                        or (SRC_CHANNELS[s.srcChan].numChannels == 1 and i+1 or
+                        (i + 1 .. '/' .. (i + SRC_CHANNELS[s.srcChan].numChannels)))
+                        if ImGui.MenuItem(ctx, label, nil, s.destChan == i, true) then
                             s:setDestChan(i)
                         end
                     end
@@ -653,11 +683,11 @@ if OD_PrereqsOK({
             end
 
             local drawSendName = function(w)
-                local shortName, shortened = app.minimizeText(s.name, w)
+                
                 app.gui:pushColors(app.gui.st.col.insert.blank)
                 ImGui.BeginDisabled(ctx)
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 1.0)
-                ImGui.Button(ctx, shortName .. "##sendName", w)
+                ImGui.Button(ctx, s.shortName .. "##sendName", w)
                 ImGui.PopStyleVar(ctx)
                 ImGui.EndDisabled(ctx)
                 app.gui:popColors(app.gui.st.col.insert.blank)

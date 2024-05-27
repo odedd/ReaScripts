@@ -99,6 +99,13 @@ for numChannels = 4, NUM_CHANNELS, 2 do
     end
 end
 
+OUTPUT_CHANNEL_NAMES = {}
+-- output channel names
+for i = 0, NUM_CHANNELS - 1 do
+    -- Mono
+    table.insert(OUTPUT_CHANNEL_NAMES, r.GetOutputChannelName(i) or ('Output '..(i+1)))
+end
+
 PLUGIN = {
     INTERNAL = { 'Video Processor', 'Container' },
 }
