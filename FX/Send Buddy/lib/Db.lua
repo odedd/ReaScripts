@@ -266,28 +266,24 @@ DB = {
                             return self.track.sendListen == self.guid
                         end,
                         toggleListen = function(self, listenMode)
+                            local sourceTrack = self.srcTrack or self.track
                             if self.track.sendListen ~= self.guid then
                                 if listenMode == SEND_LISTEN_MODES.RETURN_ONLY then
-                                    if not self.track.masterSendState then
-                                        self.track.masterSendState = r.GetMediaTrackInfo_Value(self.track.object,
+                                    if not sourceTrack.masterSendState then
+                                        sourceTrack.masterSendState = r.GetMediaTrackInfo_Value(sourceTrack.object,
                                             'B_MAINSEND') == 1
                                     end
-                                    if self.track.masterSendState then
-                                        r.SetMediaTrackInfo_Value(self.track.object, 'B_MAINSEND', 0)
+                                    if sourceTrack.masterSendState then
+                                        r.SetMediaTrackInfo_Value(sourceTrack.object, 'B_MAINSEND', 0)
                                     end
                                 end
                                 -- Solo this track and the destTrack
-                                r.SetMediaTrackInfo_Value(self.track.object, 'I_SOLO', 2)
-                                local targetTrack = nil
-                                if self.type == SEND_TYPE.SEND then
-                                    targetTrack = self.destTrack
-                                elseif self.type == SEND_TYPE.RECV then
-                                    targetTrack = self.srcTrack
-                                end
-                                if targetTrack then r.SetMediaTrackInfo_Value(targetTrack.object, 'I_SOLO', 2) end
+                                r.SetMediaTrackInfo_Value(sourceTrack.object, 'I_SOLO', 2)
+
+                                if self.type ~= SEND_TYPE.HW then r.SetMediaTrackInfo_Value(self.destTrack.object, 'I_SOLO', 2) end
                                 -- Un-solo any other track if it's soloed
                                 for i, track in ipairs(self.db.tracks) do
-                                    if (track.guid ~= self.track.guid) and ((targetTrack == nil) or (track.guid ~= targetTrack.guid)) then
+                                    if (track.guid ~= self.track.guid) and ((self.type == SEND_TYPE.HW) or (track.guid ~= self.destTrack.guid)) then
                                         local soloState = r.GetMediaTrackInfo_Value(track.object, 'I_SOLO')
                                         if soloState ~= 0 then
                                             r.SetMediaTrackInfo_Value(track.object, 'I_SOLO', 0)
@@ -300,19 +296,17 @@ DB = {
                                 self.track.sendListenMode = listenMode
                             else
                                 if self.db:isListenOn() then
-                                    if self.track.masterSendState then
-                                        r.SetMediaTrackInfo_Value(self.track.object, 'B_MAINSEND', 1)
-                                        self.track.masterSendState = nil
+                                    if sourceTrack.masterSendState then
+                                        r.SetMediaTrackInfo_Value(sourceTrack.object, 'B_MAINSEND', 1)
+                                        sourceTrack.masterSendState = nil
                                     end
                                 end
                                 self.track.sendListen = nil
                                 self.track.sendListenMode = nil
                                 -- Un-solo this track and the destTrack
-                                r.SetMediaTrackInfo_Value(self.track.object, 'I_SOLO', 0)
-                                if self.type == SEND_TYPE.SEND then
+                                r.SetMediaTrackInfo_Value(sourceTrack.object, 'I_SOLO', 0)
+                                if self.type ~= SEND_TYPE.HW then
                                     r.SetMediaTrackInfo_Value(self.destTrack.object, 'I_SOLO', 0)
-                                elseif self.type == SEND_TYPE.RECV then
-                                    r.SetMediaTrackInfo_Value(self.srcTrack.object, 'I_SOLO', 0)
                                 end
                                 -- Un-solo
                                 self:setSolo(SOLO_STATES.NONE)
