@@ -23,9 +23,6 @@ SM_Settings = OD_Settings:new({
         },
         -- Permanent settings
         sendWidth = 60,
-        sendTypeSeparatorWidth = 22,
-        sendTypeSeparatorHeight = 95,
-        minFaderHeight = 100,
         scaleFactor = 2, -- fader scale factor above scaleLevel
         scaleLevel = -20,
         favorites = { -- TODO allow editing from GUI

@@ -204,8 +204,8 @@ if OD_PrereqsOK({
         if page == APP_PAGE.MIXER then
             if app.db.track.object == nil then
                 page = APP_PAGE.NO_TRACK
-            elseif app.db.totalSends == 0 then
-                page = APP_PAGE.NO_SENDS
+            -- elseif app.db.totalSends == 0 then
+            --     page = APP_PAGE.NO_SENDS
             end
         end
         if page ~= app.page then
@@ -225,7 +225,7 @@ if OD_PrereqsOK({
         local separatorH = 5
         -- sends
         local sendsH = 8 * (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2) + vSpacing +
-            app.settings.current.minFaderHeight
+            app.gui.st.sizes.minFaderHeight
         local h = wPadding + topBarH + insertsH + vSpacing + separatorH + vSpacing + sendsH + vSpacing +
             app.gui.mainWindow.hintHeight + wPadding
 
@@ -235,12 +235,12 @@ if OD_PrereqsOK({
         for i, type in pairs(SEND_TYPE) do
             visibleSendNum = visibleSendNum +
                 (app.settings.current.sendTypeVisibility[type] and app.db.numSends[type] or 0)
-            visibleSendTypes = visibleSendTypes +
-                (app.settings.current.sendTypeVisibility[type] and ((app.db.numSends[type] > 0) and 1 or 0) or 0)
+            visibleSendTypes = 3 
+            --visibleSendTypes + (app.settings.current.sendTypeVisibility[type] and ((app.db.numSends[type] > 0) and 1 or 0) or 0)
         end
         local w = (app.settings.current.sendWidth + ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ItemSpacing)) *
             visibleSendNum +
-            (app.settings.current.sendTypeSeparatorWidth + ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ItemSpacing)) *
+            (app.gui.st.sizes.sendTypeSeparatorWidth + ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ItemSpacing)) *
             visibleSendTypes +
             ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_WindowPadding) +
             ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ItemSpacing) +
@@ -765,7 +765,7 @@ if OD_PrereqsOK({
             ImGui.PushID(ctx, 's' .. (s and s.order or -1))
             -- ImGui.BeginGroup(ctx)
 
-            local faderHeight = math.max(app.settings.current.minFaderHeight,
+            local faderHeight = math.max(app.gui.st.sizes.minFaderHeight,
                 select(2, ImGui.GetContentRegionAvail(ctx)) - app.gui.TEXT_BASE_HEIGHT_SMALL * 2 -
                 ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 3)
 
@@ -831,7 +831,7 @@ if OD_PrereqsOK({
         end
 
         -- ImGui.BeginGroup(ctx)
-        if next(app.db.sends) then
+        -- if next(app.db.sends) then
             local h = -app.gui.vars.framePaddingY +
                 (app.settings.current.maxNumInserts + 1) *
                 (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2)
@@ -848,22 +848,44 @@ if OD_PrereqsOK({
                             count = count + 1
                         end
                     end
+
+                    ImGui.BeginGroup(ctx)
+                    -- r.ShowConsoleMsg(SEND_TYPE_NAMES[type]..'\n')
+                    -- ImGui.SetCursorScreenPos(ctx, left, top + h + app.gui.TEXT_BASE_HEIGHT)
+                    ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                    app.gui:pushStyles(app.gui.st.vars.addSendButton)
+                    app.gui:pushColors(app.gui.st.col.buttons.addSend)
+                    if ImGui.Button(ctx, ICONS.PLUS .. '##addSends' .. type, app.gui.st.sizes.sendTypeSeparatorWidth, app.gui.st.sizes.sendTypeSeparatorWidth) then
+                        if type == SEND_TYPE.SEND then
+                            app.temp.addSendType = SEND_TYPE.SEND
+                            app.setPage(APP_PAGE.SEARCH_SEND)
+                        else
+                            app.temp.addSendType = type
+                            r.ShowConsoleMsg(SEND_TYPE_NAMES[type] .. '\n')
+                        end
+                            -- app.setPage(APP_PAGE.SEARCH_SEND)
+                    end
+                    app.gui:popColors(app.gui.st.col.buttons.addSend)
+                    app.gui:popStyles(app.gui.st.vars.addSendButton)
+                    ImGui.PopFont(ctx)
+                    -- ImGui.Dummy(ctx, app.gui.st.sizes.sendTypeSeparatorWidth, 1)
+                    ImGui.EndGroup(ctx)
+                    ImGui.SameLine(ctx)
                     if count > 0 then
-                        ImGui.BeginGroup(ctx)
-                        ImGui.Dummy(ctx, app.settings.current.sendTypeSeparatorWidth, 1)
-                        ImGui.EndGroup(ctx)
-                        ImGui.SameLine(ctx)
                         if type ~= SEND_TYPE.SEND then
                             local left, top = ImGui.GetCursorScreenPos(ctx)
                             local insertsPadding = 1
+                            local fillerW, fillerH = insertsPadding +
+                            (app.settings.current.sendWidth + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))) *
+                            count - select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)),insertsPadding +
+                            (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2) *
+                            (app.settings.current.maxNumInserts + 1) -
+                            select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
+
+                            ImGui.SameLine(ctx)
                             ImGui.DrawList_AddRectFilled(app.gui.draw_list, left - insertsPadding, top - insertsPadding,
-                                left + insertsPadding +
-                                (app.settings.current.sendWidth + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))) *
-                                count - select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)),
-                                top + insertsPadding +
-                                (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2) *
-                                (app.settings.current.maxNumInserts + 1) -
-                                select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)),
+                                left + fillerW,
+                                top + fillerH,
                                 gui.st.basecolors.darkestBG, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
                         end
                         for i, s in OD_PairsByOrder(app.db.sends) do
@@ -964,37 +986,34 @@ if OD_PrereqsOK({
                         count = count + 1
                     end
                 end
-                if count > 0 then
-                    ImGui.BeginGroup(ctx)
-                    local left, top = ImGui.GetCursorScreenPos(ctx)
-                    local w, h      = app.settings.current.sendTypeSeparatorWidth,
-                        app.settings.current.sendTypeSeparatorHeight
-                    -- r.ShowConsoleMsg(ImGui.GetScrollMaxY(ctx)..'\n')
-                    ImGui.DrawList_AddLine(app.gui.draw_list, left + w, top, left + w, top + totalH,
-                        gui.st.basecolors.mainDark)
 
-                    local points = reaper.new_array({
-                        left, top + h + 40,
-                        left + w, top + h,
-                        left + w, top + totalH,
-                        left, top + totalH
-                    })
-                    local text = SEND_TYPE_NAMES[type]
-                    ImGui.PushFont(ctx, app.gui.st.fonts.vertical)
-                    ImGui.DrawList_AddConvexPolyFilled(app.gui.draw_list, points,
-                        gui.st.basecolors.mainDark)
-                    local textTop = top + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
-                    local textLeft = left + w - select(2, ImGui.CalcTextSize(ctx, text))
-                    app.gui:drawVerticalText(app.gui.draw_list, text, textLeft,
-                        textTop + select(1, ImGui.CalcTextSize(ctx, text)), gui.st.basecolors.text)
-                    ImGui.PopFont(ctx)
-                    ImGui.Dummy(ctx, app.settings.current.sendTypeSeparatorWidth, 1)
-                    -- ImGui.SetCursorScreenPos(ctx, left, top + h + app.gui.TEXT_BASE_HEIGHT)
-                    -- if app.iconButton(ctx, 'plus', app.gui.st.col.buttons.topBarIcon, app.gui.st.fonts.icons_small) then
-                    --     r.ShowConsoleMsg(SEND_TYPE_NAMES[type] .. '\n')
-                    -- end
-                    ImGui.EndGroup(ctx)
-                    ImGui.SameLine(ctx)
+                ImGui.BeginGroup(ctx)
+                local left, top = ImGui.GetCursorScreenPos(ctx)
+                local w, h      = app.gui.st.sizes.sendTypeSeparatorWidth,
+                    app.gui.st.sizes.sendTypeSeparatorHeight
+                -- r.ShowConsoleMsg(ImGui.GetScrollMaxY(ctx)..'\n')
+                ImGui.DrawList_AddLine(app.gui.draw_list, left + w, top, left + w, top + totalH,
+                    gui.st.basecolors.mainDark)
+
+                local points = reaper.new_array({
+                    left, top + h + 40,
+                    left + w, top + h,
+                    left + w, top + totalH,
+                    left, top + totalH
+                })
+                local text = SEND_TYPE_NAMES[type]
+                ImGui.PushFont(ctx, app.gui.st.fonts.vertical)
+                ImGui.DrawList_AddConvexPolyFilled(app.gui.draw_list, points,
+                    gui.st.basecolors.mainDark)
+                local textTop = top + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
+                local textLeft = left + w - select(2, ImGui.CalcTextSize(ctx, text))
+                app.gui:drawVerticalText(app.gui.draw_list, text, textLeft,
+                    textTop + select(1, ImGui.CalcTextSize(ctx, text)), gui.st.basecolors.text)
+                ImGui.PopFont(ctx)
+                ImGui.Dummy(ctx, app.gui.st.sizes.sendTypeSeparatorWidth, 1)
+                ImGui.EndGroup(ctx)
+                ImGui.SameLine(ctx)
+                if count > 0 then
                     ImGui.BeginGroup(ctx)
                     for j, part in ipairs(parts) do
                         ImGui.BeginGroup(ctx)
@@ -1011,7 +1030,7 @@ if OD_PrereqsOK({
                 end
             end
             -- ImGui.EndGroup(ctx)
-        end
+        -- end
         ImGui.PopFont(ctx)
         -- ImGui.EndGroup(ctx)
         if app.hint.main.text == '' then
@@ -1271,19 +1290,19 @@ if OD_PrereqsOK({
             local x, y = ImGui.GetCursorScreenPos(ctx)
             local sz = app.gui.TEXT_BASE_WIDTH * 1.5
             local th = 3
-            ImGui.DrawList_AddBezierQuadratic(app.gui.draw_list,
-                x, y, app.temp.addSendBtnX, y, app.temp.addSendBtnX, app.temp.addSendBtnY,
-                app.gui.st.basecolors.main, th, 20)
-            ImGui.DrawList_AddBezierQuadratic(app.gui.draw_list,
-                app.temp.addSendBtnX, app.temp.addSendBtnY,
-                app.temp.addSendBtnX + sz / 1.5, app.temp.addSendBtnY + sz * 1.5,
-                app.temp.addSendBtnX + sz, app.temp.addSendBtnY + sz * 1.5,
-                app.gui.st.basecolors.main, th, 20)
-            ImGui.DrawList_AddBezierQuadratic(app.gui.draw_list,
-                app.temp.addSendBtnX, app.temp.addSendBtnY,
-                app.temp.addSendBtnX - sz / 1.5, app.temp.addSendBtnY + sz * 1.5,
-                app.temp.addSendBtnX - sz, app.temp.addSendBtnY + sz * 1.5,
-                app.gui.st.basecolors.main, th, 20)
+            -- ImGui.DrawList_AddBezierQuadratic(app.gui.draw_list,
+            --     x, y, app.temp.addSendBtnX, y, app.temp.addSendBtnX, app.temp.addSendBtnY,
+            --     app.gui.st.basecolors.main, th, 20)
+            -- ImGui.DrawList_AddBezierQuadratic(app.gui.draw_list,
+            --     app.temp.addSendBtnX, app.temp.addSendBtnY,
+            --     app.temp.addSendBtnX + sz / 1.5, app.temp.addSendBtnY + sz * 1.5,
+            --     app.temp.addSendBtnX + sz, app.temp.addSendBtnY + sz * 1.5,
+            --     app.gui.st.basecolors.main, th, 20)
+            -- ImGui.DrawList_AddBezierQuadratic(app.gui.draw_list,
+            --     app.temp.addSendBtnX, app.temp.addSendBtnY,
+            --     app.temp.addSendBtnX - sz / 1.5, app.temp.addSendBtnY + sz * 1.5,
+            --     app.temp.addSendBtnX - sz, app.temp.addSendBtnY + sz * 1.5,
+            --     app.gui.st.basecolors.main, th, 20)
 
             ImGui.EndChild(ctx)
         end
@@ -1349,11 +1368,11 @@ if OD_PrereqsOK({
                 prevX = x
                 ImGui.SetCursorPosX(ctx, x)
                 if app.iconButton(ctx, btn.icon, app.gui.st.col.buttons.topBarIcon) then clicked = btn.icon end
-                if app.page == APP_PAGE.NO_SENDS and btn.icon == 'plus' then
-                    app.temp.addSendBtnX, app.temp.addSendBtnY = ImGui.GetCursorScreenPos(ctx)
-                    app.temp.addSendBtnX = app.temp.addSendBtnX - w / 2
-                    app.temp.addSendBtnY = app.temp.addSendBtnY + w * 1.5
-                end
+                -- if app.page == APP_PAGE.NO_SENDS and btn.icon == 'plus' then
+                --     app.temp.addSendBtnX, app.temp.addSendBtnY = ImGui.GetCursorScreenPos(ctx)
+                --     app.temp.addSendBtnX = app.temp.addSendBtnX - w / 2
+                --     app.temp.addSendBtnY = app.temp.addSendBtnY + w * 1.5
+                -- end
                 app:setHoveredHint('main', btn.hint)
             end
             ImGui.PopFont(ctx)
@@ -1379,9 +1398,9 @@ if OD_PrereqsOK({
         ImGui.Text(ctx, ' ' .. caption)
         ImGui.EndDisabled(ctx)
         local menu = {}
-        if app.page == APP_PAGE.MIXER or app.page == APP_PAGE.NO_SENDS then
+        if app.page == APP_PAGE.MIXER then
             table.insert(menu, { icon = 'close', hint = 'Close' })
-            table.insert(menu, { icon = 'plus', hint = 'Add Send' })
+            -- table.insert(menu, { icon = 'plus', hint = 'Add Send' })
             table.insert(menu, { icon = 'gear', hint = 'Settings' })
         elseif app.page == APP_PAGE.NO_TRACK then
             table.insert(menu, { icon = 'close', hint = 'Close' })
@@ -1408,8 +1427,8 @@ if OD_PrereqsOK({
                 app.gui.mainWindow.dockTo = 0
             elseif btn == 'dock_down' then
                 app.gui.mainWindow.dockTo = app.settings.current.lastDockId
-            elseif btn == 'plus' then
-                app.setPage(APP_PAGE.SEARCH_SEND)
+            -- elseif btn == 'plus' then
+            --     app.setPage(APP_PAGE.SEARCH_SEND)
             elseif btn == 'gear' then -- TODO: Settings window!
                 -- app.setPage(APP_PAGE.SETTINGS)
             elseif btn == 'right' then
@@ -1476,8 +1495,8 @@ if OD_PrereqsOK({
                     if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then open = false end
                 elseif app.page == APP_PAGE.SEARCH_SEND or app.page == APP_PAGE.SEARCH_FX then
                     app.drawSearch()
-                elseif app.page == APP_PAGE.NO_SENDS then
-                    app.drawErrorNoSends()
+                -- elseif app.page == APP_PAGE.NO_SENDS then
+                --     app.drawErrorNoSends()
                 elseif app.page == APP_PAGE.NO_TRACK then
                     app.drawErrorNoTrack()
                 end

@@ -189,6 +189,12 @@ SM_Gui.init = function(self, fonts)
             route = self.st.colpresets.midButton,
             add = self.st.colpresets.midButton,
             scrollToTrack = self.st.colpresets.midButton,
+            addSend = {
+                [ImGui.Col_Button] = self.st.basecolors.mainDark,
+                [ImGui.Col_ButtonHovered] = self.st.basecolors.mainBright,
+                [ImGui.Col_ButtonActive] = self.st.basecolors.mainBrighter,
+                [ImGui.Col_Text] = self.st.basecolors.widgetBG,
+            },
             deleteSend = {
                 ['initial'] = {
                     [ImGui.Col_Button] = self.st.basecolors.darkBG,
@@ -271,12 +277,21 @@ SM_Gui.init = function(self, fonts)
         bigButton = {
             [ImGui.StyleVar_FrameRounding] = { 10, nil },
             [ImGui.StyleVar_FramePadding] = { 20, 10 },
-        }
+        },
     }
     ImGui.PushFont(self.ctx, self.st.fonts.vertical)
     self.VERTICAL_TEXT_BASE_WIDTH, self.VERTICAL_TEXT_BASE_HEIGHT = ImGui.CalcTextSize(self.ctx, 'A')
     self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET = -2
     ImGui.PopFont(self.ctx)
+
+    self.st.sizes = {
+        sendTypeSeparatorWidth = self.TEXT_BASE_HEIGHT,
+        sendTypeSeparatorHeight = 95,
+        minFaderHeight = 100
+    }
+    self.st.vars.addSendButton = {
+        [ImGui.StyleVar_FrameRounding] = { self.st.sizes.sendTypeSeparatorWidth, nil },
+    }
 
     self.drawSadFace = function(self, sizeFactor, color)
         local x, y = ImGui.GetCursorScreenPos(self.ctx)
