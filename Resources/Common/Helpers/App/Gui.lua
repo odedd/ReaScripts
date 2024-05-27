@@ -59,7 +59,7 @@ function OD_Gui:init(addDefaultFonts)
         })
     end
 
-    self.ctx = r.ImGui_CreateContext(self.app.scr.context_name .. '_MAIN') --, reaper.ImGui_ConfigFlags_DockingEnable())
+    self.ctx = r.ImGui_CreateContext(self.app.scr.context_name) --, reaper.ImGui_ConfigFlags_DockingEnable())
     for k, font in pairs(self.st.fonts) do
         r.ImGui_Attach(self.ctx, font)
     end
