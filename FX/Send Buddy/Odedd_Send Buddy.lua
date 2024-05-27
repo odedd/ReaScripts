@@ -89,7 +89,6 @@ if OD_PrereqsOK({
     function app.minimizeText(text, maxWidth)
         app.maxTextLen = app.maxTextLen or {}
         if app.maxTextLen[maxWidth] == nil then
-            
             local i = 0
             while app.gui.TEXT_BASE_WIDTH * i <= maxWidth do
                 i = i + 1
@@ -111,7 +110,7 @@ if OD_PrereqsOK({
                 if lastLen == text:len() then
                     lastLen = text:len()
                     break
-                else 
+                else
                     lastLen = text:len()
                 end
             end
@@ -119,7 +118,7 @@ if OD_PrereqsOK({
                 text = text:gsub('([A-Z]?)[A-Z]?', '%1')
                 if lastLen == text:len() then
                     break
-                else 
+                else
                     lastLen = text:len()
                 end
             end
@@ -275,7 +274,9 @@ if OD_PrereqsOK({
                 if ImGui.Button(ctx, 'VOL\nENV##vEnvelope', w, h) then
                     s:toggleVolEnv()
                 end
-                app:setHoveredHint('main', (s.name .. ' - Show/hide %s volume envelope'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
+                app:setHoveredHint('main',
+                    (s.name .. ' - Show/hide %s volume envelope'):format((s.type == SEND_TYPE.RECV) and 'receive' or
+                        'send'))
                 -- ImGui.PopFont(ctx)
                 app.gui:popColors(app.gui.st.col.buttons.env)
             end
@@ -301,7 +302,8 @@ if OD_PrereqsOK({
                     if ImGui.Button(ctx, ICONS.TRASH .. '##deleteSend', w) then
                         app.temp.confirmation[confirmationKey] = reaper.time_precise()
                     end
-                    app:setHoveredHint('main', (s.name .. ' - Delete %s'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
+                    app:setHoveredHint('main',
+                        (s.name .. ' - Delete %s'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                     ImGui.PopFont(ctx)
                     app.gui:popColors(app.gui.st.col.buttons.deleteSend.initial)
                 end
@@ -311,7 +313,8 @@ if OD_PrereqsOK({
                 if ImGui.Button(ctx, 'MUTE\nENV##mEnvelope' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL * 2.5 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)) * 2.5) then
                     s:toggleMuteEnv()
                 end
-                app:setHoveredHint('main', (s.name .. ' - Show/hide %s mute envelope'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
+                app:setHoveredHint('main',
+                    (s.name .. ' - Show/hide %s mute envelope'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                 app.gui:popColors(app.gui.st.col.buttons.mute[false])
             end
             local drawEnvPanButton = function(w)
@@ -319,7 +322,8 @@ if OD_PrereqsOK({
                 if ImGui.Button(ctx, 'PAN\nENV##pEnvelope' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL * 2.5 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)) * 2.5) then
                     s:togglePanEnv()
                 end
-                app:setHoveredHint('main', (s.name .. ' - Show/hide %s pan envelope'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
+                app:setHoveredHint('main',
+                    (s.name .. ' - Show/hide %s pan envelope'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                 app.gui:popColors(app.gui.st.col.buttons.route)
             end
             local drawFader = function(w, h)
@@ -342,7 +346,8 @@ if OD_PrereqsOK({
                     app.settings.current.maxSendVol * app.settings.current.scaleFactor,
                     '')
                 app.gui:popStyles(app.gui.st.vars.vol)
-                app:setHoveredHint('main', (s.name .. ' - Send volume'):format((s.type == SEND_TYPE.RECV) and 'Receive' or 'Send'))
+                app:setHoveredHint('main',
+                    (s.name .. ' - Send volume'):format((s.type == SEND_TYPE.RECV) and 'Receive' or 'Send'))
                 if (v2 < app.settings.current.scaleLevel * app.settings.current.scaleFactor) then
                     v2 = app.settings.current.scaleLevel +
                         (v2 - app.settings.current.scaleLevel * app.settings.current.scaleFactor) *
@@ -380,7 +385,8 @@ if OD_PrereqsOK({
 
                 app.gui:pushStyles(app.gui.st.vars.pan)
                 local rv, v2 = ImGui.SliderDouble(ctx, '##p', s.pan, -1, 1, '')
-                app:setHoveredHint('main', (s.name .. ' - %s panning'):format((s.type == SEND_TYPE.RECV) and 'Receive' or 'Send'))
+                app:setHoveredHint('main',
+                    (s.name .. ' - %s panning'):format((s.type == SEND_TYPE.RECV) and 'Receive' or 'Send'))
                 app.gui:popStyles(app.gui.st.vars.pan)
                 if rv then
                     s:setPan(v2)
@@ -402,7 +408,9 @@ if OD_PrereqsOK({
                 local v = OD_dBFromValue(s.vol)
                 ImGui.SetNextItemWidth(ctx, w)
                 local rv, v3 = ImGui.DragDouble(ctx, '##db', v, 0, 0, 0, '%.2f')
-                app:setHoveredHint('main', (s.name .. ' - %s volume. Double-click to enter exact amount.'):format((s.type == SEND_TYPE.RECV) and 'Receive' or 'Send'))
+                app:setHoveredHint('main',
+                    (s.name .. ' - %s volume. Double-click to enter exact amount.'):format((s.type == SEND_TYPE.RECV) and
+                        'Receive' or 'Send'))
                 if rv then
                     s:setVolDB(v3)
                 end
@@ -412,7 +420,8 @@ if OD_PrereqsOK({
                 if ImGui.Button(ctx, 'M##mute' .. s.order, w) then
                     s:setMute(not s.mute)
                 end
-                app:setHoveredHint('main', (s.name .. ' - Mute %s'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
+                app:setHoveredHint('main',
+                    (s.name .. ' - Mute %s'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                 app.gui:popColors(app.gui.st.col.buttons.mute[s.mute])
             end
             local drawSolo = function(w)
@@ -422,7 +431,8 @@ if OD_PrereqsOK({
                     s:setSolo((soloed == SOLO_STATES.NONE) and SOLO_STATES.SOLO or SOLO_STATES.NONE,
                         not ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd))
                 end
-                app:setHoveredHint('main', (s.name .. ' - Solo %s'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
+                app:setHoveredHint('main',
+                    (s.name .. ' - Solo %s'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                 app.gui:popColors(app.gui.st.col.buttons.solo[soloed])
             end
             local drawSoloDefeat = function(w)
@@ -599,11 +609,12 @@ if OD_PrereqsOK({
                 if s.type == SEND_TYPE.HW then
                     label = s.shortName
                 else
-                label = s.srcChan == -1 and '' or
-                    (s.destChan < 1024) and (s.destChan + 1 .. '/' .. (s.destChan + SRC_CHANNELS[s.srcChan].numChannels)) or
-                    s.destChan + 1 - 1024
+                    label = s.srcChan == -1 and '' or
+                        (s.destChan < 1024) and
+                        (s.destChan + 1 .. '/' .. (s.destChan + SRC_CHANNELS[s.srcChan].numChannels)) or
+                        s.destChan + 1 - 1024
                 end
-                    if s.srcChan == -1 then
+                if s.srcChan == -1 then
                     ImGui.BeginDisabled(ctx)
                 end
                 if ImGui.Button(ctx, label .. '##destChan' .. s.order, w) then
@@ -659,7 +670,7 @@ if OD_PrereqsOK({
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 350, 300.0, nil)
                     if ImGui.BeginMenu(ctx, 'Downmix to mono') then
                         for i = 0, NUM_CHANNELS - 1 do
-                            local label = s.type == SEND_TYPE.HW and OUTPUT_CHANNEL_NAMES[i+1] or (i + 1)
+                            local label = s.type == SEND_TYPE.HW and OUTPUT_CHANNEL_NAMES[i + 1] or (i + 1)
                             if ImGui.MenuItem(ctx, label, nil, s.destChan == i + 1024, true) then
                                 s:setDestChan(i + 1024)
                             end
@@ -668,11 +679,11 @@ if OD_PrereqsOK({
                     end
 
                     for i = 0, NUM_CHANNELS - SRC_CHANNELS[s.srcChan].numChannels do
-                        local label = s.type == SEND_TYPE.HW and 
-                        SRC_CHANNELS[s.srcChan].numChannels == 1 and OUTPUT_CHANNEL_NAMES[i+1] or
-                        ((OUTPUT_CHANNEL_NAMES[i+1] .. (SRC_CHANNELS[s.srcChan].numChannels > 2 and '..' or '/') .. OUTPUT_CHANNEL_NAMES[i + SRC_CHANNELS[s.srcChan].numChannels]))
-                        or (SRC_CHANNELS[s.srcChan].numChannels == 1 and i+1 or
-                        (i + 1 .. '/' .. (i + SRC_CHANNELS[s.srcChan].numChannels)))
+                        local label = s.type == SEND_TYPE.HW and
+                            SRC_CHANNELS[s.srcChan].numChannels == 1 and OUTPUT_CHANNEL_NAMES[i + 1] or
+                            ((OUTPUT_CHANNEL_NAMES[i + 1] .. (SRC_CHANNELS[s.srcChan].numChannels > 2 and '..' or '/') .. OUTPUT_CHANNEL_NAMES[i + SRC_CHANNELS[s.srcChan].numChannels]))
+                            or (SRC_CHANNELS[s.srcChan].numChannels == 1 and i + 1 or
+                                (i + 1 .. '/' .. (i + SRC_CHANNELS[s.srcChan].numChannels)))
                         if ImGui.MenuItem(ctx, label, nil, s.destChan == i, true) then
                             s:setDestChan(i)
                         end
@@ -683,7 +694,6 @@ if OD_PrereqsOK({
             end
 
             local drawSendName = function(w)
-                
                 app.gui:pushColors(app.gui.st.col.insert.blank)
                 ImGui.BeginDisabled(ctx)
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 1.0)
@@ -978,8 +988,11 @@ if OD_PrereqsOK({
                     app.gui:drawVerticalText(app.gui.draw_list, text, textLeft,
                         textTop + select(1, ImGui.CalcTextSize(ctx, text)), gui.st.basecolors.text)
                     ImGui.PopFont(ctx)
-
                     ImGui.Dummy(ctx, app.settings.current.sendTypeSeparatorWidth, 1)
+                    -- ImGui.SetCursorScreenPos(ctx, left, top + h + app.gui.TEXT_BASE_HEIGHT)
+                    -- if app.iconButton(ctx, 'plus', app.gui.st.col.buttons.topBarIcon, app.gui.st.fonts.icons_small) then
+                    --     r.ShowConsoleMsg(SEND_TYPE_NAMES[type] .. '\n')
+                    -- end
                     ImGui.EndGroup(ctx)
                     ImGui.SameLine(ctx)
                     ImGui.BeginGroup(ctx)
@@ -1075,7 +1088,7 @@ if OD_PrereqsOK({
         local h = select(2, ImGui.GetContentRegionAvail(ctx))
         local maxSearchResults = math.floor(h / (app.gui.TEXT_BASE_HEIGHT_LARGE))
 
-        if rv then 
+        if rv then
             filterResults(searchInput)
             app.temp.scrollToTop = true
         end
@@ -1297,7 +1310,9 @@ if OD_PrereqsOK({
         end
     end
 
-    function app.iconButton(ctx, icon)
+    function app.iconButton(ctx, icon, colClass, font)
+        local font = font or app.gui.st.fonts.icons_large
+        ImGui.PushFont(ctx, font)
         local x, y = ImGui.GetCursorPos(ctx)
         local w = select(1, ImGui.CalcTextSize(ctx, ICONS[(icon):upper()])) + app.gui.vars.framePaddingX * 2
         local clicked
@@ -1305,15 +1320,16 @@ if OD_PrereqsOK({
             clicked = true
         end
         if ImGui.IsItemHovered(ctx) and not ImGui.IsItemActive(ctx) then
-            app.gui:pushColors(app.gui.st.col.buttons.topBarIcon.hovered)
+            app.gui:pushColors(colClass.hovered)
         elseif ImGui.IsItemActive(ctx) then
-            app.gui:pushColors(app.gui.st.col.buttons.topBarIcon.active)
+            app.gui:pushColors(colClass.active)
         else
-            app.gui:pushColors(app.gui.st.col.buttons.topBarIcon.default)
+            app.gui:pushColors(colClass.default)
         end
         ImGui.SetCursorPos(ctx, x + app.gui.vars.framePaddingX, y + app.gui.vars.framePaddingY)
         ImGui.Text(ctx, tostring(ICONS[icon:upper()]))
-        app.gui:popColors(app.gui.st.col.buttons.topBarIcon.default)
+        app.gui:popColors(colClass.default)
+        ImGui.PopFont(ctx)
         ImGui.SetCursorPos(ctx, x + w, y)
         return clicked
     end
@@ -1332,7 +1348,7 @@ if OD_PrereqsOK({
                 local x = prevX - w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
                 prevX = x
                 ImGui.SetCursorPosX(ctx, x)
-                if app.iconButton(ctx, btn.icon) then clicked = btn.icon end
+                if app.iconButton(ctx, btn.icon, app.gui.st.col.buttons.topBarIcon) then clicked = btn.icon end
                 if app.page == APP_PAGE.NO_SENDS and btn.icon == 'plus' then
                     app.temp.addSendBtnX, app.temp.addSendBtnY = ImGui.GetCursorScreenPos(ctx)
                     app.temp.addSendBtnX = app.temp.addSendBtnX - w / 2
