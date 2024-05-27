@@ -110,5 +110,5 @@ PLUGIN = {
     INTERNAL = { 'Video Processor', 'Container' },
 }
 FAVORITE_GROUP = 'Favorite'
-RECEIVES_GROUP = 'Receiving tracks'
+RECEIVES_GROUP = 'Tracks with receives'
 TRACKS_GROUP = 'Other tracks'
