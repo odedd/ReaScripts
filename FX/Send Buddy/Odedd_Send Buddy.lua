@@ -464,7 +464,7 @@ if OD_PrereqsOK({
                 app.gui:pushColors(app.gui.st.col.buttons.listen[state and s.track.sendListenMode or listenMode][state])
                 ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
                 if ImGui.Button(ctx, ICONS.HEADPHONES .. '##listen' .. s.order, w) then
-                    s:gn(listenMode)
+                    s:toggleListen(listenMode)
                 end
                 app:setHoveredHint('main',
                     s.name ..
