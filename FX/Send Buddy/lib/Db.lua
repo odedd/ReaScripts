@@ -86,7 +86,8 @@ DB = {
             self.maxNumInserts = 0
             self.sends = {}
             self.guids = {}
-            local numOfHWSends = reaper.GetTrackNumSends(self.track.object, 1)
+            self.numAudioOutputs = r.GetNumAudioOutputs()
+            local numHWSends = reaper.GetTrackNumSends(self.track.object, 1)
             local overallOrder = 0
             for _, type in pairs(SEND_TYPE) do
                 oldNumSends[type] = self.numSends[type]
@@ -95,7 +96,7 @@ DB = {
                 for i = 0, self.numSends[type] - 1 do
                     local sendName
                     if type == SEND_TYPE.SEND then
-                        _, sendName = reaper.GetTrackSendName(self.track.object, i + numOfHWSends)
+                        _, sendName = reaper.GetTrackSendName(self.track.object, i + numHWSends)
                     elseif type == SEND_TYPE.RECV then
                         _, sendName = reaper.GetTrackReceiveName(self.track.object, i)
                     end
@@ -429,15 +430,21 @@ DB = {
 
 --- Sends
 
-DB.createNewSend = function(self, asset, trackName) -- TODO: reflect added send in solo states
-    if asset.type == ASSETS.TRACK then
+DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName) -- TODO: reflect added send in solo states
+    if sendType == SEND_TYPE.HW then
+        local sndIdx = reaper.CreateTrackSend(self.track.object, nil)
+        reaper.SetTrackSendInfo_Value(self.track.object, sendType, sndIdx, 'I_DSTCHAN', assetType)
+        self:sync(true)
+        return
+    end
+    if assetType == ASSETS.TRACK then
         -- local sendTrackIndex = asset.load
-        local sendTrack = OD_GetTrackFromGuid(0, asset.load)
+        local sendTrack = OD_GetTrackFromGuid(0, assetLoad)
         if sendTrack then
             reaper.CreateTrackSend(self.track.object, sendTrack)
         end
         self:sync(true)
-    elseif asset.type == ASSETS.PLUGIN then
+    elseif assetType == ASSETS.PLUGIN then
         local newTrack = nil
         local numTracks = r.CountTracks(0)
         if self.app.settings.current.createInsideFolder then
@@ -469,7 +476,7 @@ DB.createNewSend = function(self, asset, trackName) -- TODO: reflect added send 
             self:sync(true)
             for _, send in ipairs(self.sends) do
                 if send.destTrack ~= nil and (send.destTrack.object == newTrack) then
-                    send:addInsert(asset.load)
+                    send:addInsert(assetLoad)
                 end
             end
         end

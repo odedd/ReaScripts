@@ -539,20 +539,20 @@ if OD_PrereqsOK({
                     end
                     app.gui:popColors(app.gui.st.col.buttons.route)
                     ImGui.EndGroup(ctx)
-                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginPopup(ctx, '##srcMidiChanMenu' .. s.order) then
                         if ImGui.MenuItem(ctx, 'None', nil, s.midiSrcBus == 255, true) then s:setMidiRouting(0x1f, 0xff) end
                         if ImGui.MenuItem(ctx, 'All', nil, s.midiSrcChn == 0 and s.midiSrcBus == 0, true) then
                             s:setMidiRouting(0, 0)
                         end
-                        ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                        ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                         for i = 1, 16 do
                             if ImGui.MenuItem(ctx, tostring(i), nil, s.midiSrcChn == i and s.midiSrcBus == 0, true) then
                                 s:setMidiRouting(i, 0)
                             end
                         end
                         for bus = 1, 128 do
-                            ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                            ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                             if ImGui.BeginMenu(ctx, "Bus " .. bus) then
                                 if ImGui.MenuItem(ctx, 'All', nil, s.midiSrcChn == 0 and s.midiSrcBus == bus, true) then
                                     s:setMidiRouting(0, bus)
@@ -568,19 +568,19 @@ if OD_PrereqsOK({
                         app.focusMainReaperWindow = false
                         ImGui.EndPopup(ctx)
                     end
-                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginPopup(ctx, '##destMidiChanMenu' .. s.order) then
                         if ImGui.MenuItem(ctx, 'All', nil, s.midiDestChn == 0 and s.midiDestBus == 0, true) then
                             s:setMidiRouting(nil, nil, 0, 0)
                         end
-                        ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                        ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                         for i = 1, 16 do
                             if ImGui.MenuItem(ctx, tostring(i), nil, s.midiDestChn == i and s.midiDestBus == 0, true) then
                                 s:setMidiRouting(nil, nil, i, 0)
                             end
                         end
                         for bus = 1, 128 do
-                            ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                            ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                             if ImGui.BeginMenu(ctx, "Bus " .. bus) then
                                 if ImGui.MenuItem(ctx, 'All', nil, s.midiDestChn == 0 and s.midiDestBus == bus, true) then
                                     s:setMidiRouting(nil, nil, 0, bus)
@@ -628,7 +628,7 @@ if OD_PrereqsOK({
                 ImGui.EndGroup(ctx)
                 if ImGui.BeginPopup(ctx, '##srcChanMenu' .. s.order) then
                     if ImGui.MenuItem(ctx, 'None', nil, s.srcChan == -1, true) then s:setSrcChan(-1) end
-                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginMenu(ctx, 'Mono source') then
                         for i = 0, NUM_CHANNELS - 1 do
                             if ImGui.MenuItem(ctx, SRC_CHANNELS[i + 1024].label, nil, s.srcChan == i + 1024, true) then
@@ -637,7 +637,7 @@ if OD_PrereqsOK({
                         end
                         ImGui.EndMenu(ctx)
                     end
-                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginMenu(ctx, 'Stereo source') then
                         for i = 0, NUM_CHANNELS - 2 do
                             if ImGui.MenuItem(ctx, SRC_CHANNELS[i].label, nil, s.srcChan == i, true) then
@@ -647,10 +647,10 @@ if OD_PrereqsOK({
                         end
                         ImGui.EndMenu(ctx)
                     end
-                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 300, 300.0, nil)
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginMenu(ctx, 'Multichannel source') then
                         for numChannels = 4, NUM_CHANNELS, 2 do
-                            ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 100, 300.0, nil)
+                            ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                             if ImGui.BeginMenu(ctx, numChannels .. " channels") then
                                 for i = 0, NUM_CHANNELS - numChannels do
                                     if ImGui.MenuItem(ctx, SRC_CHANNELS[numChannels * 512 + i].label, nil, s.srcChan == numChannels * 512 + i, true) then
@@ -665,9 +665,9 @@ if OD_PrereqsOK({
                     app.focusMainReaperWindow = false
                     ImGui.EndPopup(ctx)
                 end
-                ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 350, 300.0, nil)
+                ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                 if ImGui.BeginPopup(ctx, '##destChanMenu' .. s.order) then
-                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 350, 300.0, nil)
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginMenu(ctx, 'Downmix to mono') then
                         for i = 0, NUM_CHANNELS - 1 do
                             local label = s.type == SEND_TYPE.HW and OUTPUT_CHANNEL_NAMES[i + 1] or (i + 1)
@@ -680,8 +680,8 @@ if OD_PrereqsOK({
 
                     for i = 0, NUM_CHANNELS - SRC_CHANNELS[s.srcChan].numChannels do
                         local label = s.type == SEND_TYPE.HW and
-                            SRC_CHANNELS[s.srcChan].numChannels == 1 and OUTPUT_CHANNEL_NAMES[i + 1] or
-                            ((OUTPUT_CHANNEL_NAMES[i + 1] .. (SRC_CHANNELS[s.srcChan].numChannels > 2 and '..' or '/') .. OUTPUT_CHANNEL_NAMES[i + SRC_CHANNELS[s.srcChan].numChannels]))
+                            (SRC_CHANNELS[s.srcChan].numChannels == 1 and OUTPUT_CHANNEL_NAMES[i + 1] or
+                            ((OUTPUT_CHANNEL_NAMES[i + 1] .. (SRC_CHANNELS[s.srcChan].numChannels > 2 and '..' or '/') .. OUTPUT_CHANNEL_NAMES[i + SRC_CHANNELS[s.srcChan].numChannels])))
                             or (SRC_CHANNELS[s.srcChan].numChannels == 1 and i + 1 or
                                 (i + 1 .. '/' .. (i + SRC_CHANNELS[s.srcChan].numChannels)))
                         if ImGui.MenuItem(ctx, label, nil, s.destChan == i, true) then
@@ -869,24 +869,24 @@ if OD_PrereqsOK({
                 app.gui:popStyles(app.gui.st.vars.addSendButton)
                 ImGui.PopFont(ctx)
                 if type == SEND_TYPE.HW then
-                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 350, 300.0, nil)
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginPopup(ctx, '##newHWSendMenu') then
-                        ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 350, 300.0, nil)
+                        
+                        ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                         if ImGui.BeginMenu(ctx, 'Downmix to mono') then
-                            for j = 0, NUM_CHANNELS - 1 do
+                            for j = 0, app.db.numAudioOutputs - 1 do
                                 if ImGui.MenuItem(ctx, OUTPUT_CHANNEL_NAMES[j + 1], nil, false, true) then
-                                    r.ShowConsoleMsg((j + 1024) .. '\n')
-                                    -- s:setDestChan(i + 1024)
+                                    app.db:createNewSend(type, j + 1024)
                                 end
                             end
                             ImGui.EndMenu(ctx)
                         end
 
-                        for j = 0, NUM_CHANNELS - app.db.track.numChannels do
+                        for j = 0, app.db.numAudioOutputs - app.db.track.numChannels do
                             local label = ((OUTPUT_CHANNEL_NAMES[j + 1] .. '/' .. OUTPUT_CHANNEL_NAMES[j + 2]))
                             if ImGui.MenuItem(ctx, label, nil, false, true) then
                                 -- s:setDestChan(i)
-                                r.ShowConsoleMsg((j) .. '\n')
+                                app.db:createNewSend(type, j)
                             end
                         end
                         app.focusMainReaperWindow = false
@@ -1285,7 +1285,7 @@ if OD_PrereqsOK({
                 app.temp.addFxToSend:addInsert(selectedResult.load)
                 app.temp.addFxToSend = nil
             elseif app.page == APP_PAGE.SEARCH_SEND then
-                app.db:createNewSend(selectedResult, selectedResult.searchText[1].text)
+                app.db:createNewSend(app.temp.addSendType, selectedResult.type, selectedResult.load, selectedResult.searchText[1].text)
             end
             app.setPage(APP_PAGE.MIXER)
         end

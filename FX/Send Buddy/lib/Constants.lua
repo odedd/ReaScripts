@@ -4,6 +4,7 @@ ImGui = require 'imgui' '0.9.1'
 
 -- ! CONSTANTS
 DB_SCALE = math.log(10.0) * 0.05
+FLT_MIN, FLT_MAX = ImGui.NumericLimits_Float()
 
 SEND_TYPE = {
     ['SEND'] = 0,
@@ -102,7 +103,6 @@ end
 OUTPUT_CHANNEL_NAMES = {}
 -- output channel names
 for i = 0, NUM_CHANNELS - 1 do
-    -- Mono
     table.insert(OUTPUT_CHANNEL_NAMES, r.GetOutputChannelName(i) or ('Output '..(i+1)))
 end
 
