@@ -439,9 +439,13 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName) -- 
     end
     if assetType == ASSETS.TRACK then
         -- local sendTrackIndex = asset.load
-        local sendTrack = OD_GetTrackFromGuid(0, assetLoad)
-        if sendTrack then
-            reaper.CreateTrackSend(self.track.object, sendTrack)
+        local targetTrack = OD_GetTrackFromGuid(0, assetLoad)
+        if targetTrack then
+            if sendType == SEND_TYPE.SEND then
+                reaper.CreateTrackSend(self.track.object, targetTrack)
+            elseif sendType == SEND_TYPE.RECV then
+                reaper.CreateTrackSend(targetTrack, self.track.object)
+            end
         end
         self:sync(true)
     elseif assetType == ASSETS.PLUGIN then
@@ -704,11 +708,18 @@ DB.getPlugins = function(self)
         end
         local plugin = self:addPlugin(name, fx_type, instrument, ident)
         if plugin then
-            plugin.group = OD_HasValue(self.app.settings.current.favorites, plugin.full_name) and FAVORITE_GROUP or
-                plugin.fx_type
+            plugin.group = plugin.fx_type
         end
         i = i + 1
         if not found then break end
+    end
+end
+
+DB.markFavorites = function(self)
+    for _, asset in ipairs(self.assets) do
+        if OD_HasValue(self.app.settings.current.favorites, asset.type .. ' ' .. asset.load) then 
+            asset.group = FAVORITE_GROUP
+        end
     end
 end
 
@@ -737,6 +748,7 @@ DB.assembleAssets = function(self)
         })
     end
 
+    self:markFavorites()
     self:sortAssets()
 end
 

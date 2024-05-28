@@ -26,8 +26,8 @@ SM_Settings = OD_Settings:new({
         scaleFactor = 2, -- fader scale factor above scaleLevel
         scaleLevel = -20,
         favorites = { -- TODO allow editing from GUI
-            'VST3: Pro-Q 3 (FabFilter)',
-            'VST3: ValhallaVintageVerb (Valhalla DSP, LLC)'
+            ASSETS.PLUGIN .. ' ' .. 'VST3: Pro-Q 3 (FabFilter)',
+            ASSETS.PLUGIN .. ' ' .. 'VST3: ValhallaVintageVerb (Valhalla DSP, LLC)'
         },
         groupPriority = {
             ["VST3"] = 1,

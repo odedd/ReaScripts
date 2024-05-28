@@ -112,3 +112,4 @@ PLUGIN = {
 FAVORITE_GROUP = 'Favorite'
 RECEIVES_GROUP = 'Tracks with receives'
 TRACKS_GROUP = 'Other tracks'
+ALL_TRACKS_GROUP = 'All tracks'

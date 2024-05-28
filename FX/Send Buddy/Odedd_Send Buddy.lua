@@ -235,8 +235,7 @@ if OD_PrereqsOK({
         for i, type in pairs(SEND_TYPE) do
             visibleSendNum = visibleSendNum +
                 (app.settings.current.sendTypeVisibility[type] and app.db.numSends[type] or 0)
-            visibleSendTypes = 3
-            --visibleSendTypes + (app.settings.current.sendTypeVisibility[type] and ((app.db.numSends[type] > 0) and 1 or 0) or 0)
+            visibleSendTypes = visibleSendTypes + (app.settings.current.sendTypeVisibility[type] and 1 or 0)
         end
         local w = (app.settings.current.sendWidth + ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ItemSpacing)) *
             visibleSendNum +
@@ -681,7 +680,7 @@ if OD_PrereqsOK({
                     for i = 0, NUM_CHANNELS - SRC_CHANNELS[s.srcChan].numChannels do
                         local label = s.type == SEND_TYPE.HW and
                             (SRC_CHANNELS[s.srcChan].numChannels == 1 and OUTPUT_CHANNEL_NAMES[i + 1] or
-                            ((OUTPUT_CHANNEL_NAMES[i + 1] .. (SRC_CHANNELS[s.srcChan].numChannels > 2 and '..' or '/') .. OUTPUT_CHANNEL_NAMES[i + SRC_CHANNELS[s.srcChan].numChannels])))
+                                ((OUTPUT_CHANNEL_NAMES[i + 1] .. (SRC_CHANNELS[s.srcChan].numChannels > 2 and '..' or '/') .. OUTPUT_CHANNEL_NAMES[i + SRC_CHANNELS[s.srcChan].numChannels])))
                             or (SRC_CHANNELS[s.srcChan].numChannels == 1 and i + 1 or
                                 (i + 1 .. '/' .. (i + SRC_CHANNELS[s.srcChan].numChannels)))
                         if ImGui.MenuItem(ctx, label, nil, s.destChan == i, true) then
@@ -744,6 +743,7 @@ if OD_PrereqsOK({
                 ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
                 if ImGui.Button(ctx, "P##", w) then
                     app.temp.addFxToSend = s
+                    app.temp.addSendType = nil
                     app.setPage(APP_PAGE.SEARCH_FX)
                 end
                 app:setHoveredHint('main', 'Add FX')
@@ -840,8 +840,15 @@ if OD_PrereqsOK({
         -- r.ShowConsoleMsg(w .. '\n')
         local w = app.gui.mainWindow.mixer_w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2
         -- r.ShowConsoleMsg(w .. '\n')
+        local visibleSendTypes = {}
+        for _, type in ipairs(app.settings.current.sendTypeOrder) do
+            if app.settings.current.sendTypeVisibility[type] then
+                table.insert(visibleSendTypes, type)
+            end
+        end
+
         if ImGui.BeginChild(ctx, "##inserts", w, h, ImGui.ChildFlags_None) then
-            for _, type in ipairs(app.settings.current.sendTypeOrder) do
+            for _, type in ipairs(visibleSendTypes) do
                 local count = 0
                 for i, s in pairs(app.db.sends) do
                     if s.type == type then
@@ -858,7 +865,7 @@ if OD_PrereqsOK({
                 if ImGui.Button(ctx, ICONS.PLUS .. '##addSends' .. type, app.gui.st.sizes.sendTypeSeparatorWidth, app.gui.st.sizes.sendTypeSeparatorWidth) then
                     if type == SEND_TYPE.HW then
                         ImGui.OpenPopup(ctx, '##newHWSendMenu')
-                    else     -- TODO: IMPLEMENT RECV
+                    else -- TODO: IMPLEMENT RECV
                         app.temp.addSendType = type
                         app.setPage(APP_PAGE.SEARCH_SEND)
                     end
@@ -871,7 +878,6 @@ if OD_PrereqsOK({
                 if type == SEND_TYPE.HW then
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginPopup(ctx, '##newHWSendMenu') then
-                        
                         ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                         if ImGui.BeginMenu(ctx, 'Downmix to mono') then
                             for j = 0, app.db.numAudioOutputs - 1 do
@@ -882,7 +888,7 @@ if OD_PrereqsOK({
                             ImGui.EndMenu(ctx)
                         end
 
-                        for j = 0, app.db.numAudioOutputs - app.db.track.numChannels do
+                        for j = 0, app.db.numAudioOutputs - 2 do
                             local label = ((OUTPUT_CHANNEL_NAMES[j + 1] .. '/' .. OUTPUT_CHANNEL_NAMES[j + 2]))
                             if ImGui.MenuItem(ctx, label, nil, false, true) then
                                 -- s:setDestChan(i)
@@ -930,46 +936,46 @@ if OD_PrereqsOK({
             end
             ImGui.EndChild(ctx)
         end
-        local w = math.max(w, select(1, ImGui.GetContentRegionAvail(ctx)))
-        -- w = 200
-        ImGui.InvisibleButton(ctx, '##separator', w, 3)
 
-        if ImGui.IsItemHovered(ctx) then
-            app:setHoveredHint('main', 'Scroll to change number of inserts')
-            ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeNS)
-        end
-        if ImGui.IsItemActive(ctx) then
-            ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeNS)
-            local value_with_lock_threshold_x, value_with_lock_threshold_y = ImGui.GetMouseDragDelta(ctx, nil,
-                nil,
-                ImGui.MouseButton_Left)
-            if value_with_lock_threshold_y ~= 0 then
-                if value_with_lock_threshold_y > 0 + app.gui.TEXT_BASE_HEIGHT_SMALL then
-                    app.settings.current.maxNumInserts = app.settings.current.maxNumInserts + 1
-                    app.settings:save()
-                    ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
-                    -- app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.calculateMixerSize()
-                    app.refreshWindowSizeOnNextFrame = true
-                elseif app.settings.current.maxNumInserts > 0 and value_with_lock_threshold_y < 0 - app.gui.TEXT_BASE_HEIGHT_SMALL then
-                    app.settings.current.maxNumInserts = app.settings.current.maxNumInserts - 1
-                    app.settings:save()
-                    ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
-                    -- app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.calculateMixerSize()
-                    app.refreshWindowSizeOnNextFrame = true
+        if next(visibleSendTypes) then
+            local w = math.max(w, select(1, ImGui.GetContentRegionAvail(ctx)))
+            ImGui.InvisibleButton(ctx, '##separator', w, 3)
+            if ImGui.IsItemHovered(ctx) then
+                app:setHoveredHint('main', 'Scroll to change number of inserts')
+                ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeNS)
+            end
+            if ImGui.IsItemActive(ctx) then
+                ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeNS)
+                local value_with_lock_threshold_x, value_with_lock_threshold_y = ImGui.GetMouseDragDelta(ctx, nil,
+                    nil,
+                    ImGui.MouseButton_Left)
+                if value_with_lock_threshold_y ~= 0 then
+                    if value_with_lock_threshold_y > 0 + app.gui.TEXT_BASE_HEIGHT_SMALL then
+                        app.settings.current.maxNumInserts = app.settings.current.maxNumInserts + 1
+                        app.settings:save()
+                        ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
+                        -- app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.calculateMixerSize()
+                        app.refreshWindowSizeOnNextFrame = true
+                    elseif app.settings.current.maxNumInserts > 0 and value_with_lock_threshold_y < 0 - app.gui.TEXT_BASE_HEIGHT_SMALL then
+                        app.settings.current.maxNumInserts = app.settings.current.maxNumInserts - 1
+                        app.settings:save()
+                        ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
+                        -- app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.calculateMixerSize()
+                        app.refreshWindowSizeOnNextFrame = true
+                    end
                 end
             end
+            ImGui.SetCursorPosY(ctx,
+                ImGui.GetCursorPosY(ctx) - 2 - select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)))
+            ImGui.SetNextItemWidth(ctx, w)
+            local x, y = ImGui.GetCursorScreenPos(ctx)
+            ImGui.DrawList_AddLine(app.gui.draw_list, x, y - 2,
+                x + w, y - 2, gui.st.basecolors.midBG, 1)
+            ImGui.DrawList_AddLine(app.gui.draw_list, x, y + 1,
+                x + w, y + 1, gui.st.basecolors.midBG, 1)
+            ImGui.SetCursorPosY(ctx,
+                ImGui.GetCursorPosY(ctx) + 2 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)))
         end
-        ImGui.SetCursorPosY(ctx,
-            ImGui.GetCursorPosY(ctx) - 2 - select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)))
-        ImGui.SetNextItemWidth(ctx, w)
-        local x, y = ImGui.GetCursorScreenPos(ctx)
-        ImGui.DrawList_AddLine(app.gui.draw_list, x, y - 2,
-            x + w, y - 2, gui.st.basecolors.midBG, 1)
-        ImGui.DrawList_AddLine(app.gui.draw_list, x, y + 1,
-            x + w, y + 1, gui.st.basecolors.midBG, 1)
-        ImGui.SetCursorPosY(ctx,
-            ImGui.GetCursorPosY(ctx) + 2 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)))
-
 
         local parts = {
             { { name = 'mute' },   { name = 'solo' } },
@@ -1003,9 +1009,8 @@ if OD_PrereqsOK({
             }
         end
         -- ImGui.BeginGroup(ctx)
-        local scrollMaxY = ImGui.GetScrollMaxY(ctx)
-        local totalH     = select(2, ImGui.GetContentRegionAvail(ctx))
-        for _, type in ipairs(app.settings.current.sendTypeOrder) do
+        local totalH = select(2, ImGui.GetContentRegionAvail(ctx))
+        for _, type in ipairs(visibleSendTypes) do
             local count = 0
             for i, s in pairs(app.db.sends) do
                 if s.type == type then
@@ -1078,10 +1083,10 @@ if OD_PrereqsOK({
             app.temp.searchInput = query
             app.temp.searchResults = {}
             query = query:gsub('%s+', ' ')
-            r.ClearConsole()
             for i, asset in ipairs(app.db.assets) do
                 local skip = false
                 if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then skip = true end
+                if app.temp.addSendType == SEND_TYPE.RECV and asset.type == ASSETS.PLUGIN then skip = true end
                 if asset.type == ASSETS.TRACK and asset.load == app.db.track.guid then skip = true end
                 if not skip then
                     local foundIndexes = {}
@@ -1103,7 +1108,6 @@ if OD_PrereqsOK({
                     end
                     if allWordsFound then
                         local result = OD_DeepCopy(asset)
-
                         result.foundIndexes = foundIndexes
                         table.insert(app.temp.searchResults, result)
                     end
@@ -1111,6 +1115,15 @@ if OD_PrereqsOK({
             end
             app.temp.highlightedResult = #app.temp.searchResults > 0 and 1 or nil
             app.temp.lastInvisibleGroup = nil
+            -- if recieving track, add assign all results to ALL_TRACKS_GROUP and sort them by track order
+            if app.temp.addSendType == SEND_TYPE.RECV then
+                table.sort(app.temp.searchResults, function(a, b)
+                    return a.order < b.order
+                end)
+                for i, result in ipairs(app.temp.searchResults) do
+                    result.group = ALL_TRACKS_GROUP
+                end
+            end
         end
 
         local ctx = app.gui.ctx
@@ -1285,7 +1298,8 @@ if OD_PrereqsOK({
                 app.temp.addFxToSend:addInsert(selectedResult.load)
                 app.temp.addFxToSend = nil
             elseif app.page == APP_PAGE.SEARCH_SEND then
-                app.db:createNewSend(app.temp.addSendType, selectedResult.type, selectedResult.load, selectedResult.searchText[1].text)
+                app.db:createNewSend(app.temp.addSendType, selectedResult.type, selectedResult.load,
+                    selectedResult.searchText[1].text)
             end
             app.setPage(APP_PAGE.MIXER)
         end
@@ -1313,9 +1327,9 @@ if OD_PrereqsOK({
             ImGui.SameLine(ctx)
             ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + app.gui.TEXT_BASE_HEIGHT / 2)
             ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + app.gui.TEXT_BASE_WIDTH)
-            local x, y = ImGui.GetCursorScreenPos(ctx)
-            local sz = app.gui.TEXT_BASE_WIDTH * 1.5
-            local th = 3
+            -- local x, y = ImGui.GetCursorScreenPos(ctx)
+            -- local sz = app.gui.TEXT_BASE_WIDTH * 1.5
+            -- local th = 3
             -- ImGui.DrawList_AddBezierQuadratic(app.gui.draw_list,
             --     x, y, app.temp.addSendBtnX, y, app.temp.addSendBtnX, app.temp.addSendBtnY,
             --     app.gui.st.basecolors.main, th, 20)
