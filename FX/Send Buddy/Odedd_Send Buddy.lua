@@ -204,8 +204,8 @@ if OD_PrereqsOK({
         if page == APP_PAGE.MIXER then
             if app.db.track.object == nil then
                 page = APP_PAGE.NO_TRACK
-            -- elseif app.db.totalSends == 0 then
-            --     page = APP_PAGE.NO_SENDS
+                -- elseif app.db.totalSends == 0 then
+                --     page = APP_PAGE.NO_SENDS
             end
         end
         if page ~= app.page then
@@ -235,7 +235,7 @@ if OD_PrereqsOK({
         for i, type in pairs(SEND_TYPE) do
             visibleSendNum = visibleSendNum +
                 (app.settings.current.sendTypeVisibility[type] and app.db.numSends[type] or 0)
-            visibleSendTypes = 3 
+            visibleSendTypes = 3
             --visibleSendTypes + (app.settings.current.sendTypeVisibility[type] and ((app.db.numSends[type] > 0) and 1 or 0) or 0)
         end
         local w = (app.settings.current.sendWidth + ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ItemSpacing)) *
@@ -832,153 +832,15 @@ if OD_PrereqsOK({
 
         -- ImGui.BeginGroup(ctx)
         -- if next(app.db.sends) then
-            local h = -app.gui.vars.framePaddingY +
-                (app.settings.current.maxNumInserts + 1) *
-                (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2)
-            -- local w = math.max(app.gui.mainWindow.max_w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2,
-            -- select(1, ImGui.GetContentRegionAvail(ctx)))
-            -- r.ShowConsoleMsg(w .. '\n')
-            local w = app.gui.mainWindow.mixer_w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2
-            -- r.ShowConsoleMsg(w .. '\n')
-            if ImGui.BeginChild(ctx, "##inserts", w, h, ImGui.ChildFlags_None) then
-                for _, type in ipairs(app.settings.current.sendTypeOrder) do
-                    local count = 0
-                    for i, s in pairs(app.db.sends) do
-                        if s.type == type then
-                            count = count + 1
-                        end
-                    end
-
-                    ImGui.BeginGroup(ctx)
-                    -- r.ShowConsoleMsg(SEND_TYPE_NAMES[type]..'\n')
-                    -- ImGui.SetCursorScreenPos(ctx, left, top + h + app.gui.TEXT_BASE_HEIGHT)
-                    ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
-                    app.gui:pushStyles(app.gui.st.vars.addSendButton)
-                    app.gui:pushColors(app.gui.st.col.buttons.addSend)
-                    if ImGui.Button(ctx, ICONS.PLUS .. '##addSends' .. type, app.gui.st.sizes.sendTypeSeparatorWidth, app.gui.st.sizes.sendTypeSeparatorWidth) then
-                        if type == SEND_TYPE.SEND then
-                            app.temp.addSendType = SEND_TYPE.SEND
-                            app.setPage(APP_PAGE.SEARCH_SEND)
-                        else
-                            app.temp.addSendType = type
-                            r.ShowConsoleMsg(SEND_TYPE_NAMES[type] .. '\n')
-                        end
-                            -- app.setPage(APP_PAGE.SEARCH_SEND)
-                    end
-                    app.gui:popColors(app.gui.st.col.buttons.addSend)
-                    app.gui:popStyles(app.gui.st.vars.addSendButton)
-                    ImGui.PopFont(ctx)
-                    -- ImGui.Dummy(ctx, app.gui.st.sizes.sendTypeSeparatorWidth, 0)
-                    ImGui.EndGroup(ctx)
-                    ImGui.SameLine(ctx)
-                    if count > 0 then
-                        if type ~= SEND_TYPE.SEND then
-                            local left, top = ImGui.GetCursorScreenPos(ctx)
-                            local insertsPadding = 1
-                            local fillerW, fillerH = insertsPadding +
-                            (app.settings.current.sendWidth + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))) *
-                            count - select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)),insertsPadding +
-                            (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2) *
-                            (app.settings.current.maxNumInserts + 1) -
-                            select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
-
-                            ImGui.SameLine(ctx)
-                            ImGui.DrawList_AddRectFilled(app.gui.draw_list, left - insertsPadding, top - insertsPadding,
-                                left + fillerW,
-                                top + fillerH,
-                                gui.st.basecolors.darkestBG, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
-                        end
-                        for i, s in OD_PairsByOrder(app.db.sends) do
-                            if s.type == type then
-                                ImGui.BeginGroup(ctx)
-                                if type == SEND_TYPE.SEND then
-                                    drawSend(s, { name = 'inserts' })
-                                else
-                                    ImGui.Dummy(ctx, app.settings.current.sendWidth, 0)
-                                end
-                                ImGui.EndGroup(ctx)
-                                ImGui.SameLine(ctx)
-                            end
-                        end
-                    end
-                end
-                ImGui.EndChild(ctx)
-            end
-            local w = math.max(w, select(1, ImGui.GetContentRegionAvail(ctx)))
-            -- w = 200
-            ImGui.InvisibleButton(ctx, '##separator', w, 3)
-
-            if ImGui.IsItemHovered(ctx) then
-                app:setHoveredHint('main', 'Scroll to change number of inserts')
-                ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeNS)
-            end
-            if ImGui.IsItemActive(ctx) then
-                ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeNS)
-                local value_with_lock_threshold_x, value_with_lock_threshold_y = ImGui.GetMouseDragDelta(ctx, nil,
-                    nil,
-                    ImGui.MouseButton_Left)
-                if value_with_lock_threshold_y ~= 0 then
-                    if value_with_lock_threshold_y > 0 + app.gui.TEXT_BASE_HEIGHT_SMALL then
-                        app.settings.current.maxNumInserts = app.settings.current.maxNumInserts + 1
-                        app.settings:save()
-                        ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
-                        -- app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.calculateMixerSize()
-                        app.refreshWindowSizeOnNextFrame = true
-                    elseif app.settings.current.maxNumInserts > 0 and value_with_lock_threshold_y < 0 - app.gui.TEXT_BASE_HEIGHT_SMALL then
-                        app.settings.current.maxNumInserts = app.settings.current.maxNumInserts - 1
-                        app.settings:save()
-                        ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
-                        -- app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.calculateMixerSize()
-                        app.refreshWindowSizeOnNextFrame = true
-                    end
-                end
-            end
-            ImGui.SetCursorPosY(ctx,
-                ImGui.GetCursorPosY(ctx) - 2 - select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)))
-            ImGui.SetNextItemWidth(ctx, w)
-            local x, y = ImGui.GetCursorScreenPos(ctx)
-            ImGui.DrawList_AddLine(app.gui.draw_list, x, y - 2,
-                x + w, y - 2, gui.st.basecolors.midBG, 1)
-            ImGui.DrawList_AddLine(app.gui.draw_list, x, y + 1,
-                x + w, y + 1, gui.st.basecolors.midBG, 1)
-            ImGui.SetCursorPosY(ctx,
-                ImGui.GetCursorPosY(ctx) + 2 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)))
-
-
-            local parts = {
-                { { name = 'mute' },   { name = 'solo' } },
-                { { name = 'phase' },  { name = 'listen', listenMode = SEND_LISTEN_MODES.NORMAL } },
-                { name = 'modebutton' },
-                { name = 'routebutton' },
-                { name = 'pan' },
-                { name = 'fader' },
-                { name = 'volLabel' },
-                { name = 'sendName' }
-            }
-            if altPressed then
-                parts = {
-                    { { name = 'mute' },       { name = 'solod' } },
-                    { { name = 'phase' },      { name = 'listen', listenMode = SEND_LISTEN_MODES.RETURN_ONLY } },
-                    { name = 'scrollToTrack' },
-                    { name = 'midiroutebutton' },
-                    { name = 'pan' },
-                    { name = 'fader' },
-                    { name = 'deletesend' },
-                    { name = 'sendName' }
-                }
-            end
-            if shiftPressed then
-                parts = {
-                    { name = 'envmute' },
-                    { name = 'envpan' },
-                    { name = 'envvol' },
-                    { name = 'dummy',   color = app.gui.st.col.buttons.env },
-                    { name = 'sendName' }
-                }
-            end
-            -- ImGui.BeginGroup(ctx)
-            local scrollMaxY = ImGui.GetScrollMaxY(ctx)
-            local totalH     = select(2, ImGui.GetContentRegionAvail(ctx))
+        local h = -app.gui.vars.framePaddingY +
+            (app.settings.current.maxNumInserts + 1) *
+            (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2)
+        -- local w = math.max(app.gui.mainWindow.max_w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2,
+        -- select(1, ImGui.GetContentRegionAvail(ctx)))
+        -- r.ShowConsoleMsg(w .. '\n')
+        local w = app.gui.mainWindow.mixer_w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2
+        -- r.ShowConsoleMsg(w .. '\n')
+        if ImGui.BeginChild(ctx, "##inserts", w, h, ImGui.ChildFlags_None) then
             for _, type in ipairs(app.settings.current.sendTypeOrder) do
                 local count = 0
                 for i, s in pairs(app.db.sends) do
@@ -988,48 +850,212 @@ if OD_PrereqsOK({
                 end
 
                 ImGui.BeginGroup(ctx)
-                local left, top = ImGui.GetCursorScreenPos(ctx)
-                local w, h      = app.gui.st.sizes.sendTypeSeparatorWidth,
-                    app.gui.st.sizes.sendTypeSeparatorHeight
-                -- r.ShowConsoleMsg(ImGui.GetScrollMaxY(ctx)..'\n')
-                ImGui.DrawList_AddLine(app.gui.draw_list, left + w, top, left + w, top + totalH,
-                    gui.st.basecolors.mainDark)
+                -- r.ShowConsoleMsg(SEND_TYPE_NAMES[type]..'\n')
+                -- ImGui.SetCursorScreenPos(ctx, left, top + h + app.gui.TEXT_BASE_HEIGHT)
+                ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                app.gui:pushStyles(app.gui.st.vars.addSendButton)
+                app.gui:pushColors(app.gui.st.col.buttons.addSend)
+                if ImGui.Button(ctx, ICONS.PLUS .. '##addSends' .. type, app.gui.st.sizes.sendTypeSeparatorWidth, app.gui.st.sizes.sendTypeSeparatorWidth) then
+                    if type == SEND_TYPE.HW then
+                        ImGui.OpenPopup(ctx, '##newHWSendMenu')
+                    else     -- TODO: IMPLEMENT RECV
+                        app.temp.addSendType = type
+                        app.setPage(APP_PAGE.SEARCH_SEND)
+                    end
+                    -- app.setPage(APP_PAGE.SEARCH_SEND)
+                end
 
-                local points = reaper.new_array({
-                    left, top + h + 40,
-                    left + w, top + h,
-                    left + w, top + totalH,
-                    left, top + totalH
-                })
-                local text = SEND_TYPE_NAMES[type]
-                ImGui.PushFont(ctx, app.gui.st.fonts.vertical)
-                ImGui.DrawList_AddConvexPolyFilled(app.gui.draw_list, points,
-                    gui.st.basecolors.mainDark)
-                local textTop = top + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
-                local textLeft = left + w - select(2, ImGui.CalcTextSize(ctx, text))
-                app.gui:drawVerticalText(app.gui.draw_list, text, textLeft,
-                    textTop + select(1, ImGui.CalcTextSize(ctx, text)), gui.st.basecolors.text)
+                app.gui:popColors(app.gui.st.col.buttons.addSend)
+                app.gui:popStyles(app.gui.st.vars.addSendButton)
                 ImGui.PopFont(ctx)
-                ImGui.Dummy(ctx, app.gui.st.sizes.sendTypeSeparatorWidth, 1)
+                if type == SEND_TYPE.HW then
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 350, 300.0, nil)
+                    if ImGui.BeginPopup(ctx, '##newHWSendMenu') then
+                        ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, 350, 300.0, nil)
+                        if ImGui.BeginMenu(ctx, 'Downmix to mono') then
+                            for j = 0, NUM_CHANNELS - 1 do
+                                if ImGui.MenuItem(ctx, OUTPUT_CHANNEL_NAMES[j + 1], nil, false, true) then
+                                    r.ShowConsoleMsg((j + 1024) .. '\n')
+                                    -- s:setDestChan(i + 1024)
+                                end
+                            end
+                            ImGui.EndMenu(ctx)
+                        end
+
+                        for j = 0, NUM_CHANNELS - app.db.track.numChannels do
+                            local label = ((OUTPUT_CHANNEL_NAMES[j + 1] .. '/' .. OUTPUT_CHANNEL_NAMES[j + 2]))
+                            if ImGui.MenuItem(ctx, label, nil, false, true) then
+                                -- s:setDestChan(i)
+                                r.ShowConsoleMsg((j) .. '\n')
+                            end
+                        end
+                        app.focusMainReaperWindow = false
+                        ImGui.EndPopup(ctx)
+                    end
+                end
+
+                -- ImGui.Dummy(ctx, app.gui.st.sizes.sendTypeSeparatorWidth, 0)
                 ImGui.EndGroup(ctx)
                 ImGui.SameLine(ctx)
                 if count > 0 then
-                    ImGui.BeginGroup(ctx)
-                    for j, part in ipairs(parts) do
-                        ImGui.BeginGroup(ctx)
-                        for i, s in OD_PairsByOrder(app.db.sends) do
-                            if s.type == type then
-                                drawSend(s, part)
-                                ImGui.SameLine(ctx)
-                            end
-                        end
-                        ImGui.EndGroup(ctx)
+                    if type ~= SEND_TYPE.SEND then
+                        local left, top = ImGui.GetCursorScreenPos(ctx)
+                        local insertsPadding = 1
+                        local fillerW, fillerH = insertsPadding +
+                            (app.settings.current.sendWidth + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))) *
+                            count - select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)), insertsPadding +
+                            (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2) *
+                            (app.settings.current.maxNumInserts + 1) -
+                            select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
+
+                        ImGui.SameLine(ctx)
+                        ImGui.DrawList_AddRectFilled(app.gui.draw_list, left - insertsPadding, top - insertsPadding,
+                            left + fillerW,
+                            top + fillerH,
+                            gui.st.basecolors.darkestBG, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
                     end
-                    ImGui.EndGroup(ctx)
-                    ImGui.SameLine(ctx)
+                    for i, s in OD_PairsByOrder(app.db.sends) do
+                        if s.type == type then
+                            ImGui.BeginGroup(ctx)
+                            if type == SEND_TYPE.SEND then
+                                drawSend(s, { name = 'inserts' })
+                            else
+                                ImGui.Dummy(ctx, app.settings.current.sendWidth, 0)
+                            end
+                            ImGui.EndGroup(ctx)
+                            ImGui.SameLine(ctx)
+                        end
+                    end
                 end
             end
-            -- ImGui.EndGroup(ctx)
+            ImGui.EndChild(ctx)
+        end
+        local w = math.max(w, select(1, ImGui.GetContentRegionAvail(ctx)))
+        -- w = 200
+        ImGui.InvisibleButton(ctx, '##separator', w, 3)
+
+        if ImGui.IsItemHovered(ctx) then
+            app:setHoveredHint('main', 'Scroll to change number of inserts')
+            ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeNS)
+        end
+        if ImGui.IsItemActive(ctx) then
+            ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeNS)
+            local value_with_lock_threshold_x, value_with_lock_threshold_y = ImGui.GetMouseDragDelta(ctx, nil,
+                nil,
+                ImGui.MouseButton_Left)
+            if value_with_lock_threshold_y ~= 0 then
+                if value_with_lock_threshold_y > 0 + app.gui.TEXT_BASE_HEIGHT_SMALL then
+                    app.settings.current.maxNumInserts = app.settings.current.maxNumInserts + 1
+                    app.settings:save()
+                    ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
+                    -- app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.calculateMixerSize()
+                    app.refreshWindowSizeOnNextFrame = true
+                elseif app.settings.current.maxNumInserts > 0 and value_with_lock_threshold_y < 0 - app.gui.TEXT_BASE_HEIGHT_SMALL then
+                    app.settings.current.maxNumInserts = app.settings.current.maxNumInserts - 1
+                    app.settings:save()
+                    ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
+                    -- app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.calculateMixerSize()
+                    app.refreshWindowSizeOnNextFrame = true
+                end
+            end
+        end
+        ImGui.SetCursorPosY(ctx,
+            ImGui.GetCursorPosY(ctx) - 2 - select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)))
+        ImGui.SetNextItemWidth(ctx, w)
+        local x, y = ImGui.GetCursorScreenPos(ctx)
+        ImGui.DrawList_AddLine(app.gui.draw_list, x, y - 2,
+            x + w, y - 2, gui.st.basecolors.midBG, 1)
+        ImGui.DrawList_AddLine(app.gui.draw_list, x, y + 1,
+            x + w, y + 1, gui.st.basecolors.midBG, 1)
+        ImGui.SetCursorPosY(ctx,
+            ImGui.GetCursorPosY(ctx) + 2 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)))
+
+
+        local parts = {
+            { { name = 'mute' },   { name = 'solo' } },
+            { { name = 'phase' },  { name = 'listen', listenMode = SEND_LISTEN_MODES.NORMAL } },
+            { name = 'modebutton' },
+            { name = 'routebutton' },
+            { name = 'pan' },
+            { name = 'fader' },
+            { name = 'volLabel' },
+            { name = 'sendName' }
+        }
+        if altPressed then
+            parts = {
+                { { name = 'mute' },       { name = 'solod' } },
+                { { name = 'phase' },      { name = 'listen', listenMode = SEND_LISTEN_MODES.RETURN_ONLY } },
+                { name = 'scrollToTrack' },
+                { name = 'midiroutebutton' },
+                { name = 'pan' },
+                { name = 'fader' },
+                { name = 'deletesend' },
+                { name = 'sendName' }
+            }
+        end
+        if shiftPressed then
+            parts = {
+                { name = 'envmute' },
+                { name = 'envpan' },
+                { name = 'envvol' },
+                { name = 'dummy',   color = app.gui.st.col.buttons.env },
+                { name = 'sendName' }
+            }
+        end
+        -- ImGui.BeginGroup(ctx)
+        local scrollMaxY = ImGui.GetScrollMaxY(ctx)
+        local totalH     = select(2, ImGui.GetContentRegionAvail(ctx))
+        for _, type in ipairs(app.settings.current.sendTypeOrder) do
+            local count = 0
+            for i, s in pairs(app.db.sends) do
+                if s.type == type then
+                    count = count + 1
+                end
+            end
+
+            ImGui.BeginGroup(ctx)
+            local left, top = ImGui.GetCursorScreenPos(ctx)
+            local w, h      = app.gui.st.sizes.sendTypeSeparatorWidth,
+                app.gui.st.sizes.sendTypeSeparatorHeight
+            -- r.ShowConsoleMsg(ImGui.GetScrollMaxY(ctx)..'\n')
+            ImGui.DrawList_AddLine(app.gui.draw_list, left + w, top, left + w, top + totalH,
+                gui.st.basecolors.mainDark)
+
+            local points = reaper.new_array({
+                left, top + h + 40,
+                left + w, top + h,
+                left + w, top + totalH,
+                left, top + totalH
+            })
+            local text = SEND_TYPE_NAMES[type]
+            ImGui.PushFont(ctx, app.gui.st.fonts.vertical)
+            ImGui.DrawList_AddConvexPolyFilled(app.gui.draw_list, points,
+                gui.st.basecolors.mainDark)
+            local textTop = top + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
+            local textLeft = left + w - select(2, ImGui.CalcTextSize(ctx, text))
+            app.gui:drawVerticalText(app.gui.draw_list, text, textLeft,
+                textTop + select(1, ImGui.CalcTextSize(ctx, text)), gui.st.basecolors.text)
+            ImGui.PopFont(ctx)
+            ImGui.Dummy(ctx, app.gui.st.sizes.sendTypeSeparatorWidth, 1)
+            ImGui.EndGroup(ctx)
+            ImGui.SameLine(ctx)
+            if count > 0 then
+                ImGui.BeginGroup(ctx)
+                for j, part in ipairs(parts) do
+                    ImGui.BeginGroup(ctx)
+                    for i, s in OD_PairsByOrder(app.db.sends) do
+                        if s.type == type then
+                            drawSend(s, part)
+                            ImGui.SameLine(ctx)
+                        end
+                    end
+                    ImGui.EndGroup(ctx)
+                end
+                ImGui.EndGroup(ctx)
+                ImGui.SameLine(ctx)
+            end
+        end
+        -- ImGui.EndGroup(ctx)
         -- end
         ImGui.PopFont(ctx)
         -- ImGui.EndGroup(ctx)
@@ -1427,8 +1453,8 @@ if OD_PrereqsOK({
                 app.gui.mainWindow.dockTo = 0
             elseif btn == 'dock_down' then
                 app.gui.mainWindow.dockTo = app.settings.current.lastDockId
-            -- elseif btn == 'plus' then
-            --     app.setPage(APP_PAGE.SEARCH_SEND)
+                -- elseif btn == 'plus' then
+                --     app.setPage(APP_PAGE.SEARCH_SEND)
             elseif btn == 'gear' then -- TODO: Settings window!
                 -- app.setPage(APP_PAGE.SETTINGS)
             elseif btn == 'right' then
@@ -1495,8 +1521,8 @@ if OD_PrereqsOK({
                     if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then open = false end
                 elseif app.page == APP_PAGE.SEARCH_SEND or app.page == APP_PAGE.SEARCH_FX then
                     app.drawSearch()
-                -- elseif app.page == APP_PAGE.NO_SENDS then
-                --     app.drawErrorNoSends()
+                    -- elseif app.page == APP_PAGE.NO_SENDS then
+                    --     app.drawErrorNoSends()
                 elseif app.page == APP_PAGE.NO_TRACK then
                     app.drawErrorNoTrack()
                 end

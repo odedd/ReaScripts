@@ -188,7 +188,7 @@ DB = {
                             local numChannels = SRC_CHANNELS[srcChan].numChannels +
                             (srcChan >= 1024 and math.fmod(srcChan, 512) or srcChan)
                             local nearestEvenChannel = math.ceil(numChannels / 2) * 2
-                            local srcChanChannelCount = reaper.GetMediaTrackInfo_Value(targetTrack.object, 'I_NCHAN')
+                            local srcChanChannelCount = targetTrack.numChannels
                             if srcChanChannelCount < numChannels then
                                 reaper.SetMediaTrackInfo_Value(targetTrack.object, 'I_NCHAN', nearestEvenChannel)
                             end
@@ -218,7 +218,7 @@ DB = {
                             local numChannels = SRC_CHANNELS[self.srcChan].numChannels +
                                 (destChan >= 1024 and destChan - 1024 or destChan)
                             local nearestEvenChannel = math.ceil(numChannels / 2) * 2
-                            local destChanChannelCount = reaper.GetMediaTrackInfo_Value(self.destTrack.object, 'I_NCHAN')
+                            local destChanChannelCount = self.destTrack.numChannels
                             if destChanChannelCount < numChannels then
                                 reaper.SetMediaTrackInfo_Value(self.destTrack.object, 'I_NCHAN', nearestEvenChannel)
                             end
@@ -510,6 +510,7 @@ DB.getTracks = function(self)
         local trackColor = reaper.GetTrackColor(track)
         local trackGuid = reaper.GetTrackGUID(track)
         local hasReceives = reaper.GetTrackNumSends(track, -1) > 0
+        local numChannels = reaper.GetMediaTrackInfo_Value(track, 'I_NCHAN') 
         local _, rawSsoloMatrix = r.GetSetMediaTrackInfo_String(track, "P_EXT:" .. Scr.ext_name ..
             '_SOLO_MATRIX', "", false)
         local _, rawOrigMuteMatrix = r.GetSetMediaTrackInfo_String(track, "P_EXT:" .. Scr.ext_name ..
@@ -528,6 +529,7 @@ DB.getTracks = function(self)
             name = trackName,
             guid = trackGuid,
             color = trackColor,
+            numChannels = numChannels,
             hasReceives = hasReceives,
             soloMatrix = soloMatrix,
             origMuteMatrix = origMuteMatrix,
