@@ -34,6 +34,8 @@ SM_Gui.init = function(self, fonts)
         hovered = 0xa4a4a4ff,
         active = 0xa4a4a4ff,
         main = 0x953745ff,
+        mainDarkest = 0x170003ff,
+        mainDarker = 0x270f13ff,
         mainDark = 0x371f23ff,
         mainBright = 0xb73849ff,
         mainBrighter = 0xc74859ff,
@@ -236,6 +238,11 @@ SM_Gui.init = function(self, fonts)
             }
         },
         main = {
+            [ImGui.Col_Tab] = self.st.basecolors.darkHovered,
+            [ImGui.Col_TabHovered] = self.st.basecolors.darkActive,
+            [ImGui.Col_TabActive] = self.st.basecolors.darkActive,
+            [ImGui.Col_TabUnfocused] = self.st.basecolors.darkBG,
+            [ImGui.Col_TabUnfocusedActive] = self.st.basecolors.darkBG,
             [ImGui.Col_FrameBg] = self.st.basecolors.darkBG,
             [ImGui.Col_FrameBgHovered] = self.st.basecolors.darkHovered,
             [ImGui.Col_FrameBgActive] = self.st.basecolors.darkActive,
@@ -250,6 +257,11 @@ SM_Gui.init = function(self, fonts)
             [ImGui.Col_ResizeGrip] = self.st.basecolors.darkBG,
             [ImGui.Col_ResizeGripHovered] = self.st.basecolors.mainDark,
             [ImGui.Col_ResizeGripActive] = self.st.basecolors.main,
+            [ImGui.Col_ScrollbarGrabHovered] = self.st.basecolors.main,
+            [ImGui.Col_ScrollbarGrabActive] = self.st.basecolors.mainBright,
+            [ImGui.Col_SeparatorHovered] = self.st.basecolors.main,
+            [ImGui.Col_SeparatorActive] = self.st.basecolors.mainBright,
+            [ImGui.Col_PopupBg] = self.st.basecolors.mainDarkest,
         },
         title = {
             [ImGui.Col_Text] = self.st.basecolors.mainBright,
