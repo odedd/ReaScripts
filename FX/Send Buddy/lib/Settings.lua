@@ -25,10 +25,7 @@ SM_Settings = OD_Settings:new({
         sendWidth = 60,
         scaleFactor = 2, -- fader scale factor above scaleLevel
         scaleLevel = -20,
-        favorites = {
-            ASSETS.PLUGIN .. ' ' .. 'VST3: Pro-Q 3 (FabFilter)',
-            ASSETS.PLUGIN .. ' ' .. 'VST3: ValhallaVintageVerb (Valhalla DSP, LLC)'
-        },
+        favorites = {},
         groupPriority = {
             ["VST3"] = 1,
             ["VST3i"] = 2,

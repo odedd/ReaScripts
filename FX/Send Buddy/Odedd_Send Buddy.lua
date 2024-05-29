@@ -1531,7 +1531,7 @@ if OD_PrereqsOK({
         ImGui.SetCursorPos(ctx, app.gui.mainWindow.size[1] - w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) - gripWidth, app.gui.mainWindow.size[2] - (app.gui.mainWindow.hintHeight + app.gui.TEXT_BASE_HEIGHT_SMALL)/2 - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))
         ImGui.SetNextItemWidth(ctx, w)
         local rv, v = ImGui.SliderInt(ctx, '##zoom', app.settings.current.sendWidth, minZoom, maxZoom, '')
-        local shouldReset, v = app.resetOnDoubleClick('##zoom', v, app.settings.default.sendWidth)
+        local shouldReset, v = app.resetOnDoubleClick('##zoom', v, app.settings.default.sendWidth) -- BUG: default zoom not loading
 
         ImGui.PopFont(ctx)
         app.gui:popColors(app.gui.st.col.zoomSlider)
