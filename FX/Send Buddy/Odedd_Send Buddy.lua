@@ -171,7 +171,7 @@ if OD_PrereqsOK({
             -- app.settings.current.lastWindowWidth = app.gui.mainWindow.size and app.gui.mainWindow.size[1] or width
             local minHeight = app.page.minHeight or 0
             if app.page == APP_PAGE.MIXER then
-                width, minHeight = app.calculateMixerSize()
+                width, minHeight = app.calculateMixerWindowSize()
                 app.gui.mainWindow.mixer_w = width
             end
             app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.page.width,
@@ -214,7 +214,7 @@ if OD_PrereqsOK({
         end
     end
 
-    function app.calculateMixerSize()
+    function app.calculateMixerWindowSize()
         -- top bar
         local wPadding = ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_WindowPadding)
         local vSpacing = select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ItemSpacing))
@@ -227,7 +227,7 @@ if OD_PrereqsOK({
         local sendsH = 8 * (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2) + vSpacing +
             app.gui.st.sizes.minFaderHeight
         local h = wPadding + topBarH + insertsH + vSpacing + separatorH + vSpacing + sendsH + vSpacing +
-            app.gui.mainWindow.hintHeight + wPadding
+            app.gui.mainWindow.hintHeight
 
         local shouldScroll = app.db.maxNumInserts > app.settings.current.maxNumInserts
         local visibleSendNum = 0
@@ -1311,7 +1311,7 @@ if OD_PrereqsOK({
         local w, h =
             select(1, ImGui.GetContentRegionAvail(ctx)) -
             ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2,
-            select(2, ImGui.GetContentRegionAvail(ctx)) - app.gui.mainWindow.hintHeight
+            select(2, ImGui.GetContentRegionAvail(ctx)) -- app.gui.mainWindow.hintHeight
         if ImGui.BeginChild(ctx, '##noSends', w, h, nil, nil) then
             ImGui.Dummy(ctx, w, h)
             ImGui.SetCursorPos(ctx, w / 2,
@@ -1354,7 +1354,7 @@ if OD_PrereqsOK({
         local w, h =
             select(1, ImGui.GetContentRegionAvail(ctx)) -
             ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2,
-            select(2, ImGui.GetContentRegionAvail(ctx)) - app.gui.mainWindow.hintHeight
+            select(2, ImGui.GetContentRegionAvail(ctx)) -- app.gui.mainWindow.hintHeight
         if ImGui.BeginChild(ctx, '##noTrack', w, h, nil, nil) then
             ImGui.Dummy(ctx, w, h)
             ImGui.SetCursorPos(ctx, w / 2,
