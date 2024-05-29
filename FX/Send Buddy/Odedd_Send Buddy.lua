@@ -1449,7 +1449,8 @@ if OD_PrereqsOK({
         ImGui.BeginDisabled(ctx)
         local caption = app.db.track and app.db.track.name or ''
         if app.page == APP_PAGE.SEARCH_SEND then
-            caption = 'Add Send to track \'' .. app.db.track.name .. '\''
+            caption = ('Add %s to track \'%s\''):format(app.temp.addSendType == SEND_TYPE.SEND and 'send' or 'receive',
+                app.db.track.name)
         end
         ImGui.Text(ctx, ' ' .. caption)
         ImGui.EndDisabled(ctx)
