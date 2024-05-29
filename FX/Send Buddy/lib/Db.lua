@@ -741,7 +741,7 @@ DB.assembleAssets = function(self)
         table.insert(self.assets, {
             type = ASSETS.PLUGIN,
             searchText = { { text = plugin.name }, { text = plugin.vendor or '' }, { text = plugin.fx_type, hide = true } },
-            load = plugin.full_name,
+            load = plugin.ident,
             group = plugin.group,
             vendor = plugin.vendor,
             fx_type = plugin.fx_type
