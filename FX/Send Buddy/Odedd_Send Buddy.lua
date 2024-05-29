@@ -78,8 +78,8 @@ if OD_PrereqsOK({
         end
     end
 
-    -- local settings = SM_Settings
-    app:connect('settings', SM_Settings)
+    local settings = SM_Settings:new({})
+    app:connect('settings', settings)
 
     ---------------------------------------
     -- Functions --------------------------
@@ -857,19 +857,16 @@ if OD_PrereqsOK({
                 end
 
                 ImGui.BeginGroup(ctx)
-                -- r.ShowConsoleMsg(SEND_TYPE_NAMES[type]..'\n')
-                -- ImGui.SetCursorScreenPos(ctx, left, top + h + app.gui.TEXT_BASE_HEIGHT)
                 ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
                 app.gui:pushStyles(app.gui.st.vars.addSendButton)
                 app.gui:pushColors(app.gui.st.col.buttons.addSend)
                 if ImGui.Button(ctx, ICONS.PLUS .. '##addSends' .. type, app.gui.st.sizes.sendTypeSeparatorWidth, app.gui.st.sizes.sendTypeSeparatorWidth) then
                     if type == SEND_TYPE.HW then
                         ImGui.OpenPopup(ctx, '##newHWSendMenu')
-                    else -- TODO: IMPLEMENT RECV
+                    else
                         app.temp.addSendType = type
                         app.setPage(APP_PAGE.SEARCH_SEND)
                     end
-                    -- app.setPage(APP_PAGE.SEARCH_SEND)
                 end
 
                 app.gui:popColors(app.gui.st.col.buttons.addSend)
@@ -891,7 +888,6 @@ if OD_PrereqsOK({
                         for j = 0, app.db.numAudioOutputs - 2 do
                             local label = ((OUTPUT_CHANNEL_NAMES[j + 1] .. '/' .. OUTPUT_CHANNEL_NAMES[j + 2]))
                             if ImGui.MenuItem(ctx, label, nil, false, true) then
-                                -- s:setDestChan(i)
                                 app.db:createNewSend(type, j)
                             end
                         end
@@ -1524,6 +1520,31 @@ if OD_PrereqsOK({
         app:setHint(window, '')
     end
 
+    function app.drawZoom()
+        local ctx = app.gui.ctx
+        local w = 100
+        local gripWidth = 20
+        local minZoom, maxZoom = 45, 110
+        ImGui.PushFont(ctx, app.gui.st.fonts.small)
+        app.gui:pushStyles(app.gui.st.vars.zoomSlider)
+        app.gui:pushColors(app.gui.st.col.zoomSlider)
+        ImGui.SetCursorPos(ctx, app.gui.mainWindow.size[1] - w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) - gripWidth, app.gui.mainWindow.size[2] - (app.gui.mainWindow.hintHeight + app.gui.TEXT_BASE_HEIGHT_SMALL)/2 - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))
+        ImGui.SetNextItemWidth(ctx, w)
+        local rv, v = ImGui.SliderInt(ctx, '##zoom', app.settings.current.sendWidth, minZoom, maxZoom, '')
+        local shouldReset, v = app.resetOnDoubleClick('##zoom', v, app.settings.default.sendWidth)
+
+        ImGui.PopFont(ctx)
+        app.gui:popColors(app.gui.st.col.zoomSlider)
+        app.gui:popStyles(app.gui.st.vars.zoomSlider)
+        if rv or shouldReset then
+            app.settings.current.sendWidth = v
+            app.db:recalculateShortNames()
+            app.settings:save()
+            app.refreshWindowSizeOnNextFrame = true
+        end
+        -- app:setHint('', '')
+    end
+
     function app.drawMainWindow()
         local ctx = app.gui.ctx
 
@@ -1575,6 +1596,7 @@ if OD_PrereqsOK({
                 ImGui.EndChild(ctx)
             end
             app.drawHint('main')
+            app.drawZoom()
             ImGui.End(ctx)
         end
         return open

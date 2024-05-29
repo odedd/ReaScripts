@@ -263,7 +263,7 @@ DB = {
                             self.db:_reflectSolos(true)
                             self.db:save()
                         end,
-                        isListening = function(self) -- TODO Should add a counter to check if there are any other sends to the same destination
+                        isListening = function(self)
                             return self.track.sendListen == self.guid
                         end,
                         toggleListen = function(self, listenMode)
@@ -363,8 +363,12 @@ DB = {
                     if send.type == SEND_TYPE.HW then 
                         send.name = send:_getChannelAlias() 
                     end
-                    send.shortName = self.app.minimizeText(send.name, self.app.settings.current.sendWidth-r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
-                    
+                    send.calculateShortName = function(self) 
+                        self.shortName = self.app.minimizeText(send.name, self.app.settings.current.sendWidth-r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
+                    end
+                    send.app = self.app
+                    send:calculateShortName()
+
                     if send.destTrack then
                         send.destInsertsCount = r.TrackFX_GetCount(send.destTrack.object)
                         send.destInserts, send.destInsertsCount = self:getInserts(send.destTrack.object)
@@ -603,15 +607,21 @@ DB.getInserts = function(self, track)
         local _, fxName = r.TrackFX_GetFXName(track, i, '')
         local offline = r.TrackFX_GetOffline(track, i)
         local enabled = r.TrackFX_GetEnabled(track, i)
-        local shortName, shortened = self.app.minimizeText(fxName:gsub('.-%:', ''):gsub('%(.-%)$', ''),
-            self.app.settings.current.sendWidth -
-            r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
-        table.insert(inserts, {
+        -- local shortName, shortened = self.app.minimizeText(fxName:gsub('.-%:', ''):gsub('%(.-%)$', ''),
+        --     self.app.settings.current.sendWidth -
+        --     r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
+        local insert = 
+             {
             order = i,
             db = self,
             name = fxName,
-            shortName = shortName,
-            shortened = shortened,
+            shortName = fxName,
+            shortened = false,
+            calculateShortName = function(self)
+                self.shortName, self.shortened = self.db.app.minimizeText(self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''),
+                    self.db.app.settings.current.sendWidth -
+                    r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
+            end,
             offline = offline,
             enabled = enabled,
             track = track,
@@ -636,11 +646,20 @@ DB.getInserts = function(self, track)
                     return false
                 end
             end
-        })
+        }
+        insert:calculateShortName()
+        table.insert(inserts, insert)
     end
     return inserts, fxCount
 end
-
+DB.recalculateShortNames = function(self)
+    for _, send in ipairs(self.sends) do
+        for _, insert in ipairs(send.destInserts) do
+            insert:calculateShortName()
+        end
+        send:calculateShortName()
+    end
+end
 
 --- PLUGINS
 DB.addPlugin = function(self, full_name, fx_type, instrument, ident)

@@ -253,6 +253,10 @@ SM_Gui.init = function(self, fonts)
         },
         title = {
             [ImGui.Col_Text] = self.st.basecolors.mainBright,
+        },
+        zoomSlider = {
+            [ImGui.Col_SliderGrab] = self.st.basecolors.main,
+            [ImGui.Col_SliderGrabActive] = self.st.basecolors.mainBright,
         }
     }
     self.st.vars = {
@@ -278,6 +282,10 @@ SM_Gui.init = function(self, fonts)
             [ImGui.StyleVar_FrameRounding] = { 10, nil },
             [ImGui.StyleVar_FramePadding] = { 20, 10 },
         },
+        zoomSlider = {
+            [ImGui.StyleVar_GrabRounding] = { 100, nil },
+            [ImGui.StyleVar_FrameRounding] = { 100, nil },
+        }
     }
     ImGui.PushFont(self.ctx, self.st.fonts.vertical)
     self.VERTICAL_TEXT_BASE_WIDTH, self.VERTICAL_TEXT_BASE_HEIGHT = ImGui.CalcTextSize(self.ctx, 'A')
@@ -287,7 +295,7 @@ SM_Gui.init = function(self, fonts)
     self.st.sizes = {
         sendTypeSeparatorWidth = self.TEXT_BASE_HEIGHT,
         sendTypeSeparatorHeight = 95,
-        minFaderHeight = 100
+        minFaderHeight = 100,
     }
     self.st.vars.addSendButton = {
         [ImGui.StyleVar_FrameRounding] = { self.st.sizes.sendTypeSeparatorWidth, nil },
