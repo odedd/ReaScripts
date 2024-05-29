@@ -1159,6 +1159,22 @@ if OD_PrereqsOK({
                     app.temp.highlightedResult = app.temp.highlightedResult + 1
                     app.temp.checkScrollDown = true
                 end
+            elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageDown) then
+                if app.temp.highlightedResult + maxSearchResults-3 < #app.temp.searchResults then
+                    app.temp.highlightedResult = app.temp.highlightedResult + maxSearchResults-3
+                    app.temp.checkScrollDown = true
+                elseif app.temp.highlightedResult ~= #app.temp.searchResults then
+                    app.temp.highlightedResult = #app.temp.searchResults
+                    app.temp.checkScrollDown = true
+                end
+            elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageUp) then
+                if app.temp.highlightedResult - maxSearchResults-3 > 1 then
+                    app.temp.highlightedResult = app.temp.highlightedResult - maxSearchResults-3
+                    app.temp.checkScrollUp = true
+                elseif app.temp.highlightedResult ~= 1 then
+                    app.temp.highlightedResult = 1
+                    app.temp.checkScrollUp = true
+                end
             elseif ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) then
                 if app.temp.highlightedResult > 1 then
                     app.temp.highlightedResult = app.temp.highlightedResult - 1
