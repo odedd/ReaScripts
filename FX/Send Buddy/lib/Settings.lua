@@ -2,13 +2,9 @@
 
 SM_Settings = OD_Settings:new({
     default = {
--- User settings
+        -- Settings window
         mouseScrollReversed = true,
-        minSendVol = -100,
-        maxSendVol = 12,
-        maxNumInserts = 1, -- changes automatically when resizing
         followSelectedTrack = true,
-        lastDockId = nil,
         createInsideFolder = true,
         sendFolderName = 'FX BUS',
         sendTypeVisibility = {
@@ -21,11 +17,6 @@ SM_Settings = OD_Settings:new({
             SEND_TYPE.HW,
             SEND_TYPE.RECV,
         },
-        -- Permanent settings
-        sendWidth = 60,
-        scaleFactor = 2, -- fader scale factor above scaleLevel
-        scaleLevel = -20,
-        favorites = {},
         groupPriority = {
             ["VST3"] = 1,
             ["VST3i"] = 2,
@@ -38,7 +29,20 @@ SM_Settings = OD_Settings:new({
             ["CLAPi"] = 9,
             ["LV2"] = 10,
             ["LV2i"] = 11
-        }
+        },
+
+        -- Defineable in GUI
+        favorites = {},
+        sendWidth = 60, 
+        maxNumInserts = 1, -- changes automatically when resizing
+
+        -- Internal
+        lastDockId = nil,
+        -- Permanent settings
+        minSendVol = -100,
+        maxSendVol = 12,
+        scaleFactor = 2, -- fader scale factor above scaleLevel
+        scaleLevel = -20,
     },
     dfsetfile = Scr.dfsetfile
 })
@@ -49,6 +53,5 @@ function SM_Settings:new(o)
     self.__index = self
     return o
 end
-
 
 -- * local
