@@ -493,9 +493,8 @@ end
 
 --- TRACKS
 DB.getSelectedTrack = function(self)
-    if self.app.settings.current.followSelectedTrack == false and self.track ~= nil and self.track.object ~= nil and self.track ~= -1 then
-        return
-            self.track, false
+    if self.app.settings.current.followSelectedTrack == false and self.track ~= -1 and self.track ~= nil and self.track.object ~= nil then
+        return self.track, false
     end
     local track = reaper.GetLastTouchedTrack()
     if (track == nil and self.track ~= nil) or track == self.masterTrack then
@@ -795,10 +794,14 @@ DB.assembleAssets = function(self)
 end
 
 DB.sortAssets = function(self)
-    local groupPriority = OD_DeepCopy(self.app.settings.current.groupPriority)
+    local groupPriority = {}
+    for i, group in ipairs(self.app.settings.current.fxTypeOrder) do
+        groupPriority[group] = i
+    end
     groupPriority[FAVORITE_GROUP] = -2
     groupPriority[RECEIVES_GROUP] = -1
     groupPriority[TRACKS_GROUP] = 0
+
     table.sort(self.assets, function(a, b)
         local aPriority = groupPriority[a.group] or 100
         local bPriority = groupPriority[b.group] or 100

@@ -1,5 +1,5 @@
 -- @noindex
-package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
+package.path = r.ImGui_GetBuiltinPath() .. '/?.lua'
 ImGui = require 'imgui' '0.9.1'
 
 SM_Gui = OD_Gui:new({
@@ -13,7 +13,7 @@ SM_Gui.init = function(self, fonts)
     self.mainWindow.hintHeight = ImGui.GetTextLineHeightWithSpacing(self.ctx) +
         select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_FramePadding)) +
         select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_ItemSpacing)) +
-        select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_WindowPadding))-1
+        select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_WindowPadding)) - 1
 
     ImGui.PopFont(self.ctx)
 
@@ -142,14 +142,14 @@ SM_Gui.init = function(self, fonts)
                         [ImGui.Col_Button] = self.st.basecolors.widgetBG,
                         [ImGui.Col_ButtonHovered] = self.st.basecolors.hovered,
                         [ImGui.Col_ButtonActive] = self.st.basecolors.active
-    
+
                     },
                     [true] = {
-                    [ImGui.Col_Button] = 0x763fd4FF,
-                    [ImGui.Col_Text] = 0x000000ff,
-                    [ImGui.Col_ButtonHovered] = 0x864fe4ff,
-                    [ImGui.Col_ButtonActive] = 0x965ff4ff,
-                }
+                        [ImGui.Col_Button] = 0x763fd4FF,
+                        [ImGui.Col_Text] = 0x000000ff,
+                        [ImGui.Col_ButtonHovered] = 0x864fe4ff,
+                        [ImGui.Col_ButtonActive] = 0x965ff4ff,
+                    }
                 },
                 [SEND_LISTEN_MODES.RETURN_ONLY] = {
                     [false] = {
@@ -157,13 +157,13 @@ SM_Gui.init = function(self, fonts)
                         [ImGui.Col_Button] = 0x917a87ff,
                         [ImGui.Col_ButtonHovered] = 0xa18a97ff,
                         [ImGui.Col_ButtonActive] = 0xb19aa7ff
-    
+
                     },
                     [true] = {
-                    [ImGui.Col_Button] = 0xd43f93FF,
-                    [ImGui.Col_Text] = 0x000000ff,
-                    [ImGui.Col_ButtonHovered] = 0xe44fa3ff,
-                    [ImGui.Col_ButtonActive] = 0xf45fb3ff,
+                        [ImGui.Col_Button] = 0xd43f93FF,
+                        [ImGui.Col_Text] = 0x000000ff,
+                        [ImGui.Col_ButtonHovered] = 0xe44fa3ff,
+                        [ImGui.Col_ButtonActive] = 0xf45fb3ff,
                     }
                 }
             },
@@ -223,6 +223,16 @@ SM_Gui.init = function(self, fonts)
             [ImGui.Col_Header] = self.st.basecolors.mainDark,
             [ImGui.Col_HeaderHovered] = self.st.basecolors.mainDark,
         },
+        settings = {
+            selectable = {
+                [true] = {
+                    [ImGui.Col_Text] = self.st.basecolors.textBright },
+                [false] = {
+                    [ImGui.Col_Text] = self.st.basecolors.textDark,
+                }
+
+            }
+        },
         search = {
             mainResult = {
                 [ImGui.Col_Text] = self.st.basecolors.textBright,
@@ -261,7 +271,10 @@ SM_Gui.init = function(self, fonts)
             [ImGui.Col_ScrollbarGrabActive] = self.st.basecolors.mainBright,
             [ImGui.Col_SeparatorHovered] = self.st.basecolors.main,
             [ImGui.Col_SeparatorActive] = self.st.basecolors.mainBright,
-            [ImGui.Col_PopupBg] = self.st.basecolors.mainDarkest,
+            [ImGui.Col_TitleBgActive] = self.st.basecolors.mainDark,
+            [ImGui.Col_CheckMark] = self.st.basecolors.main,
+            [ImGui.Col_HeaderActive] = self.st.basecolors.main,
+            [ImGui.Col_DragDropTarget] = self.st.basecolors.mainBright,
         },
         title = {
             [ImGui.Col_Text] = self.st.basecolors.mainBright,
@@ -339,7 +352,8 @@ SM_Gui.init = function(self, fonts)
         local color = color or 0xffffffff
         ImGui.PushFont(self.ctx, self.st.fonts.vertical)
         local letterspacing = (self.VERTICAL_TEXT_BASE_HEIGHT + self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET)
-        local posX, posY = (x or select(1,ImGui.GetCursorScreenPos(self.ctx))), (y or select(2,ImGui.GetCursorScreenPos(self.ctx))) - letterspacing * #text
+        local posX, posY = (x or select(1, ImGui.GetCursorScreenPos(self.ctx))),
+            (y or select(2, ImGui.GetCursorScreenPos(self.ctx))) - letterspacing * #text
         text = text:reverse()
         for ci = 1, #text do
             -- ImGui.SetCursorPos(self.ctx, posX, posY + letterspacing * (ci - 1))
@@ -349,4 +363,101 @@ SM_Gui.init = function(self, fonts)
         ImGui.PopFont(self.ctx)
     end
 
+    self.setting = function(self, stType, text, hint, val, data, sameline)
+        local ctx = self.ctx
+        local w, h = ImGui.GetWindowSize(ctx)
+        local thirdWidth = w / 2.5
+        local itemWidth = thirdWidth * 1.5 - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
+        local data = data or {}
+        local retval1, retval2
+        local widgetWidth
+        if not sameline then
+            ImGui.BeginGroup(ctx)
+            ImGui.AlignTextToFramePadding(ctx)
+            ImGui.PushTextWrapPos(ctx, thirdWidth)
+            ImGui.Text(ctx, text)
+            ImGui.PopTextWrapPos(ctx)
+            ImGui.SameLine(ctx)
+            if stType == 'orderable_list' then
+                local x, y = ImGui.GetCursorPos(ctx)
+                ImGui.Spacing(ctx)
+                ImGui.PushStyleColor(ctx, ImGui.Col_Text, self.st.basecolors.textDark)
+                ImGui.Text(ctx, 'Drag to reorder')
+                ImGui.Text(ctx, 'Alt-click to disable')
+                ImGui.PopStyleColor(ctx)
+                ImGui.SetCursorPos(ctx, x, y)
+            end
+            ImGui.SetCursorPosX(ctx, thirdWidth)
+            widgetWidth = itemWidth
+        else
+            ImGui.SameLine(ctx)
+            widgetWidth = itemWidth - self.TEXT_BASE_WIDTH * 2 - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2
+        end
+        ImGui.PushItemWidth(ctx, widgetWidth)
+
+        if stType == 'combo' then
+            _, retval1 = ImGui.Combo(ctx, '##' .. text, val, data.list)
+        elseif stType == 'checkbox' then
+            _, retval1 = ImGui.Checkbox(ctx, '##' .. text, val)
+        elseif stType == 'dragint' then
+            _, retval1 = ImGui.DragInt(ctx, '##' .. text, val, data.step, data.min, data.max)
+        elseif stType == 'dragdouble' then
+            _, retval1 = ImGui.DragDouble(ctx, '##' .. text, val, data.speed, data.min, data.max, data.format)
+            -- format: = "%.3f"
+        elseif stType == 'button' then
+            retval1 = ImGui.Button(ctx, data.label, widgetWidth)
+        elseif stType == 'file' then
+            retval1 = val
+            if ImGui.Button(ctx, val or data.label or 'Browse...', widgetWidth) then
+                local rv, file = r.GetUserFileNameForRead(data.filename or '', data.title or '', data.defext or '');
+                retval1 = rv and file or nil
+            end
+        elseif stType == 'folder' then
+            retval1 = val
+            if ImGui.Button(ctx, val or data.label or 'Browse...', widgetWidth) then
+                local rv, folder = r.JS_Dialog_BrowseForFolder(data.title or '', data.initialPath);
+                retval1 = rv == 1 and folder or nil
+            end
+        elseif stType == 'text' then
+            _, retval1 = ImGui.InputText(ctx, '##' .. text, val)
+        elseif stType == 'text_with_hint' then
+            _, retval1 = ImGui.InputTextWithHint(ctx, '##' .. text, data.hint, val)
+        elseif stType == 'orderable_list' then
+            -- ImGui.Dummy(ctx, widgetWidth, 20)
+            local orderList, enabledList = val[1], val[2]
+            if ImGui.BeginListBox(ctx, '##' .. text, widgetWidth, #orderList * self.TEXT_BASE_HEIGHT + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))) then
+                for i, v in ipairs(orderList) do
+                    self:pushColors(self.st.col.settings.selectable[enabledList[v]])
+                    local label = T.SETTINGS.LISTS[text] and T.SETTINGS.LISTS[text][v] or v
+                    if ImGui.Selectable(ctx, label, false) then
+                        if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
+                            enabledList[v] = not enabledList[v]
+                        end
+                    end
+                    self:popColors(self.st.col.settings.selectable[enabledList[v]])
+                    if ImGui.BeginDragDropSource(ctx) then
+                        ImGui.SetDragDropPayload(ctx, text, i)
+                        ImGui.EndDragDropSource(ctx)
+                    end
+                    if ImGui.BeginDragDropTarget(ctx) then
+                        local payload, data = ImGui.AcceptDragDropPayload(ctx, text)
+                        if payload then
+                            local oldIdx = tonumber(data)
+                            table.insert(orderList, i, table.remove(orderList, oldIdx))
+                        end
+                        ImGui.EndDragDropTarget(ctx)
+                    end
+                end
+                ImGui.EndListBox(ctx)
+            end
+            retval1 = orderList
+            retval2 = enabledList
+            -- _, retval1 = ImGui.InputTextWithHint(ctx, '##' .. text, data.hint, val)
+        end
+        if not sameline then
+            ImGui.EndGroup(ctx)
+        end
+        self.app:setHoveredHint('settings', hint)
+        return retval1, retval2
+    end
 end

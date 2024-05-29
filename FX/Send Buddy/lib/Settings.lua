@@ -4,7 +4,7 @@ SM_Settings = OD_Settings:new({
     default = {
         -- Settings window
         mouseScrollReversed = true,
-        followSelectedTrack = true,
+        followSelectedTrack = false,
         createInsideFolder = true,
         sendFolderName = 'FX BUS',
         sendTypeVisibility = {
@@ -17,23 +17,36 @@ SM_Settings = OD_Settings:new({
             SEND_TYPE.HW,
             SEND_TYPE.RECV,
         },
-        groupPriority = {
-            ["VST3"] = 1,
-            ["VST3i"] = 2,
-            ["VST"] = 3,
-            ["VSTi"] = 4,
-            ["AU"] = 5,
-            ["AUi"] = 6,
-            ["JS"] = 7,
-            ["CLAP"] = 8,
-            ["CLAPi"] = 9,
-            ["LV2"] = 10,
-            ["LV2i"] = 11
+        fxTypeVisibility = {
+            ['VST3'] = true,
+            ['VST3i'] = true,
+            ['VST'] = true,
+            ['VSTi'] = true,
+            ['AU'] = true,
+            ['AUi'] = true,
+            ['JS'] = true,
+            ['CLAP'] = true,
+            ['CLAPi'] = true,
+            ['LV2'] = true,
+            ['LV2i'] = true
+        },
+        fxTypeOrder = {
+            "VST3",
+            "VST3i",
+            "VST",
+            "VSTi",
+            "AU",
+            "AUi",
+            "JS",
+            "CLAP",
+            "CLAPi",
+            "LV2",
+            "LV2i"
         },
 
         -- Defineable in GUI
         favorites = {},
-        sendWidth = 60, 
+        sendWidth = 60,
         maxNumInserts = 1, -- changes automatically when resizing
 
         -- Internal

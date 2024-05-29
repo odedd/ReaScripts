@@ -1156,16 +1156,16 @@ if OD_PrereqsOK({
                     app.temp.checkScrollDown = true
                 end
             elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageDown) then
-                if app.temp.highlightedResult + maxSearchResults-3 < #app.temp.searchResults then
-                    app.temp.highlightedResult = app.temp.highlightedResult + maxSearchResults-3
+                if app.temp.highlightedResult + maxSearchResults - 3 < #app.temp.searchResults then
+                    app.temp.highlightedResult = app.temp.highlightedResult + maxSearchResults - 3
                     app.temp.checkScrollDown = true
                 elseif app.temp.highlightedResult ~= #app.temp.searchResults then
                     app.temp.highlightedResult = #app.temp.searchResults
                     app.temp.checkScrollDown = true
                 end
             elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageUp) then
-                if app.temp.highlightedResult - maxSearchResults-3 > 1 then
-                    app.temp.highlightedResult = app.temp.highlightedResult - maxSearchResults-3
+                if app.temp.highlightedResult - maxSearchResults - 3 > 1 then
+                    app.temp.highlightedResult = app.temp.highlightedResult - maxSearchResults - 3
                     app.temp.checkScrollUp = true
                 elseif app.temp.highlightedResult ~= 1 then
                     app.temp.highlightedResult = 1
@@ -1420,6 +1420,30 @@ if OD_PrereqsOK({
         return clicked
     end
 
+    function app.drawSettings()
+        local ctx = app.gui.ctx
+        ImGui.PushFont(ctx, app.gui.st.fonts.default)
+        ImGui.SetNextWindowSize(ctx, 700, 0, nil)
+        local visible, open = ImGui.BeginPopupModal(ctx, Scr.name ..' Settings##settingsWindow', true, 
+        ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_AlwaysAutoResize )
+        if visible then
+            if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
+            app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK.LABEL, T.SETTINGS.FOLLOW_SELECTED_TRACK.HINT, app.settings.current.followSelectedTrack)
+            app.settings.current.mouseScrollReversed = app.gui:setting('checkbox', T.SETTINGS.MW_REVERSED.LABEL, T.SETTINGS.MW_REVERSED.HINT, app.settings.current.mouseScrollReversed)
+            app.settings.current.createInsideFolder = app.gui:setting('checkbox', T.SETTINGS.CREATE_INSIDE_FODLER.LABEL, T.SETTINGS.CREATE_INSIDE_FODLER.HINT, app.settings.current.createInsideFolder)
+            if app.settings.current.createInsideFolder then 
+                app.settings.current.sendFolderName = app.gui:setting('text_with_hint', '###sendFolderName', T.SETTINGS.SEND_FOLDER_NAME.HINT, app.settings.current.sendFolderName, {hint = T.SETTINGS.SEND_FOLDER_NAME.LABEL}, true)
+            end
+            -- app.settings.current.sendTypeVisibility[SEND_TYPE.SEND] = app.gui:setting('checkbox', T.SETTINGS.CREATE_INSIDE_FODLER.LABEL, T.SETTINGS.CREATE_INSIDE_FODLER.HINT, app.settings.current.createInsideFolder)
+            
+            app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility = app.gui:setting('orderable_list', T.SETTINGS.FX_TYPE_ORDER.LABEL, T.SETTINGS.FX_TYPE_ORDER.HINT, {app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility})
+            app.settings.current.sendTypeOrder, app.settings.current.sendTypeVisibility = app.gui:setting('orderable_list', T.SETTINGS.SEND_TYPE_ORDER.LABEL, T.SETTINGS.SEND_TYPE_ORDER.HINT, {app.settings.current.sendTypeOrder, app.settings.current.sendTypeVisibility})
+            app.drawHint('settings')
+            ImGui.EndPopup(ctx)
+        end
+        ImGui.PopFont(ctx)
+    end
+
     function app.drawTopBar()
         local function beginRightIconMenu(ctx, buttons)
             local windowEnd = app.gui.mainWindow.size[1] - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) -
@@ -1495,10 +1519,8 @@ if OD_PrereqsOK({
                 app.gui.mainWindow.dockTo = 0
             elseif btn == 'dock_down' then
                 app.gui.mainWindow.dockTo = app.settings.current.lastDockId
-                -- elseif btn == 'plus' then
-                --     app.setPage(APP_PAGE.SEARCH_SEND)
-            elseif btn == 'gear' then -- TODO: Settings window!
-                -- app.setPage(APP_PAGE.SETTINGS)
+            elseif btn == 'gear' then
+                ImGui.OpenPopup(ctx, Scr.name ..' Settings##settingsWindow')
             elseif btn == 'right' then
                 app.setPage(APP_PAGE.MIXER)
             end
@@ -1528,10 +1550,13 @@ if OD_PrereqsOK({
         ImGui.PushFont(ctx, app.gui.st.fonts.small)
         app.gui:pushStyles(app.gui.st.vars.zoomSlider)
         app.gui:pushColors(app.gui.st.col.zoomSlider)
-        ImGui.SetCursorPos(ctx, app.gui.mainWindow.size[1] - w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) - gripWidth, app.gui.mainWindow.size[2] - (app.gui.mainWindow.hintHeight + app.gui.TEXT_BASE_HEIGHT_SMALL)/2 - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))
+        ImGui.SetCursorPos(ctx,
+            app.gui.mainWindow.size[1] - w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) - gripWidth,
+            app.gui.mainWindow.size[2] - (app.gui.mainWindow.hintHeight + app.gui.TEXT_BASE_HEIGHT_SMALL) / 2 -
+            ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))
         ImGui.SetNextItemWidth(ctx, w)
         local rv, v = ImGui.SliderInt(ctx, '##zoom', app.settings.current.sendWidth, minZoom, maxZoom, '')
-        local shouldReset, v = app.resetOnDoubleClick('##zoom', v, app.settings.default.sendWidth) -- BUG: default zoom not loading
+        local shouldReset, v = app.resetOnDoubleClick('##zoom', v, app.settings.default.sendWidth)
 
         ImGui.PopFont(ctx)
         app.gui:popColors(app.gui.st.col.zoomSlider)
@@ -1565,6 +1590,10 @@ if OD_PrereqsOK({
             ImGui.WindowFlags_NoCollapse |
             ImGui.WindowFlags_NoTitleBar | app.page.windowFlags)
         -- ImGui.WindowFlags_NoResize
+        --
+        if ImGui.IsWindowAppearing(ctx) then
+            app.temp.showSettings = true
+        end
         app.gui.mainWindow.pos = { ImGui.GetWindowPos(ctx) }
         app.gui.mainWindow.size = { ImGui.GetWindowSize(ctx) }
         app.settings.current.lastWindowWidth, app.settings.current.lastWindowHeight = app.gui.mainWindow.size[1],
@@ -1585,7 +1614,7 @@ if OD_PrereqsOK({
                 -- r.ShowConsoleMsg(app.gui.mainWindow.mixer_w..'\n')
                 if app.page == APP_PAGE.MIXER then
                     app.drawMixer()
-                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then open = false end
+                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then open = false end
                 elseif app.page == APP_PAGE.SEARCH_SEND or app.page == APP_PAGE.SEARCH_FX then
                     app.drawSearch()
                     -- elseif app.page == APP_PAGE.NO_SENDS then
@@ -1595,8 +1624,13 @@ if OD_PrereqsOK({
                 end
                 ImGui.EndChild(ctx)
             end
+            if app.temp.showSettings then
+                ImGui.OpenPopup(ctx, Scr.name ..' Settings##settingsWindow')
+                app.temp.showSettings = false
+            end
             app.drawHint('main')
             app.drawZoom()
+            app.drawSettings()
             ImGui.End(ctx)
         end
         return open
@@ -1641,6 +1675,7 @@ if OD_PrereqsOK({
         )
     end
 
+    -- function and concept by sexan
     function PDefer(func)
         r.defer(function()
             local status, err = xpcall(func, debug.traceback)
@@ -1652,9 +1687,9 @@ if OD_PrereqsOK({
     end
 
     function Release()
-        r.JS_VKeys_Intercept(KEYCODES.ALT, -1)
-        r.JS_VKeys_Intercept(KEYCODES.CONTROL, -1)
-        r.JS_VKeys_Intercept(KEYCODES.SHIFT, -1)
+        -- r.JS_VKeys_Intercept(KEYCODES.ALT, -1)
+        -- r.JS_VKeys_Intercept(KEYCODES.CONTROL, -1)
+        -- r.JS_VKeys_Intercept(KEYCODES.SHIFT, -1)
     end
 
     function Exit()
