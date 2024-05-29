@@ -1523,7 +1523,7 @@ if OD_PrereqsOK({
     function app.drawZoom()
         local ctx = app.gui.ctx
         local w = 100
-        local gripWidth = 20
+        local gripWidth = 12
         local minZoom, maxZoom = 45, 110
         ImGui.PushFont(ctx, app.gui.st.fonts.small)
         app.gui:pushStyles(app.gui.st.vars.zoomSlider)
@@ -1542,7 +1542,7 @@ if OD_PrereqsOK({
             app.settings:save()
             app.refreshWindowSizeOnNextFrame = true
         end
-        -- app:setHint('', '')
+        app:setHoveredHint('main', 'Drag to zoom horizontally')
     end
 
     function app.drawMainWindow()

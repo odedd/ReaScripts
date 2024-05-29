@@ -283,6 +283,8 @@ SM_Gui.init = function(self, fonts)
             [ImGui.StyleVar_FramePadding] = { 20, 10 },
         },
         zoomSlider = {
+            [ImGui.StyleVar_GrabMinSize] = { 8, nil },
+            [ImGui.StyleVar_FramePadding] = { -1, -1 },
             [ImGui.StyleVar_GrabRounding] = { 100, nil },
             [ImGui.StyleVar_FrameRounding] = { 100, nil },
         }
