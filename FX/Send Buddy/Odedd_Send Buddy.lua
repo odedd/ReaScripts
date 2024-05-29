@@ -106,7 +106,7 @@ if OD_PrereqsOK({
             text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('u', '')
             local lastLen = text:len()
             while text:len() > app.maxTextLen[maxWidth] do -- remove lowercase one by one
-                text = text:gsub('([a-z]?)[a-z]?', '%1')
+                text = text:gsub('([a-z]+)[a-z]', '%1')
                 if lastLen == text:len() then
                     lastLen = text:len()
                     break
@@ -115,7 +115,7 @@ if OD_PrereqsOK({
                 end
             end
             while text:len() > app.maxTextLen[maxWidth] do -- remove uppercase one by one
-                text = text:gsub('([A-Z]?)[A-Z]?', '%1')
+                text = text:gsub('([A-Z]+)[A-Z]', '%1')
                 if lastLen == text:len() then
                     break
                 else
