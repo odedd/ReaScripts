@@ -1591,9 +1591,6 @@ if OD_PrereqsOK({
             ImGui.WindowFlags_NoTitleBar | app.page.windowFlags)
         -- ImGui.WindowFlags_NoResize
         --
-        if ImGui.IsWindowAppearing(ctx) then
-            app.temp.showSettings = true
-        end
         app.gui.mainWindow.pos = { ImGui.GetWindowPos(ctx) }
         app.gui.mainWindow.size = { ImGui.GetWindowSize(ctx) }
         app.settings.current.lastWindowWidth, app.settings.current.lastWindowHeight = app.gui.mainWindow.size[1],
