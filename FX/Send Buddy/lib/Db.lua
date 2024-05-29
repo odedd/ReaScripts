@@ -339,7 +339,7 @@ DB = {
                         addInsert = function(self, fxName)
                             local fxIndex = r.TrackFX_AddByName(self.destTrack.object, fxName, false, -1)
                             if fxIndex == -1 then
-                                self.db.app.logger:logError('Cannot add ' .. fxName .. ' to ' .. self.destTrack.object)
+                                self.db.app.logger:logError('Cannot add ' .. fxName .. ' to ' .. self.destTrack.name)
                                 return false
                             end
                             self.db:sync(true)
