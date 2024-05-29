@@ -718,6 +718,7 @@ end
 DB.markFavorites = function(self)
     for _, asset in ipairs(self.assets) do
         if OD_HasValue(self.app.settings.current.favorites, asset.type .. ' ' .. asset.load) then 
+            asset.originalGroup = asset.group
             asset.group = FAVORITE_GROUP
         end
     end
@@ -727,24 +728,46 @@ end
 
 DB.assembleAssets = function(self)
     self.assets = {}
+
+    local toggleFavorite = function(self)
+        local favorite = self.db.app.settings.current.favorites
+        local key = self.type .. ' ' .. self.load
+        if OD_HasValue(favorite, key) then
+            OD_RemoveValue(favorite, key)
+            self.group = self.originalGroup
+            self.originalGroup = nil
+        else
+            table.insert(favorite, key)
+            self.originalGroup = self.group
+            self.group = FAVORITE_GROUP
+        end
+        self.db.app.settings:save()
+        self.db:sortAssets()
+        return self.group == FAVORITE_GROUP
+    end
+
     for _, track in ipairs(self.tracks) do
         table.insert(self.assets, {
+            db = self,
             type = ASSETS.TRACK,
             searchText = { { text = track.name } },
             load = track.guid,
             group = track.hasReceives and RECEIVES_GROUP or TRACKS_GROUP,
             order = track.order,
-            color = track.color
+            color = track.color,
+            toggleFavorite = toggleFavorite
         })
     end
     for _, plugin in ipairs(self.plugins) do
         table.insert(self.assets, {
+            db = self,
             type = ASSETS.PLUGIN,
             searchText = { { text = plugin.name }, { text = plugin.vendor or '' }, { text = plugin.fx_type, hide = true } },
             load = plugin.ident,
             group = plugin.group,
             vendor = plugin.vendor,
-            fx_type = plugin.fx_type
+            fx_type = plugin.fx_type,
+            toggleFavorite = toggleFavorite
         })
     end
 
@@ -754,9 +777,9 @@ end
 
 DB.sortAssets = function(self)
     local groupPriority = OD_DeepCopy(self.app.settings.current.groupPriority)
-    groupPriority[RECEIVES_GROUP] = -2
-    groupPriority[TRACKS_GROUP] = -1
-    groupPriority[FAVORITE_GROUP] = 0
+    groupPriority[FAVORITE_GROUP] = -2
+    groupPriority[RECEIVES_GROUP] = -1
+    groupPriority[TRACKS_GROUP] = 0
     table.sort(self.assets, function(a, b)
         local aPriority = groupPriority[a.group] or 100
         local bPriority = groupPriority[b.group] or 100

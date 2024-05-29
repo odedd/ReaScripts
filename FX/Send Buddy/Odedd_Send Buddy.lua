@@ -1107,9 +1107,9 @@ if OD_PrereqsOK({
                         end
                     end
                     if allWordsFound then
-                        local result = OD_DeepCopy(asset)
-                        result.foundIndexes = foundIndexes
-                        table.insert(app.temp.searchResults, result)
+                        -- local result = OD_DeepCopy(asset)
+                        asset.foundIndexes = foundIndexes
+                        table.insert(app.temp.searchResults, asset)
                     end
                 end
             end
@@ -1185,6 +1185,21 @@ if OD_PrereqsOK({
                     selectedResult = app.temp.searchResults[app.temp.highlightedResult]
                 else
                     ImGui.SetKeyboardFocusHere(ctx, -1)
+                end
+            elseif ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd) and ImGui.IsKeyPressed(ctx, ImGui.Key_F) then
+                if app.temp.highlightedResult then
+                    local result = app.temp.searchResults[app.temp.highlightedResult]
+                    local fav = result:toggleFavorite()
+                    filterResults(searchInput)
+                    if fav then
+                        for i, r in ipairs(app.temp.searchResults) do
+                            -- if r.type == oldType and r.load == oldLoad then
+                            if r == result then
+                                app.temp.highlightedResult = i
+                                break
+                            end
+                        end
+                    end
                 end
             end
         end
