@@ -468,8 +468,8 @@ SM_Gui.init = function(self, fonts)
                 if self.app.temp._capturing == text then
                     self.app.temp._capturing = nil
                 else
-                    if val ~= nil and OD_IsGlobalKeyDown(OD_KEYCODES.ALT) then
-                        val = nil
+                    if OD_IsGlobalKeyDown(OD_KEYCODES.ALT) then
+                        if val ~= nil then val = nil end
                     else
                         self.app.temp._capturing = text
                     end

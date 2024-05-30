@@ -39,6 +39,10 @@ T.SETTINGS = {
             LABEL = 'New hardware send',
             HINT = 'Shortcut to create a new hardware send.',
         },
+        MARK_FAVORITE = {
+            LABEL = 'Mark favorite',
+            HINT = 'Mark search result as favorite.',
+        },
     }
 }
 

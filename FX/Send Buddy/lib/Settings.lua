@@ -39,6 +39,13 @@ SM_Settings = OD_Settings:new({ --TODO proper defaults
                 alt = true,
                 macCtrl = false
             },
+            markFavorite = {
+                key = OD_KEYCODES.F,
+                ctrl = true,
+                shift = false,
+                alt = true,
+                macCtrl = false
+            }
         },
         fxTypeVisibility = {
             ['VST3'] = true,
