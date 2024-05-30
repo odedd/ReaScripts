@@ -1,6 +1,6 @@
 -- @noindex
 
-SM_Settings = OD_Settings:new({
+SM_Settings = OD_Settings:new({ --TODO proper defaults
     default = {
         -- Settings window
         mouseScrollReversed = true,

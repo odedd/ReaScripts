@@ -3,6 +3,16 @@
 -- @version 0.0.0
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
+-- @about
+--   # Send Buddy
+--   Send mixer with some tricks up its sleeve.
+--   Send buddy allows you to control your sends in a more intuitive way,
+--   setting FX on receiving tracks, creating and deleting sends, and more.
+--
+--   The UI in the search and settings window was inspired by the great work of nvk. Check out his work at https://nvk.tools/
+--   Thanks cfillion, sexan, x-raym and all other awesome people in the reaper scripting and development community for their help.
+--
+--   This script is free, but as always, donations are most welcome at https://paypal.me/odedda :)
 -- @provides
 --   [nomain] ../../Resources/Common/* > Resources/Common/
 --   [nomain] ../../Resources/Common/Helpers/* > Resources/Common/Helpers/
@@ -1086,7 +1096,7 @@ if OD_PrereqsOK({
         end
     end
 
-    function app.drawSearch()
+    function app.drawSearch() -- TODO hints
         -- OD_ReleaseGlobalKeys()
         -- local function nocase(s)
         --     s = string.gsub(s, "%a", function(c)
