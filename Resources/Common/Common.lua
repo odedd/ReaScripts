@@ -1,6 +1,8 @@
 -- @noindex
 
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
+
+dofile(p .. 'Init.lua')
 dofile(p .. 'Helpers.lua')
 dofile(p .. 'ReaperHelpers.lua')
 dofile(p .. 'AppHelpers.lua')
@@ -55,10 +57,9 @@ local function OD_GetScr()
     Scr.namespace = "Odedd"
     Scr.name = Scr.description
     Scr.developer = Scr.author
-    Scr.context_name = Scr.namespace:gsub(' ', '_') .. '_' .. Scr.name:gsub(' ', '_') .. Scr.version:gsub(' ', '_')
+    Scr.context_name = Scr.namespace .. ' ' .. Scr.name .. ' v' .. Scr.version
     Scr.ext_name = Scr.namespace:gsub(' ', '_') .. '_' .. Scr.name:gsub(' ', '_')
     r.ver = tonumber(r.GetAppVersion():match("[%d%.]+"))
-    -- return Scr
 end
 
 local function OD_GetOS()

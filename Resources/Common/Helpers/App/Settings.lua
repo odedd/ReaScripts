@@ -21,7 +21,7 @@ end
 function OD_Settings:getDefault(factory)
     if factory == nil then factory = false end
     local st = {
-        default = self.default
+        default = OD_DeepCopy(self.default)
     }
 
     if not factory then

@@ -66,8 +66,10 @@ end
 function OD_Gui_App:drawPopup (popupType, title, data)
     local ctx = self.gui.ctx
     local data = data or {}
-    local center = { Gui.mainWindow.pos[1] + Gui.mainWindow.size[1] / 2,
-        Gui.mainWindow.pos[2] + Gui.mainWindow.size[2] / 2 }            -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
+    local currentWindowPos = { r.ImGui_GetWindowPos(ctx) }
+    local currentWindowSize = { r.ImGui_GetWindowSize(ctx) }
+    local center = { currentWindowPos[1] + currentWindowSize[1] / 2,
+    currentWindowPos[2] + currentWindowSize[2] / 2 }            -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
     if popupType == 'singleInput' then
         local okPressed = nil
         local initVal = data.initVal or ''
@@ -80,26 +82,26 @@ function OD_Gui_App:drawPopup (popupType, title, data)
         r.ImGui_SetNextWindowSize(ctx, 350, 110)
         r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
         if r.ImGui_BeginPopupModal(ctx, title, false, r.ImGui_WindowFlags_AlwaysAutoResize()) then
-            Gui.popups.title = title
+            self.gui.popups.title = title
 
             if r.ImGui_IsWindowAppearing(ctx) then
                 r.ImGui_SetKeyboardFocusHere(ctx)
-                Gui.popups.singleInput.value = initVal -- gui.popups.singleInput.stem.name
-                Gui.popups.singleInput.status = ""
+                self.gui.popups.singleInput.value = initVal -- gui.popups.singleInput.stem.name
+                self.gui.popups.singleInput.status = ""
             end
             local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
             r.ImGui_PushItemWidth(ctx, width)
-            _, Gui.popups.singleInput.value = r.ImGui_InputText(ctx, '##singleInput', Gui.popups.singleInput.value)
+            _, self.gui.popups.singleInput.value = r.ImGui_InputText(ctx, '##singleInput', self.gui.popups.singleInput.value)
 
             r.ImGui_SetItemDefaultFocus(ctx)
             r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
                 r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()))
-            r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col.error)
-            r.ImGui_Text(ctx, Gui.popups.singleInput.status)
+            r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), self.gui.st.col.error)
+            r.ImGui_Text(ctx, self.gui.popups.singleInput.status)
             r.ImGui_PopStyleColor(ctx)
             if r.ImGui_Button(ctx, okButtonLabel) or r.ImGui_IsKeyPressed(ctx, r.ImGui_Key_Enter()) then
-                Gui.popups.singleInput.status = validation(initVal, Gui.popups.singleInput.value)
-                if Gui.popups.singleInput.status == true then
+                self.gui.popups.singleInput.status = validation(initVal, self.gui.popups.singleInput.value)
+                if self.gui.popups.singleInput.status == true then
                     okPressed = true
                     r.ImGui_CloseCurrentPopup(ctx)
                 end
@@ -111,7 +113,7 @@ function OD_Gui_App:drawPopup (popupType, title, data)
             end
             r.ImGui_EndPopup(ctx)
         end
-        return okPressed, Gui.popups.singleInput.value
+        return okPressed, self.gui.popups.singleInput.value
     elseif popupType == 'msg' then
         local okPressed = nil
         local msg = data.msg or ''
@@ -128,7 +130,7 @@ function OD_Gui_App:drawPopup (popupType, title, data)
         r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
         r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_WindowTitleAlign(), 0.5, 0.5)
         if r.ImGui_BeginPopupModal(ctx, title, false, r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
-            Gui.popups.title = title
+            self.gui.popups.title = title
 
             local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
             r.ImGui_PushItemWidth(ctx, width)
@@ -174,15 +176,12 @@ end
 function OD_Gui_App:msg (msg, title)
     self.popup.msg = self.popup.msg or msg
     self.popup.title = self.popup.title or title or Scr.name
-    -- if coroutine.isyieldable(self.coPerform) then
-        -- coroutine.yield('', 0, 1)
-        -- coroutine.yield('', 0, 1)
-    -- end
+    r.ImGui_OpenPopup(self.gui.ctx, self.popup.title .. "##msg")
 end
 
 function OD_Gui_App:drawMsg()
     if next(self.popup) ~= nil and self.popup.msg ~= nil then
-        r.ImGui_OpenPopup(self.gui.ctx, self.popup.title .. "##msg")
+        
         local rv = self:drawPopup('msg', self.popup.title .. "##msg", {
             msg = self.popup.msg
         })
@@ -190,6 +189,14 @@ function OD_Gui_App:drawMsg()
         if rv then
             self.popup = {}
         end
+    end
+end
+
+function OD_Gui_App:getHint(window)
+    if window == 'main' then
+        return self.hint[window].text, self.hint[window].color
+    else
+        return self.hint[window].text, self.hint[window].color
     end
 end
 
@@ -209,10 +216,12 @@ function OD_Perform_App:getStatus(window)
         if self.coPerform then
             return self.perform.status
         end
-        return self.hint[window].text, self.hint[window].color
-    else
-        return self.hint[window].text, self.hint[window].color
     end
+    return OD_Gui_App.getHint(self, window)
+        -- return self.hint[window].text, self.hint[window].color
+    -- else
+        -- return self.hint[window].text, self.hint[window].color
+    -- end
 end
 
 function OD_Perform_App:checkPerform()
