@@ -426,7 +426,8 @@ SM_Gui.init = function(self, fonts)
             hint = hint .. ' alt-click to remove shortcut.'
             local label, newVal
             if self.app.temp._capturing == text then
-                label = 'Press shortcut or click to cancel'
+                label = '...'
+                hint = 'Press a key combination, or click to cancel'
                 local key = OD_GetKeyPressed(OD_KEYCODES['0'], OD_KEYCODES['Z']) or
                     OD_GetKeyPressed(OD_KEYCODES['NUMPAD0'], OD_KEYCODES['F24'])
                 if key then
@@ -462,6 +463,7 @@ SM_Gui.init = function(self, fonts)
                     if val.alt then label = OD_KEYCODE_NAMES[OD_KEYCODES.ALT] .. '+' .. label end
                 end
             end
+            ImGui.PushStyleColor(ctx, ImGui.Col_Button, ImGui.GetStyleColor(ctx, ImGui.Col_FrameBg))
             if ImGui.Button(ctx, label .. '##' .. text, widgetWidth) then
                 if self.app.temp._capturing == text then
                     self.app.temp._capturing = nil
@@ -473,6 +475,7 @@ SM_Gui.init = function(self, fonts)
                     end
                 end
             end
+            ImGui.PopStyleColor(ctx)
             retval1 = newVal or val
         elseif stType == 'orderable_list' then
             -- ImGui.Dummy(ctx, widgetWidth, 20)

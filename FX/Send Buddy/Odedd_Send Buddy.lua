@@ -1615,7 +1615,7 @@ if OD_PrereqsOK({
         ImGui.SetNextWindowPos(ctx, 100, 100, ImGui.Cond_FirstUseEver)
         ImGui.SetNextWindowSizeConstraints(app.gui.ctx, app.gui.mainWindow.min_w, app.gui.mainWindow.min_h,
             app.gui.mainWindow.max_w, app.gui.mainWindow.max_h)
-
+        
         local visible, open = ImGui.Begin(ctx, Scr.name .. "###mainWindow",
             true,
             ImGui.WindowFlags_NoTitleBar |
@@ -1633,6 +1633,9 @@ if OD_PrereqsOK({
                 app.settings.current.lastDockId = app.gui.mainWindow.dockId
                 app.settings:save()
             end
+        end
+        if ImGui.IsWindowAppearing(ctx) then
+            ImGui.SetConfigVar(ctx, ImGui.ConfigVar_DockingNoSplit, 1)
         end
         if visible then
             app.drawTopBar()
