@@ -4,9 +4,9 @@ OD_App = {
     logLevel = OD_Logger.LOG_LEVEL.NONE,
     temp = {},
     connect = function(self, objectname, o)
-        for k,v in pairs(self) do
+        for k, v in pairs(self) do
             if k == objectname then
-                error('OD_App:connect: object with name '..objectname..' already exists')
+                error('OD_App:connect: object with name ' .. objectname .. ' already exists')
             end
         end
         self[objectname] = o
@@ -56,6 +56,7 @@ function OD_Gui_App:setHint(window, text, color, ctx)
         }
     end
 end
+
 function OD_Gui_App:setHoveredHint(window, text, color, ctx)
     local ctx = ctx or self.gui.ctx
     if r.ImGui_IsItemHovered(ctx, r.ImGui_HoveredFlags_AllowWhenDisabled()) then
@@ -63,13 +64,13 @@ function OD_Gui_App:setHoveredHint(window, text, color, ctx)
     end
 end
 
-function OD_Gui_App:drawPopup (popupType, title, data)
+function OD_Gui_App:drawPopup(popupType, title, data)
     local ctx = self.gui.ctx
     local data = data or {}
     local currentWindowPos = { r.ImGui_GetWindowPos(ctx) }
     local currentWindowSize = { r.ImGui_GetWindowSize(ctx) }
     local center = { currentWindowPos[1] + currentWindowSize[1] / 2,
-    currentWindowPos[2] + currentWindowSize[2] / 2 }            -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
+        currentWindowPos[2] + currentWindowSize[2] / 2 } -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
     if popupType == 'singleInput' then
         local okPressed = nil
         local initVal = data.initVal or ''
@@ -91,7 +92,8 @@ function OD_Gui_App:drawPopup (popupType, title, data)
             end
             local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
             r.ImGui_PushItemWidth(ctx, width)
-            _, self.gui.popups.singleInput.value = r.ImGui_InputText(ctx, '##singleInput', self.gui.popups.singleInput.value)
+            _, self.gui.popups.singleInput.value = r.ImGui_InputText(ctx, '##singleInput',
+                self.gui.popups.singleInput.value)
 
             r.ImGui_SetItemDefaultFocus(ctx)
             r.ImGui_SetCursorPosY(ctx, r.ImGui_GetWindowHeight(ctx) - (r.ImGui_GetFrameHeight(ctx) * bottom_lines) -
@@ -131,7 +133,6 @@ function OD_Gui_App:drawPopup (popupType, title, data)
         r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_WindowTitleAlign(), 0.5, 0.5)
         if r.ImGui_BeginPopupModal(ctx, title, false, r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
             self.gui.popups.title = title
-
             local width = select(1, r.ImGui_GetContentRegionAvail(ctx))
             r.ImGui_PushItemWidth(ctx, width)
 
@@ -173,15 +174,18 @@ function OD_Gui_App:drawPopup (popupType, title, data)
     return false
 end
 
-function OD_Gui_App:msg (msg, title)
+function OD_Gui_App:msg(msg, title)
     self.popup.msg = self.popup.msg or msg
     self.popup.title = self.popup.title or title or Scr.name
-    r.ImGui_OpenPopup(self.gui.ctx, self.popup.title .. "##msg")
+    self.popup.openOnNextFrame = true
 end
 
 function OD_Gui_App:drawMsg()
     if next(self.popup) ~= nil and self.popup.msg ~= nil then
-        
+        if self.popup.openOnNextFrame then
+            r.ImGui_OpenPopup(self.gui.ctx, self.popup.title .. "##msg")
+            self.popup.openOnNextFrame = false
+        end
         local rv = self:drawPopup('msg', self.popup.title .. "##msg", {
             msg = self.popup.msg
         })
@@ -218,9 +222,9 @@ function OD_Perform_App:getStatus(window)
         end
     end
     return OD_Gui_App.getHint(self, window)
-        -- return self.hint[window].text, self.hint[window].color
+    -- return self.hint[window].text, self.hint[window].color
     -- else
-        -- return self.hint[window].text, self.hint[window].color
+    -- return self.hint[window].text, self.hint[window].color
     -- end
 end
 
@@ -230,11 +234,11 @@ function OD_Perform_App:checkPerform()
             local retval
             retval, self.perform.status = coroutine.resume(self.coPerform)
             if not retval then
-                if type(self.onCancel) == 'function' then self.onCancel() end 
+                if type(self.onCancel) == 'function' then self.onCancel() end
             end
         elseif coroutine.status(self.coPerform) == "dead" then
-            if type(self.onDone) == 'function' then self.onDone() end 
+            if type(self.onDone) == 'function' then self.onDone() end
             self.coPerform = nil
         end
     end
-  end
+end
