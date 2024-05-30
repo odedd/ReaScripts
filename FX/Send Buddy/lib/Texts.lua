@@ -12,7 +12,7 @@ T.SETTINGS = {
     },
     SEND_FOLDER_NAME = {
         LABEL = 'Folder name',
-        HINT = 'Name of the folder track. If one does not exist, it will be created when adding sends.',
+        HINT = 'If one does not exist, it will be created when adding sends.',
     },
     FOLLOW_SELECTED_TRACK = {
         LABEL = 'Follow selected track',
@@ -20,11 +20,11 @@ T.SETTINGS = {
     },
     FX_TYPE_ORDER = {
         LABEL = 'FX type priority',
-        HINT = 'The order in which FX are displayed in the FX list.',
+        HINT = 'The order in which FX are displayed in the search window.',
     },
     SEND_TYPE_ORDER = {
         LABEL = 'Send type order',
-        HINT = 'The order in which sends/recieves/hardware sends are shown.',
+        HINT = 'The order in which sends/recieves/hardware sends are displayed.',
     }
 }
 
