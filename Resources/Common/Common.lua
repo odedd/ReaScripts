@@ -19,7 +19,7 @@ function OD_FindContentKey(content, key, self)
             local key, val = match:match("(.-) (.+)")
             if val then
                 local url, description = matchUrlInString(val)
-                if url and description then
+                if url and description ~= '' then
                     Scr[key:lower()] = Scr[key:lower()] or {} 
                     -- val = {[description] = url}
                     Scr[key:lower()][description] = url
@@ -55,7 +55,7 @@ local function OD_GetScr()
     Scr.namespace = "Odedd"
     Scr.name = Scr.description
     Scr.developer = Scr.author
-    Scr.context_name = Scr.namespace:gsub(' ', '_') .. ' ' .. Scr.name .. ' v'..Scr.version:gsub(' ', '_')
+    Scr.context_name = Scr.namespace:gsub(' ', '_') .. '_' .. Scr.name:gsub(' ', '_') .. Scr.version:gsub(' ', '_')
     Scr.ext_name = Scr.namespace:gsub(' ', '_') .. '_' .. Scr.name:gsub(' ', '_')
     r.ver = tonumber(r.GetAppVersion():match("[%d%.]+"))
     -- return Scr

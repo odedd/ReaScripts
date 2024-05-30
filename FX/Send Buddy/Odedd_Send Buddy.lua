@@ -1475,7 +1475,6 @@ if OD_PrereqsOK({
         local menu = {}
         if app.page == APP_PAGE.MIXER then
             table.insert(menu, { icon = 'close', hint = 'Close' })
-            -- table.insert(menu, { icon = 'plus', hint = 'Add Send' })
             table.insert(menu, { icon = 'gear', hint = 'Settings' })
         elseif app.page == APP_PAGE.NO_TRACK then
             table.insert(menu, { icon = 'close', hint = 'Close' })
@@ -1489,6 +1488,7 @@ if OD_PrereqsOK({
         else
             table.insert(menu, { icon = 'dock_down', hint = 'Dock' })
         end
+        table.insert(menu, { icon = 'money', hint = ('%s is free, but donations are welcome :)'):format(Scr.name) })
         local rv, btn = beginRightIconMenu(ctx, menu)
         ImGui.PopFont(ctx)
         ImGui.EndGroup(ctx)
@@ -1508,6 +1508,8 @@ if OD_PrereqsOK({
                 ImGui.OpenPopup(ctx, Scr.name ..' Settings##settingsWindow')
             elseif btn == 'right' then
                 app.setPage(APP_PAGE.MIXER)
+            elseif btn == 'money' then
+                OD_OpenLink(Scr.donation)
             end
         end
     end

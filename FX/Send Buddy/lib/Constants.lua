@@ -28,6 +28,7 @@ ICONS = {
     ['GEAR'] = 'G',
     ['HEADPHONES'] = 'H',
     ['LEFT'] = 'L',
+    ['MONEY'] = 'M',
     ['POLARITY'] = 'O',
     ['PLUS'] = 'P',
     ['RIGHT'] = 'R',
