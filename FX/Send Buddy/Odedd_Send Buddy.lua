@@ -457,7 +457,8 @@ if OD_PrereqsOK({
                 if s.type == SEND_TYPE.SEND or s.type == SEND_TYPE.RECV then
                     app.gui:pushColors(app.gui.st.col.buttons.scrollToTrack)
                     ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
-                    if ImGui.Button(ctx, ICONS.ARROW_RIGHT .. '##goToDest' .. s.order, w) then
+                    local icon = s.type == SEND_TYPE.SEND and ICONS.ARROW_RIGHT or ICONS.ARROW_LEFT
+                    if ImGui.Button(ctx, icon .. '##goToDest' .. s.order, w) then
                         s:goToDestTrack()
                     end
                     app:setHoveredHint('main',

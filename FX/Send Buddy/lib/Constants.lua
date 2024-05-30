@@ -36,6 +36,7 @@ ICONS = {
     ['TRASH'] = 'T',
     ['UNDO'] = 'U',
     ['ENVELOPE'] = 'V',
+    ['ARROW_LEFT'] = 'F',
     ['ARROW_RIGHT'] = 'W',
     ['CLOSE'] = 'X',
 }
