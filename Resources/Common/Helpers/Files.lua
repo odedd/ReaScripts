@@ -63,8 +63,7 @@ end
 --   relPath - only path in relative form, if possible
 --   isRelative - true if relative, false if absolute
 function OD_GetRelativeOrAbsoluteFile(fileName, rootPath)
-    fileName = fileName:gsub('\\', '/')
-    local relFile = fileName:gsub('^' .. OD_EscapePattern(rootPath:gsub('\\', '/')), '')
+    local relFile = fileName:gsub('^' .. OD_EscapePattern(rootPath), '')
     local relPath = OD_DissectFilename(relFile)
     return (relFile and relFile or fileName), relPath, (relFile ~= fileName)
 end
@@ -140,8 +139,6 @@ end
 
 function OD_MoveFile(old_path, new_path, logger)
     local logmsg = ('OD_MoveFile %s -> %s'):format(old_path, new_path)
-    local win = OS_is and OS_is.win or ((reaper.GetOS()):lower():match("win") and true or false)
-    if win then r.reduce_open_files(2) end 
     local success = os.rename(old_path, new_path)
     if success then
         if logger then logger:logDebug(logmsg, true, 1) end
@@ -149,7 +146,6 @@ function OD_MoveFile(old_path, new_path, logger)
     else -- if moving using rename failed, resort to copy + delete
         if logger then logger:logDebug(('OD_MoveFile - Move failed, resorting to copy+delete'), true, 1) end
         if OD_CopyFile(old_path, new_path, logger) then
-            if win then r.reduce_open_files(2) end
             local success = os.remove(old_path)
             if logger then
                 return logger:log(success and logger.LOG_LEVEL.DEBUG or logger.LOG_LEVEL.ERROR,

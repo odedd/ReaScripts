@@ -240,4 +240,5 @@ function OD_Perform_App:checkPerform()
             if type(self.onDone) == 'function' then self.onDone() end
             self.coPerform = nil
         end
+    end
 end

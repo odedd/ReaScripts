@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.8.0
+-- @version 0.8.1
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -13,7 +13,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Many changes and fixes related to frozen tracks handling (thanks Coachz!)
+--   Internal changes
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -475,7 +475,6 @@ if OD_PrereqsOK({
         local max_w, max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx))
         app.warningCount = 0
 
-        -- r.ShowConsoleMsg(viewPortWidth)
         r.ImGui_SetNextWindowSize(ctx, math.min(1197, max_w), math.min(800, max_h), r.ImGui_Cond_Appearing())
         r.ImGui_SetNextWindowPos(ctx, 100, 100, r.ImGui_Cond_FirstUseEver())
         local visible, open = r.ImGui_Begin(ctx,
@@ -499,7 +498,7 @@ if OD_PrereqsOK({
                         OD_OpenLink(Scr.link['Forum Thread'])
                     end
                     if r.ImGui_MenuItem(ctx, 'Youtube Video') then
-                        app:msg('Soon...')
+                        app:msg('soon...')
                         -- OD_OpenLink(Scr.link['YouTube'])
                     end
                     if r.ImGui_BeginMenu(ctx, 'Log Level') then
@@ -521,6 +520,7 @@ if OD_PrereqsOK({
                 end
                 r.ImGui_EndMenuBar(ctx)
             end
+
 
             r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_IndentSpacing(), 35)
 
