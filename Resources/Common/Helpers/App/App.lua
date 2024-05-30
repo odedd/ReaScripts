@@ -66,8 +66,10 @@ end
 function OD_Gui_App:drawPopup (popupType, title, data)
     local ctx = self.gui.ctx
     local data = data or {}
-    local center = { self.gui.mainWindow.pos[1] + self.gui.mainWindow.size[1] / 2,
-    self.gui.mainWindow.pos[2] + self.gui.mainWindow.size[2] / 2 }            -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
+    local currentWindowPos = { r.ImGui_GetWindowPos(ctx) }
+    local currentWindowSize = { r.ImGui_GetWindowSize(ctx) }
+    local center = { currentWindowPos[1] + currentWindowSize[1] / 2,
+    currentWindowPos[2] + currentWindowSize[2] / 2 }            -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
     if popupType == 'singleInput' then
         local okPressed = nil
         local initVal = data.initVal or ''
@@ -174,15 +176,12 @@ end
 function OD_Gui_App:msg (msg, title)
     self.popup.msg = self.popup.msg or msg
     self.popup.title = self.popup.title or title or Scr.name
-    -- if coroutine.isyieldable(self.coPerform) then
-        -- coroutine.yield('', 0, 1)
-        -- coroutine.yield('', 0, 1)
-    -- end
+    r.ImGui_OpenPopup(self.gui.ctx, self.popup.title .. "##msg")
 end
 
 function OD_Gui_App:drawMsg()
     if next(self.popup) ~= nil and self.popup.msg ~= nil then
-        r.ImGui_OpenPopup(self.gui.ctx, self.popup.title .. "##msg")
+        
         local rv = self:drawPopup('msg', self.popup.title .. "##msg", {
             msg = self.popup.msg
         })

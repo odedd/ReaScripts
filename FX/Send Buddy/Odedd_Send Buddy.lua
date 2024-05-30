@@ -1430,9 +1430,9 @@ if OD_PrereqsOK({
         ImGui.PushFont(ctx, app.gui.st.fonts.default)
         ImGui.SetNextWindowSize(ctx, 700, 0, nil)
         local visible, open = ImGui.BeginPopupModal(ctx, Scr.name .. ' Settings##settingsWindow', true,
-            ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_AlwaysAutoResize)
+        ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_AlwaysAutoResize)
         if visible then
-            -- OD_ReleaseGlobalKeys()
+            app:drawMsg()
             ImGui.SeparatorText(ctx, 'General')
             if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
             app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
@@ -1446,18 +1446,17 @@ if OD_PrereqsOK({
                     T.SETTINGS.SEND_FOLDER_NAME.HINT, app.settings.current.sendFolderName,
                     { hint = T.SETTINGS.SEND_FOLDER_NAME.LABEL }, true)
             end
-            -- app.settings.current.sendTypeVisibility[SEND_TYPE.SEND] = app.gui:setting('checkbox', T.SETTINGS.CREATE_INSIDE_FODLER.LABEL, T.SETTINGS.CREATE_INSIDE_FODLER.HINT, app.settings.current.createInsideFolder)
 
             ImGui.SeparatorText(ctx, 'Shortcuts')
             app.settings.current.shortcuts.addSend = app.gui:setting('shortcut', T.SETTINGS.SHORTCUTS.NEW_SEND.LABEL,
-            T.SETTINGS.SHORTCUTS.NEW_SEND.HINT, app.settings.current.shortcuts.addSend)
+            T.SETTINGS.SHORTCUTS.NEW_SEND.HINT, app.settings.current.shortcuts.addSend, {existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,function(k,v) return k ~= 'addSend' end)})
             app.settings.current.shortcuts.addRecv = app.gui:setting('shortcut', T.SETTINGS.SHORTCUTS.NEW_RECV.LABEL,
-            T.SETTINGS.SHORTCUTS.NEW_RECV.HINT, app.settings.current.shortcuts.addRecv)
+            T.SETTINGS.SHORTCUTS.NEW_RECV.HINT, app.settings.current.shortcuts.addRecv, {existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,function(k,v) return k ~= 'addRecv' end)})
             app.settings.current.shortcuts.addHW = app.gui:setting('shortcut', T.SETTINGS.SHORTCUTS.NEW_HW.LABEL,
-            T.SETTINGS.SHORTCUTS.NEW_HW.HINT, app.settings.current.shortcuts.addHW)
-            
+            T.SETTINGS.SHORTCUTS.NEW_HW.HINT, app.settings.current.shortcuts.addHW, {existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,function(k,v) return k ~= 'addHW' end)})
+
             ImGui.SeparatorText(ctx, 'Ordering')
-            
+
             app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility = app.gui:setting('orderable_list',
                 T.SETTINGS.FX_TYPE_ORDER.LABEL, T.SETTINGS.FX_TYPE_ORDER.HINT,
                 { app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility })
@@ -1466,6 +1465,8 @@ if OD_PrereqsOK({
                 { app.settings.current.sendTypeOrder, app.settings.current.sendTypeVisibility })
             app.drawHint('settings')
             ImGui.EndPopup(ctx)
+        else 
+            app.temp._capturing = false
         end
         ImGui.PopFont(ctx)
     end
@@ -1634,6 +1635,7 @@ if OD_PrereqsOK({
             end
         end
         if visible then
+            app:drawMsg()
             app.drawTopBar()
 
             if ImGui.BeginChild(ctx, '##body', 0.0, -app.gui.mainWindow.hintHeight) then
@@ -1653,7 +1655,7 @@ if OD_PrereqsOK({
             app.drawHint('main')
             app.drawZoom()
             app.drawSettings()
-            app:drawMsg()
+            
             ImGui.End(ctx)
         end
         return open

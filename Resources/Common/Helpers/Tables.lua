@@ -374,3 +374,21 @@ function OD_PairsByOrder(t, f)
     end
     return iter
 end
+
+function OD_TableMap(t, f)
+    local newTable = {}
+    for k, v in pairs(t) do
+        newTable[k] = f(k, v)
+    end
+    return newTable
+end
+
+function OD_TableFilter(t, f)
+    local newTable = {}
+    for k, v in pairs(t) do
+        if f(k, v) then
+            newTable[k] = v
+        end
+    end
+    return newTable
+end

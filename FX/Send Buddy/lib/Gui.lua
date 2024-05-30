@@ -422,18 +422,32 @@ SM_Gui.init = function(self, fonts)
             _, retval1 = ImGui.InputText(ctx, '##' .. text, val)
         elseif stType == 'text_with_hint' then
             _, retval1 = ImGui.InputTextWithHint(ctx, '##' .. text, data.hint, val)
-        elseif stType == 'shortcut' then 
-            -- TODO Handle same shortcut for multiple actions
+        elseif stType == 'shortcut' then
             hint = hint .. ' alt-click to remove shortcut.'
             local label, newVal
             if self.app.temp._capturing == text then
                 label = 'Press shortcut or click to cancel'
                 local key = OD_GetKeyPressed(OD_KEYCODES['0'], OD_KEYCODES['Z']) or
-                OD_GetKeyPressed(OD_KEYCODES['NUMPAD0'], OD_KEYCODES['F24'])
+                    OD_GetKeyPressed(OD_KEYCODES['NUMPAD0'], OD_KEYCODES['F24'])
                 if key then
-                    newVal = { key = key, ctrl = OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL), shift = OD_IsGlobalKeyDown(
-                    OD_KEYCODES.SHIFT), alt = OD_IsGlobalKeyDown(OD_KEYCODES.ALT), macCtrl = (_OD_ISMAC and OD_IsGlobalKeyDown(OD_KEYCODES.STARTKEY)) }
-                    self.app.temp._capturing = nil
+                    local testVal = {
+                        key = key,
+                        ctrl = OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL),
+                        shift = OD_IsGlobalKeyDown(OD_KEYCODES.SHIFT),
+                        alt = OD_IsGlobalKeyDown(OD_KEYCODES.ALT),
+                        macCtrl = (_OD_ISMAC and OD_IsGlobalKeyDown(OD_KEYCODES.STARTKEY))
+                    }
+                    for k, v in pairs(data.existingShortcuts or {}) do
+                        if v.key == testVal.key and v.ctrl == testVal.ctrl and v.shift == testVal.shift and v.alt == testVal.alt and v.macCtrl == testVal.macCtrl then
+                            testVal = nil
+                            self.app:msg('Shortcut already in use')
+                            break
+                        end
+                    end
+                    if testVal then
+                        newVal = testVal
+                        self.app.temp._capturing = nil
+                    end
                 end
             else
                 if val ~= nil and OD_IsGlobalKeyDown(OD_KEYCODES.ALT) then
@@ -442,10 +456,10 @@ SM_Gui.init = function(self, fonts)
                     label = 'Click to set shortcut'
                 else
                     label = OD_KEYCODE_NAMES[val.key]
-                    if val.macCtrl then label = OD_KEYCODE_NAMES[OD_KEYCODES.STARTKEY] ..'+'.. label end
-                    if val.ctrl then label = OD_KEYCODE_NAMES[OD_KEYCODES.CONTROL] ..'+'.. label end
-                    if val.shift then label = OD_KEYCODE_NAMES[OD_KEYCODES.SHIFT] ..'+'.. label end
-                    if val.alt then label = OD_KEYCODE_NAMES[OD_KEYCODES.ALT] ..'+'.. label end
+                    if val.macCtrl then label = OD_KEYCODE_NAMES[OD_KEYCODES.STARTKEY] .. '+' .. label end
+                    if val.ctrl then label = OD_KEYCODE_NAMES[OD_KEYCODES.CONTROL] .. '+' .. label end
+                    if val.shift then label = OD_KEYCODE_NAMES[OD_KEYCODES.SHIFT] .. '+' .. label end
+                    if val.alt then label = OD_KEYCODE_NAMES[OD_KEYCODES.ALT] .. '+' .. label end
                 end
             end
             if ImGui.Button(ctx, label .. '##' .. text, widgetWidth) then
