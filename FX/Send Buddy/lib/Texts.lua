@@ -4,7 +4,7 @@ T = {}
 T.SETTINGS = {
     MW_REVERSED = {
         LABEL = 'Reverse mousewheel',
-        HINT = 'Use the mousewheel to control faders. Check to reverse its direction.',
+        HINT = 'Mousewheel is used to control faders. Check to reverse its direction.',
     },
     CREATE_INSIDE_FODLER = {
         LABEL = 'Create sends inside folder',
@@ -24,16 +24,32 @@ T.SETTINGS = {
     },
     SEND_TYPE_ORDER = {
         LABEL = 'Send type order',
-        HINT = 'The order in which sends/recieves/hardware sends are shown in the main window.',
+        HINT = 'The order in which sends/recieves/hardware sends are shown.',
     }
 }
 
-    T.SETTINGS.LISTS = {
-        [T.SETTINGS.SEND_TYPE_ORDER.LABEL] = {
-            [SEND_TYPE.SEND] = 'SENDS',
-            [SEND_TYPE.HW] = 'HARDWARE OUTPUTS',
-            [SEND_TYPE.RECV] = 'RECIEVES',
-        },
-    }
+T.SEND_TYPE_NAMES = {
+    [SEND_TYPE.SEND] = { TITLE = 'Sends', PLURAL = 'Sends', SINGULAR = 'Send' },
+    [SEND_TYPE.RECV] = { TITLE = 'Recieves', PLURAL = 'Recieves', SINGULAR = 'Recieve' },
+    [SEND_TYPE.HW] = { TITLE = 'HARDWARE', PLURAL = 'Hardware outputs', SINGULAR = 'Hardware output' },
+}
+
+T.SETTINGS.LISTS = {
+    [T.SETTINGS.SEND_TYPE_ORDER.LABEL] = {
+        [SEND_TYPE.SEND] = (T.SEND_TYPE_NAMES[SEND_TYPE.SEND].PLURAL):upper(),
+        [SEND_TYPE.HW] = (T.SEND_TYPE_NAMES[SEND_TYPE.HW].PLURAL):upper(),
+        [SEND_TYPE.RECV] = (T.SEND_TYPE_NAMES[SEND_TYPE.RECV].PLURAL):upper(),
+    },
+}
 
 
+T.ERROR = {
+    NO_DOCK = ([[
+No previous dock found.
+
+Please dock manually by dragging
+the window to the dock of your choice.
+
+After that, %s will remember
+the dock position.]]):format(Scr.name)
+}

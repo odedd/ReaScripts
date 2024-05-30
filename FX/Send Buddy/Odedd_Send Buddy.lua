@@ -868,7 +868,7 @@ if OD_PrereqsOK({
                         app.setPage(APP_PAGE.SEARCH_SEND)
                     end
                 end
-
+                app:setHoveredHint('main', 'Add new ' .. (T.SEND_TYPE_NAMES[type].SINGULAR):lower())
                 app.gui:popColors(app.gui.st.col.buttons.addSend)
                 app.gui:popStyles(app.gui.st.vars.addSendButton)
                 ImGui.PopFont(ctx)
@@ -1028,7 +1028,7 @@ if OD_PrereqsOK({
                 left + w, top + totalH,
                 left, top + totalH
             })
-            local text = SEND_TYPE_NAMES[type]
+            local text = (T.SEND_TYPE_NAMES[type].PLURAL):upper()
             ImGui.PushFont(ctx, app.gui.st.fonts.vertical)
             ImGui.DrawList_AddConvexPolyFilled(app.gui.draw_list, points,
                 gui.st.basecolors.mainDark)
@@ -1354,23 +1354,6 @@ if OD_PrereqsOK({
             ImGui.SameLine(ctx)
             ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + app.gui.TEXT_BASE_HEIGHT / 2)
             ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + app.gui.TEXT_BASE_WIDTH)
-            -- local x, y = ImGui.GetCursorScreenPos(ctx)
-            -- local sz = app.gui.TEXT_BASE_WIDTH * 1.5
-            -- local th = 3
-            -- ImGui.DrawList_AddBezierQuadratic(app.gui.draw_list,
-            --     x, y, app.temp.addSendBtnX, y, app.temp.addSendBtnX, app.temp.addSendBtnY,
-            --     app.gui.st.basecolors.main, th, 20)
-            -- ImGui.DrawList_AddBezierQuadratic(app.gui.draw_list,
-            --     app.temp.addSendBtnX, app.temp.addSendBtnY,
-            --     app.temp.addSendBtnX + sz / 1.5, app.temp.addSendBtnY + sz * 1.5,
-            --     app.temp.addSendBtnX + sz, app.temp.addSendBtnY + sz * 1.5,
-            --     app.gui.st.basecolors.main, th, 20)
-            -- ImGui.DrawList_AddBezierQuadratic(app.gui.draw_list,
-            --     app.temp.addSendBtnX, app.temp.addSendBtnY,
-            --     app.temp.addSendBtnX - sz / 1.5, app.temp.addSendBtnY + sz * 1.5,
-            --     app.temp.addSendBtnX - sz, app.temp.addSendBtnY + sz * 1.5,
-            --     app.gui.st.basecolors.main, th, 20)
-
             ImGui.EndChild(ctx)
         end
     end
@@ -1504,9 +1487,7 @@ if OD_PrereqsOK({
         if ImGui.IsWindowDocked(ctx) then
             table.insert(menu, { icon = 'undock', hint = 'Undock' })
         else
-            if app.settings.current.lastDockId then
-                table.insert(menu, { icon = 'dock_down', hint = 'Dock' })
-            end
+            table.insert(menu, { icon = 'dock_down', hint = 'Dock' })
         end
         local rv, btn = beginRightIconMenu(ctx, menu)
         ImGui.PopFont(ctx)
@@ -1518,7 +1499,11 @@ if OD_PrereqsOK({
             elseif btn == 'undock' then
                 app.gui.mainWindow.dockTo = 0
             elseif btn == 'dock_down' then
-                app.gui.mainWindow.dockTo = app.settings.current.lastDockId
+                if app.settings.current.lastDockId then
+                    app.gui.mainWindow.dockTo = app.settings.current.lastDockId
+                else
+                    app:msg(T.ERROR.NO_DOCK)
+                end
             elseif btn == 'gear' then
                 ImGui.OpenPopup(ctx, Scr.name ..' Settings##settingsWindow')
             elseif btn == 'right' then
@@ -1628,6 +1613,7 @@ if OD_PrereqsOK({
             app.drawHint('main')
             app.drawZoom()
             app.drawSettings()
+            app:drawMsg()
             ImGui.End(ctx)
         end
         return open

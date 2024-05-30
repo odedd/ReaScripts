@@ -12,12 +12,7 @@ SEND_TYPE = {
     ['HW'] = 1,
 }
 
-SEND_TYPE_NAMES = {
-    [SEND_TYPE.SEND] = 'SENDS',
-    [SEND_TYPE.RECV] = 'RECEIVES',
-    [SEND_TYPE.HW] = 'HARDWARE'
 
-}
 APP_PAGE = {
     ['MIXER'] = {width = 409, minHeight = 409, windowFlags = ImGui.WindowFlags_None, giveFocus = true},
     ['SEARCH_SEND'] = {width = 900, height = 409, minHeight = 409, windowFlags = ImGui.WindowFlags_None},
