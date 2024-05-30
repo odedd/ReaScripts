@@ -1432,7 +1432,6 @@ if OD_PrereqsOK({
         local visible, open = ImGui.BeginPopupModal(ctx, Scr.name .. ' Settings##settingsWindow', true,
         ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_AlwaysAutoResize)
         if visible then
-            app:drawMsg()
             ImGui.SeparatorText(ctx, 'General')
             if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
             app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
@@ -1464,6 +1463,7 @@ if OD_PrereqsOK({
                 'orderable_list', T.SETTINGS.SEND_TYPE_ORDER.LABEL, T.SETTINGS.SEND_TYPE_ORDER.HINT,
                 { app.settings.current.sendTypeOrder, app.settings.current.sendTypeVisibility })
             app.drawHint('settings')
+            app:drawMsg()
             ImGui.EndPopup(ctx)
         else 
             app.temp._capturing = false
@@ -1635,7 +1635,6 @@ if OD_PrereqsOK({
             end
         end
         if visible then
-            app:drawMsg()
             app.drawTopBar()
 
             if ImGui.BeginChild(ctx, '##body', 0.0, -app.gui.mainWindow.hintHeight) then
@@ -1655,7 +1654,7 @@ if OD_PrereqsOK({
             app.drawHint('main')
             app.drawZoom()
             app.drawSettings()
-            
+            app:drawMsg()
             ImGui.End(ctx)
         end
         return open
