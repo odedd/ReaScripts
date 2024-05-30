@@ -1,6 +1,8 @@
 -- @noindex
 
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
+
+dofile(p .. 'Init.lua')
 dofile(p .. 'Helpers.lua')
 dofile(p .. 'ReaperHelpers.lua')
 dofile(p .. 'AppHelpers.lua')

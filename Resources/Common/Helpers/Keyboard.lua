@@ -165,8 +165,8 @@ OD_KEYCODE_NAMES = {
   [OD_KEYCODES.CLEAR] = 'Clear',
   [OD_KEYCODES.ENTER] = 'Enter',
   [OD_KEYCODES.SHIFT] = 'Shift',
-  [OD_KEYCODES.CONTROL] = 'Control',
-  [OD_KEYCODES.ALT] = 'Alt',
+  [OD_KEYCODES.CONTROL] = _OD_ISMAC and 'Command' or 'Control',
+  [OD_KEYCODES.ALT] = _OD_ISMAC and 'Option' or 'Alt',
   [OD_KEYCODES.PAUSE] = 'Pause',
   [OD_KEYCODES.CAPITAL] = 'Caps Lock',
   [OD_KEYCODES.ESCAPE] = 'Escape',
@@ -222,7 +222,7 @@ OD_KEYCODE_NAMES = {
   [OD_KEYCODES.X] = 'X',
   [OD_KEYCODES.Y] = 'Y',
   [OD_KEYCODES.Z] = 'Z',
-  [OD_KEYCODES.STARTKEY] = 'Start Menu',
+  [OD_KEYCODES.STARTKEY] = _OD_ISMAC and 'Control' or 'Start Menu',
   [OD_KEYCODES.CONTEXTKEY] = 'Context Menu',
   [OD_KEYCODES.NUMPAD0] = 'Numpad 0',
   [OD_KEYCODES.NUMPAD1] = 'Numpad 1',
@@ -320,10 +320,10 @@ OD_ReleaseGlobalKeys = function()
 end
 OD_IsGlobalKeyPressed = function(key, intercept)
   intercept = intercept or false
-  if intercept and not _OD_INTERCEPTED_KEYS[key] then 
+  if intercept and not _OD_INTERCEPTED_KEYS[key] then
     table.insert(_OD_INTERCEPTED_KEYS, key)
     r.JS_VKeys_Intercept(key, 1)
-   end
+  end
   if r.JS_VKeys_GetState(0):byte(key) ~= 0 then
     if _OD_KEYS[key] == nil then
       _OD_KEYS[key] = true
@@ -345,4 +345,16 @@ OD_GetKeyPressed = function(from, to)
       return i
     end
   end
+end
+
+OD_PrintKeysPressed = function()
+  local escapePressed = false
+    for i = 0, 255 do
+      if r.JS_VKeys_GetState(0):byte(OD_KEYCODES.ESCAPE) ~= 0 then
+        escapePressed = true
+      elseif r.JS_VKeys_GetState(0):byte(i) == 1 then
+        r.ShowConsoleMsg(OD_KEYCODE_NAMES[i] .. '\n')
+      end
+    end
+    if not escapePressed then reaper.defer(OD_PrintKeysPressed) end
 end

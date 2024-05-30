@@ -423,7 +423,6 @@ SM_Gui.init = function(self, fonts)
         elseif stType == 'text_with_hint' then
             _, retval1 = ImGui.InputTextWithHint(ctx, '##' .. text, data.hint, val)
         elseif stType == 'shortcut' then 
-            -- TODO Handle ctrl/cmd etc...
             -- TODO Handle same shortcut for multiple actions
             hint = hint .. ' alt-click to remove shortcut.'
             local label, newVal
@@ -433,7 +432,7 @@ SM_Gui.init = function(self, fonts)
                 OD_GetKeyPressed(OD_KEYCODES['NUMPAD0'], OD_KEYCODES['F24'])
                 if key then
                     newVal = { key = key, ctrl = OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL), shift = OD_IsGlobalKeyDown(
-                    OD_KEYCODES.SHIFT), alt = OD_IsGlobalKeyDown(OD_KEYCODES.ALT) }
+                    OD_KEYCODES.SHIFT), alt = OD_IsGlobalKeyDown(OD_KEYCODES.ALT), macCtrl = (_OD_ISMAC and OD_IsGlobalKeyDown(OD_KEYCODES.STARTKEY)) }
                     self.app.temp._capturing = nil
                 end
             else
@@ -443,9 +442,10 @@ SM_Gui.init = function(self, fonts)
                     label = 'Click to set shortcut'
                 else
                     label = OD_KEYCODE_NAMES[val.key]
-                    if val.ctrl then label = 'Ctrl+' .. label end
-                    if val.shift then label = 'Shift+' .. label end
-                    if val.alt then label = 'Alt+' .. label end
+                    if val.macCtrl then label = OD_KEYCODE_NAMES[OD_KEYCODES.STARTKEY] ..'+'.. label end
+                    if val.ctrl then label = OD_KEYCODE_NAMES[OD_KEYCODES.CONTROL] ..'+'.. label end
+                    if val.shift then label = OD_KEYCODE_NAMES[OD_KEYCODES.SHIFT] ..'+'.. label end
+                    if val.alt then label = OD_KEYCODE_NAMES[OD_KEYCODES.ALT] ..'+'.. label end
                 end
             end
             if ImGui.Button(ctx, label .. '##' .. text, widgetWidth) then

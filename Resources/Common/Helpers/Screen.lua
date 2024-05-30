@@ -1,5 +1,4 @@
 -- @noindex
-_OD_ISMAC = reaper.GetOS():lower():match("osx") or reaper.GetOS():lower():match("macos")
 function OD_GetScreenSize()
     local left, top, right, bottom = reaper.JS_Window_GetViewportFromRect(0, 0, 0, 0, false)
     if _OD_ISMAC then

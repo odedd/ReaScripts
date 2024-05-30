@@ -251,6 +251,7 @@ if OD_PrereqsOK({
         local ctx = app.gui.ctx
         local altPressed = OD_IsGlobalKeyDown(OD_KEYCODES.ALT)
         local ctrlPressed = OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL)
+        local macCtrlPressed = _OD_ISMAC and OD_IsGlobalKeyDown(OD_KEYCODES.STARTKEY)
         local shiftPressed = OD_IsGlobalKeyDown(OD_KEYCODES.SHIFT)
 
         app.db:sync()
@@ -868,7 +869,8 @@ if OD_PrereqsOK({
                     if app.settings.current.shortcuts[key] and OD_IsGlobalKeyPressed(app.settings.current.shortcuts[key].key) then
                         if ctrlPressed == app.settings.current.shortcuts[key].ctrl
                             and shiftPressed == app.settings.current.shortcuts[key].shift
-                            and altPressed == app.settings.current.shortcuts[key].alt then
+                            and altPressed == app.settings.current.shortcuts[key].alt 
+                            and macCtrlPressed == app.settings.current.shortcuts[key].macCtrl then
                             clicked = true
                             local scriptHwnd = reaper.JS_Window_Find(Scr.name, true) or
                             reaper.JS_Window_Find(Scr.context_name, true)
@@ -892,7 +894,7 @@ if OD_PrereqsOK({
                     local x, y = OD_GetMousePos()
                     ImGui.SetNextWindowPos(ctx, x, y, ImGui.Cond_Appearing)
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
-                    if ImGui.BeginPopup(ctx, '##newHWSendMenu') then
+                    if ImGui.BeginPopup(ctx, '##newHWSendMenu') then -- TODO: escape key closes menu
                         ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                         if ImGui.BeginMenu(ctx, 'Downmix to mono') then
                             for j = 0, app.db.numAudioOutputs - 1 do

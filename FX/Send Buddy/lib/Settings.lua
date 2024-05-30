@@ -22,19 +22,22 @@ SM_Settings = OD_Settings:new({
                 key = OD_KEYCODES.S,
                 ctrl = false,
                 shift = false,
-                alt = true
+                alt = true,
+                macCtrl = false
             },
             addRecv = {
                 key = OD_KEYCODES.R,
                 ctrl = false,
                 shift = false,
-                alt = true
+                alt = true,
+                macCtrl = false
             },
             addHW = {
                 key = OD_KEYCODES.H,
                 ctrl = false,
                 shift = false,
-                alt = true
+                alt = true,
+                macCtrl = false
             },
         },
         fxTypeVisibility = {
