@@ -422,6 +422,44 @@ SM_Gui.init = function(self, fonts)
             _, retval1 = ImGui.InputText(ctx, '##' .. text, val)
         elseif stType == 'text_with_hint' then
             _, retval1 = ImGui.InputTextWithHint(ctx, '##' .. text, data.hint, val)
+        elseif stType == 'shortcut' then 
+            -- TODO Handle ctrl/cmd etc...
+            -- TODO Handle same shortcut for multiple actions
+            hint = hint .. ' alt-click to remove shortcut.'
+            local label, newVal
+            if self.app.temp._capturing == text then
+                label = 'Press shortcut or click to cancel'
+                local key = OD_GetKeyPressed(OD_KEYCODES['0'], OD_KEYCODES['Z']) or
+                OD_GetKeyPressed(OD_KEYCODES['NUMPAD0'], OD_KEYCODES['F24'])
+                if key then
+                    newVal = { key = key, ctrl = OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL), shift = OD_IsGlobalKeyDown(
+                    OD_KEYCODES.SHIFT), alt = OD_IsGlobalKeyDown(OD_KEYCODES.ALT) }
+                    self.app.temp._capturing = nil
+                end
+            else
+                if val ~= nil and OD_IsGlobalKeyDown(OD_KEYCODES.ALT) then
+                    label = 'Click to remove shortcut'
+                elseif val == nil then
+                    label = 'Click to set shortcut'
+                else
+                    label = OD_KEYCODE_NAMES[val.key]
+                    if val.ctrl then label = 'Ctrl+' .. label end
+                    if val.shift then label = 'Shift+' .. label end
+                    if val.alt then label = 'Alt+' .. label end
+                end
+            end
+            if ImGui.Button(ctx, label .. '##' .. text, widgetWidth) then
+                if self.app.temp._capturing == text then
+                    self.app.temp._capturing = nil
+                else
+                    if val ~= nil and OD_IsGlobalKeyDown(OD_KEYCODES.ALT) then
+                        val = nil
+                    else
+                        self.app.temp._capturing = text
+                    end
+                end
+            end
+            retval1 = newVal or val
         elseif stType == 'orderable_list' then
             -- ImGui.Dummy(ctx, widgetWidth, 20)
             local orderList, enabledList = val[1], val[2]

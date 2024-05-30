@@ -25,6 +25,20 @@ T.SETTINGS = {
     SEND_TYPE_ORDER = {
         LABEL = 'Send type order',
         HINT = 'The order in which sends/recieves/hardware sends are displayed.',
+    },
+    SHORTCUTS = {
+        NEW_SEND = {
+            LABEL = 'New send',
+            HINT = 'Shortcut to create a new send.',
+        },
+        NEW_RECV = {
+            LABEL = 'New recieve',
+            HINT = 'Shortcut to create a new recieve.',
+        },
+        NEW_HW = {
+            LABEL = 'New hardware send',
+            HINT = 'Shortcut to create a new hardware send.',
+        },
     }
 }
 

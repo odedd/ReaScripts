@@ -865,12 +865,13 @@ if OD_PrereqsOK({
                 if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then
                     local key = (type == SEND_TYPE.SEND) and 'addSend' or
                         ((type == SEND_TYPE.RECV) and 'addRecv' or 'addHW')
-                    if OD_IsGlobalKeyPressed(app.settings.current.shortcuts[key].key) then
+                    if app.settings.current.shortcuts[key] and OD_IsGlobalKeyPressed(app.settings.current.shortcuts[key].key) then
                         if ctrlPressed == app.settings.current.shortcuts[key].ctrl
                             and shiftPressed == app.settings.current.shortcuts[key].shift
                             and altPressed == app.settings.current.shortcuts[key].alt then
                             clicked = true
-                            local scriptHwnd = reaper.JS_Window_Find(Scr.name, true) or reaper.JS_Window_Find(Scr.context_name, true)
+                            local scriptHwnd = reaper.JS_Window_Find(Scr.name, true) or
+                            reaper.JS_Window_Find(Scr.context_name, true)
                             r.JS_Window_SetFocus(scriptHwnd)
                         end
                     end
@@ -1084,7 +1085,7 @@ if OD_PrereqsOK({
     end
 
     function app.drawSearch()
-        OD_ReleaseGlobalKeys()
+        -- OD_ReleaseGlobalKeys()
         -- local function nocase(s)
         --     s = string.gsub(s, "%a", function(c)
         --         return string.format("[%s%s]", string.lower(c),
@@ -1429,7 +1430,8 @@ if OD_PrereqsOK({
         local visible, open = ImGui.BeginPopupModal(ctx, Scr.name .. ' Settings##settingsWindow', true,
             ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_AlwaysAutoResize)
         if visible then
-            OD_ReleaseGlobalKeys()
+            -- OD_ReleaseGlobalKeys()
+            ImGui.SeparatorText(ctx, 'General')
             if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
             app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
                 .LABEL, T.SETTINGS.FOLLOW_SELECTED_TRACK.HINT, app.settings.current.followSelectedTrack)
@@ -1444,6 +1446,16 @@ if OD_PrereqsOK({
             end
             -- app.settings.current.sendTypeVisibility[SEND_TYPE.SEND] = app.gui:setting('checkbox', T.SETTINGS.CREATE_INSIDE_FODLER.LABEL, T.SETTINGS.CREATE_INSIDE_FODLER.HINT, app.settings.current.createInsideFolder)
 
+            ImGui.SeparatorText(ctx, 'Shortcuts')
+            app.settings.current.shortcuts.addSend = app.gui:setting('shortcut', T.SETTINGS.SHORTCUTS.NEW_SEND.LABEL,
+            T.SETTINGS.SHORTCUTS.NEW_SEND.HINT, app.settings.current.shortcuts.addSend)
+            app.settings.current.shortcuts.addRecv = app.gui:setting('shortcut', T.SETTINGS.SHORTCUTS.NEW_RECV.LABEL,
+            T.SETTINGS.SHORTCUTS.NEW_RECV.HINT, app.settings.current.shortcuts.addRecv)
+            app.settings.current.shortcuts.addHW = app.gui:setting('shortcut', T.SETTINGS.SHORTCUTS.NEW_HW.LABEL,
+            T.SETTINGS.SHORTCUTS.NEW_HW.HINT, app.settings.current.shortcuts.addHW)
+            
+            ImGui.SeparatorText(ctx, 'Ordering')
+            
             app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility = app.gui:setting('orderable_list',
                 T.SETTINGS.FX_TYPE_ORDER.LABEL, T.SETTINGS.FX_TYPE_ORDER.HINT,
                 { app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility })
@@ -1636,10 +1648,6 @@ if OD_PrereqsOK({
                 end
                 ImGui.EndChild(ctx)
             end
-            if app.temp.showSettings then
-                ImGui.OpenPopup(ctx, Scr.name .. ' Settings##settingsWindow')
-                app.temp.showSettings = false
-            end
             app.drawHint('main')
             app.drawZoom()
             app.drawSettings()
@@ -1720,6 +1728,5 @@ if OD_PrereqsOK({
     app.db:init()
     app.db:sync()
     app.setPage(APP_PAGE.MIXER)
-
     PDefer(app.loop)
 end
