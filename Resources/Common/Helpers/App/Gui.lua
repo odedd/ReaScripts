@@ -1,8 +1,9 @@
 -- @noindex
 -- ! OD_Gui
+
 OD_Gui = {
     font = nil,
-    mainWindow = {},
+    mainWindow = { min_w = 0, min_h = 0, max_w = select(2, reaper.ImGui_NumericLimits_Float()), max_h = select(2, reaper.ImGui_NumericLimits_Float()) },
     st = {
         col = {
             warning = 0xf58e07FF,
@@ -11,7 +12,8 @@ OD_Gui = {
             error = 0xFF5555FF,
             hint = 0xCCCCCCFF,
         }
-    }
+    },
+    reaperHWND = reaper.GetMainHwnd()
 }
 
 function OD_Gui:new(o)
@@ -21,14 +23,56 @@ function OD_Gui:new(o)
     return o
 end
 
-function OD_Gui:init()
-    self.ctx = r.ImGui_CreateContext(self.app.scr.context_name .. '_MAIN') --, reaper.ImGui_ConfigFlags_DockingEnable())
-    local font_default = self.font or
-        r.ImGui_CreateFont(OD_LocalOrCommon('Resources/Fonts/Cousine-Regular.ttf', self.app.scr.dir), 16)
-    r.ImGui_Attach(self.ctx, font_default)
+function OD_Gui:createFonts(fonts)
+    self.st.fonts = self.st.fonts or {}
+    for k, font in pairs(fonts) do
+        self:addFont(k, font.file, font.size)
+        -- self.st.fonts[k] = r.ImGui_CreateFont(OD_LocalOrCommon(font.file, self.app.scr.dir), font.size)
+    end
+end
 
+function OD_Gui:addFont(key, file, size)
+    self.st.fonts = self.st.fonts or {}
+    self.st.fonts[key] = r.ImGui_CreateFont(OD_LocalOrCommon(file, self.app.scr.dir), size)
+end
+
+function OD_Gui:init(addDefaultFonts)
+    local addDefaultFonts = (addDefaultFonts == nil) and (not self.st.fonts) or addDefaultFonts
+    if addDefaultFonts then
+        local small = 16
+        local default = 18
+        local medium = 20
+        local large = 22
+        self:createFonts({
+            default = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = default },
+            small = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = small },
+            medium = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = medium },
+            large = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = large },
+            bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = default },
+            small_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = small },
+            medium_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = medium },
+            large_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = large },
+            icons = { file = 'Resources/Fonts/Icons-Regular.otf', size = default },
+            icons_small = { file = 'Resources/Fonts/Icons-Regular.otf', size = small },
+            icons_medium = { file = 'Resources/Fonts/Icons-Regular.otf', size = medium },
+            icons_large = { file = 'Resources/Fonts/Icons-Regular.otf', size = large }
+        })
+    end
+
+    self.ctx = r.ImGui_CreateContext(self.app.scr.context_name) --, reaper.ImGui_ConfigFlags_DockingEnable())
+    for k, font in pairs(self.st.fonts) do
+        r.ImGui_Attach(self.ctx, font)
+    end
     self.draw_list = r.ImGui_GetWindowDrawList(self.ctx)
-    self.st.fonts = { default = font_default }
+    self.keyModCtrlCmd = (OS_is.mac or OS_is.mac_arm) and r.ImGui_Mod_Super() or r.ImGui_Mod_Ctrl()
+    self.notKeyModCtrlCmd = (OS_is.mac or OS_is.mac_arm) and r.ImGui_Mod_Ctrl() or r.ImGui_Mod_Super()
+    self.descModCtrlCmd = (OS_is.mac or OS_is.mac_arm) and 'cmd' or 'control'
+    self.descModAlt = (OS_is.mac or OS_is.mac_arm) and 'opt' or 'alt'
+
+    self.vars = {
+        framePaddingX = select(1, r.ImGui_GetStyleVar(self.ctx, r.ImGui_StyleVar_FramePadding())),
+        framePaddingY = select(2, r.ImGui_GetStyleVar(self.ctx, r.ImGui_StyleVar_FramePadding()))
+    }
 
     self.popups = {
         singleInput = {
@@ -36,10 +80,36 @@ function OD_Gui:init()
         }
     }
 
-    r.ImGui_PushFont(self.ctx, self.st.fonts.default)
-    self.TEXT_BASE_WIDTH, self.TEXT_BASE_HEIGHT = r.ImGui_CalcTextSize(self.ctx, 'A'),
-        r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
-    r.ImGui_PopFont(self.ctx)
+    if self.st.fonts.default then
+        r.ImGui_PushFont(self.ctx, self.st.fonts.default)
+        self.TEXT_BASE_WIDTH, self.TEXT_BASE_HEIGHT = r.ImGui_CalcTextSize(self.ctx, 'A'),
+            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+        r.ImGui_PopFont(self.ctx)
+    end
+    if self.st.fonts.small then
+        r.ImGui_PushFont(self.ctx, self.st.fonts.small)
+        self.TEXT_BASE_WIDTH_SMALL, self.TEXT_BASE_HEIGHT_SMALL = r.ImGui_CalcTextSize(self.ctx, 'A'),
+            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+        r.ImGui_PopFont(self.ctx)
+    end
+    if self.st.fonts.bold then
+        r.ImGui_PushFont(self.ctx, self.st.fonts.bold)
+        self.TEXT_BASE_WIDTH_BOLD, self.TEXT_BASE_HEIGHT_BOLD = r.ImGui_CalcTextSize(self.ctx, 'A'),
+            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+        r.ImGui_PopFont(self.ctx)
+    end
+    if self.st.fonts.large then
+        r.ImGui_PushFont(self.ctx, self.st.fonts.large)
+        self.TEXT_BASE_WIDTH_LARGE, self.TEXT_BASE_HEIGHT_LARGE = r.ImGui_CalcTextSize(self.ctx, 'A'),
+            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+        r.ImGui_PopFont(self.ctx)
+    end
+    if self.st.fonts.large_bold then
+        r.ImGui_PushFont(self.ctx, self.st.fonts.large_bold)
+        self.TEXT_BASE_WIDTH_LARGE_BOLD, self.TEXT_BASE_HEIGHT_LARGE_BOLD = r.ImGui_CalcTextSize(self.ctx, 'A'),
+            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+        r.ImGui_PopFont(self.ctx)
+    end
 
     self.icons = {
         caution = r.ImGui_CreateImage(OD_LocalOrCommon('Resources/Icons/caution.png', self.app.scr.dir)),
