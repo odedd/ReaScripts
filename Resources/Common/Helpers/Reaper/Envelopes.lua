@@ -1,3 +1,5 @@
+-- @noindex
+
 function OD_ToggleShowEnvelope(env, show)
     local ret, chunk = reaper.GetEnvelopeStateChunk(env, '', false)
     if chunk then

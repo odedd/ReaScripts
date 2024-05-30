@@ -1,5 +1,8 @@
+_OD_KEYS = {}
+_OD_INTERCEPTED_KEYS = {}
+
 -- taken from here https://forums.cockos.com/showpost.php?p=2608321&postcount=12
-KEYCODES = {
+OD_KEYCODES = {
   LBUTTON     = 0x01, --  The left mouse button
   RBUTTON     = 0x02, --  The right mouse button
   CANCEL      = 0x03, --  The Cancel virtual key, used for control-break processing
@@ -152,6 +155,30 @@ KEYCODES = {
   OEM_CLEAR   = 0xFE, --  CLEAR
 }
 
-OD_IsKeyPressed = function(key)
-  return r.JS_VKeys_GetState(0):byte(KEYCODES[key:upper()]) == 1
+OD_IsGlobalKeyDown = function(key)
+  return r.JS_VKeys_GetState(0):byte(key) == 1
+end
+OD_ReleaseGlobalKeys = function()
+  for _, key in ipairs(_OD_INTERCEPTED_KEYS) do
+    r.JS_VKeys_Intercept(key, -1)
+    _OD_INTERCEPTED_KEYS[key] = nil
+  end
+end
+OD_IsGlobalKeyPressed = function(key, intercept)
+  intercept = intercept or false
+  if intercept and not _OD_INTERCEPTED_KEYS[key] then 
+    table.insert(_OD_INTERCEPTED_KEYS, key)
+    r.JS_VKeys_Intercept(key, 1)
+   end
+  if r.JS_VKeys_GetState(0):byte(key) ~= 0 then
+    if _OD_KEYS[key] == nil then
+      _OD_KEYS[key] = true
+      return true
+    end
+  else
+    if _OD_KEYS[key] then
+      _OD_KEYS[key] = nil
+    end
+  end
+  return false
 end

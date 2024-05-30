@@ -249,9 +249,9 @@ if OD_PrereqsOK({
 
     function app.drawMixer()
         local ctx = app.gui.ctx
-        local altPressed = OD_IsKeyPressed('alt')
-        local ctrlPressed = OD_IsKeyPressed('control')
-        local shiftPressed = OD_IsKeyPressed('shift')
+        local altPressed = OD_IsGlobalKeyDown(OD_KEYCODES.ALT)
+        local ctrlPressed = OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL)
+        local shiftPressed = OD_IsGlobalKeyDown(OD_KEYCODES.SHIFT)
 
         app.db:sync()
         ImGui.PushFont(ctx, app.gui.st.fonts.small)
@@ -861,7 +861,21 @@ if OD_PrereqsOK({
                 ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
                 app.gui:pushStyles(app.gui.st.vars.addSendButton)
                 app.gui:pushColors(app.gui.st.col.buttons.addSend)
-                if ImGui.Button(ctx, ICONS.PLUS .. '##addSends' .. type, app.gui.st.sizes.sendTypeSeparatorWidth, app.gui.st.sizes.sendTypeSeparatorWidth) then
+                local clicked = false
+                if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then
+                    local key = (type == SEND_TYPE.SEND) and 'addSend' or
+                        ((type == SEND_TYPE.RECV) and 'addRecv' or 'addHW')
+                    if OD_IsGlobalKeyPressed(app.settings.current.shortcuts[key].key) then
+                        if ctrlPressed == app.settings.current.shortcuts[key].ctrl
+                            and shiftPressed == app.settings.current.shortcuts[key].shift
+                            and altPressed == app.settings.current.shortcuts[key].alt then
+                            clicked = true
+                            local scriptHwnd = reaper.JS_Window_Find(Scr.name, true) or reaper.JS_Window_Find(Scr.context_name, true)
+                            r.JS_Window_SetFocus(scriptHwnd)
+                        end
+                    end
+                end
+                if ImGui.Button(ctx, ICONS.PLUS .. '##addSends' .. type, app.gui.st.sizes.sendTypeSeparatorWidth, app.gui.st.sizes.sendTypeSeparatorWidth) or clicked then
                     if type == SEND_TYPE.HW then
                         ImGui.OpenPopup(ctx, '##newHWSendMenu')
                     else
@@ -874,6 +888,8 @@ if OD_PrereqsOK({
                 app.gui:popStyles(app.gui.st.vars.addSendButton)
                 ImGui.PopFont(ctx)
                 if type == SEND_TYPE.HW then
+                    local x, y = OD_GetMousePos()
+                    ImGui.SetNextWindowPos(ctx, x, y, ImGui.Cond_Appearing)
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginPopup(ctx, '##newHWSendMenu') then
                         ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
@@ -1068,6 +1084,7 @@ if OD_PrereqsOK({
     end
 
     function app.drawSearch()
+        OD_ReleaseGlobalKeys()
         -- local function nocase(s)
         --     s = string.gsub(s, "%a", function(c)
         --         return string.format("[%s%s]", string.lower(c),
@@ -1112,7 +1129,7 @@ if OD_PrereqsOK({
             end
             app.temp.highlightedResult = #app.temp.searchResults > 0 and 1 or nil
             app.temp.lastInvisibleGroup = nil
-            -- if recieving track, add assign all results to ALL_TRACKS_GROUP and sort them by track order
+            -- if receiving track, add assign all results to ALL_TRACKS_GROUP and sort them by track order
             if app.temp.addSendType == SEND_TYPE.RECV then
                 table.sort(app.temp.searchResults, function(a, b)
                     return a.order < b.order
@@ -1360,6 +1377,7 @@ if OD_PrereqsOK({
     end
 
     function app.drawErrorNoTrack()
+        OD_ReleaseGlobalKeys()
         local ctx = app.gui.ctx
         app.db:sync()
         local w, h =
@@ -1408,20 +1426,30 @@ if OD_PrereqsOK({
         local ctx = app.gui.ctx
         ImGui.PushFont(ctx, app.gui.st.fonts.default)
         ImGui.SetNextWindowSize(ctx, 700, 0, nil)
-        local visible, open = ImGui.BeginPopupModal(ctx, Scr.name ..' Settings##settingsWindow', true, 
-        ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_AlwaysAutoResize )
+        local visible, open = ImGui.BeginPopupModal(ctx, Scr.name .. ' Settings##settingsWindow', true,
+            ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_AlwaysAutoResize)
         if visible then
+            OD_ReleaseGlobalKeys()
             if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
-            app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK.LABEL, T.SETTINGS.FOLLOW_SELECTED_TRACK.HINT, app.settings.current.followSelectedTrack)
-            app.settings.current.mouseScrollReversed = app.gui:setting('checkbox', T.SETTINGS.MW_REVERSED.LABEL, T.SETTINGS.MW_REVERSED.HINT, app.settings.current.mouseScrollReversed)
-            app.settings.current.createInsideFolder = app.gui:setting('checkbox', T.SETTINGS.CREATE_INSIDE_FODLER.LABEL, T.SETTINGS.CREATE_INSIDE_FODLER.HINT, app.settings.current.createInsideFolder)
-            if app.settings.current.createInsideFolder then 
-                app.settings.current.sendFolderName = app.gui:setting('text_with_hint', '###sendFolderName', T.SETTINGS.SEND_FOLDER_NAME.HINT, app.settings.current.sendFolderName, {hint = T.SETTINGS.SEND_FOLDER_NAME.LABEL}, true)
+            app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
+                .LABEL, T.SETTINGS.FOLLOW_SELECTED_TRACK.HINT, app.settings.current.followSelectedTrack)
+            app.settings.current.mouseScrollReversed = app.gui:setting('checkbox', T.SETTINGS.MW_REVERSED.LABEL,
+                T.SETTINGS.MW_REVERSED.HINT, app.settings.current.mouseScrollReversed)
+            app.settings.current.createInsideFolder = app.gui:setting('checkbox', T.SETTINGS.CREATE_INSIDE_FODLER.LABEL,
+                T.SETTINGS.CREATE_INSIDE_FODLER.HINT, app.settings.current.createInsideFolder)
+            if app.settings.current.createInsideFolder then
+                app.settings.current.sendFolderName = app.gui:setting('text_with_hint', '###sendFolderName',
+                    T.SETTINGS.SEND_FOLDER_NAME.HINT, app.settings.current.sendFolderName,
+                    { hint = T.SETTINGS.SEND_FOLDER_NAME.LABEL }, true)
             end
             -- app.settings.current.sendTypeVisibility[SEND_TYPE.SEND] = app.gui:setting('checkbox', T.SETTINGS.CREATE_INSIDE_FODLER.LABEL, T.SETTINGS.CREATE_INSIDE_FODLER.HINT, app.settings.current.createInsideFolder)
-            
-            app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility = app.gui:setting('orderable_list', T.SETTINGS.FX_TYPE_ORDER.LABEL, T.SETTINGS.FX_TYPE_ORDER.HINT, {app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility})
-            app.settings.current.sendTypeOrder, app.settings.current.sendTypeVisibility = app.gui:setting('orderable_list', T.SETTINGS.SEND_TYPE_ORDER.LABEL, T.SETTINGS.SEND_TYPE_ORDER.HINT, {app.settings.current.sendTypeOrder, app.settings.current.sendTypeVisibility})
+
+            app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility = app.gui:setting('orderable_list',
+                T.SETTINGS.FX_TYPE_ORDER.LABEL, T.SETTINGS.FX_TYPE_ORDER.HINT,
+                { app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility })
+            app.settings.current.sendTypeOrder, app.settings.current.sendTypeVisibility = app.gui:setting(
+                'orderable_list', T.SETTINGS.SEND_TYPE_ORDER.LABEL, T.SETTINGS.SEND_TYPE_ORDER.HINT,
+                { app.settings.current.sendTypeOrder, app.settings.current.sendTypeVisibility })
             app.drawHint('settings')
             ImGui.EndPopup(ctx)
         end
@@ -1506,7 +1534,7 @@ if OD_PrereqsOK({
                     app:msg(T.ERROR.NO_DOCK)
                 end
             elseif btn == 'gear' then
-                ImGui.OpenPopup(ctx, Scr.name ..' Settings##settingsWindow')
+                ImGui.OpenPopup(ctx, Scr.name .. ' Settings##settingsWindow')
             elseif btn == 'right' then
                 app.setPage(APP_PAGE.MIXER)
             elseif btn == 'money' then
@@ -1573,12 +1601,11 @@ if OD_PrereqsOK({
         ImGui.SetNextWindowSizeConstraints(app.gui.ctx, app.gui.mainWindow.min_w, app.gui.mainWindow.min_h,
             app.gui.mainWindow.max_w, app.gui.mainWindow.max_h)
 
-        local visible, open = ImGui.Begin(ctx, "###mainWindow",
+        local visible, open = ImGui.Begin(ctx, Scr.name .. "###mainWindow",
             true,
-            ImGui.WindowFlags_NoCollapse |
-            ImGui.WindowFlags_NoTitleBar | app.page.windowFlags)
-        -- ImGui.WindowFlags_NoResize
-        --
+            ImGui.WindowFlags_NoTitleBar |
+            ImGui.WindowFlags_NoCollapse | app.page.windowFlags)
+
         app.gui.mainWindow.pos = { ImGui.GetWindowPos(ctx) }
         app.gui.mainWindow.size = { ImGui.GetWindowSize(ctx) }
         app.settings.current.lastWindowWidth, app.settings.current.lastWindowHeight = app.gui.mainWindow.size[1],
@@ -1610,7 +1637,7 @@ if OD_PrereqsOK({
                 ImGui.EndChild(ctx)
             end
             if app.temp.showSettings then
-                ImGui.OpenPopup(ctx, Scr.name ..' Settings##settingsWindow')
+                ImGui.OpenPopup(ctx, Scr.name .. ' Settings##settingsWindow')
                 app.temp.showSettings = false
             end
             app.drawHint('main')
@@ -1673,9 +1700,7 @@ if OD_PrereqsOK({
     end
 
     function Release()
-        -- r.JS_VKeys_Intercept(KEYCODES.ALT, -1)
-        -- r.JS_VKeys_Intercept(KEYCODES.CONTROL, -1)
-        -- r.JS_VKeys_Intercept(KEYCODES.SHIFT, -1)
+        OD_ReleaseGlobalKeys()
     end
 
     function Exit()
@@ -1695,5 +1720,6 @@ if OD_PrereqsOK({
     app.db:init()
     app.db:sync()
     app.setPage(APP_PAGE.MIXER)
+
     PDefer(app.loop)
 end

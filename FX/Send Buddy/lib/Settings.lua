@@ -17,6 +17,26 @@ SM_Settings = OD_Settings:new({
             SEND_TYPE.HW,
             SEND_TYPE.RECV,
         },
+        shortcuts = {
+            addSend = {
+                key = OD_KEYCODES.S,
+                ctrl = false,
+                shift = false,
+                alt = true
+            },
+            addRecv = {
+                key = OD_KEYCODES.R,
+                ctrl = false,
+                shift = false,
+                alt = true
+            },
+            addHW = {
+                key = OD_KEYCODES.H,
+                ctrl = false,
+                shift = false,
+                alt = true
+            },
+        },
         fxTypeVisibility = {
             ['VST3'] = true,
             ['VST3i'] = true,
