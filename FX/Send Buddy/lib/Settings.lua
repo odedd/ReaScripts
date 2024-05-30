@@ -41,7 +41,7 @@ SM_Settings = OD_Settings:new({ --TODO proper defaults
             },
             markFavorite = {
                 key = OD_KEYCODES.F,
-                ctrl = true,
+                ctrl = false,
                 shift = false,
                 alt = true,
                 macCtrl = false
