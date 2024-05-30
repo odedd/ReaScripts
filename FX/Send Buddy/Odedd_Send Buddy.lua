@@ -1029,7 +1029,7 @@ if OD_PrereqsOK({
                 left + w, top + totalH,
                 left, top + totalH
             })
-            local text = (T.SEND_TYPE_NAMES[type].PLURAL):upper()
+            local text = (T.SEND_TYPE_NAMES[type].TITLE):upper()
             ImGui.PushFont(ctx, app.gui.st.fonts.vertical)
             ImGui.DrawList_AddConvexPolyFilled(app.gui.draw_list, points,
                 gui.st.basecolors.mainDark)
