@@ -17,6 +17,20 @@ function OD_HasValue(tab, val, case_indifferent)
     return false
 end
 
+function OD_RemoveValue(tab, val, case_indifferent)
+    for i = #tab, 1, -1 do
+        if case_indifferent and type(val) == string and type(tab[i]) == string then
+            if tab[i]:lower() == val:lower() then
+                table.remove(tab, i)
+            end
+        else
+            if tab[i] == val then
+                table.remove(tab, i)
+            end
+        end
+    end
+end
+
 function OD_Tablelength(T)
     local count = 0
     for _ in pairs(T) do count = count + 1 end
@@ -359,4 +373,22 @@ function OD_PairsByOrder(t, f)
         end
     end
     return iter
+end
+
+function OD_TableMap(t, f)
+    local newTable = {}
+    for k, v in pairs(t) do
+        newTable[k] = f(k, v)
+    end
+    return newTable
+end
+
+function OD_TableFilter(t, f)
+    local newTable = {}
+    for k, v in pairs(t) do
+        if f(k, v) then
+            newTable[k] = v
+        end
+    end
+    return newTable
 end
