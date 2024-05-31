@@ -493,14 +493,14 @@ end
 
 --- TRACKS
 DB.getSelectedTrack = function(self)
-    if self.app.settings.current.followSelectedTrack == false and self.track ~= -1 and self.track ~= nil and self.track.object ~= nil then
+    if self.app.settings.current.followSelectedTrack == false and self.track ~= -1 and self.track ~= nil and self.track.object ~= nil and r.ValidatePtr(self.track.object, 'MediaTrack*') then
         return self.track, false
     end
     local track = reaper.GetLastTouchedTrack()
     if (track == nil and self.track ~= nil) or track == self.masterTrack then
         self.trackName = nil
         self.sends = {}
-        return { object = nil }, true
+        return (self.track ~= -1 and not self.track.object) and self.track or { }, true
     end
     for i, trk in ipairs(self.tracks) do
         if track == trk.object then
