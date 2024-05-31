@@ -4,7 +4,7 @@ SM_Settings = OD_Settings:new({ --TODO proper defaults
     default = {
         -- Settings window
         mouseScrollReversed = true,
-        followSelectedTrack = false,
+        followSelectedTrack = true,
         createInsideFolder = true,
         sendFolderName = 'FX BUS',
         sendTypeVisibility = {
