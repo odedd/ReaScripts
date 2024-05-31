@@ -8,6 +8,24 @@ DB = {
     soloedSends = {},
     plugins = {},
     tracks = {},
+    setUndoPoint = function(self, name, type, trackparm)
+        type = type or -1
+        trackparm = trackparm or -1
+        if not self.surpressUndo then
+            r.Undo_OnStateChangeEx2(0, name, type, trackparm)
+        end
+    end,
+    beginUndoBlock = function(self)
+        if not self.surpressUndo then
+        r.Undo_BeginBlock()
+        end
+    end,
+    endUndoBlock = function(self, name, type)
+        type = type or -1
+        if not self.surpressUndo then
+        r.Undo_EndBlock(name, type)
+        end
+    end,
     lastGuids = {}, -- use to check if a track has been removed or added
     init = function(self, app)
         self.plugins = {}
@@ -130,7 +148,8 @@ DB = {
                             nil,
                         destInserts = {},
                         destInsertsCount = 0,
-                        delete = function(self) -- TODO: reflect removed send in solo states
+                        delete = function(self)
+                            self.db:beginUndoBlock()
                             reaper.RemoveTrackSend(self.track.object, self.type, self.index)
                             -- Updates the GUIDs in the database after a send has been deleted,
                             -- and updates the soloMatrix and sendListen states accordingly
@@ -151,8 +170,9 @@ DB = {
                                 end
                             end
                             self.db:sync(true)
+                            self.db:endUndoBlock('Delete send', 1)
                         end,
-                        setVolDB = function(self, dB)
+                        setVolDB = function(self, dB) -- because of the complexity of the input mechanism, undo states are handled in the GUI
                             if dB < self.db.app.settings.current.minSendVol then
                                 dB = self.db.app.settings.current.minSendVol
                             elseif dB > self.db.app.settings.current.maxSendVol then
@@ -162,7 +182,7 @@ DB = {
                                 (dB <= self.db.app.settings.current.minSendVol and 0 or OD_ValFromdB(dB)))
                             self.db:sync(true)
                         end,
-                        setPan = function(self, pan)
+                        setPan = function(self, pan) -- because of the complexity of the input mechanism, undo states are handled in the GUI
                             if pan < -1 then
                                 pan = -1
                             elseif pan > 1 then
@@ -171,18 +191,21 @@ DB = {
                             reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_PAN', pan)
                             self.db:sync(true)
                         end,
-                        setPanLaw = function(self, panLaw)
+                        setPanLaw = function(self, panLaw) -- TODO implement!
                             reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_PANLAW', panLaw)
                             self.db:sync(true)
+                            self.db:setUndoPoint('Change send pan law', 1)
                         end,
-                        setMono = function(self, mono)
+                        setMono = function(self, mono) -- TODO implement!
                             reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'B_MONO', mono)
                             self.db:sync(true)
+                            self.db:setUndoPoint('Toggle send mono mixdown', 1)
                         end,
                         setPolarity = function(self, polarity)
                             reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'B_PHASE',
                                 polarity and 1 or 0)
                             self.db:sync(true)
+                            self.db:setUndoPoint('Toggle send polarity', 1)
                         end,
                         setSrcChan = function(self, srcChan)
                             local targetTrack = (self.type == SEND_TYPE.HW) and self.track or self.srcTrack
@@ -195,6 +218,7 @@ DB = {
                             end
                             reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_SRCCHAN', srcChan)
                             self.db:sync(true)
+                            self.db:setUndoPoint('Change source channel', 1)
                         end,
                         setMidiRouting = function(self, srcChn, srcBus, destChn, destBus)
                             srcChn = srcChn or self.midiSrcChn
@@ -205,10 +229,12 @@ DB = {
                             reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_MIDIFLAGS',
                                 midiRouting)
                             self.db:sync(true)
+                            self.db:setUndoPoint('Set send midi routing', 1)
                         end,
                         setMode = function(self, mode)
                             reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_SENDMODE', mode)
                             self.db:sync(true)
+                            self.db:setUndoPoint('Set send mode', 1)
                         end,
                         setDestChan = function(self, destChan)
                             if self.type == SEND_TYPE.HW then 
@@ -225,16 +251,18 @@ DB = {
                             end
                             reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_DSTCHAN', destChan)
                             self.db:sync(true)
+                            self.db:setUndoPoint('Change destination channel', 1)
                         end,
                         setMute = function(self, mute, skipRefresh)
                             reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'B_MUTE',
                                 mute and 1 or 0)
                             if not skipRefresh then self.db:sync(true) end
+                            self.db:setUndoPoint('Mute send', 1)
                         end,
                         getSolo = function(self)
                             return self.track.soloMatrix[self.guid] or SOLO_STATES.NONE
                         end,
-                        goToDestTrack = function(self)
+                        goToDestTrack = function(self) -- selecting tracks does not create undo points
                             if self.type == SEND_TYPE.HW then return end
                             local target = (self.type == SEND_TYPE.SEND) and self.destTrack or self.srcTrack
                             r.SetMediaTrackInfo_Value(target.object, 'B_SHOWINMIXER', 1)
@@ -244,6 +272,7 @@ DB = {
                             r.Main_OnCommand(40913, 0)
                         end,
                         setSolo = function(self, solo, exclusive)
+                            self.db:beginUndoBlock()
                             -- deafult to true if solo == SOLO_STATES.SOLO
                             local exclusive = (exclusive ~= false) and (solo == SOLO_STATES.SOLO) or false
                             self:_saveOrigMuteState()
@@ -262,11 +291,13 @@ DB = {
 
                             self.db:_reflectSolos(true)
                             self.db:save()
+                            self.db:endUndoBlock('Solo send', 1)
                         end,
                         isListening = function(self)
                             return self.track.sendListen == self.guid
                         end,
                         toggleListen = function(self, listenMode)
+                            self.db:beginUndoBlock()
                             local sourceTrack = self.srcTrack or self.track
                             if self.track.sendListen ~= self.guid then
                                 if listenMode == SEND_LISTEN_MODES.RETURN_ONLY then
@@ -313,6 +344,7 @@ DB = {
                                 self:setSolo(SOLO_STATES.NONE)
                             end
                             self.db:save()
+                            self.db:endUndoBlock('Toggle send listen', 1)
                         end,
                         _getChannelAlias = function(self)
                             if self.srcChan == -1 then return '' end
@@ -336,7 +368,7 @@ DB = {
                                 end
                             end
                         end,
-                        addInsert = function(self, fxName)
+                        addInsert = function(self, fxName) -- undo point is created by TrackFX_AddByName
                             local fxIndex = r.TrackFX_AddByName(self.destTrack.object, fxName, false, -1)
                             if fxIndex == -1 then
                                 self.db.app.logger:logError('Cannot add ' .. fxName .. ' to ' .. self.destTrack.name)
@@ -349,14 +381,17 @@ DB = {
                         toggleVolEnv = function(self, show)
                             local env = reaper.GetTrackSendInfo_Value(self.track.object, self.type, i, "P_ENV:<VOLENV")
                             OD_ToggleShowEnvelope(env, show)
+                            self.db:setUndoPoint('Show/hide send volume envelope', 1)
                         end,
                         togglePanEnv = function(self, show)
                             local env = reaper.GetTrackSendInfo_Value(self.track.object, self.type, i, "P_ENV:<PANENV")
                             OD_ToggleShowEnvelope(env, show)
+                            self.db:setUndoPoint('Show/hide send pan envelope', 1)
                         end,
                         toggleMuteEnv = function(self, show)
                             local env = reaper.GetTrackSendInfo_Value(self.track.object, self.type, i, "P_ENV:<MUTEENV")
                             OD_ToggleShowEnvelope(env, show)
+                            self.db:setUndoPoint('Show/hide send mute envelope', 1)
                         end,
                     }
 
@@ -420,10 +455,12 @@ DB = {
                 for _, send in ipairs(self.sends) do
                     local baseSendGuid = send.guid:match('(.*)_%d-$')
                     if baseSendGuid == baseGuid then
+                        self.surpressUndo = true
                         send:setSolo(SOLO_STATES.NONE)
                         if send:isListening() then
                             send:toggleListen(self.listenMode)
                         end
+                        self.surpressUndo = false
                     end
                 end
             end
@@ -434,7 +471,8 @@ DB = {
 
 --- Sends
 
-DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName) -- TODO: reflect added send in solo states
+DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
+    self:beginUndoBlock()
     if sendType == SEND_TYPE.HW then
         local sndIdx = reaper.CreateTrackSend(self.track.object, nil)
         reaper.SetTrackSendInfo_Value(self.track.object, sendType, sndIdx, 'I_DSTCHAN', assetType)
@@ -489,6 +527,7 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName) -- 
             end
         end
     end
+    self:endUndoBlock('Create new send', 1)
 end
 
 --- TRACKS
@@ -556,7 +595,7 @@ DB.getTracks = function(self)
             sendListen = sendListen,
             sendListenMode = sendListenMode,
             order = i,
-            setVolDB = function(self, dB)
+            setVolDB = function(self, dB) -- because of the complexity of the input mechanism, undo states are handled in the GUI
                 if dB < self.db.app.settings.current.minSendVol then
                     dB = self.db.app.settings.current.minSendVol
                 elseif dB > self.db.app.settings.current.maxSendVol then
@@ -566,7 +605,7 @@ DB.getTracks = function(self)
                 reaper.SetMediaTrackInfo_Value(self.object, 'D_VOL',self.vol)
                 -- self.db:sync(true)
             end,
-            setPan = function(self, pan)
+            setPan = function(self, pan) -- because of the complexity of the input mechanism, undo states are handled in the GUI
                 if pan < -1 then
                     pan = -1
                 elseif pan > 1 then
@@ -600,6 +639,7 @@ DB._numSolos = function(self)
     return numOfSolos
 end
 DB._reflectSolos = function(self, resetIfNeeded)
+    self.surpressUndo = true
     local numSolos = self:_numSolos()
     if numSolos > 0 then
         for j, send in ipairs(self.sends) do
@@ -611,6 +651,7 @@ DB._reflectSolos = function(self, resetIfNeeded)
             send:setMute(send.track.origMuteMatrix[send.guid] or false)
         end
     end
+    self.surpressUndo = false
 end
 
 DB.isListenOn = function(self)
@@ -648,19 +689,19 @@ DB.getInserts = function(self, track)
             offline = offline,
             enabled = enabled,
             track = track,
-            setEnabled = function(self, enabled)
+            setEnabled = function(self, enabled) -- undo point created by TrackFX_SetEnabled
                 r.TrackFX_SetEnabled(self.track, i, enabled)
                 self.db:sync(true)
             end,
-            setOffline = function(self, offline)
+            setOffline = function(self, offline) -- undo point created by TrackFX_SetOffline
                 r.TrackFX_SetOffline(self.track, i, offline)
                 self.db:sync(true)
             end,
-            delete = function(self)
+            delete = function(self) -- undo point created by TrackFX_Delete
                 r.TrackFX_Delete(self.track, i)
                 self.db:sync(true)
             end,
-            toggleShow = function(self)
+            toggleShow = function(self) -- showing FX does not create undo points
                 if not r.TrackFX_GetOpen(self.track, i) then
                     r.TrackFX_Show(self.track, i, 3)
                     return true

@@ -380,8 +380,14 @@ if OD_PrereqsOK({
                 if rv or shouldReset then
                     target:setVolDB(v2)
                 end
+                if ImGui.IsItemDeactivatedAfterEdit(ctx) or shouldReset then
+                    r.Undo_OnStateChangeEx2(0, 'Set send volume', 1, -1)
+                end
                 if ImGui.IsItemHovered(ctx) then
                     if mw ~= 0 then
+                        if not app.temp.volDragging then
+                            app.temp.volDragging = true
+                        end
                         local scale = .2
                         if v > app.settings.current.scaleLevel then
                             scale = 0.05
@@ -394,6 +400,13 @@ if OD_PrereqsOK({
                         end
                         local newV = v + (app.settings.current.mouseScrollReversed and -mw or mw) * scale
                         target:setVolDB(newV)
+                    elseif mw == 0.0 and app.temp.volDragging then
+                        app.temp.volDraggingStopTimer = reaper.time_precise()
+                        app.temp.volDragging = nil
+                    end
+                    if app.temp.volDraggingStopTimer and (reaper.time_precise() - app.temp.volDraggingStopTimer) > 0.15 then
+                        app.temp.volDraggingStopTimer = nil
+                        r.Undo_OnStateChangeEx2(0, 'Set send volume', 1, -1)
                     end
                 end
             end
@@ -415,19 +428,29 @@ if OD_PrereqsOK({
                 app.gui:popStyles(app.gui.st.vars.pan)
                 if targetTrack then app.gui:popColors(app.gui.st.col.targetFader) end
 
-                if rv then
-                    target:setPan(v2)
-                end
                 local shouldReset, v2 = app.resetOnDoubleClick('p' .. s.order, v2, 0.0)
 
                 if rv or shouldReset then
                     target:setPan(v2)
                 end
+                if ImGui.IsItemDeactivatedAfterEdit(ctx) or shouldReset then
+                    r.Undo_OnStateChangeEx2(0, 'Set send pan', 1, -1)
+                end
                 if ImGui.IsItemHovered(ctx) then
                     if mw ~= 0 then
+                        if not app.temp.panDragging then
+                            app.temp.panDragging = true
+                        end
                         local scale = .01
                         local newV = s.pan + (app.settings.current.mouseScrollReversed and -mw or mw) * scale
                         target:setPan(newV)
+                    elseif mw == 0.0 and app.temp.panDragging then
+                        app.temp.panDraggingStopTimer = reaper.time_precise()
+                        app.temp.panDragging = nil
+                    end
+                    if app.temp.panDraggingStopTimer and (reaper.time_precise() - app.temp.panDraggingStopTimer) > 0.15 then
+                        app.temp.panDraggingStopTimer = nil
+                        r.Undo_OnStateChangeEx2(0, 'Set send pan', 1, -1)
                     end
                 end
             end
@@ -450,6 +473,7 @@ if OD_PrereqsOK({
                         'Receive' or 'Send'))
                 if rv then
                     target:setVolDB(v3)
+                    r.Undo_OnStateChangeEx2(0, 'Set send volume', 1, -1)
                 end
             end
             local drawMute = function(w)
