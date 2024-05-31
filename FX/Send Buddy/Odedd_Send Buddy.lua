@@ -504,7 +504,7 @@ if OD_PrereqsOK({
                     ImGui.PopFont(ctx)
                     app.gui:popColors(app.gui.st.col.buttons.scrollToTrack)
                 else
-                    drawDummy(w, app.gui.st.col.buttons.scrollToTrack, nil)
+                    drawDummy(w, app.gui.st.col.buttons.env, nil)
                 end
             end
             local drawListen = function(w, listenMode)
