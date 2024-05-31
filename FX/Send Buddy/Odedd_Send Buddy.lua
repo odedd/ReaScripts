@@ -336,7 +336,7 @@ if OD_PrereqsOK({
                     (s.name .. ' - Show/hide %s pan envelope'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                 app.gui:popColors(app.gui.st.col.buttons.route)
             end
-            local drawFader = function(w, h, targetTrack)
+            local drawFader = function(w, h, targetTrack) -- TODO: Handle undo states (see IsItemDeactivatedAfterEdit)
                 if targetTrack and s.type == SEND_TYPE.HW then
                     drawDummy(w, app.gui.st.col.buttons.env, h)
                     return
@@ -431,15 +431,25 @@ if OD_PrereqsOK({
                     end
                 end
             end
-            local drawVolLabel = function(w)
-                local v = OD_dBFromValue(s.vol)
+            local drawVolLabel = function(w, targetTrack)
+                if targetTrack and s.type == SEND_TYPE.HW then
+                    drawDummy(w, app.gui.st.col.buttons.env, nil)
+                    return
+                end
+                local target = targetTrack and ((s.type == SEND_TYPE.SEND) and s.destTrack or s.srcTrack) or s
+                local v = OD_dBFromValue(target.vol)
                 ImGui.SetNextItemWidth(ctx, w)
+                if targetTrack then app.gui:pushColors(app.gui.st.col.targetFader) end
                 local rv, v3 = ImGui.DragDouble(ctx, '##db', v, 0, 0, 0, '%.2f')
+                if ImGui.IsItemFocused(ctx) then
+                    app.temp.inputTargetVolLabel = true
+                end
+                if targetTrack then app.gui:popColors(app.gui.st.col.targetFader) end
                 app:setHoveredHint('main',
                     (s.name .. ' - %s volume. Double-click to enter exact amount.'):format((s.type == SEND_TYPE.RECV) and
                         'Receive' or 'Send'))
                 if rv then
-                    s:setVolDB(v3)
+                    target:setVolDB(v3)
                 end
             end
             local drawMute = function(w)
@@ -852,7 +862,7 @@ if OD_PrereqsOK({
                 elseif part.name == 'envvol' then
                     drawEnvVolButton(w, faderHeight)
                 elseif part.name == 'volLabel' then
-                    drawVolLabel(w)
+                    drawVolLabel(w, part.targetTrack)
                 elseif part.name == 'sendName' then
                     drawSendName(w)
                 end
@@ -1032,16 +1042,16 @@ if OD_PrereqsOK({
             { name = 'volLabel' },
             { name = 'sendName' }
         }
-        if altPressed or app.temp.midiRouteMenuOpen then
+        if altPressed or app.temp.midiRouteMenuOpen or app.temp.inputTargetVolLabel then
             parts = {
                 { { name = 'mute' },       { name = 'solod' } },
                 { { name = 'phase' },      { name = 'listen', listenMode = SEND_LISTEN_MODES.RETURN_ONLY } },
-                { name = 'scrollToTrack' },
+                { name = 'deletesend' },
                 { name = 'midiroutebutton' },
                 { name = 'pan',            targetTrack = true },
                 { name = 'fader',          targetTrack = true },
-                { name = 'deletesend' },
-                { name = 'sendName' }
+                { name = 'volLabel', targetTrack = true },
+                { name = 'sendName' },
             }
         end
         if shiftPressed then
@@ -1049,12 +1059,14 @@ if OD_PrereqsOK({
                 { name = 'envmute' },
                 { name = 'envpan' },
                 { name = 'envvol' },
-                { name = 'dummy',   color = app.gui.st.col.buttons.env },
+                -- { name = 'dummy',   color = app.gui.st.col.buttons.env },
+                { name = 'scrollToTrack' },
                 { name = 'sendName' }
             }
         end
         -- ImGui.BeginGroup(ctx)
         app.temp.midiRouteMenuOpen = false
+        app.temp.inputTargetVolLabel = false
         local totalH = select(2, ImGui.GetContentRegionAvail(ctx))
         for _, type in ipairs(visibleSendTypes) do
             local count = 0

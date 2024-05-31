@@ -39,6 +39,7 @@ SM_Gui.init = function(self, fonts)
         mainDark = 0x371f23ff,
         mainBright = 0xb73849ff,
         mainBrighter = 0xc74859ff,
+        mainBrightest = 0xd75869ff,
         textBright = 0xf7f7f7ff,
         textDark = 0x7c7c7cff,
     }
@@ -199,10 +200,10 @@ SM_Gui.init = function(self, fonts)
             },
             deleteSend = {
                 ['initial'] = {
-                    [ImGui.Col_Button] = self.st.basecolors.darkBG,
-                    [ImGui.Col_ButtonHovered] = self.st.basecolors.darkHovered,
-                    [ImGui.Col_ButtonActive] = self.st.basecolors.darkActive,
-                    [ImGui.Col_Text] = self.st.basecolors.mainBright,
+                    [ImGui.Col_Button] = self.st.basecolors.midBG,
+                    [ImGui.Col_ButtonHovered] = self.st.basecolors.midHovered,
+                    [ImGui.Col_ButtonActive] = self.st.basecolors.midActive,
+                    [ImGui.Col_Text] = self.st.basecolors.mainBrightest,
                 },
                 ['confirm'] = {
                     [ImGui.Col_Button] = self.st.basecolors.main,
@@ -212,17 +213,17 @@ SM_Gui.init = function(self, fonts)
                 }
             },
             topBarIcon = {
-                default = { [ImGui.Col_Text] = self.st.basecolors.midBG },
+                default = { [ImGui.Col_Text] = self.st.basecolors.midHovered },
                 hovered = { [ImGui.Col_Text] = self.st.basecolors.active },
                 active = { [ImGui.Col_Text] = self.st.basecolors.midText },
             }
         },
         targetFader = {
-            [ImGui.Col_FrameBg] = self.st.basecolors.mainDarkest,
-            [ImGui.Col_FrameBgHovered] = self.st.basecolors.mainDarker,
-            [ImGui.Col_FrameBgActive] = self.st.basecolors.mainDark,
-            [ImGui.Col_SliderGrab] = self.st.basecolors.main,
-            [ImGui.Col_SliderGrabActive] = self.st.basecolors.mainBright,
+            [ImGui.Col_FrameBg] = 0x1c2533ff,
+            [ImGui.Col_FrameBgHovered] = 0x283b59ff,
+            [ImGui.Col_FrameBgActive] = 0x2f4e80ff,
+            [ImGui.Col_SliderGrab] = 0x4781deff,
+            [ImGui.Col_SliderGrabActive] = 0x669cf2ff,
 
         },
         searchWindow = {
