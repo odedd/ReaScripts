@@ -217,6 +217,14 @@ SM_Gui.init = function(self, fonts)
                 active = { [ImGui.Col_Text] = self.st.basecolors.midText },
             }
         },
+        targetFader = {
+            [ImGui.Col_FrameBg] = self.st.basecolors.mainDarkest,
+            [ImGui.Col_FrameBgHovered] = self.st.basecolors.mainDarker,
+            [ImGui.Col_FrameBgActive] = self.st.basecolors.mainDark,
+            [ImGui.Col_SliderGrab] = self.st.basecolors.main,
+            [ImGui.Col_SliderGrabActive] = self.st.basecolors.mainBright,
+
+        },
         searchWindow = {
             [ImGui.Col_TableBorderStrong] = 0x00000000,
             [ImGui.Col_TextSelectedBg] = self.st.basecolors.main,

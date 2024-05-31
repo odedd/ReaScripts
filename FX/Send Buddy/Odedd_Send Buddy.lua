@@ -336,8 +336,13 @@ if OD_PrereqsOK({
                     (s.name .. ' - Show/hide %s pan envelope'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                 app.gui:popColors(app.gui.st.col.buttons.route)
             end
-            local drawFader = function(w, h)
-                local v = OD_dBFromValue(s.vol)
+            local drawFader = function(w, h,targetTrack)
+                if targetTrack and s.type == SEND_TYPE.HW then
+                    drawDummy(w, app.gui.st.col.buttons.env, h)
+                    return
+                end
+                local target = targetTrack and ((s.type == SEND_TYPE.SEND) and s.destTrack or s.srcTrack) or s
+                local v = OD_dBFromValue(target.vol)
                 local mw = ImGui.GetMouseWheel(ctx)
                 local scaledV = (v >= app.settings.current.scaleLevel) and (v / app.settings.current.scaleFactor) or
                     (v * app.settings.current.scaleFactor)
@@ -349,6 +354,7 @@ if OD_PrereqsOK({
                         ((app.settings.current.minSendVol - app.settings.current.scaleLevel) / (app.settings.current.minSendVol - (app.settings.current.scaleLevel * app.settings.current.scaleFactor)))
                 end
                 app.gui:pushStyles(app.gui.st.vars.vol)
+                if targetTrack then app.gui:pushColors(app.gui.st.col.targetFader) end
                 local rv, v2 = ImGui.VSliderDouble(ctx, '##v', w,
                     h,
                     scaledV,
@@ -356,6 +362,8 @@ if OD_PrereqsOK({
                     app.settings.current.maxSendVol * app.settings.current.scaleFactor,
                     '')
                 app.gui:popStyles(app.gui.st.vars.vol)
+                if targetTrack then app.gui:popColors(app.gui.st.col.targetFader) end
+
                 app:setHoveredHint('main',
                     (s.name .. ' - Send volume'):format((s.type == SEND_TYPE.RECV) and 'Receive' or 'Send'))
                 if (v2 < app.settings.current.scaleLevel * app.settings.current.scaleFactor) then
@@ -370,7 +378,7 @@ if OD_PrereqsOK({
                 local shouldReset, v2 = app.resetOnDoubleClick('s' .. s.order, v2, 0.0)
 
                 if rv or shouldReset then
-                    s:setVolDB(v2)
+                    target:setVolDB(v2)
                 end
                 if ImGui.IsItemHovered(ctx) then
                     if mw ~= 0 then
@@ -385,32 +393,41 @@ if OD_PrereqsOK({
                             v = app.settings.current.minSendVol
                         end
                         local newV = v + (app.settings.current.mouseScrollReversed and -mw or mw) * scale
-                        s:setVolDB(newV)
+                        target:setVolDB(newV)
                     end
                 end
             end
-            local drawPan = function(w)
+            local drawPan = function(w, targetTrack)
+                if targetTrack and s.type == SEND_TYPE.HW then
+                    drawDummy(w, app.gui.st.col.buttons.env, nil)
+                    return
+                end
+                local target = targetTrack and ((s.type == SEND_TYPE.SEND) and s.destTrack or s.srcTrack) or s
                 local mw = ImGui.GetMouseWheel(ctx)
                 ImGui.SetNextItemWidth(ctx, w)
 
                 app.gui:pushStyles(app.gui.st.vars.pan)
-                local rv, v2 = ImGui.SliderDouble(ctx, '##p', s.pan, -1, 1, '')
+                if targetTrack then app.gui:pushColors(app.gui.st.col.targetFader) end
+
+                local rv, v2 = ImGui.SliderDouble(ctx, '##p', target.pan, -1, 1, '')
                 app:setHoveredHint('main',
                     (s.name .. ' - %s panning'):format((s.type == SEND_TYPE.RECV) and 'Receive' or 'Send'))
                 app.gui:popStyles(app.gui.st.vars.pan)
+                if targetTrack then app.gui:popColors(app.gui.st.col.targetFader) end
+
                 if rv then
-                    s:setPan(v2)
+                    target:setPan(v2)
                 end
                 local shouldReset, v2 = app.resetOnDoubleClick('p' .. s.order, v2, 0.0)
 
                 if rv or shouldReset then
-                    s:setPan(v2)
+                    target:setPan(v2)
                 end
                 if ImGui.IsItemHovered(ctx) then
                     if mw ~= 0 then
                         local scale = .01
                         local newV = s.pan + (app.settings.current.mouseScrollReversed and -mw or mw) * scale
-                        s:setPan(newV)
+                        target:setPan(newV)
                     end
                 end
             end
@@ -805,7 +822,7 @@ if OD_PrereqsOK({
                 elseif part.name == 'dummyFader' then
                     drawDummy(w, app.gui.st.col.buttons.env, faderHeight)
                 elseif part.name == 'pan' then
-                    drawPan(w)
+                    drawPan(w, part.targetTrack)
                 elseif part.name == 'envmute' then
                     drawEnvMuteButton(w)
                 elseif part.name == 'solo' then
@@ -829,7 +846,7 @@ if OD_PrereqsOK({
                 elseif part.name == 'envpan' then
                     drawEnvPanButton(w)
                 elseif part.name == 'fader' then
-                    drawFader(w, faderHeight)
+                    drawFader(w, faderHeight, part.targetTrack)
                 elseif part.name == 'deletesend' then
                     drawDeleteSend(w)
                 elseif part.name == 'envvol' then
@@ -1021,8 +1038,8 @@ if OD_PrereqsOK({
                 { { name = 'phase' },      { name = 'listen', listenMode = SEND_LISTEN_MODES.RETURN_ONLY } },
                 { name = 'scrollToTrack' },
                 { name = 'midiroutebutton' },
-                { name = 'pan' },
-                { name = 'fader' },
+                { name = 'pan', targetTrack = true },
+                { name = 'fader', targetTrack = true },
                 { name = 'deletesend' },
                 { name = 'sendName' }
             }

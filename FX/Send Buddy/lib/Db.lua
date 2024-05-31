@@ -525,6 +525,8 @@ DB.getTracks = function(self)
         local trackGuid = reaper.GetTrackGUID(track)
         local hasReceives = reaper.GetTrackNumSends(track, -1) > 0
         local numChannels = reaper.GetMediaTrackInfo_Value(track, 'I_NCHAN') 
+        local volume = reaper.GetMediaTrackInfo_Value(track, 'D_VOL')
+        local pan = reaper.GetMediaTrackInfo_Value(track, 'D_PAN')
         local _, rawSsoloMatrix = r.GetSetMediaTrackInfo_String(track, "P_EXT:" .. Scr.ext_name ..
             '_SOLO_MATRIX', "", false)
         local _, rawOrigMuteMatrix = r.GetSetMediaTrackInfo_String(track, "P_EXT:" .. Scr.ext_name ..
@@ -540,9 +542,12 @@ DB.getTracks = function(self)
         local sendListenMode = rawSendListen ~= '' and tonumber(rawSendListen:match('.-%s(%d)')) or nil
         table.insert(self.tracks, {
             object = track,
+            db = self,
             name = trackName,
             guid = trackGuid,
             color = trackColor,
+            vol = volume,
+            pan = pan,
             numChannels = numChannels,
             hasReceives = hasReceives,
             soloMatrix = soloMatrix,
@@ -551,6 +556,25 @@ DB.getTracks = function(self)
             sendListen = sendListen,
             sendListenMode = sendListenMode,
             order = i,
+            setVolDB = function(self, dB)
+                if dB < self.db.app.settings.current.minSendVol then
+                    dB = self.db.app.settings.current.minSendVol
+                elseif dB > self.db.app.settings.current.maxSendVol then
+                    dB = self.db.app.settings.current.maxSendVol
+                end
+                self.vol = (dB <= self.db.app.settings.current.minSendVol and 0 or OD_ValFromdB(dB))
+                reaper.SetMediaTrackInfo_Value(self.object, 'D_VOL',self.vol)
+                -- self.db:sync(true)
+            end,
+            setPan = function(self, pan)
+                if pan < -1 then
+                    pan = -1
+                elseif pan > 1 then
+                    pan = 1
+                end
+                self.pan = pan
+                reaper.SetMediaTrackInfo_Value(self.object, 'D_PAN', self.pan)
+            end,
         })
         -- end
     end
