@@ -748,7 +748,7 @@ if OD_PrereqsOK({
                 app:setHoveredHint('main', app.debug and (altPressed and s.guid or s.name) or s.name)
             end
 
-            local drawInserts = function(w)
+            local drawInserts = function(w) -- TODO drag to reorder
                 local totalDrawn = 0
                 for i, insert in OD_PairsByOrder(s.destInserts) do
                     totalDrawn = totalDrawn + 1
