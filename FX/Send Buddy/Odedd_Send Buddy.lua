@@ -336,7 +336,7 @@ if OD_PrereqsOK({
                     (s.name .. ' - Show/hide %s pan envelope'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                 app.gui:popColors(app.gui.st.col.buttons.route)
             end
-            local drawFader = function(w, h,targetTrack)
+            local drawFader = function(w, h, targetTrack)
                 if targetTrack and s.type == SEND_TYPE.HW then
                     drawDummy(w, app.gui.st.col.buttons.env, h)
                     return
@@ -1038,8 +1038,8 @@ if OD_PrereqsOK({
                 { { name = 'phase' },      { name = 'listen', listenMode = SEND_LISTEN_MODES.RETURN_ONLY } },
                 { name = 'scrollToTrack' },
                 { name = 'midiroutebutton' },
-                { name = 'pan', targetTrack = true },
-                { name = 'fader', targetTrack = true },
+                { name = 'pan',            targetTrack = true },
+                { name = 'fader',          targetTrack = true },
                 { name = 'deletesend' },
                 { name = 'sendName' }
             }
@@ -1697,14 +1697,39 @@ if OD_PrereqsOK({
         if app.refreshWindowSizeOnNextFrame then
             app.refreshWindowSize()
         end
-        if app.gui.mainWindow.dockTo ~= nil then
-            ImGui.SetNextWindowDockID(ctx, app.gui.mainWindow.dockTo, ImGui.Cond_Always)
-            app.gui.mainWindow.dockTo = nil
-        end
 
         ImGui.SetNextWindowPos(ctx, 100, 100, ImGui.Cond_FirstUseEver)
         ImGui.SetNextWindowSizeConstraints(app.gui.ctx, app.gui.mainWindow.min_w, app.gui.mainWindow.min_h,
             app.gui.mainWindow.max_w, app.gui.mainWindow.max_h)
+
+        if app.gui.mainWindow.dockId == 0 and (app.gui.mainWindow.lastDockId == nil or app.gui.mainWindow.dockTo ~= nil) and app.gui.mainWindow.size ~= nil and app.gui.mainWindow.pos ~= nil and not ImGui.IsMouseDragging(ctx, 0) then
+            if app.temp.framesUntilSave and app.temp.framesUntilSave > 3 then 
+                -- since there are two frames time between dragging to the dock and the window actually docking, 
+                -- we need to wait a bit before saving the size and position and only save if window is still undocked
+                app.settings.current.undockedWindowSize = app.gui.mainWindow.size
+                app.settings.current.undockedWindowPos = app.gui.mainWindow.pos
+                app.temp.framesUntilSave = nil
+            else
+                app.temp.framesUntilSave = (app.temp.framesUntilSave or 0) + 1
+            end
+        else
+            app.temp.framesUntilSave = nil
+        end
+
+        if app.gui.mainWindow.dockTo ~= nil then
+            if app.gui.mainWindow.dockTo == 0 then -- undocking
+                if app.settings.current.undockedWindowPos and app.settings.current.undockedWindowSize then
+                    ImGui.SetNextWindowPos(ctx, app.settings.current.undockedWindowPos[1],
+                        app.settings.current.undockedWindowPos[2])
+                    ImGui.SetNextWindowSize(ctx, app.settings.current.undockedWindowSize[1],
+                        app.settings.current.undockedWindowSize[2])
+                end
+            end
+            ImGui.SetNextWindowDockID(ctx, app.gui.mainWindow.dockTo, ImGui.Cond_Always)
+            app.gui.mainWindow.dockTo = nil
+        end
+
+
 
         local visible, open = ImGui.Begin(ctx, Scr.name .. "###mainWindow",
             true,
@@ -1717,6 +1742,8 @@ if OD_PrereqsOK({
         app.settings.current.lastWindowWidth, app.settings.current.lastWindowHeight = app.gui.mainWindow.size[1],
             app.gui.mainWindow.size[2]
 
+
+
         if ImGui.GetWindowDockID(ctx) ~= app.gui.mainWindow.dockId then
             app.refreshWindowSizeOnNextFrame = true
             app.gui.mainWindow.dockId = ImGui.GetWindowDockID(ctx)
@@ -1725,6 +1752,8 @@ if OD_PrereqsOK({
                 app.settings:save()
             end
         end
+        -- r.ShowConsoleMsg(tostring(app.gui.mainWindow.dockId)..'\n')
+
         if ImGui.IsWindowAppearing(ctx) then
             ImGui.SetConfigVar(ctx, ImGui.ConfigVar_DockingNoSplit, 1)
         end
