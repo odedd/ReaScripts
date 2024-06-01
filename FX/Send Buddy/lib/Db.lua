@@ -68,6 +68,7 @@ DB = {
         r.MarkProjectDirty(0)
     end,
     syncUIVol = function(self, vol) -- if the volume is automated, the volume in the track is updated
+        if not self:_isTrackValid() then return end
         if self.app.settings.current.volType == VOL_TYPE.UI then
             for _, send in ipairs(self.sends) do
                 send:_refreshVolAndPan()
@@ -164,12 +165,12 @@ DB = {
                         destInserts = {},
                         destInsertsCount = 0,
                         _refreshVolAndPan = function(self)
+                            if self.track == -1 or self.track.object == nil then return end
                             local volume, pan
                             if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
                                 volume = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_VOL')
                                 pan = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_PAN')
                             else
-                                -- _, volume, pan = reaper.GetTrackUIVol(self.track.object, self.index)
                                 if self.type == SEND_TYPE.RECV then
                                     _, volume, pan = reaper.GetTrackReceiveUIVolPan(self.track.object, self.UIIndex)
                                 else
@@ -577,8 +578,11 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
 end
 
 --- TRACKS
+DB._isTrackValid = function(self)
+    return self.track ~= -1 and self.track ~= nil and self.track.object ~= nil and r.ValidatePtr(self.track.object, 'MediaTrack*')
+end
 DB.getSelectedTrack = function(self)
-    if self.app.settings.current.followSelectedTrack == false and self.track ~= -1 and self.track ~= nil and self.track.object ~= nil and r.ValidatePtr(self.track.object, 'MediaTrack*') then
+    if self.app.settings.current.followSelectedTrack == false and self:_isTrackValid() then
         return self.track, false
     end
     local track = reaper.GetLastTouchedTrack()
