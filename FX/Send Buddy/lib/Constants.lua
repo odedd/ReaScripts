@@ -12,6 +12,10 @@ SEND_TYPE = {
     ['HW'] = 1,
 }
 
+VOL_TYPE = {
+    ['TRIM'] = 0,
+    ['UI'] = 1,
+}
 
 APP_PAGE = {
     ['MIXER'] = {width = 409, minHeight = 409, windowFlags = ImGui.WindowFlags_None, giveFocus = true},
@@ -64,7 +68,7 @@ SEND_LISTEN_MODES = {
     ['NONE'] = -1,
     ['NORMAL'] = 0,
     ['RETURN_ONLY'] = 1
-} 
+}
 
 for i = 0, NUM_CHANNELS - 1 do
     -- Stereo
