@@ -272,7 +272,7 @@ if OD_PrereqsOK({
                 app.gui:pushColors(col)
                 ImGui.BeginDisabled(ctx)
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 1.0)
-                ImGui.Button(ctx, '##dummy', w, h)
+                ImGui.Button(ctx, '##dummy'..s.index, w, h)
                 ImGui.PopStyleVar(ctx)
                 ImGui.EndDisabled(ctx)
                 app:setHoveredHint('main', ' ')
@@ -280,14 +280,12 @@ if OD_PrereqsOK({
             end
             local drawEnvVolButton = function(w, h)
                 app.gui:pushColors(app.gui.st.col.buttons.env)
-                -- ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
                 if ImGui.Button(ctx, 'VOL\nENV##vEnvelope', w, h) then
                     s:toggleVolEnv()
                 end
                 app:setHoveredHint('main',
                     (s.name .. ' - Show/hide %s volume envelope'):format((s.type == SEND_TYPE.RECV) and 'receive' or
                         'send'))
-                -- ImGui.PopFont(ctx)
                 app.gui:popColors(app.gui.st.col.buttons.env)
             end
             local drawDeleteSend = function(w)
@@ -338,7 +336,7 @@ if OD_PrereqsOK({
             end
             local drawFader = function(w, h, targetTrack)
                 if targetTrack and s.type == SEND_TYPE.HW then
-                    drawDummy(w, app.gui.st.col.buttons.env, h)
+                    drawDummy(w, app.gui.st.colpresets.darkButton, h)
                     return
                 end
                 local target = targetTrack and ((s.type == SEND_TYPE.SEND) and s.destTrack or s.srcTrack) or s
@@ -377,11 +375,11 @@ if OD_PrereqsOK({
                 end
 
                 local shouldReset, v2 = app.resetOnDoubleClick('s' .. s.order, v2, 0.0)
-                if rv or shouldReset then             -- or (app.temp.sendConstantVol and app.temp.sendConstantVol[s.order]) then
+                if rv or shouldReset then      -- or (app.temp.sendConstantVol and app.temp.sendConstantVol[s.order]) then
                     target:setVolDB(v2, false) -- set without creating undo point
                 end
                 if ImGui.IsItemDeactivatedAfterEdit(ctx) or shouldReset then
-                    target:setVolDB(v2, true)     -- finish edit operation for touch automation to work, and create undo point
+                    target:setVolDB(v2, true) -- finish edit operation for touch automation to work, and create undo point
                 end
                 if ImGui.IsItemHovered(ctx) then
                     if mw ~= 0 then
@@ -412,7 +410,7 @@ if OD_PrereqsOK({
             end
             local drawPan = function(w, targetTrack)
                 if targetTrack and s.type == SEND_TYPE.HW then
-                    drawDummy(w, app.gui.st.col.buttons.env, nil)
+                    drawDummy(w, app.gui.st.colpresets.darkButton, nil)
                     return
                 end
                 local target = targetTrack and ((s.type == SEND_TYPE.SEND) and s.destTrack or s.srcTrack) or s
@@ -429,11 +427,11 @@ if OD_PrereqsOK({
                 if targetTrack then app.gui:popColors(app.gui.st.col.targetFader) end
 
                 local shouldReset, v2 = app.resetOnDoubleClick('p' .. s.order, v2, 0.0)
-                if rv or shouldReset then --or (app.temp.sendConstantPan and app.temp.sendConstantPan[s.order]) then
+                if rv or shouldReset then    --or (app.temp.sendConstantPan and app.temp.sendConstantPan[s.order]) then
                     target:setPan(v2, false) -- set without creating undo point
                 end
                 if ImGui.IsItemDeactivatedAfterEdit(ctx) or shouldReset then
-                   target:setPan(v2, true) -- finish edit operation for touch automation to work, and create undo point
+                    target:setPan(v2, true) -- finish edit operation for touch automation to work, and create undo point
                 end
                 if ImGui.IsItemHovered(ctx) then
                     if mw ~= 0 then
@@ -455,7 +453,7 @@ if OD_PrereqsOK({
             end
             local drawVolLabel = function(w, targetTrack)
                 if targetTrack and s.type == SEND_TYPE.HW then
-                    drawDummy(w, app.gui.st.col.buttons.env, nil)
+                    drawDummy(w, app.gui.st.colpresets.darkButton, nil)
                     return
                 end
                 local target = targetTrack and ((s.type == SEND_TYPE.SEND) and s.destTrack or s.srcTrack) or s
@@ -466,7 +464,7 @@ if OD_PrereqsOK({
                 if ImGui.IsItemFocused(ctx) and targetTrack then
                     app.temp.inputTargetVolLabel = true
                 end
-                
+
                 if targetTrack then app.gui:popColors(app.gui.st.col.targetFader) end
                 app:setHoveredHint('main',
                     (s.name .. ' - %s volume. Double-click to enter exact amount.'):format((s.type == SEND_TYPE.RECV) and
@@ -485,14 +483,23 @@ if OD_PrereqsOK({
                     (s.name .. ' - Mute %s'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                 app.gui:popColors(app.gui.st.col.buttons.mute[s.mute])
             end
-            local drawMono = function(w) -- TODO icon and colors
-                app.gui:pushColors(app.gui.st.col.buttons.mute[s.mono])
-                if ImGui.Button(ctx, 'm##mono' .. s.order, w) then
+            local drawMono = function(w)
+                if s.type == SEND_TYPE.HW then
+                    ImGui.BeginDisabled(ctx)
+                end
+                app.gui:pushColors(app.gui.st.col.buttons.mono[s.mono])
+                ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                if ImGui.Button(ctx, (s.mono and ICONS.MONO or ICONS.STEREO) .. '##mono' .. s.order, w) then
                     s:setMono(not s.mono)
                 end
                 app:setHoveredHint('main',
-                    (s.name .. ' - Set %s to %s'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send', s.mono and 'stereo' or 'mono'))
-                app.gui:popColors(app.gui.st.col.buttons.mute[s.mono])
+                    (s.name .. ' - Set %s to %s'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send',
+                        s.mono and 'stereo' or 'mono'))
+                ImGui.PopFont(ctx)
+                app.gui:popColors(app.gui.st.col.buttons.mono[s.mono])
+                if s.type == SEND_TYPE.HW then
+                    ImGui.EndDisabled(ctx)
+                end
             end
             local drawSolo = function(w)
                 local soloed = s:getSolo() -- OD_BfCheck(s.track.soloMatrix, 2^(s.order))
@@ -537,7 +544,7 @@ if OD_PrereqsOK({
                     ImGui.PopFont(ctx)
                     app.gui:popColors(app.gui.st.col.buttons.scrollToTrack)
                 else
-                    drawDummy(w, app.gui.st.col.buttons.env, nil)
+                    drawDummy(w, app.gui.st.colpresets.darkButton, nil)
                 end
             end
             local drawListen = function(w, listenMode)
@@ -565,12 +572,35 @@ if OD_PrereqsOK({
                 app.gui:popColors(app.gui.st.col.buttons.mode[s.mode])
             end
             local drawAutoMode = function(w)
-                drawDummy(w, app.gui.st.col.buttons.env, nil)
+                local label = app.minimizeText(T.AUTO_MODE_DESCRIPTIONS[s.autoMode].label,
+                    w - select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2)
+                app.gui:pushColors(app.gui.st.col.buttons.autoMode[s.autoMode])
+                if ImGui.Button(ctx, label .. '##autoMode' .. s.order, w) then
+                    ImGui.OpenPopup(ctx, '##autoModeMenu' .. s.order)
+                end
+                app:setHoveredHint('main', (s.name .. ' - automation mode for this %s only'):format(s.type == SEND_TYPE.RECV and 'receive' or 'send'))
+                if s.midiSrcBus == 255 then
+                    ImGui.EndDisabled(ctx)
+                end
+                app.gui:popColors(app.gui.st.col.buttons.autoMode[s.autoMode])
+                ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
+                if ImGui.BeginPopup(ctx, '##autoModeMenu' .. s.order) then
+                    app.temp.autoModeMenuOpen = true
+                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
+                    for k, am in OD_PairsByOrder(T.AUTO_MODE_DESCRIPTIONS) do
+                        if ImGui.MenuItem(ctx, am.label .. ' (' .. am.description .. ')', nil, s.autoMode == k, true) then
+                            s:setAutoMode(k)
+                        end
+                    end
+                    ImGui.EndPopup(ctx)
+                end
             end
             local drawMIDIRouteButtons = function(w)
                 if s.type == SEND_TYPE.HW then
+                    ImGui.BeginGroup(ctx)
                     drawDummy(w, app.gui.st.col.buttons.route, nil)
                     drawDummy(w, app.gui.st.col.buttons.route, nil)
+                    ImGui.EndGroup(ctx)
                 else
                     app.gui:pushColors(app.gui.st.col.buttons.route)
                     ImGui.BeginGroup(ctx)
@@ -864,7 +894,7 @@ if OD_PrereqsOK({
                 elseif part.name == 'dummy' then
                     drawDummy(w, part.color)
                 elseif part.name == 'dummyFader' then
-                    drawDummy(w, app.gui.st.col.buttons.env, faderHeight)
+                    drawDummy(w, app.gui.st.colpresets.darkButton, faderHeight)
                 elseif part.name == 'pan' then
                     drawPan(w, part.targetTrack)
                 elseif part.name == 'envmute' then
@@ -1092,18 +1122,18 @@ if OD_PrereqsOK({
                 { name = 'sendName' },
             }
         end
-        if shiftPressed then
+        if shiftPressed or app.temp.autoModeMenuOpen then
             parts = {
                 { name = 'automode' },
                 { name = 'envmute' },
                 { name = 'envpan' },
                 { name = 'envvol' },
-                -- { name = 'dummy',   color = app.gui.st.col.buttons.env },
                 { name = 'scrollToTrack' },
                 { name = 'sendName' }
             }
         end
         -- ImGui.BeginGroup(ctx)
+        app.temp.autoModeMenuOpen = false
         app.temp.midiRouteMenuOpen = false
         app.temp.inputTargetVolLabel = false
         local totalH = select(2, ImGui.GetContentRegionAvail(ctx))

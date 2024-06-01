@@ -44,11 +44,23 @@ SM_Gui.init = function(self, fonts)
         textDark = 0x7c7c7cff,
     }
     self.st.colpresets = {
+        darkButton = {
+            [ImGui.Col_Button] = self.st.basecolors.darkBG,
+            [ImGui.Col_ButtonHovered] = self.st.basecolors.darkHovered,
+            [ImGui.Col_ButtonActive] = self.st.basecolors.darkActive,
+            [ImGui.Col_Text] = self.st.basecolors.widgetBG,
+        },
         midButton = {
             [ImGui.Col_Text] = self.st.basecolors.midText,
             [ImGui.Col_Button] = self.st.basecolors.midBG,
             [ImGui.Col_ButtonHovered] = self.st.basecolors.midHovered,
             [ImGui.Col_ButtonActive] = self.st.basecolors.midActive,
+        },
+        brightButton = {
+            [ImGui.Col_Text] = 0x000000ff,
+            [ImGui.Col_Button] = self.st.basecolors.widgetBG,
+            [ImGui.Col_ButtonHovered] = self.st.basecolors.hovered,
+            [ImGui.Col_ButtonActive] = self.st.basecolors.active
         },
     }
     self.st.rounding = 2
@@ -129,12 +141,7 @@ SM_Gui.init = function(self, fonts)
                     [ImGui.Col_ButtonHovered] = 0x4f77e4FF,
                     [ImGui.Col_ButtonActive] = 0x5f87f4FF
                 },
-                [false] = {
-                    [ImGui.Col_Text] = 0x000000ff,
-                    [ImGui.Col_Button] = self.st.basecolors.widgetBG,
-                    [ImGui.Col_ButtonHovered] = self.st.basecolors.hovered,
-                    [ImGui.Col_ButtonActive] = self.st.basecolors.active
-                }
+                [false] = self.st.colpresets.brightButton
             },
             listen = {
                 [SEND_LISTEN_MODES.NORMAL] = {
@@ -183,12 +190,58 @@ SM_Gui.init = function(self, fonts)
                     [ImGui.Col_Text] = 0x000000ff,
                 }
             },
-            env = {
-                [ImGui.Col_Button] = self.st.basecolors.darkBG,
-                [ImGui.Col_ButtonHovered] = self.st.basecolors.darkHovered,
-                [ImGui.Col_ButtonActive] = self.st.basecolors.darkActive,
-                [ImGui.Col_Text] = self.st.basecolors.widgetBG,
+            autoMode = {
+                [AUTO_MODE.TRACK] = self.st.colpresets.brightButton,
+                [AUTO_MODE.TRIM_READ] = {
+                    [ImGui.Col_Button] = 0x87bf3dff,
+                    [ImGui.Col_Text] = 0x000000ff,
+                    [ImGui.Col_ButtonHovered] = 0x97cf4dff,
+                    [ImGui.Col_ButtonActive] = 0xa7df5dff
+                },
+                [AUTO_MODE.READ] = {
+                    [ImGui.Col_Button] = 0xd4d43fff,
+                    [ImGui.Col_Text] = 0x000000ff,
+                    [ImGui.Col_ButtonHovered] = 0xe4e44fff,
+                    [ImGui.Col_ButtonActive] = 0xf4f45fff
+                },
+                [AUTO_MODE.TOUCH] = {
+                    [ImGui.Col_Button] = 0xd4a63fff,
+                    [ImGui.Col_Text] = 0x000000ff,
+                    [ImGui.Col_ButtonHovered] = 0xe4b64fff,
+                    [ImGui.Col_ButtonActive] = 0xf4c65fff
+                },
+                [AUTO_MODE.WRITE] = {
+                    [ImGui.Col_Button] = 0xd43f3fff,
+                    [ImGui.Col_Text] = 0x000000ff,
+                    [ImGui.Col_ButtonHovered] = 0xe44f4fff,
+                    [ImGui.Col_ButtonActive] = 0xf45f5fff
+                },
+                [AUTO_MODE.LATCH] = {
+                    [ImGui.Col_Button] = 0xbf803dff,
+                    [ImGui.Col_Text] = 0x000000ff,
+                    [ImGui.Col_ButtonHovered] = 0xcf904dff,
+                    [ImGui.Col_ButtonActive] = 0xdfa05dff
+                },
+                [AUTO_MODE.LATCH_PREVIEW] = {
+                    [ImGui.Col_Button] = 0xbf803dff,
+                    [ImGui.Col_Text] = 0x000000ff,
+                    [ImGui.Col_ButtonHovered] = 0xcf904dff,
+                    [ImGui.Col_ButtonActive] = 0xdfa05dff
+                }
             },
+            mono = {
+                [true] = {
+                    [ImGui.Col_Button] = 0xbf803dff,
+                    [ImGui.Col_Text] = 0x000000ff,
+                    [ImGui.Col_ButtonHovered] = 0xcf904dff,
+                    [ImGui.Col_ButtonActive] = 0xdfa05dff
+                },
+                [false] =
+                    self.st.colpresets.brightButton
+
+            },
+
+            env = self.st.colpresets.darkButton,
             route = self.st.colpresets.midButton,
             add = self.st.colpresets.midButton,
             scrollToTrack = self.st.colpresets.midButton,

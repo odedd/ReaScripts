@@ -29,6 +29,7 @@ APP_PAGE = {
 ICONS = {
     ['DOCK_DOWN'] = 'D',
     ['UNDOCK'] = 'E',
+    ['ARROW_LEFT'] = 'F',
     ['GEAR'] = 'G',
     ['HEADPHONES'] = 'H',
     ['LEFT'] = 'L',
@@ -40,9 +41,10 @@ ICONS = {
     ['TRASH'] = 'T',
     ['UNDO'] = 'U',
     ['ENVELOPE'] = 'V',
-    ['ARROW_LEFT'] = 'F',
     ['ARROW_RIGHT'] = 'W',
     ['CLOSE'] = 'X',
+    ['STEREO'] = 'Y',
+    ['MONO'] = 'Z'
 }
 
 ASSETS = {
@@ -72,12 +74,14 @@ SEND_MODE = {
 }
 
 AUTO_MODE = {
-    [-1] = 'track',
-    [0] = 'trim/read',
-    [1] = 'read',
-    [2] = 'touch',
-    [3] = 'write',
-    [4] = 'latch',
+    ['TRACK'] = -1,
+    ['TRIM_READ'] = 0,
+    ['READ'] = 1,
+    ['TOUCH'] = 2,
+    ['LATCH'] = 4,
+    ['LATCH_PREVIEW'] = 5,
+    ['WRITE'] = 3,
+
 }
 
 SEND_LISTEN_MODES = {

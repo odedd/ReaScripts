@@ -241,7 +241,7 @@ DB = {
                             end
                             if done then r.Undo_OnStateChangeEx2(0, 'Set send pan', 1, -1) end
                         end,
-                        setAutoMode = function(self, autoMode) -- TODO implement!
+                        setAutoMode = function(self, autoMode)
                             reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_AUTOMODE',
                                 autoMode)
                             self.db:sync(true)
