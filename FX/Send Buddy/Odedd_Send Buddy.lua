@@ -342,6 +342,7 @@ if OD_PrereqsOK({
                     return
                 end
                 local target = targetTrack and ((s.type == SEND_TYPE.SEND) and s.destTrack or s.srcTrack) or s
+                -- r.ShowConsoleMsg('target: ' .. tostring(target.name) .. '\n')
                 local v = OD_dBFromValue(target.vol)
                 local mw = ImGui.GetMouseWheel(ctx)
                 local scaledV = (v >= app.settings.current.scaleLevel) and (v / app.settings.current.scaleFactor) or
@@ -376,12 +377,19 @@ if OD_PrereqsOK({
                 end
 
                 local shouldReset, v2 = app.resetOnDoubleClick('s' .. s.order, v2, 0.0)
-
-                if rv or shouldReset then
+                -- if ImGui.IsItemActivated(ctx) and app.settings.current.volType == VOL_TYPE.UI then
+                    -- app.temp.sendConstantVol = app.temp.sendConstantVol or {}
+                    -- app.temp.sendConstantVol[s.order] = true
+                -- end
+                if rv or shouldReset then -- or (app.temp.sendConstantVol and app.temp.sendConstantVol[s.order]) then
                     target:setVolDB(v2)
                 end
                 if ImGui.IsItemDeactivatedAfterEdit(ctx) or shouldReset then
+                    if app.settings.current.volType == VOL_TYPE.UI then target:setVolDB(v2, true) end -- finish edit operation for touch automation to work
                     r.Undo_OnStateChangeEx2(0, 'Set send volume', 1, -1)
+                    -- if app.temp.sendConstantVol and app.temp.sendConstantVol[s.order] then
+                    --     app.temp.sendConstantVol[s.order] = nil
+                    -- end
                 end
                 if ImGui.IsItemHovered(ctx) then
                     if mw ~= 0 then
@@ -429,12 +437,20 @@ if OD_PrereqsOK({
                 if targetTrack then app.gui:popColors(app.gui.st.col.targetFader) end
 
                 local shouldReset, v2 = app.resetOnDoubleClick('p' .. s.order, v2, 0.0)
-
-                if rv or shouldReset then
+                -- if ImGui.IsItemActivated(ctx) and app.settings.current.volType == VOL_TYPE.UI then
+                --     app.temp.sendConstantPan = app.temp.sendConstantPan or {}
+                --     app.temp.sendConstantPan[s.order] = true
+                -- end
+                if rv or shouldReset then --or (app.temp.sendConstantPan and app.temp.sendConstantPan[s.order]) then
                     target:setPan(v2)
                 end
                 if ImGui.IsItemDeactivatedAfterEdit(ctx) or shouldReset then
+                    if app.settings.current.volType == VOL_TYPE.UI then target:setPan(v2, true) end -- finish edit operation for touch automation to work
+                    
                     r.Undo_OnStateChangeEx2(0, 'Set send pan', 1, -1)
+                    -- if app.temp.sendConstantPan and app.temp.sendConstantPan[s.order] then
+                    --     app.temp.sendConstantPan[s.order] = nil
+                    -- end
                 end
                 if ImGui.IsItemHovered(ctx) then
                     if mw ~= 0 then
@@ -1074,7 +1090,7 @@ if OD_PrereqsOK({
                 { name = 'midiroutebutton' },
                 { name = 'pan',            targetTrack = true },
                 { name = 'fader',          targetTrack = true },
-                { name = 'volLabel', targetTrack = true },
+                { name = 'volLabel',       targetTrack = true },
                 { name = 'sendName' },
             }
         end
@@ -1541,6 +1557,10 @@ if OD_PrereqsOK({
         if visible then
             if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
             ImGui.SeparatorText(ctx, 'General')
+            app.settings.current.volType = app.gui:setting('combo', T.SETTINGS.VOL_TYPE.LABEL, T.SETTINGS.VOL_TYPE.HINT,
+                app.settings.current.volType,
+                { list = T.SETTINGS.LISTS[T.SETTINGS.VOL_TYPE.LABEL][VOL_TYPE.TRIM] ..
+                '\0' .. T.SETTINGS.LISTS[T.SETTINGS.VOL_TYPE.LABEL][VOL_TYPE.UI] .. '\0' })
             app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
                 .LABEL, T.SETTINGS.FOLLOW_SELECTED_TRACK.HINT, app.settings.current.followSelectedTrack)
             app.settings.current.mouseScrollReversed = app.gui:setting('checkbox', T.SETTINGS.MW_REVERSED.LABEL,
@@ -1739,8 +1759,8 @@ if OD_PrereqsOK({
             app.gui.mainWindow.max_w, app.gui.mainWindow.max_h)
 
         if app.gui.mainWindow.dockId == 0 and (app.gui.mainWindow.lastDockId == nil or app.gui.mainWindow.dockTo ~= nil) and app.gui.mainWindow.size ~= nil and app.gui.mainWindow.pos ~= nil and not ImGui.IsMouseDragging(ctx, 0) then
-            if app.temp.framesUntilSave and app.temp.framesUntilSave > 3 then 
-                -- since there are two frames time between dragging to the dock and the window actually docking, 
+            if app.temp.framesUntilSave and app.temp.framesUntilSave > 3 then
+                -- since there are two frames time between dragging to the dock and the window actually docking,
                 -- we need to wait a bit before saving the size and position and only save if window is still undocked
                 app.settings.current.undockedWindowSize = app.gui.mainWindow.size
                 app.settings.current.undockedWindowPos = app.gui.mainWindow.pos
@@ -1821,7 +1841,7 @@ if OD_PrereqsOK({
 
     function app.loop()
         local ctx = app.gui.ctx
-
+        app.db:syncUIVol()
         app.gui:pushColors(app.gui.st.col.main)
         app.gui:pushStyles(app.gui.st.vars.main)
         ImGui.PushFont(ctx, app.gui.st.fonts.large)

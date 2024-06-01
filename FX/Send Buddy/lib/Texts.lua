@@ -43,7 +43,11 @@ T.SETTINGS = {
             LABEL = 'Mark favorite',
             HINT = 'Mark search result as favorite.',
         },
-    }
+    },
+    VOL_TYPE = {
+        LABEL = 'Volume and pan type',
+        HINT = 'Volume/Pan controls used. "Match UI" allows writing automation.',
+    },
 }
 
 T.SEND_TYPE_NAMES = {
@@ -57,6 +61,10 @@ T.SETTINGS.LISTS = {
         [SEND_TYPE.SEND] = (T.SEND_TYPE_NAMES[SEND_TYPE.SEND].PLURAL):upper(),
         [SEND_TYPE.HW] = (T.SEND_TYPE_NAMES[SEND_TYPE.HW].PLURAL):upper(),
         [SEND_TYPE.RECV] = (T.SEND_TYPE_NAMES[SEND_TYPE.RECV].PLURAL):upper(),
+    },
+    [T.SETTINGS.VOL_TYPE.LABEL] = {
+        [VOL_TYPE.TRIM] = 'Trim',
+        [VOL_TYPE.UI] = 'Match UI (Recommended)',
     },
 }
 

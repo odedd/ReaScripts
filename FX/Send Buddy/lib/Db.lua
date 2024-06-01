@@ -17,13 +17,13 @@ DB = {
     end,
     beginUndoBlock = function(self)
         if not self.surpressUndo then
-        r.Undo_BeginBlock()
+            r.Undo_BeginBlock()
         end
     end,
     endUndoBlock = function(self, name, type)
         type = type or -1
         if not self.surpressUndo then
-        r.Undo_EndBlock(name, type)
+            r.Undo_EndBlock(name, type)
         end
     end,
     lastGuids = {}, -- use to check if a track has been removed or added
@@ -66,6 +66,17 @@ DB = {
             end
         end
         r.MarkProjectDirty(0)
+    end,
+    syncUIVol = function(self, vol) -- if the volume is automated, the volume in the track is updated
+        if self.app.settings.current.volType == VOL_TYPE.UI then
+            for _, send in ipairs(self.sends) do
+                send:_refreshVolAndPan()
+                if send.type ~= SEND_TYPE.HW then
+                    send.destTrack:_refreshVolAndPan()
+                    send.srcTrack:_refreshVolAndPan()
+                end
+            end
+        end
     end,
     sync = function(self, refresh)
         self.track, self.changedTrack = self:getSelectedTrack()
@@ -113,23 +124,27 @@ DB = {
                 self.totalSends = self.totalSends + self.numSends[type]
                 for i = 0, self.numSends[type] - 1 do
                     local sendName
+                    local UIIndex = i
                     if type == SEND_TYPE.SEND then
                         _, sendName = reaper.GetTrackSendName(self.track.object, i + numHWSends)
+                        UIIndex = i + numHWSends
                     elseif type == SEND_TYPE.RECV then
                         _, sendName = reaper.GetTrackReceiveName(self.track.object, i)
                     end
                     local midiRouting = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i,
                         'I_MIDIFLAGS'))
+
                     local send = {
                         type = type,
                         order = overallOrder,
                         index = i,
+                        UIIndex = UIIndex,
                         name = sendName,
                         db = self,
                         track = self.track,
                         mute = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'B_MUTE') == 1.0,
-                        vol = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'D_VOL'),
-                        pan = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'D_PAN'),
+                        -- vol = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'D_VOL'),
+                        -- pan = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'D_PAN'),
                         panLaw = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'D_PANLAW'),
                         mono = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'B_MONO')),
                         polarity = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'B_PHASE') == 1.0,
@@ -148,6 +163,22 @@ DB = {
                             nil,
                         destInserts = {},
                         destInsertsCount = 0,
+                        _refreshVolAndPan = function(self)
+                            local volume, pan
+                            if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
+                                volume = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_VOL')
+                                pan = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_PAN')
+                            else
+                                -- _, volume, pan = reaper.GetTrackUIVol(self.track.object, self.index)
+                                if self.type == SEND_TYPE.RECV then
+                                    _, volume, pan = reaper.GetTrackReceiveUIVolPan(self.track.object, self.UIIndex)
+                                else
+                                    _, volume, pan = reaper.GetTrackSendUIVolPan(self.track.object, self.UIIndex)
+                                end
+                            end
+                            self.vol = volume
+                            self.pan = pan
+                        end,
                         delete = function(self)
                             self.db:beginUndoBlock()
                             reaper.RemoveTrackSend(self.track.object, self.type, self.index)
@@ -172,24 +203,35 @@ DB = {
                             self.db:sync(true)
                             self.db:endUndoBlock('Delete send', 1)
                         end,
-                        setVolDB = function(self, dB) -- because of the complexity of the input mechanism, undo states are handled in the GUI
+                        setVolDB = function(self, dB, done) -- because of the complexity of the input mechanism, undo states are handled in the GUI
+                            done = done or false
                             if dB < self.db.app.settings.current.minSendVol then
                                 dB = self.db.app.settings.current.minSendVol
                             elseif dB > self.db.app.settings.current.maxSendVol then
                                 dB = self.db.app.settings.current.maxSendVol
                             end
-                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_VOL',
-                                (dB <= self.db.app.settings.current.minSendVol and 0 or OD_ValFromdB(dB)))
-                            self.db:sync(true)
+                            local vol = (dB <= self.db.app.settings.current.minSendVol and 0 or OD_ValFromdB(dB))
+                            if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
+                                reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_VOL', vol)
+                            else
+                                reaper.SetTrackSendUIVol( self.track.object, self.UIIndex, vol, done and 1 or 0 )
+                            end
+                            -- self.db:sync(true)
                         end,
-                        setPan = function(self, pan) -- because of the complexity of the input mechanism, undo states are handled in the GUI
+                        setPan = function(self, pan, done) -- because of the complexity of the input mechanism, undo states are handled in the GUI
+                            done = done or false
                             if pan < -1 then
                                 pan = -1
                             elseif pan > 1 then
                                 pan = 1
                             end
-                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_PAN', pan)
-                            self.db:sync(true)
+                            if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
+                                reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_PAN', pan)
+                            else
+                                reaper.SetTrackSendUIPan( self.track.object, self.UIIndex, pan, done and 1 or 0 )
+                            end
+            
+                            -- self.db:sync(true)
                         end,
                         setPanLaw = function(self, panLaw) -- TODO implement!
                             reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_PANLAW', panLaw)
@@ -210,7 +252,7 @@ DB = {
                         setSrcChan = function(self, srcChan)
                             local targetTrack = (self.type == SEND_TYPE.HW) and self.track or self.srcTrack
                             local numChannels = SRC_CHANNELS[srcChan].numChannels +
-                            (srcChan >= 1024 and math.fmod(srcChan, 512) or srcChan)
+                                (srcChan >= 1024 and math.fmod(srcChan, 512) or srcChan)
                             local nearestEvenChannel = math.ceil(numChannels / 2) * 2
                             local srcChanChannelCount = targetTrack.numChannels
                             if srcChanChannelCount < numChannels then
@@ -237,8 +279,9 @@ DB = {
                             self.db:setUndoPoint('Set send mode', 1)
                         end,
                         setDestChan = function(self, destChan)
-                            if self.type == SEND_TYPE.HW then 
-                                reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_DSTCHAN', destChan)
+                            if self.type == SEND_TYPE.HW then
+                                reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_DSTCHAN',
+                                    destChan)
                                 self.db:sync(true)
                                 return
                             end
@@ -312,7 +355,8 @@ DB = {
                                 -- Solo this track and the destTrack
                                 r.SetMediaTrackInfo_Value(sourceTrack.object, 'I_SOLO', 2)
 
-                                if self.type ~= SEND_TYPE.HW then r.SetMediaTrackInfo_Value(self.destTrack.object, 'I_SOLO', 2) end
+                                if self.type ~= SEND_TYPE.HW then r.SetMediaTrackInfo_Value(self.destTrack.object,
+                                        'I_SOLO', 2) end
                                 -- Un-solo any other track if it's soloed
                                 for i, track in ipairs(self.db.tracks) do
                                     if (track.guid ~= self.track.guid) and ((self.type == SEND_TYPE.HW) or (track.guid ~= self.destTrack.guid)) then
@@ -348,8 +392,10 @@ DB = {
                         end,
                         _getChannelAlias = function(self)
                             if self.srcChan == -1 then return '' end
-                            local chn1, chn2 = self.destChan + 1 - ((self.destChan >= 1024) and 1024 or 0), (self.destChan < 1024) and (self.destChan + SRC_CHANNELS[self.srcChan].numChannels ) or nil
-                            if chn2 and chn2-chn1 > 0 then
+                            local chn1, chn2 = self.destChan + 1 - ((self.destChan >= 1024) and 1024 or 0),
+                                (self.destChan < 1024) and (self.destChan + SRC_CHANNELS[self.srcChan].numChannels) or
+                                nil
+                            if chn2 and chn2 - chn1 > 0 then
                                 if (chn2 - chn1) >= 2 then
                                     return OUTPUT_CHANNEL_NAMES[chn1] .. '..' .. OUTPUT_CHANNEL_NAMES[chn2]
                                 else
@@ -358,7 +404,6 @@ DB = {
                             else
                                 return OUTPUT_CHANNEL_NAMES[chn1]
                             end
-                            
                         end,
                         _saveOrigMuteState = function(self)
                             local numOfSolos = self.db:_numSolos()
@@ -395,13 +440,14 @@ DB = {
                         end,
                     }
 
-                    if send.type == SEND_TYPE.HW then 
-                        send.name = send:_getChannelAlias() 
-                    end
-                    send.calculateShortName = function(self) 
-                        self.shortName = self.app.minimizeText(send.name, self.app.settings.current.sendWidth-r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
-                    end
                     send.app = self.app
+                    send.calculateShortName = function(self)
+                        self.shortName = self.app.minimizeText(send.name,
+                            self.app.settings.current.sendWidth -
+                            r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
+                    end
+                    if send.type == SEND_TYPE.HW then send.name = send:_getChannelAlias() end
+                    send:_refreshVolAndPan()
                     send:calculateShortName()
 
                     if send.destTrack then
@@ -539,7 +585,7 @@ DB.getSelectedTrack = function(self)
     if (track == nil and self.track ~= nil) or track == self.masterTrack then
         self.trackName = nil
         self.sends = {}
-        return (self.track ~= -1 and not self.track.object) and self.track or { }, true
+        return (self.track ~= -1 and not self.track.object) and self.track or {}, true
     end
     for i, trk in ipairs(self.tracks) do
         if track == trk.object then
@@ -563,9 +609,7 @@ DB.getTracks = function(self)
         local trackColor = reaper.GetTrackColor(track)
         local trackGuid = reaper.GetTrackGUID(track)
         local hasReceives = reaper.GetTrackNumSends(track, -1) > 0
-        local numChannels = reaper.GetMediaTrackInfo_Value(track, 'I_NCHAN') 
-        local volume = reaper.GetMediaTrackInfo_Value(track, 'D_VOL')
-        local pan = reaper.GetMediaTrackInfo_Value(track, 'D_PAN')
+        local numChannels = reaper.GetMediaTrackInfo_Value(track, 'I_NCHAN')
         local _, rawSsoloMatrix = r.GetSetMediaTrackInfo_String(track, "P_EXT:" .. Scr.ext_name ..
             '_SOLO_MATRIX', "", false)
         local _, rawOrigMuteMatrix = r.GetSetMediaTrackInfo_String(track, "P_EXT:" .. Scr.ext_name ..
@@ -579,14 +623,12 @@ DB.getTracks = function(self)
         local masterSendState = (rawMasterSendState == '1')
         local sendListen = rawSendListen ~= '' and rawSendListen:match('(.-)%s') or nil
         local sendListenMode = rawSendListen ~= '' and tonumber(rawSendListen:match('.-%s(%d)')) or nil
-        table.insert(self.tracks, {
+        local track = {
             object = track,
             db = self,
             name = trackName,
             guid = trackGuid,
             color = trackColor,
-            vol = volume,
-            pan = pan,
             numChannels = numChannels,
             hasReceives = hasReceives,
             soloMatrix = soloMatrix,
@@ -595,26 +637,59 @@ DB.getTracks = function(self)
             sendListen = sendListen,
             sendListenMode = sendListenMode,
             order = i,
-            setVolDB = function(self, dB) -- because of the complexity of the input mechanism, undo states are handled in the GUI
+            setVolDB = function(self, dB, done) -- because of the complexity of the input mechanism, undo states are handled in the GUI
+                -- done not implemented due to reaper bug: https://forums.cockos.com/showthread.php?t=291664
+                -- but it's here for consistency with send:setVolDB functions
+                -- done = done or false
                 if dB < self.db.app.settings.current.minSendVol then
                     dB = self.db.app.settings.current.minSendVol
                 elseif dB > self.db.app.settings.current.maxSendVol then
                     dB = self.db.app.settings.current.maxSendVol
                 end
                 self.vol = (dB <= self.db.app.settings.current.minSendVol and 0 or OD_ValFromdB(dB))
-                reaper.SetMediaTrackInfo_Value(self.object, 'D_VOL',self.vol)
+                if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
+                    reaper.SetMediaTrackInfo_Value(self.object, 'D_VOL', self.vol)
+                else
+                    reaper.SetTrackUIVolume(self.object, self.vol, false, false, 1|2)
+                    -- self.db:syncUIVol()
+                end
                 -- self.db:sync(true)
             end,
-            setPan = function(self, pan) -- because of the complexity of the input mechanism, undo states are handled in the GUI
+            setPan = function(self, pan, done) -- because of the complexity of the input mechanism, undo states are handled in the GUI
+                -- done not implemented due to reaper bug: https://forums.cockos.com/showthread.php?t=291664
+                -- but it's here for consistency with send:setVolDB functions
+                -- done = done or false
                 if pan < -1 then
                     pan = -1
                 elseif pan > 1 then
                     pan = 1
                 end
                 self.pan = pan
-                reaper.SetMediaTrackInfo_Value(self.object, 'D_PAN', self.pan)
+                if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
+                    reaper.SetMediaTrackInfo_Value(self.object, 'D_PAN', self.pan)
+                else
+                    -- possible reaper bug: https://forum.cockos.com/showthread.php?t=291674
+                    -- until bug is fixed, this is a workaround:
+                    local lastTrack = self.db.track                                          -- delete once bug is fixed
+                    reaper.SetTrackUIPan(self.object, self.pan, false, false, 0)
+                    reaper.SetTrackUIPan(lastTrack.object, lastTrack.pan, false, false, 0)   -- delete once bug is fixed
+                    -- self.db:syncUIVol()
+                end
             end,
-        })
+            _refreshVolAndPan = function(self)
+                local volume, pan
+                if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
+                    volume = reaper.GetMediaTrackInfo_Value(self.object, 'D_VOL')
+                    pan = reaper.GetMediaTrackInfo_Value(self.object, 'D_PAN')
+                else
+                    _, volume, pan = reaper.GetTrackUIVolPan(self.object)
+                end
+                self.vol = volume
+                self.pan = pan
+            end
+        }
+        track:_refreshVolAndPan()
+        table.insert(self.tracks, track)
         -- end
     end
 end
@@ -674,8 +749,8 @@ DB.getInserts = function(self, track)
         -- local shortName, shortened = self.app.minimizeText(fxName:gsub('.-%:', ''):gsub('%(.-%)$', ''),
         --     self.app.settings.current.sendWidth -
         --     r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
-        local insert = 
-             {
+        local insert =
+        {
             order = i,
             db = self,
             name = fxName,
@@ -800,7 +875,7 @@ end
 
 DB.markFavorites = function(self)
     for _, asset in ipairs(self.assets) do
-        if OD_HasValue(self.app.settings.current.favorites, asset.type .. ' ' .. asset.load) then 
+        if OD_HasValue(self.app.settings.current.favorites, asset.type .. ' ' .. asset.load) then
             asset.originalGroup = asset.group
             asset.group = FAVORITE_GROUP
         end
