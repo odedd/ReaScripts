@@ -377,7 +377,7 @@ DB = {
                                         end
                                     end
                                 end
-                                self:setSolo(SOLO_STATES.SOLO, true)
+                                self:setSolo(SOLO_STATES.SOLO, true) -- BUG solo defeat gets undone. think about it
 
                                 self.track.sendListen = self.guid
                                 self.track.sendListenMode = listenMode
