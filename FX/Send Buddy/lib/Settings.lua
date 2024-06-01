@@ -7,7 +7,6 @@ SM_Settings = OD_Settings:new({ --TODO proper defaults
         followSelectedTrack = true,
         createInsideFolder = true,
         sendFolderName = 'FX BUS',
-        volType = VOL_TYPE.UI,
         sendTypeVisibility = {
             [SEND_TYPE.SEND] = true,
             [SEND_TYPE.RECV] = true,
