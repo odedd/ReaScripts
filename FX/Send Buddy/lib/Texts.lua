@@ -46,7 +46,7 @@ T.SETTINGS = {
     },
     VOL_TYPE = {
         LABEL = 'Volume and pan type',
-        HINT = 'Volume/Pan controls used. "Match UI" allows writing automation.',
+        HINT = 'Volume/Pan type. "Match MCP/TCP faders" allows writing automation.',
     },
 }
 
@@ -64,7 +64,7 @@ T.SETTINGS.LISTS = {
     },
     [T.SETTINGS.VOL_TYPE.LABEL] = {
         [VOL_TYPE.TRIM] = 'Trim',
-        [VOL_TYPE.UI] = 'Match UI (Recommended)',
+        [VOL_TYPE.UI] = 'Match MCP/TCP faders (Recommended)',
     },
 }
 
