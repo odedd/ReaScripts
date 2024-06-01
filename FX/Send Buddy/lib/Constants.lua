@@ -64,6 +64,22 @@ SOLO_STATES = {
     ['SOLO'] = 2,
     ['SOLO_DEFEAT'] = 3,
 }
+
+SEND_MODE = {
+    [0] = 'post',
+    [1] = 'preFX',
+    [3] = 'postFX'
+}
+
+AUTO_MODE = {
+    [-1] = 'track',
+    [0] = 'trim/read',
+    [1] = 'read',
+    [2] = 'touch',
+    [3] = 'write',
+    [4] = 'latch',
+}
+
 SEND_LISTEN_MODES = {
     ['NONE'] = -1,
     ['NORMAL'] = 0,

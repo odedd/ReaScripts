@@ -336,7 +336,7 @@ if OD_PrereqsOK({
                     (s.name .. ' - Show/hide %s pan envelope'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                 app.gui:popColors(app.gui.st.col.buttons.route)
             end
-            local drawFader = function(w, h, targetTrack) -- TODO: Handle undo states (see IsItemDeactivatedAfterEdit)
+            local drawFader = function(w, h, targetTrack)
                 if targetTrack and s.type == SEND_TYPE.HW then
                     drawDummy(w, app.gui.st.col.buttons.env, h)
                     return
@@ -377,19 +377,11 @@ if OD_PrereqsOK({
                 end
 
                 local shouldReset, v2 = app.resetOnDoubleClick('s' .. s.order, v2, 0.0)
-                -- if ImGui.IsItemActivated(ctx) and app.settings.current.volType == VOL_TYPE.UI then
-                    -- app.temp.sendConstantVol = app.temp.sendConstantVol or {}
-                    -- app.temp.sendConstantVol[s.order] = true
-                -- end
-                if rv or shouldReset then -- or (app.temp.sendConstantVol and app.temp.sendConstantVol[s.order]) then
-                    target:setVolDB(v2)
+                if rv or shouldReset then             -- or (app.temp.sendConstantVol and app.temp.sendConstantVol[s.order]) then
+                    target:setVolDB(v2, false) -- set without creating undo point
                 end
                 if ImGui.IsItemDeactivatedAfterEdit(ctx) or shouldReset then
-                    if app.settings.current.volType == VOL_TYPE.UI then target:setVolDB(v2, true) end -- finish edit operation for touch automation to work
-                    r.Undo_OnStateChangeEx2(0, 'Set send volume', 1, -1)
-                    -- if app.temp.sendConstantVol and app.temp.sendConstantVol[s.order] then
-                    --     app.temp.sendConstantVol[s.order] = nil
-                    -- end
+                    target:setVolDB(v2, true)     -- finish edit operation for touch automation to work, and create undo point
                 end
                 if ImGui.IsItemHovered(ctx) then
                     if mw ~= 0 then
@@ -407,14 +399,14 @@ if OD_PrereqsOK({
                             v = app.settings.current.minSendVol
                         end
                         local newV = v + (app.settings.current.mouseScrollReversed and -mw or mw) * scale
-                        target:setVolDB(newV)
+                        target:setVolDB(newV, false) -- set without creating undo point
                     elseif mw == 0.0 and app.temp.volDragging then
                         app.temp.volDraggingStopTimer = reaper.time_precise()
                         app.temp.volDragging = nil
                     end
                     if app.temp.volDraggingStopTimer and (reaper.time_precise() - app.temp.volDraggingStopTimer) > 0.15 then
                         app.temp.volDraggingStopTimer = nil
-                        r.Undo_OnStateChangeEx2(0, 'Set send volume', 1, -1)
+                        target:setVolDB(target.vol, true) -- create undo point
                     end
                 end
             end
@@ -437,20 +429,11 @@ if OD_PrereqsOK({
                 if targetTrack then app.gui:popColors(app.gui.st.col.targetFader) end
 
                 local shouldReset, v2 = app.resetOnDoubleClick('p' .. s.order, v2, 0.0)
-                -- if ImGui.IsItemActivated(ctx) and app.settings.current.volType == VOL_TYPE.UI then
-                --     app.temp.sendConstantPan = app.temp.sendConstantPan or {}
-                --     app.temp.sendConstantPan[s.order] = true
-                -- end
                 if rv or shouldReset then --or (app.temp.sendConstantPan and app.temp.sendConstantPan[s.order]) then
-                    target:setPan(v2)
+                    target:setPan(v2, false) -- set without creating undo point
                 end
                 if ImGui.IsItemDeactivatedAfterEdit(ctx) or shouldReset then
-                    if app.settings.current.volType == VOL_TYPE.UI then target:setPan(v2, true) end -- finish edit operation for touch automation to work
-                    
-                    r.Undo_OnStateChangeEx2(0, 'Set send pan', 1, -1)
-                    -- if app.temp.sendConstantPan and app.temp.sendConstantPan[s.order] then
-                    --     app.temp.sendConstantPan[s.order] = nil
-                    -- end
+                   target:setPan(v2, true) -- finish edit operation for touch automation to work, and create undo point
                 end
                 if ImGui.IsItemHovered(ctx) then
                     if mw ~= 0 then
@@ -459,14 +442,14 @@ if OD_PrereqsOK({
                         end
                         local scale = .01
                         local newV = s.pan + (app.settings.current.mouseScrollReversed and -mw or mw) * scale
-                        target:setPan(newV)
+                        target:setPan(newV, false) -- set without creating undo point
                     elseif mw == 0.0 and app.temp.panDragging then
                         app.temp.panDraggingStopTimer = reaper.time_precise()
                         app.temp.panDragging = nil
                     end
                     if app.temp.panDraggingStopTimer and (reaper.time_precise() - app.temp.panDraggingStopTimer) > 0.15 then
                         app.temp.panDraggingStopTimer = nil
-                        r.Undo_OnStateChangeEx2(0, 'Set send pan', 1, -1)
+                        target:setPan(target.pan, true) -- create undo point
                     end
                 end
             end
@@ -480,15 +463,16 @@ if OD_PrereqsOK({
                 ImGui.SetNextItemWidth(ctx, w)
                 if targetTrack then app.gui:pushColors(app.gui.st.col.targetFader) end
                 local rv, v3 = ImGui.DragDouble(ctx, '##db', v, 0, 0, 0, '%.2f')
-                if ImGui.IsItemFocused(ctx) then
+                if ImGui.IsItemFocused(ctx) and targetTrack then
                     app.temp.inputTargetVolLabel = true
                 end
+                
                 if targetTrack then app.gui:popColors(app.gui.st.col.targetFader) end
                 app:setHoveredHint('main',
                     (s.name .. ' - %s volume. Double-click to enter exact amount.'):format((s.type == SEND_TYPE.RECV) and
                         'Receive' or 'Send'))
                 if rv then
-                    target:setVolDB(v3)
+                    target:setVolDB(v3, ImGui.IsItemDeactivatedAfterEdit(ctx))
                     r.Undo_OnStateChangeEx2(0, 'Set send volume', 1, -1)
                 end
             end
@@ -500,6 +484,15 @@ if OD_PrereqsOK({
                 app:setHoveredHint('main',
                     (s.name .. ' - Mute %s'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send'))
                 app.gui:popColors(app.gui.st.col.buttons.mute[s.mute])
+            end
+            local drawMono = function(w) -- TODO icon and colors
+                app.gui:pushColors(app.gui.st.col.buttons.mute[s.mono])
+                if ImGui.Button(ctx, 'm##mono' .. s.order, w) then
+                    s:setMono(not s.mono)
+                end
+                app:setHoveredHint('main',
+                    (s.name .. ' - Set %s to %s'):format((s.type == SEND_TYPE.RECV) and 'receive' or 'send', s.mono and 'stereo' or 'mono'))
+                app.gui:popColors(app.gui.st.col.buttons.mute[s.mono])
             end
             local drawSolo = function(w)
                 local soloed = s:getSolo() -- OD_BfCheck(s.track.soloMatrix, 2^(s.order))
@@ -564,12 +557,15 @@ if OD_PrereqsOK({
             end
             local drawModeButton = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.mode[s.mode])
-                local label = s.mode == 0 and "post" or (s.mode == 1 and "preFX" or "postFX")
+                local label = SEND_MODE[s.mode]
                 if ImGui.Button(ctx, label .. '##mode' .. s.order, w) then
                     s:setMode(s.mode == 0 and 1 or (s.mode == 1 and 3 or 0))
                 end
                 app:setHoveredHint('main', s.name .. ' - Send placement')
                 app.gui:popColors(app.gui.st.col.buttons.mode[s.mode])
+            end
+            local drawAutoMode = function(w)
+                drawDummy(w, app.gui.st.col.buttons.env, nil)
             end
             local drawMIDIRouteButtons = function(w)
                 if s.type == SEND_TYPE.HW then
@@ -798,7 +794,6 @@ if OD_PrereqsOK({
                     local rv = ImGui.Button(ctx, insert.shortName .. "##" .. i, app.settings.current.sendWidth)
                     app.gui:popColors(colors)
                     if rv then
-                        -- r.Undo_BeginBlock()
                         if ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd) and ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
                             insert:setOffline(not insert.offline)
                         elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
@@ -808,7 +803,6 @@ if OD_PrereqsOK({
                         else
                             if insert:toggleShow() then app.focusMainReaperWindow = false end
                         end
-                        -- r.Undo_EndBlock("Change",0)
                     end
                     local statusHint = insert.offline and ' (Offline)' or (not insert.enabled and ' (Bypassed)' or '')
                     local showHint = 'Click to show/hide, '
@@ -879,6 +873,8 @@ if OD_PrereqsOK({
                     drawSolo(w)
                 elseif part.name == 'mute' then
                     drawMute(w)
+                elseif part.name == 'mono' then
+                    drawMono(w)
                 elseif part.name == 'solod' then
                     drawSoloDefeat(w)
                 elseif part.name == 'phase' then
@@ -889,6 +885,8 @@ if OD_PrereqsOK({
                     drawListen(w, part.listenMode)
                 elseif part.name == 'modebutton' then
                     drawModeButton(w)
+                elseif part.name == 'automode' then
+                    drawAutoMode(w)
                 elseif part.name == 'routebutton' then
                     drawRouteButtons(w)
                 elseif part.name == 'midiroutebutton' then
@@ -1084,7 +1082,7 @@ if OD_PrereqsOK({
         }
         if altPressed or app.temp.midiRouteMenuOpen or app.temp.inputTargetVolLabel then
             parts = {
-                { { name = 'mute' },       { name = 'solod' } },
+                { { name = 'mono' },       { name = 'solod' } },
                 { { name = 'phase' },      { name = 'listen', listenMode = SEND_LISTEN_MODES.RETURN_ONLY } },
                 { name = 'deletesend' },
                 { name = 'midiroutebutton' },
@@ -1096,6 +1094,7 @@ if OD_PrereqsOK({
         end
         if shiftPressed then
             parts = {
+                { name = 'automode' },
                 { name = 'envmute' },
                 { name = 'envpan' },
                 { name = 'envvol' },
@@ -1559,8 +1558,10 @@ if OD_PrereqsOK({
             ImGui.SeparatorText(ctx, 'General')
             app.settings.current.volType = app.gui:setting('combo', T.SETTINGS.VOL_TYPE.LABEL, T.SETTINGS.VOL_TYPE.HINT,
                 app.settings.current.volType,
-                { list = T.SETTINGS.LISTS[T.SETTINGS.VOL_TYPE.LABEL][VOL_TYPE.TRIM] ..
-                '\0' .. T.SETTINGS.LISTS[T.SETTINGS.VOL_TYPE.LABEL][VOL_TYPE.UI] .. '\0' })
+                {
+                    list = T.SETTINGS.LISTS[T.SETTINGS.VOL_TYPE.LABEL][VOL_TYPE.TRIM] ..
+                        '\0' .. T.SETTINGS.LISTS[T.SETTINGS.VOL_TYPE.LABEL][VOL_TYPE.UI] .. '\0'
+                })
             app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
                 .LABEL, T.SETTINGS.FOLLOW_SELECTED_TRACK.HINT, app.settings.current.followSelectedTrack)
             app.settings.current.mouseScrollReversed = app.gui:setting('checkbox', T.SETTINGS.MW_REVERSED.LABEL,

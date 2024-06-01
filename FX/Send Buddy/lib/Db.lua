@@ -131,26 +131,28 @@ DB = {
                         UIIndex = i + numHWSends
                     elseif type == SEND_TYPE.RECV then
                         _, sendName = reaper.GetTrackReceiveName(self.track.object, i)
+                        UIIndex = -1 - UIIndex
                     end
-                    local midiRouting = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i,
-                        'I_MIDIFLAGS'))
+                    local midiRouting = reaper.GetTrackSendInfo_Value(self.track.object, type, i,
+                        'I_MIDIFLAGS')
 
                     local send = {
                         type = type,
                         order = overallOrder,
                         index = i,
-                        UIIndex = UIIndex,
+                        UIIndex = UIIndex, -- used for UI volume and pan (send_idx<0 for receives, >=0 for hw ouputs, >=nb_of_hw_ouputs for sends)
                         name = sendName,
                         db = self,
                         track = self.track,
                         mute = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'B_MUTE') == 1.0,
                         -- vol = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'D_VOL'),
                         -- pan = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'D_PAN'),
-                        panLaw = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'D_PANLAW'),
-                        mono = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'B_MONO')),
+                        -- panLaw = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'D_PANLAW'),
+                        mono = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'B_MONO') == 1.0,
                         polarity = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'B_PHASE') == 1.0,
-                        srcChan = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'I_SRCCHAN')),
-                        mode = math.floor(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'I_SENDMODE')),
+                        srcChan = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'I_SRCCHAN'),
+                        mode = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'I_SENDMODE'),
+                        autoMode = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'I_AUTOMODE'),
                         midiSrcChn = midiRouting & 0x1f,
                         midiSrcBus = midiRouting >> 14 & 0xff,
                         midiDestChn = midiRouting >> 5 & 0x1f,
@@ -172,7 +174,7 @@ DB = {
                                 pan = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_PAN')
                             else
                                 if self.type == SEND_TYPE.RECV then
-                                    _, volume, pan = reaper.GetTrackReceiveUIVolPan(self.track.object, self.UIIndex)
+                                    _, volume, pan = reaper.GetTrackReceiveUIVolPan(self.track.object, self.index) -- this SHOULD be index rather than UIIndex, since this is a receive specific function
                                 else
                                     _, volume, pan = reaper.GetTrackSendUIVolPan(self.track.object, self.UIIndex)
                                 end
@@ -204,43 +206,49 @@ DB = {
                             self.db:sync(true)
                             self.db:endUndoBlock('Delete send', 1)
                         end,
-                        setVolDB = function(self, dB, done) -- because of the complexity of the input mechanism, undo states are handled in the GUI
-                            done = done or false
-                            if dB < self.db.app.settings.current.minSendVol then
-                                dB = self.db.app.settings.current.minSendVol
-                            elseif dB > self.db.app.settings.current.maxSendVol then
-                                dB = self.db.app.settings.current.maxSendVol
+                        setVolDB = function(self, dB, done)
+                            done = (done == nil) and true or done
+                            if dB ~= self.vol then -- if it was called just to create an undo point
+                                if dB < self.db.app.settings.current.minSendVol then
+                                    dB = self.db.app.settings.current.minSendVol
+                                elseif dB > self.db.app.settings.current.maxSendVol then
+                                    dB = self.db.app.settings.current.maxSendVol
+                                end
+                                local vol = (dB <= self.db.app.settings.current.minSendVol and 0 or OD_ValFromdB(dB))
+                                if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
+                                    reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_VOL', vol)
+                                else
+                                    reaper.SetTrackSendUIVol(self.track.object, self.UIIndex, vol, done and 1 or 0)
+                                end
+                                self.db:sync(true) -- otherwise the volume is not updated in the GUI
                             end
-                            local vol = (dB <= self.db.app.settings.current.minSendVol and 0 or OD_ValFromdB(dB))
-                            if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
-                                reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_VOL', vol)
-                            else
-                                reaper.SetTrackSendUIVol( self.track.object, self.UIIndex, vol, done and 1 or 0 )
-                            end
-                            -- self.db:sync(true)
+                            if done then r.Undo_OnStateChangeEx2(0, 'Set send volume', 1, -1) end
                         end,
-                        setPan = function(self, pan, done) -- because of the complexity of the input mechanism, undo states are handled in the GUI
+                        setPan = function(self, pan, done)
                             done = done or false
-                            if pan < -1 then
-                                pan = -1
-                            elseif pan > 1 then
-                                pan = 1
+                            if pan ~= self.pan then -- if it was called just to create an undo point
+                                if pan < -1 then
+                                    pan = -1
+                                elseif pan > 1 then
+                                    pan = 1
+                                end
+                                if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
+                                    reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_PAN', pan)
+                                else
+                                    reaper.SetTrackSendUIPan(self.track.object, self.UIIndex, pan, done and 1 or 0)
+                                end
+                                self.db:sync(true) -- otherwise the volume is not updated in the GUI
                             end
-                            if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
-                                reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_PAN', pan)
-                            else
-                                reaper.SetTrackSendUIPan( self.track.object, self.UIIndex, pan, done and 1 or 0 )
-                            end
-            
-                            -- self.db:sync(true)
+                            if done then r.Undo_OnStateChangeEx2(0, 'Set send pan', 1, -1) end
                         end,
-                        setPanLaw = function(self, panLaw) -- TODO implement!
-                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_PANLAW', panLaw)
+                        setAutoMode = function(self, autoMode) -- TODO implement!
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_AUTOMODE',
+                                autoMode)
                             self.db:sync(true)
-                            self.db:setUndoPoint('Change send pan law', 1)
+                            self.db:setUndoPoint('Set send automation mode', 1)
                         end,
-                        setMono = function(self, mono) -- TODO implement!
-                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'B_MONO', mono)
+                        setMono = function(self, mono)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'B_MONO', mono and 1 or 0)
                             self.db:sync(true)
                             self.db:setUndoPoint('Toggle send mono mixdown', 1)
                         end,
@@ -356,8 +364,10 @@ DB = {
                                 -- Solo this track and the destTrack
                                 r.SetMediaTrackInfo_Value(sourceTrack.object, 'I_SOLO', 2)
 
-                                if self.type ~= SEND_TYPE.HW then r.SetMediaTrackInfo_Value(self.destTrack.object,
-                                        'I_SOLO', 2) end
+                                if self.type ~= SEND_TYPE.HW then
+                                    r.SetMediaTrackInfo_Value(self.destTrack.object,
+                                        'I_SOLO', 2)
+                                end
                                 -- Un-solo any other track if it's soloed
                                 for i, track in ipairs(self.db.tracks) do
                                     if (track.guid ~= self.track.guid) and ((self.type == SEND_TYPE.HW) or (track.guid ~= self.destTrack.guid)) then
@@ -579,7 +589,8 @@ end
 
 --- TRACKS
 DB._isTrackValid = function(self)
-    return self.track ~= -1 and self.track ~= nil and self.track.object ~= nil and r.ValidatePtr(self.track.object, 'MediaTrack*')
+    return self.track ~= -1 and self.track ~= nil and self.track.object ~= nil and
+        r.ValidatePtr(self.track.object, 'MediaTrack*')
 end
 DB.getSelectedTrack = function(self)
     if self.app.settings.current.followSelectedTrack == false and self:_isTrackValid() then
@@ -641,44 +652,53 @@ DB.getTracks = function(self)
             sendListen = sendListen,
             sendListenMode = sendListenMode,
             order = i,
-            setVolDB = function(self, dB, done) -- because of the complexity of the input mechanism, undo states are handled in the GUI
+
+            setVolDB = function(self, dB, done)
                 -- done not implemented due to reaper bug: https://forums.cockos.com/showthread.php?t=291664
                 -- but it's here for consistency with send:setVolDB functions
                 -- done = done or false
-                if dB < self.db.app.settings.current.minSendVol then
-                    dB = self.db.app.settings.current.minSendVol
-                elseif dB > self.db.app.settings.current.maxSendVol then
-                    dB = self.db.app.settings.current.maxSendVol
+                done = (done == nil) and true or done
+                if dB ~= self.vol then -- if it was called just to create an undo point
+                    if dB < self.db.app.settings.current.minSendVol then
+                        dB = self.db.app.settings.current.minSendVol
+                    elseif dB > self.db.app.settings.current.maxSendVol then
+                        dB = self.db.app.settings.current.maxSendVol
+                    end
+                    self.vol = (dB <= self.db.app.settings.current.minSendVol and 0 or OD_ValFromdB(dB))
+                    if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
+                        reaper.SetMediaTrackInfo_Value(self.object, 'D_VOL', self.vol)
+                    else
+                        reaper.SetTrackUIVolume(self.object, self.vol, false, false, 1|2)
+                        -- self.db:syncUIVol()
+                    end
+                    -- self.db:sync(true)
                 end
-                self.vol = (dB <= self.db.app.settings.current.minSendVol and 0 or OD_ValFromdB(dB))
-                if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
-                    reaper.SetMediaTrackInfo_Value(self.object, 'D_VOL', self.vol)
-                else
-                    reaper.SetTrackUIVolume(self.object, self.vol, false, false, 1|2)
-                    -- self.db:syncUIVol()
-                end
-                -- self.db:sync(true)
+                if done then r.Undo_OnStateChangeEx2(0, 'Set target track volume', 1, -1) end
             end,
-            setPan = function(self, pan, done) -- because of the complexity of the input mechanism, undo states are handled in the GUI
+            setPan = function(self, pan, done)
                 -- done not implemented due to reaper bug: https://forums.cockos.com/showthread.php?t=291664
                 -- but it's here for consistency with send:setVolDB functions
-                -- done = done or false
-                if pan < -1 then
-                    pan = -1
-                elseif pan > 1 then
-                    pan = 1
+                done = (done == nil) and true or done
+                if pan ~= self.pan then -- if it was called just to create an undo point
+                    if pan < -1 then
+                        pan = -1
+                    elseif pan > 1 then
+                        pan = 1
+                    end
+                    self.pan = pan
+                    if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
+                        reaper.SetMediaTrackInfo_Value(self.object, 'D_PAN', self.pan)
+                    else
+                        -- possible reaper bug: https://forum.cockos.com/showthread.php?t=291674
+                        -- until bug is fixed, this is a workaround:
+                        local lastTrack = self.db
+                        .track                                                             -- delete once bug is fixed
+                        reaper.SetTrackUIPan(self.object, self.pan, false, false, 0)
+                        reaper.SetTrackUIPan(lastTrack.object, lastTrack.pan, false, false, 0) -- delete once bug is fixed
+                        -- self.db:syncUIVol()
+                    end
                 end
-                self.pan = pan
-                if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
-                    reaper.SetMediaTrackInfo_Value(self.object, 'D_PAN', self.pan)
-                else
-                    -- possible reaper bug: https://forum.cockos.com/showthread.php?t=291674
-                    -- until bug is fixed, this is a workaround:
-                    local lastTrack = self.db.track                                          -- delete once bug is fixed
-                    reaper.SetTrackUIPan(self.object, self.pan, false, false, 0)
-                    reaper.SetTrackUIPan(lastTrack.object, lastTrack.pan, false, false, 0)   -- delete once bug is fixed
-                    -- self.db:syncUIVol()
-                end
+                if done then r.Undo_OnStateChangeEx2(0, 'Set target track pan', 1, -1) end
             end,
             _refreshVolAndPan = function(self)
                 local volume, pan
