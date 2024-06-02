@@ -164,8 +164,6 @@ DB = {
                         srcTrack = (type ~= SEND_TYPE.HW) and
                             self:_getTrack(reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'P_SRCTRACK')) or
                             nil,
-                        destInserts = {},
-                        destInsertsCount = 0,
                         _refreshVolAndPan = function(self)
                             if self.track == -1 or self.track.object == nil then return end
                             local volume, pan
@@ -462,10 +460,10 @@ DB = {
                     send:calculateShortName()
 
                     if send.destTrack then
-                        send.destInsertsCount = r.TrackFX_GetCount(send.destTrack.object)
-                        send.destInserts, send.destInsertsCount = self:getInserts(send.destTrack.object)
-                        if send.destInsertsCount > self.maxNumInserts then
-                            self.maxNumInserts = send.destInsertsCount
+                        -- send.destInsertsCount = r.TrackFX_GetCount(send.destTrack.object)
+                        send.destTrack:getInserts()
+                        if send.destTrack.numInserts > self.maxNumInserts then
+                            self.maxNumInserts = send.destTrack.numInserts
                         end
                     end
 
@@ -652,6 +650,8 @@ DB.getTracks = function(self)
             sendListen = sendListen,
             sendListenMode = sendListenMode,
             order = i,
+            numInserts = 0,
+            inserts = {},
 
             setVolDB = function(self, dB, done)
                 -- done not implemented due to reaper bug: https://forums.cockos.com/showthread.php?t=291664
@@ -710,6 +710,68 @@ DB.getTracks = function(self)
                 end
                 self.vol = volume
                 self.pan = pan
+            end,
+            getInsertAtIndex = function(self, index)
+                for i, insert in ipairs(self.inserts) do
+                    if insert.order == index then
+                        return insert
+                    end
+                end
+            end,
+            getInserts = function(self)
+                self.numInserts = r.TrackFX_GetCount(self.object)
+                self.inserts = {}
+                for i = 0, self.numInserts - 1 do
+                    local _, fxName = r.TrackFX_GetFXName(self.object, i, '')
+                    local offline = r.TrackFX_GetOffline(self.object, i)
+                    local enabled = r.TrackFX_GetEnabled(self.object, i)
+                    -- local shortName, shortened = self.app.minimizeText(fxName:gsub('.-%:', ''):gsub('%(.-%)$', ''),
+                    --     self.app.settings.current.sendWidth -
+                    --     r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
+                    local insert =
+                    {
+                        order = i,
+                        db = self.db,
+                        name = fxName,
+                        shortName = fxName,
+                        shortened = false,
+                        calculateShortName = function(self)
+                            self.shortName, self.shortened = self.db.app.minimizeText(self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''),
+                                self.db.app.settings.current.sendWidth -
+                                r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
+                        end,
+                        offline = offline,
+                        enabled = enabled,
+                        track = self,
+                        setEnabled = function(self, enabled) -- undo point created by TrackFX_SetEnabled
+                            r.TrackFX_SetEnabled(self.track.object, i, enabled)
+                            self.db:sync(true)
+                        end,
+                        setOffline = function(self, offline) -- undo point created by TrackFX_SetOffline
+                            r.TrackFX_SetOffline(self.track.object, i, offline)
+                            self.db:sync(true)
+                        end,
+                        delete = function(self) -- undo point created by TrackFX_Delete
+                            r.TrackFX_Delete(self.track.object, i)
+                            self.db:sync(true)
+                        end,
+                        toggleShow = function(self) -- showing FX does not create undo points
+                            if not r.TrackFX_GetOpen(self.track.object, i) then
+                                r.TrackFX_Show(self.track.object, i, 3)
+                                return true
+                            else
+                                r.TrackFX_Show(self.track.object, i, 2)
+                                return false
+                            end
+                        end,
+                        moveToIndex = function(self, index) -- undo point created by TrackFX_Move
+                            r.TrackFX_CopyToTrack(self.track.object, self.order, self.track.object, index, true)
+                            self.db:sync()
+                        end,
+                    }
+                    insert:calculateShortName()
+                    table.insert(self.inserts, insert)
+                end
             end
         }
         track:_refreshVolAndPan()
@@ -763,61 +825,9 @@ DB.isListenOn = function(self)
 end
 
 --- INSERTS
-DB.getInserts = function(self, track)
-    local fxCount = r.TrackFX_GetCount(track)
-    local inserts = {}
-    for i = 0, fxCount - 1 do
-        local _, fxName = r.TrackFX_GetFXName(track, i, '')
-        local offline = r.TrackFX_GetOffline(track, i)
-        local enabled = r.TrackFX_GetEnabled(track, i)
-        -- local shortName, shortened = self.app.minimizeText(fxName:gsub('.-%:', ''):gsub('%(.-%)$', ''),
-        --     self.app.settings.current.sendWidth -
-        --     r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
-        local insert =
-        {
-            order = i,
-            db = self,
-            name = fxName,
-            shortName = fxName,
-            shortened = false,
-            calculateShortName = function(self)
-                self.shortName, self.shortened = self.db.app.minimizeText(self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''),
-                    self.db.app.settings.current.sendWidth -
-                    r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
-            end,
-            offline = offline,
-            enabled = enabled,
-            track = track,
-            setEnabled = function(self, enabled) -- undo point created by TrackFX_SetEnabled
-                r.TrackFX_SetEnabled(self.track, i, enabled)
-                self.db:sync(true)
-            end,
-            setOffline = function(self, offline) -- undo point created by TrackFX_SetOffline
-                r.TrackFX_SetOffline(self.track, i, offline)
-                self.db:sync(true)
-            end,
-            delete = function(self) -- undo point created by TrackFX_Delete
-                r.TrackFX_Delete(self.track, i)
-                self.db:sync(true)
-            end,
-            toggleShow = function(self) -- showing FX does not create undo points
-                if not r.TrackFX_GetOpen(self.track, i) then
-                    r.TrackFX_Show(self.track, i, 3)
-                    return true
-                else
-                    r.TrackFX_Show(self.track, i, 2)
-                    return false
-                end
-            end
-        }
-        insert:calculateShortName()
-        table.insert(inserts, insert)
-    end
-    return inserts, fxCount
-end
 DB.recalculateShortNames = function(self)
     for _, send in ipairs(self.sends) do
-        for _, insert in ipairs(send.destInserts) do
+        for _, insert in ipairs(send.destTrack.inserts) do
             insert:calculateShortName()
         end
         send:calculateShortName()

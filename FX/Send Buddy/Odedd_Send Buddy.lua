@@ -272,7 +272,7 @@ if OD_PrereqsOK({
                 app.gui:pushColors(col)
                 ImGui.BeginDisabled(ctx)
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 1.0)
-                ImGui.Button(ctx, '##dummy'..s.index, w, h)
+                ImGui.Button(ctx, '##dummy'..s.order, w, h)
                 ImGui.PopStyleVar(ctx)
                 ImGui.EndDisabled(ctx)
                 app:setHoveredHint('main', ' ')
@@ -814,9 +814,9 @@ if OD_PrereqsOK({
                 app:setHoveredHint('main', app.debug and (altPressed and s.guid or s.name) or s.name)
             end
 
-            local drawInserts = function(w) -- TODO drag to reorder
+            local drawInserts = function(w)
                 local totalDrawn = 0
-                for i, insert in OD_PairsByOrder(s.destInserts) do
+                for i, insert in OD_PairsByOrder(s.destTrack.inserts) do
                     totalDrawn = totalDrawn + 1
                     local colors = insert.offline and app.gui.st.col.insert.offline or
                         (not insert.enabled and app.gui.st.col.insert.disabled or app.gui.st.col.insert.enabled)
@@ -833,6 +833,18 @@ if OD_PrereqsOK({
                         else
                             if insert:toggleShow() then app.focusMainReaperWindow = false end
                         end
+                    end
+                    if ImGui.BeginDragDropSource(ctx) then
+                        ImGui.SetDragDropPayload(ctx, 'insert'..s.order, i)
+                        ImGui.EndDragDropSource(ctx)
+                    end
+                    if ImGui.BeginDragDropTarget(ctx) then
+                        local payload, data = ImGui.AcceptDragDropPayload(ctx, 'insert'..s.order)
+                        if payload then
+                            local oldIdx = tonumber(data)
+                            s.destTrack:getInsertAtIndex(oldIdx-1):moveToIndex(i-1)
+                        end
+                        ImGui.EndDragDropTarget(ctx)
                     end
                     local statusHint = insert.offline and ' (Offline)' or (not insert.enabled and ' (Bypassed)' or '')
                     local showHint = 'Click to show/hide, '
