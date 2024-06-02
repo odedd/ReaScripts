@@ -43,7 +43,7 @@ OD_Init()
 
 if OD_PrereqsOK({
         reaimgui_version = '0.9.1',
-        js_version = 1.310,    -- required for JS_Window_Find
+        js_version = 1.310,    -- required for JS_Window_Find and JS_VKeys_GetState
         reaper_version = 7.03, -- required for set_action_options
     }) then
     dofile(p .. 'lib/Constants.lua')

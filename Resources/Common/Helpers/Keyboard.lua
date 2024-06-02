@@ -1,6 +1,6 @@
 _OD_KEYS = {}
 _OD_INTERCEPTED_KEYS = {}
-
+_OD_KEYS_CUTOFF = -3
 -- taken from here https://forums.cockos.com/showpost.php?p=2608321&postcount=12
 OD_KEYCODES = {
   LBUTTON     = 0x01, --  The left mouse button
@@ -310,7 +310,7 @@ OD_KEYCODE_NAMES = {
 
 
 OD_IsGlobalKeyDown = function(key)
-  return r.JS_VKeys_GetState(0):byte(key) == 1
+  return r.JS_VKeys_GetState(_OD_KEYS_CUTOFF):byte(key) == 1
 end
 OD_ReleaseGlobalKeys = function()
   for _, key in ipairs(_OD_INTERCEPTED_KEYS) do
@@ -324,7 +324,7 @@ OD_IsGlobalKeyPressed = function(key, intercept)
     table.insert(_OD_INTERCEPTED_KEYS, key)
     r.JS_VKeys_Intercept(key, 1)
   end
-  if r.JS_VKeys_GetState(0):byte(key) ~= 0 then
+  if r.JS_VKeys_GetState(_OD_KEYS_CUTOFF):byte(key) ~= 0 then
     if _OD_KEYS[key] == nil then
       _OD_KEYS[key] = true
       return true
@@ -341,7 +341,7 @@ OD_GetKeyPressed = function(from, to)
   from = from or 0
   to = to or 255
   for i = from, to do
-    if r.JS_VKeys_GetState(0):byte(i) == 1 then
+    if r.JS_VKeys_GetState(_OD_KEYS_CUTOFF):byte(i) == 1 then
       return i
     end
   end
@@ -350,7 +350,7 @@ end
 OD_PrintKeysPressed = function()
   local escapePressed = false
     for i = 0, 255 do
-      if r.JS_VKeys_GetState(0):byte(OD_KEYCODES.ESCAPE) ~= 0 then
+      if r.JS_VKeys_GetState(_OD_KEYS_CUTOFF):byte(OD_KEYCODES.ESCAPE) ~= 0 then
         escapePressed = true
       elseif r.JS_VKeys_GetState(0):byte(i) == 1 then
         r.ShowConsoleMsg(OD_KEYCODE_NAMES[i] .. '\n')
