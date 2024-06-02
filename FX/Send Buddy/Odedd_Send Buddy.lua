@@ -43,9 +43,8 @@ OD_Init()
 
 if OD_PrereqsOK({
         reaimgui_version = '0.9.1',
-        sws = true,            -- required for SNM_SetIntConfigVar - setting config vars (max file size limitation and autosave options)
-        js_version = 1.310,    -- required for JS_Dialog_BrowseForFolder
-        reaper_version = 7.01, -- required for APPLYFX_FORMAT and OPENCOPY_CFGIDX
+        js_version = 1.310,    -- required for JS_Window_Find
+        reaper_version = 7.03, -- required for set_action_options
     }) then
     dofile(p .. 'lib/Constants.lua')
     dofile(p .. 'lib/Settings.lua')
