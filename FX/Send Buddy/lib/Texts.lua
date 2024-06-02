@@ -24,7 +24,7 @@ T.SETTINGS = {
     },
     SEND_TYPE_ORDER = {
         LABEL = 'Send type order',
-        HINT = 'The order in which sends/recieves/hardware sends are displayed.',
+        HINT = 'The order in which sends/receives/hardware sends are displayed.',
     },
     SHORTCUTS = {
         NEW_SEND = {
@@ -32,8 +32,8 @@ T.SETTINGS = {
             HINT = 'Shortcut to create a new send.',
         },
         NEW_RECV = {
-            LABEL = 'New recieve',
-            HINT = 'Shortcut to create a new recieve.',
+            LABEL = 'New receive',
+            HINT = 'Shortcut to create a new receive.',
         },
         NEW_HW = {
             LABEL = 'New hardware send',
@@ -52,7 +52,7 @@ T.SETTINGS = {
 
 T.SEND_TYPE_NAMES = {
     [SEND_TYPE.SEND] = { TITLE = 'Sends', PLURAL = 'Sends', SINGULAR = 'Send' },
-    [SEND_TYPE.RECV] = { TITLE = 'Recieves', PLURAL = 'Recieves', SINGULAR = 'Recieve' },
+    [SEND_TYPE.RECV] = { TITLE = 'Receives', PLURAL = 'Receives', SINGULAR = 'Receive' },
     [SEND_TYPE.HW] = { TITLE = 'HARDWARE', PLURAL = 'Hardware outputs', SINGULAR = 'Hardware output' },
 }
 
