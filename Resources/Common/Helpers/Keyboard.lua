@@ -1,6 +1,6 @@
 _OD_KEYS = {}
 _OD_INTERCEPTED_KEYS = {}
-_OD_KEYS_CUTOFF = 0
+_OD_KEYS_CUTOFF = -30
 -- taken from here https://forums.cockos.com/showpost.php?p=2608321&postcount=12
 OD_KEYCODES = {
   LBUTTON     = 0x01, --  The left mouse button
