@@ -363,7 +363,7 @@ if OD_PrereqsOK({
                 if targetTrack then app.gui:popColors(app.gui.st.col.targetFader) end
 
                 app:setHoveredHint('main',
-                    (s.name .. ' - Send volume'):format((s.type == SEND_TYPE.RECV) and 'Receive' or 'Send'))
+                    (s.name .. ' - %s volume. Drag or scroll to change, %s-scroll to fine-tune.'):format((s.type == SEND_TYPE.RECV) and (targetTrack and 'Source track' or 'Receive') or (targetTrack and 'Destination track' or 'Send'), OD_KEYCODE_NAMES[OD_KEYCODES.CONTROL]))
                 if (v2 < app.settings.current.scaleLevel * app.settings.current.scaleFactor) then
                     v2 = app.settings.current.scaleLevel +
                         (v2 - app.settings.current.scaleLevel * app.settings.current.scaleFactor) *
@@ -421,7 +421,7 @@ if OD_PrereqsOK({
 
                 local rv, v2 = ImGui.SliderDouble(ctx, '##p', target.pan, -1, 1, '')
                 app:setHoveredHint('main',
-                    (s.name .. ' - %s panning'):format((s.type == SEND_TYPE.RECV) and 'Receive' or 'Send'))
+                    (s.name .. ' - %s panning. Drag or scroll to change.'):format((s.type == SEND_TYPE.RECV) and (targetTrack and 'Source track' or 'Receive') or (targetTrack and 'Destination track' or 'Send')))
                 app.gui:popStyles(app.gui.st.vars.pan)
                 if targetTrack then app.gui:popColors(app.gui.st.col.targetFader) end
 
