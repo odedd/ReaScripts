@@ -1700,6 +1700,7 @@ if OD_PrereqsOK({
         app.gui:pushColors(app.gui.st.col.title)
         ImGui.AlignTextToFramePadding(ctx)
         ImGui.Text(ctx, app.scr.name)
+        app:setHoveredHint('main', app.scr.name .. ' v'..app.scr.version .. ' by ' .. app.scr.author)
         app.gui:popColors(app.gui.st.col.title)
         ImGui.PopFont(ctx)
         ImGui.PushFont(ctx, app.gui.st.fonts.large)
