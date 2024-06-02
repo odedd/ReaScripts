@@ -1597,16 +1597,16 @@ if OD_PrereqsOK({
         if visible then
             if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
             ImGui.SeparatorText(ctx, 'General')
+            app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
+                .LABEL, T.SETTINGS.FOLLOW_SELECTED_TRACK.HINT, app.settings.current.followSelectedTrack)
+                app.settings.current.mouseScrollReversed = app.gui:setting('checkbox', T.SETTINGS.MW_REVERSED.LABEL,
+                    T.SETTINGS.MW_REVERSED.HINT, app.settings.current.mouseScrollReversed)
             app.settings.current.volType = app.gui:setting('combo', T.SETTINGS.VOL_TYPE.LABEL, T.SETTINGS.VOL_TYPE.HINT,
                 app.settings.current.volType,
                 {
                     list = T.SETTINGS.LISTS[T.SETTINGS.VOL_TYPE.LABEL][VOL_TYPE.TRIM] ..
                         '\0' .. T.SETTINGS.LISTS[T.SETTINGS.VOL_TYPE.LABEL][VOL_TYPE.UI] .. '\0'
                 })
-            app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
-                .LABEL, T.SETTINGS.FOLLOW_SELECTED_TRACK.HINT, app.settings.current.followSelectedTrack)
-            app.settings.current.mouseScrollReversed = app.gui:setting('checkbox', T.SETTINGS.MW_REVERSED.LABEL,
-                T.SETTINGS.MW_REVERSED.HINT, app.settings.current.mouseScrollReversed)
             app.settings.current.createInsideFolder = app.gui:setting('checkbox', T.SETTINGS.CREATE_INSIDE_FODLER.LABEL,
                 T.SETTINGS.CREATE_INSIDE_FODLER.HINT, app.settings.current.createInsideFolder)
             if app.settings.current.createInsideFolder then

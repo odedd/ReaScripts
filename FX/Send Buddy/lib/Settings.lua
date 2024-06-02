@@ -1,65 +1,65 @@
 -- @noindex
 
-SM_Settings = OD_Settings:new({ --TODO proper defaults
+SM_Settings = OD_Settings:new({
     default = {
         -- Settings window
-        mouseScrollReversed = true,
+        mouseScrollReversed = false,
         followSelectedTrack = true,
         createInsideFolder = true,
-        sendFolderName = 'FX BUS',
+        sendFolderName = 'FX Return Tracks',
         volType = VOL_TYPE.UI,
         sendTypeVisibility = {
             [SEND_TYPE.SEND] = true,
             [SEND_TYPE.RECV] = true,
-            [SEND_TYPE.HW] = true
+            [SEND_TYPE.HW] = false
         },
         sendTypeOrder = {
-            SEND_TYPE.SEND,
             SEND_TYPE.HW,
+            SEND_TYPE.SEND,
             SEND_TYPE.RECV,
         },
-        shortcuts = {
+        shortcuts = { -- TODO test on windows
             addSend = {
                 key = OD_KEYCODES.S,
                 ctrl = false,
-                shift = false,
+                shift = true,
                 alt = true,
                 macCtrl = false
             },
             addRecv = {
                 key = OD_KEYCODES.R,
                 ctrl = false,
-                shift = false,
+                shift = true,
                 alt = true,
                 macCtrl = false
             },
             addHW = {
                 key = OD_KEYCODES.H,
                 ctrl = false,
-                shift = false,
+                shift = true,
                 alt = true,
                 macCtrl = false
             },
             markFavorite = {
                 key = OD_KEYCODES.F,
                 ctrl = false,
-                shift = false,
+                shift = true,
                 alt = true,
                 macCtrl = false
             }
         },
         fxTypeVisibility = {
             ['VST3'] = true,
-            ['VST3i'] = true,
+            ['VST3i'] = false,
             ['VST'] = true,
-            ['VSTi'] = true,
+            ['VSTi'] = false,
             ['AU'] = true,
-            ['AUi'] = true,
+            ['AUi'] = false,
             ['JS'] = true,
             ['CLAP'] = true,
-            ['CLAPi'] = true,
+            ['CLAPi'] = false,
             ['LV2'] = true,
-            ['LV2i'] = true
+            ['LV2i'] = false
         },
         fxTypeOrder = {
             "VST3",
