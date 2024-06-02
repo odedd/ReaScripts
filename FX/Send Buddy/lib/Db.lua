@@ -246,7 +246,8 @@ DB = {
                             self.db:setUndoPoint('Set send automation mode', 1)
                         end,
                         setMono = function(self, mono)
-                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'B_MONO', mono and 1 or 0)
+                            reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'B_MONO',
+                                mono and 1 or 0)
                             self.db:sync(true)
                             self.db:setUndoPoint('Toggle send mono mixdown', 1)
                         end,
@@ -375,8 +376,12 @@ DB = {
                                         end
                                     end
                                 end
-                                self:setSolo(SOLO_STATES.SOLO, true) -- BUG solo defeat gets undone. think about it
-
+                                if self:getSolo() == SOLO_STATES.SOLO_DEFEAT then
+                                    self:setSolo(SOLO_STATES.SOLO, true)
+                                    self.track.soloMatrix[self.guid] = SOLO_STATES.SOLO_DEFEAT
+                                else
+                                    self:setSolo(SOLO_STATES.SOLO, true)
+                                end
                                 self.track.sendListen = self.guid
                                 self.track.sendListenMode = listenMode
                             else
@@ -394,7 +399,13 @@ DB = {
                                     r.SetMediaTrackInfo_Value(self.destTrack.object, 'I_SOLO', 0)
                                 end
                                 -- Un-solo
-                                self:setSolo(SOLO_STATES.NONE)
+                                if self:getSolo() == SOLO_STATES.SOLO_DEFEAT then
+                                    self.track.soloMatrix[self.guid] = SOLO_STATES.SOLO
+                                    self:setSolo(SOLO_STATES.NONE)
+                                    self:setSolo(SOLO_STATES.SOLO_DEFEAT)
+                                else
+                                    self:setSolo(SOLO_STATES.NONE)
+                                end
                             end
                             self.db:save()
                             self.db:endUndoBlock('Toggle send listen', 1)
@@ -415,6 +426,7 @@ DB = {
                             end
                         end,
                         _saveOrigMuteState = function(self)
+                            if self.track.sendListen then return end
                             local numOfSolos = self.db:_numSolos()
                             if numOfSolos == 0 then
                                 for i, send in ipairs(self.db.sends) do
@@ -692,7 +704,7 @@ DB.getTracks = function(self)
                         -- possible reaper bug: https://forum.cockos.com/showthread.php?t=291674
                         -- until bug is fixed, this is a workaround:
                         local lastTrack = self.db
-                        .track                                                             -- delete once bug is fixed
+                            .track                                                             -- delete once bug is fixed
                         reaper.SetTrackUIPan(self.object, self.pan, false, false, 0)
                         reaper.SetTrackUIPan(lastTrack.object, lastTrack.pan, false, false, 0) -- delete once bug is fixed
                         -- self.db:syncUIVol()
@@ -736,7 +748,8 @@ DB.getTracks = function(self)
                         shortName = fxName,
                         shortened = false,
                         calculateShortName = function(self)
-                            self.shortName, self.shortened = self.db.app.minimizeText(self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''),
+                            self.shortName, self.shortened = self.db.app.minimizeText(
+                                self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''),
                                 self.db.app.settings.current.sendWidth -
                                 r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
                         end,
