@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.0.1
+-- @version 1.0.2
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,8 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Initial release
---   Temporary fix for a minor keyboard issue
+--   Fix bug - resizing with hardware outs
 
 ---------------------------------------
 -- SETUP ------------------------------

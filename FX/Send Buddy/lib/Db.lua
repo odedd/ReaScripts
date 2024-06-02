@@ -840,10 +840,12 @@ end
 --- INSERTS
 DB.recalculateShortNames = function(self)
     for _, send in ipairs(self.sends) do
-        for _, insert in ipairs(send.destTrack.inserts) do
-            insert:calculateShortName()
+        if send.destTrack then
+            for _, insert in ipairs(send.destTrack.inserts) do
+                insert:calculateShortName()
+            end
+            send:calculateShortName()
         end
-        send:calculateShortName()
     end
 end
 
