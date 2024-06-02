@@ -42,9 +42,9 @@ SM_Settings = OD_Settings:new({
             },
             markFavorite = {
                 key = OD_KEYCODES.F,
-                ctrl = false,
+                ctrl = true,
                 shift = true,
-                alt = true,
+                alt = false,
                 macCtrl = false
             }
         },

@@ -1590,11 +1590,16 @@ if OD_PrereqsOK({
         ImGui.PushFont(ctx, app.gui.st.fonts.default)
         local w = 700
         ImGui.SetNextWindowSize(ctx, w, 0, nil)
-        ImGui.SetNextWindowPos(ctx, app.gui.screen.size[1] / 2, app.gui.screen.size[2] / 2, ImGui.Cond_Appearing, 0.5,
+        if app.settings.current.settingsWindowPos == nil then
+            ImGui.SetNextWindowPos(ctx, app.gui.screen.size[1] / 2, app.gui.screen.size[2] / 2, ImGui.Cond_Appearing, 0.5,
             0.5)
+        else
+            ImGui.SetNextWindowPos(ctx, app.settings.current.settingsWindowPos[1], app.settings.current.settingsWindowPos[2], ImGui.Cond_Appearing)
+        end
         local visible, open = ImGui.BeginPopupModal(ctx, Scr.name .. ' Settings##settingsWindow', true,
             ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_AlwaysAutoResize)
         if visible then
+            app.settings.current.settingsWindowPos = { ImGui.GetWindowPos(ctx) }
             if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
             ImGui.SeparatorText(ctx, 'General')
             app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
@@ -1655,6 +1660,9 @@ if OD_PrereqsOK({
             ImGui.EndPopup(ctx)
         else
             app.temp._capturing = false
+        end
+        if open == false then
+            app.settings:save()
         end
         ImGui.PopFont(ctx)
     end
