@@ -931,6 +931,9 @@ end
 
 -- ASSETS
 
+-- TODO track templates
+-- TODO FX Chains
+
 DB.assembleAssets = function(self)
     self.assets = {}
 
