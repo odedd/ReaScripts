@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Typos (Sorry)
+--   Hotkey to close script
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -260,10 +260,10 @@ if OD_PrereqsOK({
 
     function app.drawMixer()
         local ctx = app.gui.ctx
-        local altPressed = OD_IsGlobalKeyDown(OD_KEYCODES.ALT)
-        local ctrlPressed = OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL)
-        local macCtrlPressed = _OD_ISMAC and OD_IsGlobalKeyDown(OD_KEYCODES.STARTKEY)
-        local shiftPressed = OD_IsGlobalKeyDown(OD_KEYCODES.SHIFT)
+        local altPressed = OD_IsGlobalKeyDown(OD_KEYCODES.ALT, false, -60)
+        local ctrlPressed = OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL, false, -60)
+        local macCtrlPressed = _OD_ISMAC and OD_IsGlobalKeyDown(OD_KEYCODES.STARTKEY, false, -60)
+        local shiftPressed = OD_IsGlobalKeyDown(OD_KEYCODES.SHIFT, false, -60)
 
         app.db:sync()
         ImGui.PushFont(ctx, app.gui.st.fonts.small)
@@ -273,7 +273,7 @@ if OD_PrereqsOK({
                 app.gui:pushColors(col)
                 ImGui.BeginDisabled(ctx)
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 1.0)
-                ImGui.Button(ctx, '##dummy'..s.order, w, h)
+                ImGui.Button(ctx, '##dummy' .. s.order, w, h)
                 ImGui.PopStyleVar(ctx)
                 ImGui.EndDisabled(ctx)
                 app:setHoveredHint('main', ' ')
@@ -341,7 +341,6 @@ if OD_PrereqsOK({
                     return
                 end
                 local target = targetTrack and ((s.type == SEND_TYPE.SEND) and s.destTrack or s.srcTrack) or s
-                -- r.ShowConsoleMsg('target: ' .. tostring(target.name) .. '\n')
                 local v = OD_dBFromValue(target.vol)
                 local mw = ImGui.GetMouseWheel(ctx)
                 local scaledV = (v >= app.settings.current.scaleLevel) and (v / app.settings.current.scaleFactor) or
@@ -365,7 +364,9 @@ if OD_PrereqsOK({
                 if targetTrack then app.gui:popColors(app.gui.st.col.targetFader) end
 
                 app:setHoveredHint('main',
-                    (s.name .. ' - %s volume. Drag or scroll to change, %s-scroll to fine-tune.'):format((s.type == SEND_TYPE.RECV) and (targetTrack and 'Source track' or 'Receive') or (targetTrack and 'Destination track' or 'Send'), OD_KEYCODE_NAMES[OD_KEYCODES.CONTROL]))
+                    (s.name .. ' - %s volume. Drag or scroll to change, %s-scroll to fine-tune.'):format(
+                        (s.type == SEND_TYPE.RECV) and (targetTrack and 'Source track' or 'Receive') or
+                        (targetTrack and 'Destination track' or 'Send'), OD_KEYCODE_NAMES[OD_KEYCODES.CONTROL]))
                 if (v2 < app.settings.current.scaleLevel * app.settings.current.scaleFactor) then
                     v2 = app.settings.current.scaleLevel +
                         (v2 - app.settings.current.scaleLevel * app.settings.current.scaleFactor) *
@@ -423,7 +424,8 @@ if OD_PrereqsOK({
 
                 local rv, v2 = ImGui.SliderDouble(ctx, '##p', target.pan, -1, 1, '')
                 app:setHoveredHint('main',
-                    (s.name .. ' - %s panning. Drag or scroll to change.'):format((s.type == SEND_TYPE.RECV) and (targetTrack and 'Source track' or 'Receive') or (targetTrack and 'Destination track' or 'Send')))
+                    (s.name .. ' - %s panning. Drag or scroll to change.'):format((s.type == SEND_TYPE.RECV) and
+                        (targetTrack and 'Source track' or 'Receive') or (targetTrack and 'Destination track' or 'Send')))
                 app.gui:popStyles(app.gui.st.vars.pan)
                 if targetTrack then app.gui:popColors(app.gui.st.col.targetFader) end
 
@@ -579,7 +581,9 @@ if OD_PrereqsOK({
                 if ImGui.Button(ctx, label .. '##autoMode' .. s.order, w) then
                     ImGui.OpenPopup(ctx, '##autoModeMenu' .. s.order)
                 end
-                app:setHoveredHint('main', (s.name .. ' - automation mode for this %s only'):format(s.type == SEND_TYPE.RECV and 'receive' or 'send'))
+                app:setHoveredHint('main',
+                    (s.name .. ' - automation mode for this %s only'):format(s.type == SEND_TYPE.RECV and 'receive' or
+                        'send'))
                 if s.midiSrcBus == 255 then
                     ImGui.EndDisabled(ctx)
                 end
@@ -587,7 +591,10 @@ if OD_PrereqsOK({
                 ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                 if ImGui.BeginPopup(ctx, '##autoModeMenu' .. s.order) then
                     app.temp.autoModeMenuOpen = true
-                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
+                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then 
+                        app.temp.ignoreEscapeKey = true 
+                        ImGui.CloseCurrentPopup(ctx) 
+                    end
                     for k, am in OD_PairsByOrder(T.AUTO_MODE_DESCRIPTIONS) do
                         if ImGui.MenuItem(ctx, am.label .. ' (' .. am.description .. ')', nil, s.autoMode == k, true) then
                             s:setAutoMode(k)
@@ -647,7 +654,10 @@ if OD_PrereqsOK({
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginPopup(ctx, '##srcMidiChanMenu' .. s.order) then
                         app.temp.midiRouteMenuOpen = true
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then 
+                            app.temp.ignoreEscapeKey = true 
+                            ImGui.CloseCurrentPopup(ctx) 
+                        end
                         if ImGui.MenuItem(ctx, 'None', nil, s.midiSrcBus == 255, true) then s:setMidiRouting(0x1f, 0xff) end
                         if ImGui.MenuItem(ctx, 'All', nil, s.midiSrcChn == 0 and s.midiSrcBus == 0, true) then
                             s:setMidiRouting(0, 0)
@@ -678,7 +688,10 @@ if OD_PrereqsOK({
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginPopup(ctx, '##destMidiChanMenu' .. s.order) then
                         app.temp.midiRouteMenuOpen = true
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then 
+                            app.temp.ignoreEscapeKey = true 
+                            ImGui.CloseCurrentPopup(ctx) 
+                        end
                         if ImGui.MenuItem(ctx, 'All', nil, s.midiDestChn == 0 and s.midiDestBus == 0, true) then
                             s:setMidiRouting(nil, nil, 0, 0)
                         end
@@ -736,7 +749,10 @@ if OD_PrereqsOK({
                 app.gui:popColors(app.gui.st.col.buttons.route)
                 ImGui.EndGroup(ctx)
                 if ImGui.BeginPopup(ctx, '##srcChanMenu' .. s.order) then
-                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
+                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then 
+                        app.temp.ignoreEscapeKey = true 
+                        ImGui.CloseCurrentPopup(ctx) 
+                    end
                     if ImGui.MenuItem(ctx, 'None', nil, s.srcChan == -1, true) then s:setSrcChan(-1) end
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginMenu(ctx, 'Mono source') then
@@ -777,7 +793,10 @@ if OD_PrereqsOK({
                 end
                 ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                 if ImGui.BeginPopup(ctx, '##destChanMenu' .. s.order) then
-                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
+                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then 
+                        app.temp.ignoreEscapeKey = true 
+                        ImGui.CloseCurrentPopup(ctx) 
+                    end
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginMenu(ctx, 'Downmix to mono') then
                         for i = 0, NUM_CHANNELS - 1 do
@@ -836,14 +855,14 @@ if OD_PrereqsOK({
                         end
                     end
                     if ImGui.BeginDragDropSource(ctx) then
-                        ImGui.SetDragDropPayload(ctx, 'insert'..s.order, i)
+                        ImGui.SetDragDropPayload(ctx, 'insert' .. s.order, i)
                         ImGui.EndDragDropSource(ctx)
                     end
                     if ImGui.BeginDragDropTarget(ctx) then
-                        local payload, data = ImGui.AcceptDragDropPayload(ctx, 'insert'..s.order)
+                        local payload, data = ImGui.AcceptDragDropPayload(ctx, 'insert' .. s.order)
                         if payload then
                             local oldIdx = tonumber(data)
-                            s.destTrack:getInsertAtIndex(oldIdx-1):moveToIndex(i-1)
+                            s.destTrack:getInsertAtIndex(oldIdx - 1):moveToIndex(i - 1)
                         end
                         ImGui.EndDragDropTarget(ctx)
                     end
@@ -963,9 +982,7 @@ if OD_PrereqsOK({
             (app.gui.TEXT_BASE_HEIGHT_SMALL + app.gui.vars.framePaddingY * 2)
         -- local w = math.max(app.gui.mainWindow.max_w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2,
         -- select(1, ImGui.GetContentRegionAvail(ctx)))
-        -- r.ShowConsoleMsg(w .. '\n')
         local w = app.gui.mainWindow.mixer_w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2
-        -- r.ShowConsoleMsg(w .. '\n')
         local visibleSendTypes = {}
         for _, type in ipairs(app.settings.current.sendTypeOrder) do
             if app.settings.current.sendTypeVisibility[type] then
@@ -1014,7 +1031,10 @@ if OD_PrereqsOK({
                     ImGui.SetNextWindowPos(ctx, x, y, ImGui.Cond_Appearing)
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginPopup(ctx, '##newHWSendMenu') then
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then 
+                            app.temp.ignoreEscapeKey = true 
+                            ImGui.CloseCurrentPopup(ctx) 
+                        end
                         ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                         if ImGui.BeginMenu(ctx, 'Downmix to mono') then
                             for j = 0, app.db.numAudioOutputs - 1 do
@@ -1162,7 +1182,6 @@ if OD_PrereqsOK({
             local left, top = ImGui.GetCursorScreenPos(ctx)
             local w, h      = app.gui.st.sizes.sendTypeSeparatorWidth,
                 app.gui.st.sizes.sendTypeSeparatorHeight
-            -- r.ShowConsoleMsg(ImGui.GetScrollMaxY(ctx)..'\n')
             ImGui.DrawList_AddLine(app.gui.draw_list, left + w, top, left + w, top + totalH,
                 gui.st.basecolors.mainDark)
 
@@ -1211,6 +1230,7 @@ if OD_PrereqsOK({
     end
 
     function app.isShortcutPressed(key)
+        if app.settings.current.shortcuts[key] and app.settings.current.shortcuts[key].key == -1 then return false end
         return app.settings.current.shortcuts[key] and OD_IsGlobalKeyPressed(app.settings.current.shortcuts[key].key) and
             OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL) == app.settings.current.shortcuts[key].ctrl
             and OD_IsGlobalKeyDown(OD_KEYCODES.SHIFT) == app.settings.current.shortcuts[key].shift
@@ -1221,7 +1241,7 @@ if OD_PrereqsOK({
     function app.getShortcutDescription(key)
         local shortcut = app.settings.current.shortcuts[key]
         local desc = ''
-        if shortcut then
+        if shortcut and shortcut.key ~= -1 then
             if shortcut.ctrl then desc = desc .. OD_KEYCODE_NAMES[OD_KEYCODES.CONTROL] end
             if shortcut.shift then desc = desc .. '+' .. OD_KEYCODE_NAMES[OD_KEYCODES.SHIFT] end
             if shortcut.alt then desc = desc .. '+' .. OD_KEYCODE_NAMES[OD_KEYCODES.ALT] end
@@ -1498,8 +1518,8 @@ if OD_PrereqsOK({
             local action = (hintResult.type == ASSETS.TRACK and 'add a send to track %s' or 'create a new track with FX %s')
                 :format(hintResult.searchText[1].text)
             app:setHint('main',
-                ('%s to %s. Press %s to %s.'):format(hintContext, action, app.getShortcutDescription('markFavorite'),
-                    hintResult.group == FAVORITE_GROUP and 'unfavorite' or 'favorite'))
+                ('%s to %s.'):format(hintContext, action)..(app.getShortcutDescription('markFavorite') ~= '' and (' Press %s to %s.'):format(app.getShortcutDescription('markFavorite'),
+                    hintResult.group == FAVORITE_GROUP and 'unfavorite' or 'favorite') or ''))
         else
             app:setHint('main', '')
         end
@@ -1542,7 +1562,7 @@ if OD_PrereqsOK({
     end
 
     function app.drawErrorNoTrack()
-        OD_ReleaseGlobalKeys()
+        -- OD_ReleaseGlobalKeys()
         local ctx = app.gui.ctx
         app.db:sync()
         local w, h =
@@ -1591,23 +1611,27 @@ if OD_PrereqsOK({
         local ctx = app.gui.ctx
         ImGui.PushFont(ctx, app.gui.st.fonts.default)
         local w = 700
+        -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger
+        -- closing this window. So we increment a counter which will be reset if the shortcut is
+        -- being captured, so that we can know to ignore the captured key unless some frames have passed.
+        app.temp.captureCounter = app.temp.captureCounter and app.temp.captureCounter + 1 or 0
         ImGui.SetNextWindowSize(ctx, w, 0, nil)
         if app.settings.current.settingsWindowPos == nil then
             ImGui.SetNextWindowPos(ctx, app.gui.screen.size[1] / 2, app.gui.screen.size[2] / 2, ImGui.Cond_Appearing, 0.5,
-            0.5)
+                0.5)
         else
-            ImGui.SetNextWindowPos(ctx, app.settings.current.settingsWindowPos[1], app.settings.current.settingsWindowPos[2], ImGui.Cond_Appearing)
+            ImGui.SetNextWindowPos(ctx, app.settings.current.settingsWindowPos[1],
+                app.settings.current.settingsWindowPos[2], ImGui.Cond_Appearing)
         end
         local visible, open = ImGui.BeginPopupModal(ctx, Scr.name .. ' Settings##settingsWindow', true,
             ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_AlwaysAutoResize)
         if visible then
             app.settings.current.settingsWindowPos = { ImGui.GetWindowPos(ctx) }
-            if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then ImGui.CloseCurrentPopup(ctx) end
             ImGui.SeparatorText(ctx, 'General')
             app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
                 .LABEL, T.SETTINGS.FOLLOW_SELECTED_TRACK.HINT, app.settings.current.followSelectedTrack)
-                app.settings.current.mouseScrollReversed = app.gui:setting('checkbox', T.SETTINGS.MW_REVERSED.LABEL,
-                    T.SETTINGS.MW_REVERSED.HINT, app.settings.current.mouseScrollReversed)
+            app.settings.current.mouseScrollReversed = app.gui:setting('checkbox', T.SETTINGS.MW_REVERSED.LABEL,
+                T.SETTINGS.MW_REVERSED.HINT, app.settings.current.mouseScrollReversed)
             app.settings.current.volType = app.gui:setting('combo', T.SETTINGS.VOL_TYPE.LABEL, T.SETTINGS.VOL_TYPE.HINT,
                 app.settings.current.volType,
                 {
@@ -1623,32 +1647,44 @@ if OD_PrereqsOK({
             end
 
             ImGui.SeparatorText(ctx, 'Shortcuts')
-            app.settings.current.shortcuts.addSend = app.gui:setting('shortcut', T.SETTINGS.SHORTCUTS.NEW_SEND.LABEL,
+            local resetCounter = false
+            app.settings.current.shortcuts.closeScript, resetCounter = app.gui:setting('shortcut',
+                T.SETTINGS.SHORTCUTS.CLOSE_SCRIPT.LABEL,
+                T.SETTINGS.SHORTCUTS.CLOSE_SCRIPT.HINT, app.settings.current.shortcuts.closeScript,
+                {
+                    existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                        function(k, v) return k ~= 'closeScript' end)
+                })
+            if resetCounter then app.temp.captureCounter = 0 end
+            app.settings.current.shortcuts.addSend, resetCounter = app.gui:setting('shortcut', T.SETTINGS.SHORTCUTS.NEW_SEND.LABEL,
                 T.SETTINGS.SHORTCUTS.NEW_SEND.HINT, app.settings.current.shortcuts.addSend,
                 {
                     existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                         function(k, v) return k ~= 'addSend' end)
                 })
-            app.settings.current.shortcuts.addRecv = app.gui:setting('shortcut', T.SETTINGS.SHORTCUTS.NEW_RECV.LABEL,
+            if resetCounter then app.temp.captureCounter = 0 end
+            app.settings.current.shortcuts.addRecv, resetCounter = app.gui:setting('shortcut', T.SETTINGS.SHORTCUTS.NEW_RECV.LABEL,
                 T.SETTINGS.SHORTCUTS.NEW_RECV.HINT, app.settings.current.shortcuts.addRecv,
                 {
                     existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                         function(k, v) return k ~= 'addRecv' end)
                 })
-            app.settings.current.shortcuts.addHW = app.gui:setting('shortcut', T.SETTINGS.SHORTCUTS.NEW_HW.LABEL,
+            if resetCounter then app.temp.captureCounter = 0 end
+            app.settings.current.shortcuts.addHW, resetCounter = app.gui:setting('shortcut', T.SETTINGS.SHORTCUTS.NEW_HW.LABEL,
                 T.SETTINGS.SHORTCUTS.NEW_HW.HINT, app.settings.current.shortcuts.addHW,
                 {
                     existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                         function(k, v) return k ~= 'addHW' end)
                 })
-            app.settings.current.shortcuts.markFavorite = app.gui:setting('shortcut',
+            if resetCounter then app.temp.captureCounter = 0 end
+            app.settings.current.shortcuts.markFavorite, resetCounter = app.gui:setting('shortcut',
                 T.SETTINGS.SHORTCUTS.MARK_FAVORITE.LABEL,
                 T.SETTINGS.SHORTCUTS.MARK_FAVORITE.HINT, app.settings.current.shortcuts.markFavorite,
                 {
                     existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                         function(k, v) return k ~= 'markFavorite' end)
                 })
-
+            if resetCounter then app.temp.captureCounter = 0 end
             ImGui.SeparatorText(ctx, 'Ordering')
 
             app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility = app.gui:setting('orderable_list',
@@ -1659,11 +1695,19 @@ if OD_PrereqsOK({
                 { app.settings.current.sendTypeOrder, app.settings.current.sendTypeVisibility })
             app.drawHint('settings')
             app:drawMsg()
+            if app.temp.captureCounter > 3 and OD_IsGlobalKeyDown(OD_KEYCODES.ESCAPE) then
+                app.temp.ignoreEscapeKey = true
+                OD_ReleaseGlobalKeys()
+                ImGui.CloseCurrentPopup(ctx)
+            else
+                OD_ReleaseGlobalKeys()
+            end
             ImGui.EndPopup(ctx)
         else
             app.temp._capturing = false
         end
         if open == false then
+            OD_ReleaseGlobalKeys()
             app.settings:save()
         end
         ImGui.PopFont(ctx)
@@ -1702,7 +1746,7 @@ if OD_PrereqsOK({
         app.gui:pushColors(app.gui.st.col.title)
         ImGui.AlignTextToFramePadding(ctx)
         ImGui.Text(ctx, app.scr.name)
-        app:setHoveredHint('main', app.scr.name .. ' v'..app.scr.version .. ' by ' .. app.scr.author)
+        app:setHoveredHint('main', app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
         app.gui:popColors(app.gui.st.col.title)
         ImGui.PopFont(ctx)
         ImGui.PushFont(ctx, app.gui.st.fonts.large)
@@ -1861,7 +1905,6 @@ if OD_PrereqsOK({
                 app.settings:save()
             end
         end
-        -- r.ShowConsoleMsg(tostring(app.gui.mainWindow.dockId)..'\n')
 
         if ImGui.IsWindowAppearing(ctx) then
             ImGui.SetConfigVar(ctx, ImGui.ConfigVar_DockingNoSplit, 1)
@@ -1870,10 +1913,10 @@ if OD_PrereqsOK({
             app.drawTopBar()
 
             if ImGui.BeginChild(ctx, '##body', 0.0, -app.gui.mainWindow.hintHeight) then
-                -- r.ShowConsoleMsg(app.gui.mainWindow.mixer_w..'\n')
                 if app.page == APP_PAGE.MIXER then
                     app.drawMixer()
-                    -- if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then open = false end
+                    if app.isShortcutPressed('closeScript') and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.ignoreEscapeKey then open = false end
+                    app.temp.ignoreEscapeKey = false
                 elseif app.page == APP_PAGE.SEARCH_SEND or app.page == APP_PAGE.SEARCH_FX then
                     app.drawSearch()
                     -- elseif app.page == APP_PAGE.NO_SENDS then
@@ -1888,6 +1931,7 @@ if OD_PrereqsOK({
             app.drawSettings()
             app:drawMsg()
             ImGui.End(ctx)
+            
         end
         return open
     end

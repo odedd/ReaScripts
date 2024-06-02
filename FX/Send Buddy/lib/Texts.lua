@@ -27,6 +27,10 @@ T.SETTINGS = {
         HINT = 'The order in which sends/receives/hardware sends are displayed.',
     },
     SHORTCUTS = {
+        CLOSE_SCRIPT = {
+            LABEL = 'Close script',
+            HINT = 'Shortcut to close script.',
+        },
         NEW_SEND = {
             LABEL = 'New send',
             HINT = 'Shortcut to create a new send.',

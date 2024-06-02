@@ -46,6 +46,13 @@ SM_Settings = OD_Settings:new({
                 shift = true,
                 alt = false,
                 macCtrl = false
+            },
+            closeScript = {
+                key = OD_KEYCODES.ESCAPE,
+                ctrl = false,
+                shift = false,
+                alt = false,
+                macCtrl = false
             }
         },
         fxTypeVisibility = {
