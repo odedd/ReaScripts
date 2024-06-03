@@ -22,8 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Fix - crash when no track selected
---   Fix - name and color get updated even when not set to follow selected track
+--   Better messaging of missing libraries
 
 ---------------------------------------
 -- SETUP ------------------------------
