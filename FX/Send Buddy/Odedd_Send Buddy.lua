@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.0.9
+-- @version 1.0.10
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,8 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Fix focusing search text-input after using shortcut to open it
+--   FXChains now supported
+--   Track Templates now supported
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -1281,7 +1282,8 @@ if OD_PrereqsOK({
             for i, asset in ipairs(app.db.assets) do
                 local skip = false
                 if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then skip = true end
-                if app.temp.addSendType == SEND_TYPE.RECV and asset.type == ASSETS.PLUGIN then skip = true end
+                if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK_TEMPLATE then skip = true end
+                if app.temp.addSendType == SEND_TYPE.RECV and asset.type ~= ASSETS.TRACK then skip = true end
                 if asset.type == ASSETS.TRACK and asset.load == app.db.track.guid then skip = true end
                 if not skip then
                     local foundIndexes = {}
@@ -1349,6 +1351,7 @@ if OD_PrereqsOK({
         end
 
         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+            app.temp.ignoreEscapeKey = true
             app.setPage(APP_PAGE.MIXER)
         elseif app.temp.highlightedResult then
             hintResult = app.temp.searchResults[app.temp.highlightedResult]
