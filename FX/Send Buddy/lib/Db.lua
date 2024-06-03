@@ -631,7 +631,7 @@ DB.getTracks = function(self)
         local track = reaper.GetTrack(0, i)
         -- if track ~= self.track then
         local trackName = select(2, reaper.GetTrackName(track))
-        local trackColor = reaper.GetTrackColor(track)
+        local trackColor = ImGui.ColorConvertNative(reaper.GetTrackColor(track)) << 2 | 0xff
         local trackGuid = reaper.GetTrackGUID(track)
         local hasReceives = reaper.GetTrackNumSends(track, -1) > 0
         local numChannels = reaper.GetMediaTrackInfo_Value(track, 'I_NCHAN')
@@ -749,7 +749,7 @@ DB.getTracks = function(self)
                         shortened = false,
                         calculateShortName = function(self)
                             self.shortName, self.shortened = self.db.app.minimizeText(
-                                self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''),
+                                self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''):gsub("^%s+",''):gsub("%s+$",''),
                                 self.db.app.settings.current.sendWidth -
                                 r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
                         end,

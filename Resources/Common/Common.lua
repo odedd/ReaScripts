@@ -57,7 +57,7 @@ local function OD_GetScr()
     Scr.namespace = "Odedd"
     Scr.name = Scr.description
     Scr.developer = Scr.author
-    Scr.context_name = Scr.namespace .. ' ' .. Scr.name .. ' v' .. Scr.version
+    Scr.context_name = Scr.namespace .. ' ' .. Scr.name
     Scr.ext_name = Scr.namespace:gsub(' ', '_') .. '_' .. Scr.name:gsub(' ', '_')
     r.ver = tonumber(r.GetAppVersion():match("[%d%.]+"))
 end
