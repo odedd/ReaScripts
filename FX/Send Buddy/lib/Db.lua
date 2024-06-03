@@ -8,6 +8,7 @@ DB = {
     soloedSends = {},
     plugins = {},
     fxChains = {},
+    trackTemplates = {},
     tracks = {},
     setUndoPoint = function(self, name, type, trackparm)
         type = type or -1
@@ -34,6 +35,7 @@ DB = {
         self.masterTrack = reaper.GetMasterTrack(0)
         self:getPlugins()
         self:getFXChains()
+        self:getTrackTemplates()
         self:getTracks()
         self:assembleAssets()
     end,
@@ -75,8 +77,12 @@ DB = {
             for _, send in ipairs(self.sends) do
                 send:_refreshVolAndPan()
                 if send.type ~= SEND_TYPE.HW then
-                    send.destTrack:_refreshVolAndPan()
-                    send.srcTrack:_refreshVolAndPan()
+                    if r.ValidatePtr(send.destTrack.object, 'MediaTrack*') then
+                        send.destTrack:_refreshVolAndPan()
+                    end
+                    if r.ValidatePtr(send.srcTrack.object, 'MediaTrack*') then
+                        send.srcTrack:_refreshVolAndPan()
+                    end
                 end
             end
         end
@@ -548,7 +554,79 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
         self:sync(true)
         return
     end
-    if assetType == ASSETS.TRACK then
+    if assetType == ASSETS.TRACK_TEMPLATE then
+        
+        -- since track templates are loaded under the last selected track, 
+        -- and as root folders, I need to create a new dummy track inside the folder,
+        -- calculate its depth, insert the tracktemplate, move it after the dummy track,
+        -- calculate its depth change, and apply it + the depth change from the dummy track,
+        -- and then delete the dummy track
+        local dummyTrack, dummyTrackFolderDepth, depthDelta = nil, 0, 0
+        if self.app.settings.current.createInsideFolder then
+            local folderFound = false
+            local numTracks = r.CountTracks(0)
+            for i = 0, numTracks - 1 do
+                local track = r.GetTrack(0, i)
+                local _, trackName = r.GetTrackName(track)
+                if trackName == self.app.settings.current.sendFolderName then
+                    folderFound = true
+                    dummyTrack = OD_InsertTrackAtFolder(track)
+                    r.SetOnlyTrackSelected(dummyTrack)
+                    r.Main_OnCommand(40913, 0)
+                    break
+                end
+            end
+
+            if not folderFound then
+                r.InsertTrackAtIndex(numTracks, true)
+                local folder = r.GetTrack(0, numTracks)
+                r.GetSetMediaTrackInfo_String(folder, 'P_NAME', self.app.settings.current.sendFolderName, true)
+                dummyTrack = OD_InsertTrackAtFolder(folder)
+                r.SetOnlyTrackSelected(dummyTrack)
+                r.Main_OnCommand(40913, 0)
+            end
+            self:getTracks()
+        else
+            r.SetOnlyTrackSelected(r.GetTrack(0, r.CountTracks(0) - 1))
+            r.Main_OnCommand(40913, 0)
+        end
+        local tempGuids = {}
+        for _, track in ipairs(self.tracks) do
+            table.insert(tempGuids, track.guid)
+        end
+
+        reaper.Main_openProject(assetLoad)
+
+        if dummyTrack then
+            dummyTrackFolderDepth = r.GetMediaTrackInfo_Value(dummyTrack, 'I_FOLDERDEPTH')
+            r.SetMediaTrackInfo_Value(dummyTrack, 'I_FOLDERDEPTH', 0)
+        end
+
+        self:getTracks()
+
+        local addedTracks = {}
+        local lastTrack = nil
+        for _, track in ipairs(self.tracks) do
+            if not OD_HasValue(tempGuids, track.guid) then
+                table.insert(addedTracks, track)
+                if dummyTrack then
+                    depthDelta = r.GetMediaTrackInfo_Value(track.object, 'I_FOLDERDEPTH')
+                    lastTrack = track.object
+                end
+            end
+        end
+        if dummyTrack then
+            r.SetMediaTrackInfo_Value(lastTrack, 'I_FOLDERDEPTH', dummyTrackFolderDepth + depthDelta)
+            r.DeleteTrack(dummyTrack)
+        end
+        for _, addedTrack in ipairs(addedTracks) do
+            reaper.CreateTrackSend(self.track.object, addedTrack.object)
+        end
+
+        r.SetOnlyTrackSelected(self.track.object)
+        r.Main_OnCommand(40913, 0)
+        self:sync(true)
+    elseif assetType == ASSETS.TRACK then
         -- local sendTrackIndex = asset.load
         local targetTrack = OD_GetTrackFromGuid(0, assetLoad)
         if targetTrack then
@@ -929,6 +1007,20 @@ DB.getFXChains = function(self)
         })
     end
 end
+DB.getTrackTemplates = function(self)
+    self.trackTemplates = {}
+    local basePath = reaper.GetResourcePath() .. "/TrackTemplates"
+    local files = OD_GetFilesInFolderAndSubfolders(basePath, 'RTrackTemplate', true)
+    for i, file in ipairs(files) do
+        local path, baseFilename, ext = OD_DissectFilename(file)
+        table.insert(self.trackTemplates, {
+            load = basePath .. OD_FolderSep() .. file,
+            path = path:gsub('\\', '/'):gsub('/$', ''),
+            file = baseFilename,
+            ext = ext
+        })
+    end
+end
 DB.getPlugins = function(self)
     local i = 0
     while true do
@@ -958,9 +1050,6 @@ end
 
 -- ASSETS
 
--- TODO track templates
--- TODO FX Chains
-
 DB.assembleAssets = function(self)
     self.assets = {}
 
@@ -988,6 +1077,16 @@ DB.assembleAssets = function(self)
             searchText = { { text = chain.file }, { text = chain.path }, { text = chain.ext, hide = true } },
             load = chain.load,
             group = FX_CHAINS_GROUP,
+            toggleFavorite = toggleFavorite
+        })
+    end
+    for _, tt in ipairs(self.trackTemplates) do
+        table.insert(self.assets, {
+            db = self,
+            type = ASSETS.TRACK_TEMPLATE,
+            searchText = { { text = tt.file }, { text = tt.path }, { text = tt.ext, hide = true } },
+            load = tt.load,
+            group = TRACK_TEMPLATES_GROUP,
             toggleFavorite = toggleFavorite
         })
     end
@@ -1027,10 +1126,11 @@ DB.sortAssets = function(self)
     for i, group in ipairs(self.app.settings.current.fxTypeOrder) do
         groupPriority[group] = i
     end
-    groupPriority[FAVORITE_GROUP] = -3
-    groupPriority[RECEIVES_GROUP] = -2
-    groupPriority[TRACKS_GROUP] = -1
-    groupPriority[FX_CHAINS_GROUP] = 0
+    groupPriority[FAVORITE_GROUP] = -4
+    groupPriority[RECEIVES_GROUP] = -3
+    groupPriority[TRACKS_GROUP] = -2
+    groupPriority[FX_CHAINS_GROUP] = -1
+    groupPriority[TRACK_TEMPLATES_GROUP] = 0
 
     table.sort(self.assets, function(a, b)
         local aPriority = groupPriority[a.group] or 100

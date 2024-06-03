@@ -23,6 +23,7 @@
 --   [nomain] lib/**
 -- @changelog
 --   FXChains now supported
+--   Track Templates now supported
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -1281,6 +1282,7 @@ if OD_PrereqsOK({
             for i, asset in ipairs(app.db.assets) do
                 local skip = false
                 if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then skip = true end
+                if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK_TEMPLATE then skip = true end
                 if app.temp.addSendType == SEND_TYPE.RECV and asset.type ~= ASSETS.TRACK then skip = true end
                 if asset.type == ASSETS.TRACK and asset.load == app.db.track.guid then skip = true end
                 if not skip then
