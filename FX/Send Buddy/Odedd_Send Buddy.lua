@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.0.8
+-- @version 1.0.9
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Better messaging of missing libraries
+--   Fix focusing search text-input after using shortcut to open it
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -1023,8 +1023,7 @@ if OD_PrereqsOK({
                         ((type == SEND_TYPE.RECV) and 'addRecv' or 'addHW')
                     if app.isShortcutPressed(key) then
                         clicked = true
-                        local scriptHwnd = reaper.JS_Window_Find(Scr.name, true) or
-                            reaper.JS_Window_Find(Scr.context_name, true)
+                        local scriptHwnd = app.gui.mainWindow.dockId < 0 and reaper.JS_Window_Find(Scr.context_name, true) or reaper.JS_Window_FindTop(Scr.name, true)
                         r.JS_Window_SetFocus(scriptHwnd)
                     end
                 end
@@ -1928,7 +1927,7 @@ if OD_PrereqsOK({
             app.gui.mainWindow.dockTo = nil
         end
 
-
+        
 
         local visible, open = ImGui.Begin(ctx, Scr.name .. "###mainWindow",
             true,
