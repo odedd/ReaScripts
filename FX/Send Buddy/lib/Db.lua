@@ -749,7 +749,7 @@ DB.getTracks = function(self)
                         shortened = false,
                         calculateShortName = function(self)
                             self.shortName, self.shortened = self.db.app.minimizeText(
-                                self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''),
+                                self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''):gsub("^%s+",''):gsub("%s+$",''),
                                 self.db.app.settings.current.sendWidth -
                                 r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
                         end,

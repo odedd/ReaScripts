@@ -61,6 +61,11 @@ SRC_CHANNELS[-1] = {
     label = 'None'
 }
 
+MINIMIZATION_STYLE = {
+    ['PT'] = 0,
+    ['TRIM'] = 1,
+}
+
 SOLO_STATES = {
     ['NONE'] = 0,
     ['SOLO'] = 2,

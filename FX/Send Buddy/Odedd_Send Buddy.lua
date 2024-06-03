@@ -24,6 +24,7 @@
 -- @changelog
 --   Hotkey to close script
 --   Make context name versionless for docking consistency
+--   Text minimization style now user configurable
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -108,33 +109,35 @@ if OD_PrereqsOK({
             app.maxTextLen[maxWidth] = i
         end
         if text:len() > app.maxTextLen[maxWidth] then
-            -- text = text:gsub(' ', '')
-            text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('[^%a%d%/%.]', '')
-            text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub(' ', '')
-            text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('a', '')
-            text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('e', '')
-            text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('i', '')
-            text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('o', '')
-            text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('u', '')
-            local lastLen = text:len()
-            while text:len() > app.maxTextLen[maxWidth] do -- remove lowercase one by one
-                text = text:gsub('([a-z]+)[a-z]', '%1')
-                if lastLen == text:len() then
-                    lastLen = text:len()
-                    break
-                else
-                    lastLen = text:len()
+            if app.settings.current.textMinimizationStyle == MINIMIZATION_STYLE.PT then
+                -- text = text:gsub(' ', '')
+                text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('[^%a%d%/%.]', '')
+                text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub(' ', '')
+                text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('a', '')
+                text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('e', '')
+                text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('i', '')
+                text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('o', '')
+                text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('u', '')
+                local lastLen = text:len()
+                while text:len() > app.maxTextLen[maxWidth] do -- remove lowercase one by one
+                    text = text:gsub('([a-z]+)[a-z]', '%1')
+                    if lastLen == text:len() then
+                        lastLen = text:len()
+                        break
+                    else
+                        lastLen = text:len()
+                    end
+                end
+                while text:len() > app.maxTextLen[maxWidth] do -- remove uppercase one by one
+                    text = text:gsub('([A-Z]+)[A-Z]', '%1')
+                    if lastLen == text:len() then
+                        break
+                    else
+                        lastLen = text:len()
+                    end
                 end
             end
-            while text:len() > app.maxTextLen[maxWidth] do -- remove uppercase one by one
-                text = text:gsub('([A-Z]+)[A-Z]', '%1')
-                if lastLen == text:len() then
-                    break
-                else
-                    lastLen = text:len()
-                end
-            end
-            return text:sub(1, app.maxTextLen[maxWidth]), true -- trim to max length
+            return text:sub(1, app.maxTextLen[maxWidth]):gsub("%s+$",''), true -- trim to max length
         end
         return text, false
     end
@@ -592,9 +595,9 @@ if OD_PrereqsOK({
                 ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                 if ImGui.BeginPopup(ctx, '##autoModeMenu' .. s.order) then
                     app.temp.autoModeMenuOpen = true
-                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then 
-                        app.temp.ignoreEscapeKey = true 
-                        ImGui.CloseCurrentPopup(ctx) 
+                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+                        app.temp.ignoreEscapeKey = true
+                        ImGui.CloseCurrentPopup(ctx)
                     end
                     for k, am in OD_PairsByOrder(T.AUTO_MODE_DESCRIPTIONS) do
                         if ImGui.MenuItem(ctx, am.label .. ' (' .. am.description .. ')', nil, s.autoMode == k, true) then
@@ -655,9 +658,9 @@ if OD_PrereqsOK({
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginPopup(ctx, '##srcMidiChanMenu' .. s.order) then
                         app.temp.midiRouteMenuOpen = true
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then 
-                            app.temp.ignoreEscapeKey = true 
-                            ImGui.CloseCurrentPopup(ctx) 
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+                            app.temp.ignoreEscapeKey = true
+                            ImGui.CloseCurrentPopup(ctx)
                         end
                         if ImGui.MenuItem(ctx, 'None', nil, s.midiSrcBus == 255, true) then s:setMidiRouting(0x1f, 0xff) end
                         if ImGui.MenuItem(ctx, 'All', nil, s.midiSrcChn == 0 and s.midiSrcBus == 0, true) then
@@ -689,9 +692,9 @@ if OD_PrereqsOK({
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginPopup(ctx, '##destMidiChanMenu' .. s.order) then
                         app.temp.midiRouteMenuOpen = true
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then 
-                            app.temp.ignoreEscapeKey = true 
-                            ImGui.CloseCurrentPopup(ctx) 
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+                            app.temp.ignoreEscapeKey = true
+                            ImGui.CloseCurrentPopup(ctx)
                         end
                         if ImGui.MenuItem(ctx, 'All', nil, s.midiDestChn == 0 and s.midiDestBus == 0, true) then
                             s:setMidiRouting(nil, nil, 0, 0)
@@ -750,9 +753,9 @@ if OD_PrereqsOK({
                 app.gui:popColors(app.gui.st.col.buttons.route)
                 ImGui.EndGroup(ctx)
                 if ImGui.BeginPopup(ctx, '##srcChanMenu' .. s.order) then
-                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then 
-                        app.temp.ignoreEscapeKey = true 
-                        ImGui.CloseCurrentPopup(ctx) 
+                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+                        app.temp.ignoreEscapeKey = true
+                        ImGui.CloseCurrentPopup(ctx)
                     end
                     if ImGui.MenuItem(ctx, 'None', nil, s.srcChan == -1, true) then s:setSrcChan(-1) end
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
@@ -794,9 +797,9 @@ if OD_PrereqsOK({
                 end
                 ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                 if ImGui.BeginPopup(ctx, '##destChanMenu' .. s.order) then
-                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then 
-                        app.temp.ignoreEscapeKey = true 
-                        ImGui.CloseCurrentPopup(ctx) 
+                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+                        app.temp.ignoreEscapeKey = true
+                        ImGui.CloseCurrentPopup(ctx)
                     end
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginMenu(ctx, 'Downmix to mono') then
@@ -825,13 +828,13 @@ if OD_PrereqsOK({
             end
 
             local drawSendName = function(w)
-                app.gui:pushColors(app.gui.st.col.insert.blank)
+                    app.gui:pushColors(app.gui.st.col.insert.blank)
                 ImGui.BeginDisabled(ctx)
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 1.0)
                 ImGui.Button(ctx, s.shortName .. "##sendName", w)
                 ImGui.PopStyleVar(ctx)
                 ImGui.EndDisabled(ctx)
-                app.gui:popColors(app.gui.st.col.insert.blank)
+                    app.gui:popColors(app.gui.st.col.insert.blank)
                 app:setHoveredHint('main', app.debug and (altPressed and s.guid or s.name) or s.name)
             end
 
@@ -1032,9 +1035,9 @@ if OD_PrereqsOK({
                     ImGui.SetNextWindowPos(ctx, x, y, ImGui.Cond_Appearing)
                     ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                     if ImGui.BeginPopup(ctx, '##newHWSendMenu') then
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then 
-                            app.temp.ignoreEscapeKey = true 
-                            ImGui.CloseCurrentPopup(ctx) 
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+                            app.temp.ignoreEscapeKey = true
+                            ImGui.CloseCurrentPopup(ctx)
                         end
                         ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                         if ImGui.BeginMenu(ctx, 'Downmix to mono') then
@@ -1646,6 +1649,14 @@ if OD_PrereqsOK({
                     T.SETTINGS.SEND_FOLDER_NAME.HINT, app.settings.current.sendFolderName,
                     { hint = T.SETTINGS.SEND_FOLDER_NAME.LABEL }, true)
             end
+            app.settings.current.textMinimizationStyle = app.gui:setting('combo',
+                T.SETTINGS.TEXT_MINIMIZATION_STYLE.LABEL, T.SETTINGS.TEXT_MINIMIZATION_STYLE.HINT,
+                app.settings.current.textMinimizationStyle,
+                {
+                    list = T.SETTINGS.LISTS[T.SETTINGS.TEXT_MINIMIZATION_STYLE.LABEL][MINIMIZATION_STYLE.PT] ..
+                        '\0' ..
+                        T.SETTINGS.LISTS[T.SETTINGS.TEXT_MINIMIZATION_STYLE.LABEL][MINIMIZATION_STYLE.TRIM] .. '\0'
+                })
 
             ImGui.SeparatorText(ctx, 'Shortcuts')
             local resetCounter = false
@@ -1699,6 +1710,7 @@ if OD_PrereqsOK({
             if app.temp.captureCounter > 3 and OD_IsGlobalKeyDown(OD_KEYCODES.ESCAPE) then
                 app.temp.ignoreEscapeKey = true
                 OD_ReleaseGlobalKeys()
+                app.db:sync(true)
                 ImGui.CloseCurrentPopup(ctx)
             else
                 OD_ReleaseGlobalKeys()
@@ -1709,6 +1721,7 @@ if OD_PrereqsOK({
         end
         if open == false then
             OD_ReleaseGlobalKeys()
+            app.db:sync(true)
             app.settings:save()
         end
         ImGui.PopFont(ctx)
@@ -1752,7 +1765,7 @@ if OD_PrereqsOK({
         ImGui.PopFont(ctx)
         ImGui.PushFont(ctx, app.gui.st.fonts.large)
         ImGui.SameLine(ctx)
-        ImGui.BeginDisabled(ctx)
+            ImGui.BeginDisabled(ctx)
         local caption = app.db.track and app.db.track.name or ''
         if app.page == APP_PAGE.SEARCH_SEND then
             caption = ('Add %s to track \'%s\''):format(app.temp.addSendType == SEND_TYPE.SEND and 'send' or 'receive',
@@ -1932,7 +1945,6 @@ if OD_PrereqsOK({
             app.drawSettings()
             app:drawMsg()
             ImGui.End(ctx)
-            
         end
         return open
     end

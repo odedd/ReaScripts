@@ -26,6 +26,10 @@ T.SETTINGS = {
         LABEL = 'Send type order',
         HINT = 'The order in which sends/receives/hardware sends are displayed.',
     },
+    TEXT_MINIMIZATION_STYLE = {
+        LABEL = 'Text minimization style',
+        HINT = 'Minimization style for track/plugin/hw output names.',
+    },
     SHORTCUTS = {
         CLOSE_SCRIPT = {
             LABEL = 'Close script',
@@ -69,6 +73,10 @@ T.SETTINGS.LISTS = {
     [T.SETTINGS.VOL_TYPE.LABEL] = {
         [VOL_TYPE.TRIM] = 'Trim',
         [VOL_TYPE.UI] = 'Match MCP/TCP faders (Recommended)',
+    },
+    [T.SETTINGS.TEXT_MINIMIZATION_STYLE.LABEL] = {
+        [MINIMIZATION_STYLE.PT] = 'Pro-Tools style',
+        [MINIMIZATION_STYLE.TRIM] = 'Trim text to length',
     },
 }
 

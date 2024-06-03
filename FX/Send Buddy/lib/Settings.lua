@@ -8,6 +8,7 @@ SM_Settings = OD_Settings:new({
         createInsideFolder = true,
         sendFolderName = 'FX Return Tracks',
         volType = VOL_TYPE.UI,
+        textMinimizationStyle = MINIMIZATION_STYLE.PT,
         sendTypeVisibility = {
             [SEND_TYPE.SEND] = true,
             [SEND_TYPE.RECV] = true,
