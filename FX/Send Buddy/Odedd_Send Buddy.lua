@@ -23,6 +23,7 @@
 --   [nomain] lib/**
 -- @changelog
 --   Hotkey to close script
+--   Make context name versionless for docking consistency
 
 ---------------------------------------
 -- SETUP ------------------------------
