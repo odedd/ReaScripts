@@ -22,6 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
+--   Small fixes
 --   Hotkey to close script
 --   Make context name versionless for docking consistency
 --   Text minimization style now user configurable
@@ -1534,7 +1535,8 @@ if OD_PrereqsOK({
             local action = (hintResult.type == ASSETS.TRACK and 'add a send to track %s' or 'create a new track with FX %s')
                 :format(hintResult.searchText[1].text)
             app:setHint('main',
-                ('%s to %s.'):format(hintContext, action)..(app.getShortcutDescription('markFavorite') ~= '' and (' Press %s to %s.'):format(app.getShortcutDescription('markFavorite'),
+                ('%s to %s.'):format(hintContext, action) ..
+                (app.getShortcutDescription('markFavorite') ~= '' and (' Press %s to %s.'):format(app.getShortcutDescription('markFavorite'),
                     hintResult.group == FAVORITE_GROUP and 'unfavorite' or 'favorite') or ''))
         else
             app:setHint('main', '')
