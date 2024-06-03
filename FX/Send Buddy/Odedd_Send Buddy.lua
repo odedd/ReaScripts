@@ -1644,6 +1644,7 @@ if OD_PrereqsOK({
         local visible, open = ImGui.BeginPopupModal(ctx, Scr.name .. ' Settings##settingsWindow', true,
             ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_AlwaysAutoResize)
         if visible then
+            app.temp.settingsWindowOpen = true
             app.settings.current.settingsWindowPos = { ImGui.GetWindowPos(ctx) }
             ImGui.SeparatorText(ctx, 'General')
             app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
@@ -1733,7 +1734,8 @@ if OD_PrereqsOK({
         else
             app.temp._capturing = false
         end
-        if open == false then
+        if app.temp.settingsWindowOpen and not ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow') then
+            app.temp.settingsWindowOpen = false
             OD_ReleaseGlobalKeys()
             app.db:sync(true)
             app.settings:save()
