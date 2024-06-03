@@ -29,8 +29,8 @@
 -- SETUP ------------------------------
 ---------------------------------------
 r = reaper
-package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
-ImGui = require 'imgui' '0.9.1'
+-- package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
+-- ImGui = require 'imgui' '0.9.1'
 
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
 
@@ -49,6 +49,10 @@ if OD_PrereqsOK({
         js_version = 1.310,    -- required for JS_Window_Find and JS_VKeys_GetState
         reaper_version = 7.03, -- required for set_action_options
     }) then
+    
+    package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
+    ImGui = require 'imgui' '0.9.1'
+
     dofile(p .. 'lib/Constants.lua')
     dofile(p .. 'lib/Settings.lua')
     dofile(p .. 'lib/Gui.lua')
