@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Fix focusing search text-input after using shortcut to open it
+--   FXChains now supported
 
 ---------------------------------------
 -- SETUP ------------------------------
