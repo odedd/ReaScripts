@@ -25,6 +25,7 @@
 --   Hotkey to close script
 --   Make context name versionless for docking consistency
 --   Text minimization style now user configurable
+--   Display track colors
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -828,13 +829,24 @@ if OD_PrereqsOK({
             end
 
             local drawSendName = function(w)
+                local track = s.type == SEND_TYPE.RECV and s.srcTrack or s.destTrack
+                if s.type ~= SEND_TYPE.HW then
+                    ImGui.PushStyleColor(ctx, ImGui.Col_Button, track.color or 0x000000ff)
+                    ImGui.PushStyleColor(ctx, ImGui.Col_Text, OD_ColorIsBright(track.color) and 0x000000ff or 0xffffffff)
+                else
                     app.gui:pushColors(app.gui.st.col.insert.blank)
+                end
                 ImGui.BeginDisabled(ctx)
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 1.0)
                 ImGui.Button(ctx, s.shortName .. "##sendName", w)
                 ImGui.PopStyleVar(ctx)
                 ImGui.EndDisabled(ctx)
+                if s.destTrack then
+                    ImGui.PopStyleColor(ctx)
+                    ImGui.PopStyleColor(ctx)
+                else
                     app.gui:popColors(app.gui.st.col.insert.blank)
+                end
                 app:setHoveredHint('main', app.debug and (altPressed and s.guid or s.name) or s.name)
             end
 
@@ -1443,8 +1455,8 @@ if OD_PrereqsOK({
                 if result.type == ASSETS.TRACK then
                     ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx))
                     local size = app.gui.TEXT_BASE_HEIGHT_LARGE - app.gui.vars.framePaddingY * 2
-                    ImGui.ColorButton(ctx, 'color', ImGui.ColorConvertNative(result.color),
-                        ImGui.ColorEditFlags_NoAlpha | ImGui.ColorEditFlags_NoBorder |
+                    ImGui.ColorButton(ctx, 'color', result.color,
+                        ImGui.ColorEditFlags_NoBorder |
                         ImGui.ColorEditFlags_NoTooltip, size, size)
                     ImGui.SameLine(ctx)
                 end
@@ -1765,13 +1777,32 @@ if OD_PrereqsOK({
         ImGui.PopFont(ctx)
         ImGui.PushFont(ctx, app.gui.st.fonts.large)
         ImGui.SameLine(ctx)
+        if app.db.track then
+            ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2)
+            local col = app.db.track.color
+            if col ~= 0x000000ff then
+                local x, y = ImGui.GetCursorScreenPos(ctx)
+                local h = select(2, ImGui.CalcTextSize(ctx, app.db.track.name))
+                local padding = { ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) }
+                h = h
+                y = y + padding[2]
+                rad = h / 4
+                ImGui.DrawList_AddRectFilled(app.gui.draw_list, x - h / 4, y + h / 4, x + h / 4, y + h / (4 / 3), col, 2)
+                ImGui.AlignTextToFramePadding(ctx)
+                ImGui.SetCursorPosX(ctx,
+                    ImGui.GetCursorPosX(ctx) + rad + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2)
+            end
             ImGui.BeginDisabled(ctx)
-        local caption = app.db.track and app.db.track.name or ''
-        if app.page == APP_PAGE.SEARCH_SEND then
-            caption = ('Add %s to track \'%s\''):format(app.temp.addSendType == SEND_TYPE.SEND and 'send' or 'receive',
-                app.db.track.name)
+            ImGui.Text(ctx, app.db.track.name)
+            ImGui.EndDisabled(ctx)
         end
-        ImGui.Text(ctx, ' ' .. caption)
+        local caption = app.db.track and app.db.track.name or ''
+        ImGui.BeginDisabled(ctx)
+        if app.page == APP_PAGE.SEARCH_SEND then
+            caption = ('Add %s'):format(app.temp.addSendType == SEND_TYPE.SEND and 'send' or 'receive')
+            ImGui.SameLine(ctx)
+            ImGui.Text(ctx, " | " .. caption)
+        end
         ImGui.EndDisabled(ctx)
         local menu = {}
         if app.page == APP_PAGE.MIXER then

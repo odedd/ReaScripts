@@ -46,3 +46,31 @@ function OD_RgbToHsl(r, g, b)
     end
     return h * .16667, s, l
 end
+
+-- Taken from here: https://github.com/norcalli/nvim-colorizer.lua/blob/master/lua/colorizer.lua
+--- Determine whether to use black or white text
+-- Ref: https://stackoverflow.com/a/1855903/837964
+-- https://stackoverflow.com/questions/596216/formula-to-determine-brightness-of-rgb-color
+function OD_ColorIsBright(col)
+    local r, g, b = OD_Int2Rgb(col)
+	-- Counting the perceptive luminance - human eye favors green color
+	local luminance = (0.299*r + 0.587*g + 0.114*b)/255
+	if luminance > 0.5 then
+		return true -- Bright colors, black font
+	else
+		return false -- Dark colors, white font
+	end
+end
+
+-- taken from here: https://gist.github.com/jasonbradley/4357406
+
+function OD_Int2Rgb(i)
+    if i > 0xffffff then
+        i = i / 0x10
+    end
+    -- convert 0xffffffff and 0xffffff to 255, 255, 255 without using bit32
+    local r = math.floor(i / 0x10000) % 0x100
+    local g = math.floor(i / 0x100) % 0x100
+    local b = math.floor(i % 0x100)
+    return r, g, b, a
+end
