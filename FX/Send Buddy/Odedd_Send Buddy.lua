@@ -1281,7 +1281,7 @@ if OD_PrereqsOK({
             for i, asset in ipairs(app.db.assets) do
                 local skip = false
                 if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then skip = true end
-                if app.temp.addSendType == SEND_TYPE.RECV and asset.type == ASSETS.PLUGIN then skip = true end
+                if app.temp.addSendType == SEND_TYPE.RECV and asset.type ~= ASSETS.TRACK then skip = true end
                 if asset.type == ASSETS.TRACK and asset.load == app.db.track.guid then skip = true end
                 if not skip then
                     local foundIndexes = {}
@@ -1349,6 +1349,7 @@ if OD_PrereqsOK({
         end
 
         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+            app.temp.ignoreEscapeKey = true
             app.setPage(APP_PAGE.MIXER)
         elseif app.temp.highlightedResult then
             hintResult = app.temp.searchResults[app.temp.highlightedResult]

@@ -7,6 +7,7 @@ DB = {
     changedTrack = true,
     soloedSends = {},
     plugins = {},
+    fxChains = {},
     tracks = {},
     setUndoPoint = function(self, name, type, trackparm)
         type = type or -1
@@ -32,6 +33,7 @@ DB = {
         self.tracks = {}
         self.masterTrack = reaper.GetMasterTrack(0)
         self:getPlugins()
+        self:getFXChains()
         self:getTracks()
         self:assembleAssets()
     end,
@@ -557,7 +559,7 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
             end
         end
         self:sync(true)
-    elseif assetType == ASSETS.PLUGIN then
+    elseif assetType == ASSETS.PLUGIN or assetType == ASSETS.FX_CHAIN then
         local newTrack = nil
         local numTracks = r.CountTracks(0)
         if self.app.settings.current.createInsideFolder then
@@ -755,7 +757,7 @@ DB.getTracks = function(self)
                         shortened = false,
                         calculateShortName = function(self)
                             self.shortName, self.shortened = self.db.app.minimizeText(
-                                self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''):gsub("^%s+",''):gsub("%s+$",''),
+                                self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''):gsub("^%s+", ''):gsub("%s+$", ''),
                                 self.db.app.settings.current.sendWidth -
                                 r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
                         end,
@@ -912,6 +914,21 @@ DB.addPlugin = function(self, full_name, fx_type, instrument, ident)
         full_name)
     return plugin
 end
+
+DB.getFXChains = function(self)
+    self.fxChains = {}
+    local basePath = reaper.GetResourcePath() .. "/FXChains/"
+    local files = OD_GetFilesInFolderAndSubfolders(basePath, 'rfxchain', true)
+    for i, file in ipairs(files) do
+        local path, baseFilename, ext = OD_DissectFilename(file)
+        table.insert(self.fxChains, {
+            load = file,
+            path = path:gsub('\\', '/'):gsub('/$', ''),
+            file = baseFilename,
+            ext = ext
+        })
+    end
+end
 DB.getPlugins = function(self)
     local i = 0
     while true do
@@ -964,6 +981,16 @@ DB.assembleAssets = function(self)
         return self.group == FAVORITE_GROUP
     end
 
+    for _, chain in ipairs(self.fxChains) do
+        table.insert(self.assets, {
+            db = self,
+            type = ASSETS.FX_CHAIN,
+            searchText = { { text = chain.file }, { text = chain.path }, { text = chain.ext, hide = true } },
+            load = chain.load,
+            group = FX_CHAINS_GROUP,
+            toggleFavorite = toggleFavorite
+        })
+    end
     for _, track in ipairs(self.tracks) do
         table.insert(self.assets, {
             db = self,
@@ -977,16 +1004,18 @@ DB.assembleAssets = function(self)
         })
     end
     for _, plugin in ipairs(self.plugins) do
-        table.insert(self.assets, {
-            db = self,
-            type = ASSETS.PLUGIN,
-            searchText = { { text = plugin.name }, { text = plugin.vendor or '' }, { text = plugin.fx_type, hide = true } },
-            load = plugin.ident,
-            group = plugin.group,
-            vendor = plugin.vendor,
-            fx_type = plugin.fx_type,
-            toggleFavorite = toggleFavorite
-        })
+        if self.app.settings.current.fxTypeVisibility[plugin.fx_type] then
+            table.insert(self.assets, {
+                db = self,
+                type = ASSETS.PLUGIN,
+                searchText = { { text = plugin.name }, { text = plugin.vendor or '' }, { text = plugin.fx_type, hide = true } },
+                load = plugin.ident,
+                group = plugin.group,
+                vendor = plugin.vendor,
+                fx_type = plugin.fx_type,
+                toggleFavorite = toggleFavorite
+            })
+        end
     end
 
     self:markFavorites()
@@ -998,9 +1027,10 @@ DB.sortAssets = function(self)
     for i, group in ipairs(self.app.settings.current.fxTypeOrder) do
         groupPriority[group] = i
     end
-    groupPriority[FAVORITE_GROUP] = -2
-    groupPriority[RECEIVES_GROUP] = -1
-    groupPriority[TRACKS_GROUP] = 0
+    groupPriority[FAVORITE_GROUP] = -3
+    groupPriority[RECEIVES_GROUP] = -2
+    groupPriority[TRACKS_GROUP] = -1
+    groupPriority[FX_CHAINS_GROUP] = 0
 
     table.sort(self.assets, function(a, b)
         local aPriority = groupPriority[a.group] or 100
