@@ -604,6 +604,8 @@ DB._isTrackValid = function(self)
 end
 DB.getSelectedTrack = function(self)
     if self.app.settings.current.followSelectedTrack == false and self:_isTrackValid() then
+        self.track:_refreshColor()
+        self.track:_refreshName()
         return self.track, false
     end
     local track = reaper.GetLastTouchedTrack()
@@ -631,7 +633,6 @@ DB.getTracks = function(self)
         local track = reaper.GetTrack(0, i)
         -- if track ~= self.track then
         local trackName = select(2, reaper.GetTrackName(track))
-        local trackColor = ImGui.ColorConvertNative(reaper.GetTrackColor(track)) * 0x100 | 0xff
         local trackGuid = reaper.GetTrackGUID(track)
         local hasReceives = reaper.GetTrackNumSends(track, -1) > 0
         local numChannels = reaper.GetMediaTrackInfo_Value(track, 'I_NCHAN')
@@ -651,9 +652,7 @@ DB.getTracks = function(self)
         local track = {
             object = track,
             db = self,
-            name = trackName,
             guid = trackGuid,
-            color = trackColor,
             numChannels = numChannels,
             hasReceives = hasReceives,
             soloMatrix = soloMatrix,
@@ -723,6 +722,13 @@ DB.getTracks = function(self)
                 self.vol = volume
                 self.pan = pan
             end,
+            _refreshColor = function(self)
+                local color = ImGui.ColorConvertNative(reaper.GetTrackColor(track)) * 0x100 | 0xff
+                self.color = color
+            end,
+            _refreshName = function(self)
+                self.name = select(2, reaper.GetTrackName(self.object))
+            end,
             getInsertAtIndex = function(self, index)
                 for i, insert in ipairs(self.inserts) do
                     if insert.order == index then
@@ -787,7 +793,9 @@ DB.getTracks = function(self)
                 end
             end
         }
+        track:_refreshName()
         track:_refreshVolAndPan()
+        track:_refreshColor()
         table.insert(self.tracks, track)
         -- end
     end

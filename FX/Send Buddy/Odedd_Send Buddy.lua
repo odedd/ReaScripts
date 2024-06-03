@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.0.6
+-- @version 1.0.7
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,8 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Color fix
+--   Fix - crash when no track selected
+--   Fix - name and color get updated even when not set to follow selected track
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -1774,7 +1775,7 @@ if OD_PrereqsOK({
         ImGui.PopFont(ctx)
         ImGui.PushFont(ctx, app.gui.st.fonts.large)
         ImGui.SameLine(ctx)
-        if app.db.track then
+        if app.db.track and next(app.db.track) then
             ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2)
             local col = app.db.track.color
             if col ~= 0x000000ff then
