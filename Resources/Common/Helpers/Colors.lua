@@ -64,13 +64,15 @@ end
 
 -- taken from here: https://gist.github.com/jasonbradley/4357406
 
+
+
 function OD_Int2Rgb(i)
     if i > 0xffffff then
-        i = i / 0x10
+        i = i >> 8 % 0x1000000
     end
-    -- convert 0xffffffff and 0xffffff to 255, 255, 255 without using bit32
-    local r = math.floor(i / 0x10000) % 0x100
-    local g = math.floor(i / 0x100) % 0x100
-    local b = math.floor(i % 0x100)
-    return r, g, b, a
+
+    local r = math.floor(i / 65536) % 256
+    local g = math.floor(i / 256) % 256
+    local b = i % 256
+    return r, g, b
 end
