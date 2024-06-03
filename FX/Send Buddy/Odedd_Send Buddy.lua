@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.0.4
+-- @version 1.0.5
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,11 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Small fixes
---   Hotkey to close script
---   Make context name versionless for docking consistency
---   Text minimization style now user configurable
---   Display track colors
+--   Small bug fix
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -590,9 +586,6 @@ if OD_PrereqsOK({
                 app:setHoveredHint('main',
                     (s.name .. ' - automation mode for this %s only'):format(s.type == SEND_TYPE.RECV and 'receive' or
                         'send'))
-                if s.midiSrcBus == 255 then
-                    ImGui.EndDisabled(ctx)
-                end
                 app.gui:popColors(app.gui.st.col.buttons.autoMode[s.autoMode])
                 ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, 300.0, nil)
                 if ImGui.BeginPopup(ctx, '##autoModeMenu' .. s.order) then
