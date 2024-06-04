@@ -22,8 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   FXChains now supported
---   Track Templates now supported
+--   Send type group colors now configurable in settings.
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -49,7 +48,6 @@ if OD_PrereqsOK({
         js_version = 1.310,    -- required for JS_Window_Find and JS_VKeys_GetState
         reaper_version = 7.03, -- required for set_action_options
     }) then
-    
     package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
     ImGui = require 'imgui' '0.9.1'
 
@@ -140,7 +138,7 @@ if OD_PrereqsOK({
                     end
                 end
             end
-            return text:sub(1, app.maxTextLen[maxWidth]):gsub("%s+$",''), true -- trim to max length
+            return text:sub(1, app.maxTextLen[maxWidth]):gsub("%s+$", ''), true -- trim to max length
         end
         return text, false
     end
@@ -222,8 +220,6 @@ if OD_PrereqsOK({
         if page == APP_PAGE.MIXER then
             if app.db.track.object == nil then
                 page = APP_PAGE.NO_TRACK
-                -- elseif app.db.totalSends == 0 then
-                --     page = APP_PAGE.NO_SENDS
             end
         end
         if page ~= app.page then
@@ -1024,7 +1020,8 @@ if OD_PrereqsOK({
                         ((type == SEND_TYPE.RECV) and 'addRecv' or 'addHW')
                     if app.isShortcutPressed(key) then
                         clicked = true
-                        local scriptHwnd = app.gui.mainWindow.dockId < 0 and reaper.JS_Window_Find(Scr.context_name, true) or reaper.JS_Window_FindTop(Scr.name, true)
+                        local scriptHwnd = app.gui.mainWindow.dockId < 0 and
+                            reaper.JS_Window_Find(Scr.context_name, true) or reaper.JS_Window_FindTop(Scr.name, true)
                         r.JS_Window_SetFocus(scriptHwnd)
                     end
                 end
@@ -1197,7 +1194,7 @@ if OD_PrereqsOK({
             local w, h      = app.gui.st.sizes.sendTypeSeparatorWidth,
                 app.gui.st.sizes.sendTypeSeparatorHeight
             ImGui.DrawList_AddLine(app.gui.draw_list, left + w, top, left + w, top + totalH,
-                gui.st.basecolors.mainDark)
+                app.settings.current.sendTypeColor[type])
 
             local points = reaper.new_array({
                 left, top + h + 40,
@@ -1208,7 +1205,7 @@ if OD_PrereqsOK({
             local text = (T.SEND_TYPE_NAMES[type].TITLE):upper()
             ImGui.PushFont(ctx, app.gui.st.fonts.vertical)
             ImGui.DrawList_AddConvexPolyFilled(app.gui.draw_list, points,
-                gui.st.basecolors.mainDark)
+                app.settings.current.sendTypeColor[type])
             local textTop = top + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
             local textLeft = left + w - select(2, ImGui.CalcTextSize(ctx, text))
             app.gui:drawVerticalText(app.gui.draw_list, text, textLeft,
@@ -1682,21 +1679,24 @@ if OD_PrereqsOK({
                         function(k, v) return k ~= 'closeScript' end)
                 })
             if resetCounter then app.temp.captureCounter = 0 end
-            app.settings.current.shortcuts.addSend, resetCounter = app.gui:setting('shortcut', T.SETTINGS.SHORTCUTS.NEW_SEND.LABEL,
+            app.settings.current.shortcuts.addSend, resetCounter = app.gui:setting('shortcut',
+                T.SETTINGS.SHORTCUTS.NEW_SEND.LABEL,
                 T.SETTINGS.SHORTCUTS.NEW_SEND.HINT, app.settings.current.shortcuts.addSend,
                 {
                     existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                         function(k, v) return k ~= 'addSend' end)
                 })
             if resetCounter then app.temp.captureCounter = 0 end
-            app.settings.current.shortcuts.addRecv, resetCounter = app.gui:setting('shortcut', T.SETTINGS.SHORTCUTS.NEW_RECV.LABEL,
+            app.settings.current.shortcuts.addRecv, resetCounter = app.gui:setting('shortcut',
+                T.SETTINGS.SHORTCUTS.NEW_RECV.LABEL,
                 T.SETTINGS.SHORTCUTS.NEW_RECV.HINT, app.settings.current.shortcuts.addRecv,
                 {
                     existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                         function(k, v) return k ~= 'addRecv' end)
                 })
             if resetCounter then app.temp.captureCounter = 0 end
-            app.settings.current.shortcuts.addHW, resetCounter = app.gui:setting('shortcut', T.SETTINGS.SHORTCUTS.NEW_HW.LABEL,
+            app.settings.current.shortcuts.addHW, resetCounter = app.gui:setting('shortcut',
+                T.SETTINGS.SHORTCUTS.NEW_HW.LABEL,
                 T.SETTINGS.SHORTCUTS.NEW_HW.HINT, app.settings.current.shortcuts.addHW,
                 {
                     existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
@@ -1719,6 +1719,14 @@ if OD_PrereqsOK({
             app.settings.current.sendTypeOrder, app.settings.current.sendTypeVisibility = app.gui:setting(
                 'orderable_list', T.SETTINGS.SEND_TYPE_ORDER.LABEL, T.SETTINGS.SEND_TYPE_ORDER.HINT,
                 { app.settings.current.sendTypeOrder, app.settings.current.sendTypeVisibility })
+            ImGui.SeparatorText(ctx, 'Color')
+            for i, type in ipairs(app.settings.current.sendTypeOrder) do
+                app.settings.current.sendTypeColor[type] = app.gui:setting('colorpicker',
+                    T.SETTINGS.SEND_TYPE_COLOR.LABEL:format(T.SEND_TYPE_NAMES[type].SINGULAR),
+                    T.SETTINGS.SEND_TYPE_COLOR.HINT:format(T.SEND_TYPE_NAMES[type].SINGULAR),
+                    app.settings.current.sendTypeColor[type],
+                    { default = app.settings.default.sendTypeColor[type] })
+            end
             app.drawHint('settings')
             app:drawMsg()
             if app.temp.captureCounter > 3 and OD_IsGlobalKeyDown(OD_KEYCODES.ESCAPE) then
@@ -1757,11 +1765,6 @@ if OD_PrereqsOK({
                 prevX = x
                 ImGui.SetCursorPosX(ctx, x)
                 if app.iconButton(ctx, btn.icon, app.gui.st.col.buttons.topBarIcon) then clicked = btn.icon end
-                -- if app.page == APP_PAGE.NO_SENDS and btn.icon == 'plus' then
-                --     app.temp.addSendBtnX, app.temp.addSendBtnY = ImGui.GetCursorScreenPos(ctx)
-                --     app.temp.addSendBtnX = app.temp.addSendBtnX - w / 2
-                --     app.temp.addSendBtnY = app.temp.addSendBtnY + w * 1.5
-                -- end
                 app:setHoveredHint('main', btn.hint)
             end
             ImGui.PopFont(ctx)
@@ -1930,7 +1933,7 @@ if OD_PrereqsOK({
             app.gui.mainWindow.dockTo = nil
         end
 
-        
+
 
         local visible, open = ImGui.Begin(ctx, Scr.name .. "###mainWindow",
             true,
@@ -1967,8 +1970,6 @@ if OD_PrereqsOK({
                     app.temp.ignoreEscapeKey = false
                 elseif app.page == APP_PAGE.SEARCH_SEND or app.page == APP_PAGE.SEARCH_FX then
                     app.drawSearch()
-                    -- elseif app.page == APP_PAGE.NO_SENDS then
-                    --     app.drawErrorNoSends()
                 elseif app.page == APP_PAGE.NO_TRACK then
                     app.drawErrorNoTrack()
                 end

@@ -18,10 +18,9 @@ VOL_TYPE = {
 }
 
 APP_PAGE = {
-    ['MIXER'] = {width = 409, minHeight = 409, windowFlags = ImGui.WindowFlags_None, giveFocus = true},
+    ['MIXER'] = {width = 609, minHeight = 409, windowFlags = ImGui.WindowFlags_None, giveFocus = true},
     ['SEARCH_SEND'] = {width = 900, height = 409, minHeight = 409, windowFlags = ImGui.WindowFlags_None},
     ['SEARCH_FX'] = {width = 900, height = 409, minHeight = 409, windowFlags = ImGui.WindowFlags_None},
-    ['NO_SENDS'] = {width = 409, height = 409*3/4, minHeight = 409*3/4, windowFlags = ImGui.WindowFlags_None, giveFocus = true},
     ['NO_TRACK'] = {width = 409, height = 409*3/4, minHeight = 409*3/4, windowFlags = ImGui.WindowFlags_None, giveFocus = true},
     ['CLOSE'] = 'close',
 }

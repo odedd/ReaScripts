@@ -19,7 +19,12 @@ SM_Settings = OD_Settings:new({
             SEND_TYPE.SEND,
             SEND_TYPE.RECV,
         },
-        shortcuts = { -- TODO test on windows
+        sendTypeColor = {
+            [SEND_TYPE.SEND] = 0x371f23FF,
+            [SEND_TYPE.RECV] = 0x371f23FF,
+            [SEND_TYPE.HW] = 0x371f23FF
+        },
+        shortcuts = {
             addSend = {
                 key = OD_KEYCODES.S,
                 ctrl = false,
