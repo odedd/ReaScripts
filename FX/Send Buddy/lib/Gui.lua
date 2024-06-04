@@ -271,6 +271,11 @@ SM_Gui.init = function(self, fonts)
                 active = { [ImGui.Col_Text] = self.st.basecolors.midText },
             }
         },
+        sendTypeCategory = {
+            [SEND_TYPE.SEND] = self.st.basecolors.mainDark,
+            [SEND_TYPE.RECV] = self.st.basecolors.mainDark, --0x371f37ff,
+            [SEND_TYPE.HW] = self.st.basecolors.mainDark,   --0x35371fff,
+        },
         targetFader = {
             [ImGui.Col_FrameBg] = 0x1c2533ff,
             [ImGui.Col_FrameBgHovered] = 0x283b59ff,
@@ -482,6 +487,23 @@ SM_Gui.init = function(self, fonts)
             end
         elseif stType == 'text' then
             _, retval1 = ImGui.InputText(ctx, '##' .. text, val)
+        elseif stType == 'colorpicker' then
+            hint = data.default and (hint .. ' alt-click to reset to default.') or hint
+            retval1 = val
+            if ImGui.ColorButton(ctx, '##' .. text, val, ImGui.ColorEditFlags_None, widgetWidth) then
+                if data.default and ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
+                    retval1 = data.default
+                else
+                    ImGui.OpenPopup(ctx, '##ColorPicker' .. text)
+                end
+            end
+            ImGui.SetNextWindowPos(ctx, ImGui.GetMousePos(ctx), select(2, ImGui.GetMousePos(ctx)), ImGui.Cond_Appearing,
+                0, 1)
+            if ImGui.BeginPopup(ctx, '##ColorPicker' .. text) then
+                local rv, tmp = ImGui.ColorPicker4(ctx, '##' .. text, val)
+                if rv then retval1 = tmp end
+                ImGui.EndPopup(ctx)
+            end
         elseif stType == 'text_with_hint' then
             _, retval1 = ImGui.InputTextWithHint(ctx, '##' .. text, data.hint, val)
         elseif stType == 'shortcut' then
@@ -496,7 +518,6 @@ SM_Gui.init = function(self, fonts)
                     OD_GetKeyPressed(OD_KEYCODES['NUMPAD0'], OD_KEYCODES['F24'], true) or
                     OD_GetKeyPressed(OD_KEYCODES['ESCAPE'], OD_KEYCODES['DOWN'], true)
                 if key then
-                    
                     local testVal = {
                         key = key,
                         ctrl = OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL),
@@ -542,7 +563,7 @@ SM_Gui.init = function(self, fonts)
                 end
             end
             ImGui.PopStyleColor(ctx)
-            if val == nil then val = {key = -1, ctrl = false, shift = false, alt = false} end
+            if val == nil then val = { key = -1, ctrl = false, shift = false, alt = false } end
             retval1 = newVal or val
         elseif stType == 'orderable_list' then
             -- ImGui.Dummy(ctx, widgetWidth, 20)

@@ -56,6 +56,10 @@ T.SETTINGS = {
         LABEL = 'Volume and pan type',
         HINT = 'Volume/Pan type. "Match MCP/TCP faders" allows writing automation.',
     },
+    SEND_TYPE_COLOR = {
+        LABEL = '%s group',
+        HINT = '%s group separator color.',
+    },
 }
 
 T.SEND_TYPE_NAMES = {
