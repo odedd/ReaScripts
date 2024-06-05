@@ -1,3 +1,5 @@
+-- @noindex
+
 DB = {
     sends = {},
     track = -1, -- this is to force a track change when loading the script
