@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Deeper Logging
+--   Fix plugin name parsing
 
 ---------------------------------------
 -- SETUP ------------------------------
