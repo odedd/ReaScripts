@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.0.11
+-- @version 1.0.12
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Send type group colors now configurable in settings.
+--   Basic Logging added
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -68,9 +68,12 @@ if OD_PrereqsOK({
         focusMainReaperWindow = true
     })
 
+    local projPath, projFileName = OD_GetProjectPaths()
+
     local logger = OD_Logger:new({
         level = OD_Logger.LOG_LEVEL.ERROR,
-        output = OD_Logger.LOG_OUTPUT.CONSOLE
+        output = OD_Logger.LOG_OUTPUT.CONSOLE,
+        filename = projPath .. Scr.name .. '_' .. projFileName .. '.log'
     })
 
     local gui = SM_Gui:new({})
@@ -88,7 +91,6 @@ if OD_PrereqsOK({
         if force or OD_DidProjectGUIDChange() then
             local projPath, projFileName = OD_GetProjectPaths()
             logger:setLogFile(projPath .. Scr.name .. '_' .. projFileName .. '.log')
-            self.reset()
         end
     end
 
@@ -1985,6 +1987,7 @@ if OD_PrereqsOK({
     end
 
     function app.loop()
+        app:checkProjectChange()
         local ctx = app.gui.ctx
         app.db:syncUIVol()
         app.gui:pushColors(app.gui.st.col.main)
