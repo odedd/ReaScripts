@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.0.12
+-- @version 1.0.13
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Basic Logging added
+--   Deeper Logging
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -2043,6 +2043,7 @@ if OD_PrereqsOK({
 
     function Exit()
         if app and app.settings then app.settings:save() end
+        app.logger:logInfo('Exited')
         Release()
     end
 
@@ -2055,6 +2056,9 @@ if OD_PrereqsOK({
     reaper.set_action_options(1)
     app.settings:load()
     -- app.settings:save()
+    app.logger:logInfo('Started')
+    app.logger:logAppInfo(app.logger.LOG_LEVEL.DEBUG, app)
+    app.logger:logTable(app.logger.LOG_LEVEL.DEBUG, 'Settings', app.settings.current)
     app.db:init()
     app.db:sync()
     app.setPage(APP_PAGE.MIXER)

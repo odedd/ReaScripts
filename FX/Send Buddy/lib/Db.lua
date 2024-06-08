@@ -32,6 +32,7 @@ DB = {
     end,
     lastGuids = {}, -- use to check if a track has been removed or added
     init = function(self, app)
+        self.app.logger:logDebug('-- DB.init()')
         self.plugins = {}
         self.tracks = {}
         self.masterTrack = reaper.GetMasterTrack(0)
@@ -557,8 +558,7 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
         return
     end
     if assetType == ASSETS.TRACK_TEMPLATE then
-        
-        -- since track templates are loaded under the last selected track, 
+        -- since track templates are loaded under the last selected track,
         -- and as root folders, I need to create a new dummy track inside the folder,
         -- calculate its depth, insert the tracktemplate, move it after the dummy track,
         -- calculate its depth change, and apply it + the depth change from the dummy track,
@@ -708,6 +708,7 @@ end
 
 -- get project tracks into self.tracks, keeping the track's GUID, name and color, and wheather it has receives or not
 DB.getTracks = function(self)
+    self.app.logger:logDebug('-- DB.getTracks()')
     -- self:sync()
     self.tracks = {}
     local numTracks = reaper.CountTracks(0)
@@ -731,6 +732,7 @@ DB.getTracks = function(self)
         local masterSendState = (rawMasterSendState == '1')
         local sendListen = rawSendListen ~= '' and rawSendListen:match('(.-)%s') or nil
         local sendListenMode = rawSendListen ~= '' and tonumber(rawSendListen:match('.-%s(%d)')) or nil
+        self.app.logger:logDebug('Track added', trackName)
         local track = {
             object = track,
             db = self,
@@ -881,6 +883,7 @@ DB.getTracks = function(self)
         table.insert(self.tracks, track)
         -- end
     end
+    self.app.logger:logDebug('Found ' .. numTracks .. ' tracks')
 end
 
 DB._getTrack = function(self, track)
@@ -949,7 +952,7 @@ DB.addPlugin = function(self, full_name, fx_type, instrument, ident)
         self.app.logger:logDebug('-- DB.addPlugin() -> extractNameVendor()')
         local name, vendor
         local t = {}
-        
+
         self.app.logger:logDebug('Parsing:', full_name)
         name = (fx_type == 'Internal') and full_name or full_name:match(fx_type .. ': (.+)$')
         if not fx_type:match('^JS') and fx_type ~= 'Internal' and fx_type ~= 'ReWire' then
@@ -994,41 +997,54 @@ DB.addPlugin = function(self, full_name, fx_type, instrument, ident)
         ident = ident,
     }
     table.insert(self.plugins, plugin)
-    self.app.logger:logInfo('Added ' ..
+    self.app.logger:logDebug('Added ' ..
         fx_type .. (instrument and 'i' or '') .. ': ' .. name .. (vendor and (' by ' .. vendor) or ''),
         full_name)
     return plugin
 end
 
 DB.getFXChains = function(self)
+    self.app.logger:logDebug('-- DB.getFXChains()')
     self.fxChains = {}
     local basePath = reaper.GetResourcePath() .. "/FXChains/"
     local files = OD_GetFilesInFolderAndSubfolders(basePath, 'rfxchain', true)
+    local count = 0
     for i, file in ipairs(files) do
         local path, baseFilename, ext = OD_DissectFilename(file)
+        local chainPath = path:gsub('\\', '/'):gsub('/$', '')
+        self.app.logger:logDebug('Found FX chain', file)
         table.insert(self.fxChains, {
             load = file,
-            path = path:gsub('\\', '/'):gsub('/$', ''),
+            path = chainPath,
             file = baseFilename,
             ext = ext
         })
+        count = count + 1
     end
+    self.app.logger:logInfo('Found ' .. count .. ' FX chains')
 end
 DB.getTrackTemplates = function(self)
+    self.app.logger:logDebug('-- DB.getTrackTemplates()')
     self.trackTemplates = {}
     local basePath = reaper.GetResourcePath() .. "/TrackTemplates"
     local files = OD_GetFilesInFolderAndSubfolders(basePath, 'RTrackTemplate', true)
+    local count = 0
     for i, file in ipairs(files) do
         local path, baseFilename, ext = OD_DissectFilename(file)
+        local ttLoad, ttPath = basePath .. OD_FolderSep() .. file, path:gsub('\\', '/'):gsub('/$', '')
+        self.app.logger:logDebug('Found track template', ttLoad)
         table.insert(self.trackTemplates, {
-            load = basePath .. OD_FolderSep() .. file,
-            path = path:gsub('\\', '/'):gsub('/$', ''),
+            load = ttLoad,
+            path = ttPath,
             file = baseFilename,
             ext = ext
         })
+        count = count + 1
     end
+    self.app.logger:logInfo('Found ' .. count .. ' track templates')
 end
 DB.getPlugins = function(self)
+    self.app.logger:logDebug('-- DB.getPlugins()')
     local i = 0
     while true do
         local found, name, ident = reaper.EnumInstalledFX(i)
@@ -1044,6 +1060,7 @@ DB.getPlugins = function(self)
         i = i + 1
         if not found then break end
     end
+    self.app.logger:logInfo('Found ' .. i .. ' plugins')
 end
 
 DB.markFavorites = function(self)
@@ -1058,6 +1075,7 @@ end
 -- ASSETS
 
 DB.assembleAssets = function(self)
+    self.app.logger:logDebug('-- DB.assembleAssets()')
     self.assets = {}
 
     local toggleFavorite = function(self)
@@ -1076,7 +1094,7 @@ DB.assembleAssets = function(self)
         self.db:sortAssets()
         return self.group == FAVORITE_GROUP
     end
-
+    local count = 0
     for _, chain in ipairs(self.fxChains) do
         table.insert(self.assets, {
             db = self,
@@ -1086,6 +1104,7 @@ DB.assembleAssets = function(self)
             group = FX_CHAINS_GROUP,
             toggleFavorite = toggleFavorite
         })
+        count = count + 1
     end
     for _, tt in ipairs(self.trackTemplates) do
         table.insert(self.assets, {
@@ -1096,6 +1115,7 @@ DB.assembleAssets = function(self)
             group = TRACK_TEMPLATES_GROUP,
             toggleFavorite = toggleFavorite
         })
+        count = count + 1
     end
     for _, track in ipairs(self.tracks) do
         table.insert(self.assets, {
@@ -1108,6 +1128,7 @@ DB.assembleAssets = function(self)
             color = track.color,
             toggleFavorite = toggleFavorite
         })
+        count = count + 1
     end
     for _, plugin in ipairs(self.plugins) do
         if self.app.settings.current.fxTypeVisibility[plugin.fx_type] then
@@ -1121,8 +1142,10 @@ DB.assembleAssets = function(self)
                 fx_type = plugin.fx_type,
                 toggleFavorite = toggleFavorite
             })
+            count = count + 1
         end
     end
+    self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
 
     self:markFavorites()
     self:sortAssets()
