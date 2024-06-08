@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Fix plugin name parsing
+--   Fix error in plugin name parsing introduced in 1.0.14
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -71,7 +71,7 @@ if OD_PrereqsOK({
     local projPath, projFileName = OD_GetProjectPaths()
 
     local logger = OD_Logger:new({
-        level = OD_Logger.LOG_LEVEL.ERROR,
+        level = OD_Logger.LOG_LEVEL.NONE,
         output = OD_Logger.LOG_OUTPUT.CONSOLE,
         filename = projPath .. Scr.name .. '_' .. projFileName .. '.log'
     })
