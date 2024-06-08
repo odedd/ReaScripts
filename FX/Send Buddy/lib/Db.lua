@@ -958,7 +958,7 @@ DB.addPlugin = function(self, full_name, fx_type, instrument, ident)
         if not fx_type:match('^JS') and fx_type ~= 'Internal' and fx_type ~= 'ReWire' then
             local counter = 1
             for w in string.gmatch(full_name, "%b()") do
-                t[counter] = w:match("%((.-)%)$")
+                t[counter] = w:match("%((.+)%)")
                 counter = counter + 1
             end
         end
@@ -967,11 +967,7 @@ DB.addPlugin = function(self, full_name, fx_type, instrument, ident)
         if vendor == nil and name == nil and (#t == 0) then return false end
         if not fx_type:match('^JS') then
             if fx_type ~= 'Internal' and fx_type ~= 'ReWire' then
-                if t[#t] == nil then
-                    self.app.logger:logError('Cannot parse plugin name', full_name)
-                    return false
-                end
-                if next(t) ~= nil and (t[#t]:match('.-%dch$') or t[#t]:match('%d*%sout$') or t[#t] == 'mono') then
+                if next(t) ~= nil and (tostring(t[#t]):match('.-%dch$') or tostring(t[#t]):match('%d*%sout$') or tostring(t[#t]) == 'mono') then
                     vendor = t[#t - 1]
                 end
                 name = vendor and name:gsub(' %(' .. OD_EscapePattern(vendor) .. '%).-$', '') or name
