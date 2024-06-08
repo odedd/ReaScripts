@@ -958,7 +958,7 @@ DB.addPlugin = function(self, full_name, fx_type, instrument, ident)
         if not fx_type:match('^JS') and fx_type ~= 'Internal' and fx_type ~= 'ReWire' then
             local counter = 1
             for w in string.gmatch(full_name, "%b()") do
-                t[counter] = w:match("%((.+)%)")
+                t[counter] = w:match("%((.-)%)$")
                 counter = counter + 1
             end
         end

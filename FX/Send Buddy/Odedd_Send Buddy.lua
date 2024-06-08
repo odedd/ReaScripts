@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.0.15
+-- @version 1.0.16
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Fix error in plugin name parsing introduced in 1.0.14
+--   Partly rollback to 1.0.14
 
 ---------------------------------------
 -- SETUP ------------------------------
