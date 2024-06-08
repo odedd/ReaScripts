@@ -942,14 +942,15 @@ end
 --- PLUGINS
 DB.addPlugin = function(self, full_name, fx_type, instrument, ident)
     -- TODO: check about all plugin types
-    self.app.logger:logDebug('-- OD_VPS_DB:addPlugin()')
+    self.app.logger:logDebug('-- DB.addPlugin()')
     local self = self
 
     local function extractNameVendor(full_name, fx_type)
-        self.app.logger:logDebug('-- OD_VPS_DB:addPlugin() -> extractNameVendor()')
+        self.app.logger:logDebug('-- DB.addPlugin() -> extractNameVendor()')
         local name, vendor
         local t = {}
-
+        
+        self.app.logger:logDebug('Parsing:', full_name)
         name = (fx_type == 'Internal') and full_name or full_name:match(fx_type .. ': (.+)$')
         if not fx_type:match('^JS') and fx_type ~= 'Internal' and fx_type ~= 'ReWire' then
             local counter = 1
@@ -976,8 +977,12 @@ DB.addPlugin = function(self, full_name, fx_type, instrument, ident)
 
     local success, name, vendor = extractNameVendor(full_name, fx_type)
 
-    if not success then
-        self.app.logger:logError('cannot parse plugin name: ' .. full_name)
+    if success then
+        self.app.logger:logDebug('Parsing successful')
+        self.app.logger:logDebug('Name', name)
+        self.app.logger:logDebug('Vendor', vendor)
+    else
+        self.app.logger:logError('Cannot parse plugin name', full_name)
         return false
     end
 
