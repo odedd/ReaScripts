@@ -9,13 +9,6 @@ SM_Gui = OD_Gui:new({
 SM_Gui.init = function(self, fonts)
     OD_Gui.addFont(self, 'vertical', 'Resources/Fonts/Cousine-90deg.otf', 11)
     OD_Gui.init(self, true)
-    ImGui.PushFont(self.ctx, self.st.fonts.default)
-    self.mainWindow.hintHeight = ImGui.GetTextLineHeightWithSpacing(self.ctx) +
-        select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_FramePadding)) +
-        select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_ItemSpacing)) +
-        select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_WindowPadding)) - 1
-
-    ImGui.PopFont(self.ctx)
 
     self.st.basecolors = {
         darkestBG = 0x131313ff,
@@ -351,74 +344,98 @@ SM_Gui.init = function(self, fonts)
             [ImGui.Col_SliderGrabActive] = self.st.basecolors.mainBright,
         }
     }
-    self.st.vars = {
-        pan = {
-            [ImGui.StyleVar_GrabMinSize] = { 6, nil },
-            [ImGui.StyleVar_GrabRounding] = { self.st.rounding * 2, nil },
-        },
-        vol = {
-            [ImGui.StyleVar_GrabMinSize] = { 8, nil },
-            [ImGui.StyleVar_GrabRounding] = { self.st.rounding * 2, nil },
-        },
-        main = {
-            [ImGui.StyleVar_FrameRounding] = { self.st.rounding, nil },
-            [ImGui.StyleVar_ItemSpacing] = { 4, 4 },
-            [ImGui.StyleVar_WindowRounding] = { 10, nil },
-        },
-        searchWindow = {
-            [ImGui.StyleVar_SeparatorTextAlign] = { 0, 0 },
-            [ImGui.StyleVar_SeparatorTextBorderSize] = { 1, nil },
-            [ImGui.StyleVar_SeparatorTextPadding] = { 0, 0 },
-        },
-        bigButton = {
-            [ImGui.StyleVar_FrameRounding] = { 10, nil },
-            [ImGui.StyleVar_FramePadding] = { 20, 10 },
-        },
-        zoomSlider = {
-            [ImGui.StyleVar_GrabMinSize] = { 8, nil },
-            [ImGui.StyleVar_FramePadding] = { -1, -1 },
-            [ImGui.StyleVar_GrabRounding] = { 100, nil },
-            [ImGui.StyleVar_FrameRounding] = { 100, nil },
-        }
-    }
-    ImGui.PushFont(self.ctx, self.st.fonts.vertical)
-    self.VERTICAL_TEXT_BASE_WIDTH, self.VERTICAL_TEXT_BASE_HEIGHT = ImGui.CalcTextSize(self.ctx, 'A')
-    self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET = -2
-    ImGui.PopFont(self.ctx)
 
-    self.st.sizes = {
-        sendTypeSeparatorWidth = self.TEXT_BASE_HEIGHT,
-        sendTypeSeparatorHeight = 95,
-        minFaderHeight = 100,
-    }
-    self.st.vars.addSendButton = {
-        [ImGui.StyleVar_FrameRounding] = { self.st.sizes.sendTypeSeparatorWidth, nil },
-    }
+    self.updateVarsToScale = function(self)
+        local scale = self.app.settings.current.uiScale
+        self.st.vars = {
+            pan = {
+                [ImGui.StyleVar_GrabMinSize] = { 6 * scale, nil },
+                [ImGui.StyleVar_GrabRounding] = { self.st.rounding * 2 * scale, nil },
+            },
+            vol = {
+                [ImGui.StyleVar_GrabMinSize] = { 8 * scale, nil },
+                [ImGui.StyleVar_GrabRounding] = { self.st.rounding * 2 * scale, nil },
+            },
+            main = {
+                [ImGui.StyleVar_FrameRounding] = { self.st.rounding * scale, nil },
+                [ImGui.StyleVar_ItemSpacing] = { 4 * scale, 4 * scale },
+                [ImGui.StyleVar_WindowRounding] = { 10 * scale, nil },
+                [ImGui.StyleVar_WindowPadding] = { 8 * scale, 8 * scale },
+                [ImGui.StyleVar_ScrollbarSize] = { 7 * scale, nil },
+                [ImGui.StyleVar_FramePadding] = { 4 * scale, 3 * scale },
+                [ImGui.StyleVar_ItemInnerSpacing] = { 4 * scale, 4 * scale },
+                [ImGui.StyleVar_SeparatorTextBorderSize] = { 1 * scale, nil },
+            },
+            searchWindow = {
+                [ImGui.StyleVar_SeparatorTextAlign] = { 0, 0 },
+                [ImGui.StyleVar_SeparatorTextBorderSize] = { 1 * scale, nil },
+                [ImGui.StyleVar_SeparatorTextPadding] = { 0, 0 },
+            },
+            bigButton = {
+                [ImGui.StyleVar_FrameRounding] = { 10 * scale, nil },
+                [ImGui.StyleVar_FramePadding] = { 20 * scale, 10 * scale },
+            },
+            zoomSlider = {
+                [ImGui.StyleVar_GrabMinSize] = { 8 * scale, nil },
+                [ImGui.StyleVar_FramePadding] = { -1 * scale, -1 * scale },
+                [ImGui.StyleVar_GrabRounding] = { 100 * scale, nil },
+                [ImGui.StyleVar_FrameRounding] = { 100 * scale, nil },
+            },
+            addSendButton = {
+                [ImGui.StyleVar_FrameRounding] = { 100 * scale, nil },
+            }
+        }
+    end
+
+    self.updateTextHeightsToScale = function(self)
+        ImGui.PushFont(self.ctx, self.st.fonts.vertical)
+        self.VERTICAL_TEXT_BASE_WIDTH, self.VERTICAL_TEXT_BASE_HEIGHT = ImGui.CalcTextSize(self.ctx, 'A')
+        self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET = -2
+        ImGui.PopFont(self.ctx)
+    end
+
+    self.updateSizesToScale = function(self)
+        ImGui.PushFont(self.ctx, self.st.fonts.default) -- hint font! important!
+        self.st.sizes = {
+            sendTypeSeparatorWidth = self.TEXT_BASE_HEIGHT,
+            sendTypeSeparatorHeight = 95 * self.app.settings.current.uiScale,
+            minFaderHeight = 100 * self.app.settings.current.uiScale,
+            mixerSeparatorWidth = 4 * self.app.settings.current.uiScale,
+            hintHeight = ImGui.GetTextLineHeightWithSpacing(self.ctx) +
+                select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_ItemSpacing)) +
+                select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_FramePadding)) * 2
+        }
+        ImGui.PopFont(self.ctx)
+    end
+    self.recalculateZoom = function(self)
+        self:updateVarsToScale()
+        self:pushStyles(self.st.vars.main)
+        OD_Gui.recalculateZoom(self)
+        self:updateTextHeightsToScale()
+        self:updateSizesToScale()
+        self:popStyles(self.st.vars.main)
+    end
+
+    self:recalculateZoom()
+
 
     self.drawSadFace = function(self, sizeFactor, color)
         local x, y = ImGui.GetCursorScreenPos(self.ctx)
-        local sz = self.TEXT_BASE_WIDTH * sizeFactor
+        -- local sz = self.TEXT_BASE_WIDTH * sizeFactor
+        local sz = 20 * sizeFactor * self.app.settings.current.uiScale
         ImGui.DrawList_AddCircleFilled(self.draw_list, x, y, sz, color, 36)
         ImGui.DrawList_AddCircleFilled(self.draw_list, x - sz / 3.5, y - sz / 5, sz / 9, 0x000000ff, 36)
         ImGui.DrawList_AddCircleFilled(self.draw_list, x + sz / 3.5, y - sz / 5, sz / 9, 0x000000ff, 36)
         ImGui.DrawList_AddLine(self.draw_list, x + sz / 2, y + sz / 10, x - sz / 2, y + sz / 2.5, 0x000000ff, sz / 9)
     end
 
-    self.verticalText = function(self, text)
-        ImGui.PushFont(self.ctx, self.st.fonts.vertical)
-        local letterspacing = (self.VERTICAL_TEXT_BASE_HEIGHT + self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET)
-        local posX, posY = ImGui.GetCursorPosX(self.ctx), ImGui.GetCursorPosY(self.ctx) - letterspacing * #text
-        text = text:reverse()
-        for ci = 1, #text do
-            ImGui.SetCursorPos(self.ctx, posX, posY + letterspacing * (ci - 1))
-            ImGui.Text(self.ctx, text:sub(ci, ci))
-        end
-        ImGui.PopFont(self.ctx)
-    end
-    self.drawVerticalText = function(self, drawList, text, x, y, color)
+    self.drawVerticalText = function(self, drawList, text, x, y, color, yIsTop)
         local color = color or 0xffffffff
         ImGui.PushFont(self.ctx, self.st.fonts.vertical)
         local letterspacing = (self.VERTICAL_TEXT_BASE_HEIGHT + self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET)
+        if yIsTop then
+            y = y + letterspacing * #text
+        end
         local posX, posY = (x or select(1, ImGui.GetCursorScreenPos(self.ctx))),
             (y or select(2, ImGui.GetCursorScreenPos(self.ctx))) - letterspacing * #text
         text = text:reverse()
@@ -458,7 +475,8 @@ SM_Gui.init = function(self, fonts)
             widgetWidth = itemWidth
         else
             ImGui.SameLine(ctx)
-            widgetWidth = itemWidth - self.TEXT_BASE_WIDTH * 2 - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2
+            widgetWidth = itemWidth - ImGui.GetTextLineHeight(ctx) -
+            ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2
         end
         ImGui.PushItemWidth(ctx, widgetWidth)
 
