@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.1.1
+-- @version 1.1.2
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Settings window zoom control updated
+--   Fix: Mono/stereo icon missing 
 
 ---------------------------------------
 -- SETUP ------------------------------
