@@ -500,11 +500,22 @@ SM_Gui.init = function(self, fonts)
         elseif stType == 'dragint' then
             _, retval1 = ImGui.DragInt(ctx, '##' .. text, val, data.step, data.min, data.max)
         elseif stType == 'dragdouble' then
-            _, retval1 = ImGui.DragDouble(ctx, '##' .. text, val, data.speed, data.min, data.max, data.format,data.flags or 0)
-            if ImGui.IsMouseDoubleClicked(ctx, 0) then
-                retval1 = data.default
+            if data.updateOnRelease then
+                self.app.temp.tempSettingsVal = self.app.temp.tempSettingsVal or {}
+                self.app.temp.tempSettingsVal[text] = self.app.temp.tempSettingsVal[text] or val
             end
-        
+            _, retval1 = ImGui.DragDouble(ctx, '##' .. text,
+                data.updateOnRelease and self.app.temp.tempSettingsVal[text] or val, data.speed, data.min, data.max,
+                data.format, data.flags or 0)
+            if data.updateOnRelease then
+                if ImGui.IsItemActive(ctx) then
+                    self.app.temp.tempSettingsVal[text] = retval1
+                    retval1 = val
+                end
+                if ImGui.IsItemDeactivated(ctx) then
+                    self.app.temp.tempSettingsVal[text] = nil
+                end
+            end
         elseif stType == 'button' then
             retval1 = ImGui.Button(ctx, data.label, widgetWidth)
         elseif stType == 'file' then
