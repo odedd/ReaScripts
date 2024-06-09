@@ -22,9 +22,6 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Fix rescaling issue with some buttons
---   Scrollbar size fixed
---   Shift menu sizing fixed
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -107,11 +104,11 @@ if OD_PrereqsOK({
     function app.minimizeText(text, maxWidth)
         app.maxTextLen = app.maxTextLen or {}
         -- if app.maxTextLen[maxWidth] == nil then
-            local i = 0
-            while ImGui.CalcTextSize(app.gui.ctx, string.rep('A',i)) < maxWidth do
-                i = i + 1
-            end
-            app.maxTextLen[maxWidth] = i
+        local i = 0
+        while ImGui.CalcTextSize(app.gui.ctx, string.rep('A', i)) < maxWidth do
+            i = i + 1
+        end
+        app.maxTextLen[maxWidth] = i
         -- end
         if text:len() > app.maxTextLen[maxWidth] then
             if app.settings.current.textMinimizationStyle == MINIMIZATION_STYLE.PT then
@@ -191,13 +188,16 @@ if OD_PrereqsOK({
             -- app.settings.current.lastWindowWidth = app.gui.mainWindow.size and app.gui.mainWindow.size[1] or width
             local minHeight = app.page.minHeight or 0
             if app.page == APP_PAGE.MIXER then
-                width, minHeight, app.gui.mainWindow.mixerInsertsH, app.gui.mainWindow.debugOverLay = app.calculateMixerWindowSize()
+                width, minHeight, app.gui.mainWindow.mixerInsertsH, app.gui.mainWindow.debugOverLay = app
+                    .calculateMixerWindowSize()
                 app.gui.mainWindow.mixerW = width
             end
             app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.page.width * app.settings.current.uiScale,
-                ((minHeight or app.page.minHeight or 0) or 0) 
-            ImGui.SetNextWindowSize(app.gui.ctx, math.max(app.settings.current.lastWindowWidth or 0, app.page.width * app.settings.current.uiScale),
-                math.max(app.settings.current.lastWindowHeight or 0, (app.page.height or 0) * app.settings.current.uiScale ))
+                ((minHeight or app.page.minHeight or 0) or 0)
+            ImGui.SetNextWindowSize(app.gui.ctx,
+                math.max(app.settings.current.lastWindowWidth or 0, app.page.width * app.settings.current.uiScale),
+                math.max(app.settings.current.lastWindowHeight or 0,
+                    (app.page.height or 0) * app.settings.current.uiScale))
             app.refreshWindowSizeOnNextFrame = false
         end
     end
@@ -236,19 +236,23 @@ if OD_PrereqsOK({
         -- top bar
         local wPadding = ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_WindowPadding)
         local vSpacing = select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ItemSpacing))
-        local topBarH = app.gui.TEXT_BASE_HEIGHT_LARGE + select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding)) * 2 + ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_SeparatorTextBorderSize)
+        local topBarH = app.gui.TEXT_BASE_HEIGHT_LARGE +
+            select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding)) * 2 +
+            ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_SeparatorTextBorderSize)
 
         -- inserts
         local insertsH = (app.settings.current.maxNumInserts + 1) *
-            (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding)) * 2) - vSpacing
-        
+            (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding)) * 2) -
+            vSpacing
+
         local separatorH = app.gui.st.sizes.mixerSeparatorWidth
         -- sends
-        local sendsH = 8 * (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding))*2)+
-            app.gui.st.sizes.minFaderHeight 
-        
+        local sendsH = 8 *
+            (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding)) * 2) +
+            app.gui.st.sizes.minFaderHeight
+
         local h = wPadding + topBarH + vSpacing + insertsH + vSpacing + separatorH + sendsH +
-            app.gui.st.sizes.hintHeight + vSpacing+wPadding
+            app.gui.st.sizes.hintHeight + vSpacing + wPadding
         local shouldScroll = app.db.maxNumInserts > app.settings.current.maxNumInserts
         local visibleSendNum = 0
         local visibleSendTypes = 0
@@ -264,7 +268,8 @@ if OD_PrereqsOK({
             ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_WindowPadding) +
             ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ItemSpacing) +
             (shouldScroll and ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ScrollbarSize) or 0)
-        return w, h, insertsH--, {0,topBarH+vSpacing+insertsH+vSpacing+separatorH+sendsH+vSpacing,w, app.gui.st.sizes.hintHeight+vSpacing}--app.gui.st.sizes.hintHeight}
+        return w, h, insertsH
+        --, {0,topBarH+vSpacing+insertsH+vSpacing+separatorH+sendsH+vSpacing,w, app.gui.st.sizes.hintHeight+vSpacing}--app.gui.st.sizes.hintHeight}
     end
 
     function app.drawMixer()
@@ -328,7 +333,10 @@ if OD_PrereqsOK({
             end
             local drawEnvMuteButton = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.mute[false])
-                local h = 5 * (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2) / 2  - select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
+                local h = 5 *
+                    (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2) /
+                    2 -
+                    select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
                 if ImGui.Button(ctx, 'MUTE\nENV##mEnvelope' .. s.order, w, h) then
                     s:toggleMuteEnv()
                 end
@@ -338,7 +346,10 @@ if OD_PrereqsOK({
             end
             local drawEnvPanButton = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.route)
-                local h = 5 * (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2) / 2  - select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
+                local h = 5 *
+                    (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2) /
+                    2 -
+                    select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
                 if ImGui.Button(ctx, 'PAN\nENV##pEnvelope' .. s.order, w, h) then
                     s:togglePanEnv()
                 end
@@ -929,7 +940,7 @@ if OD_PrereqsOK({
             local faderHeight = math.max(app.gui.st.sizes.minFaderHeight,
                 select(2, ImGui.GetContentRegionAvail(ctx)) - app.gui.TEXT_BASE_HEIGHT_SMALL * 2 -
                 ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 4)
-            
+
             local w = math.floor(app.settings.current.sendWidth * app.settings.current.uiScale)
             if parts.name then
                 parts = { parts }
@@ -1097,7 +1108,8 @@ if OD_PrereqsOK({
                             if type == SEND_TYPE.SEND then
                                 drawSend(s, { name = 'inserts' })
                             else
-                                ImGui.Dummy(ctx, math.floor(app.settings.current.sendWidth * app.settings.current.uiScale), 0)
+                                ImGui.Dummy(ctx,
+                                    math.floor(app.settings.current.sendWidth * app.settings.current.uiScale), 0)
                             end
                             ImGui.EndGroup(ctx)
                             ImGui.SameLine(ctx)
@@ -1459,7 +1471,8 @@ if OD_PrereqsOK({
 
                 if result.type == ASSETS.TRACK then
                     ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx))
-                    local size = app.gui.TEXT_BASE_HEIGHT_LARGE - select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding)) * 2
+                    local size = app.gui.TEXT_BASE_HEIGHT_LARGE -
+                        select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding)) * 2
                     ImGui.ColorButton(ctx, 'color', result.color,
                         ImGui.ColorEditFlags_NoBorder |
                         ImGui.ColorEditFlags_NoTooltip, size, size)
@@ -1583,7 +1596,8 @@ if OD_PrereqsOK({
         local font = font or app.gui.st.fonts.icons_large
         ImGui.PushFont(ctx, font)
         local x, y = ImGui.GetCursorPos(ctx)
-        local w = select(1, ImGui.CalcTextSize(ctx, ICONS[(icon):upper()])) + ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding) * 2
+        local w = select(1, ImGui.CalcTextSize(ctx, ICONS[(icon):upper()])) +
+            ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding) * 2
         local clicked
         if ImGui.InvisibleButton(ctx, '##menuBtn' .. icon, w, ImGui.GetTextLineHeightWithSpacing(ctx)) then
             clicked = true
@@ -1595,7 +1609,8 @@ if OD_PrereqsOK({
         else
             app.gui:pushColors(colClass.default)
         end
-        ImGui.SetCursorPos(ctx, x + ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding), y + select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding)))
+        ImGui.SetCursorPos(ctx, x + ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding),
+            y + select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding)))
         ImGui.Text(ctx, tostring(ICONS[icon:upper()]))
         app.gui:popColors(colClass.default)
         ImGui.PopFont(ctx)
@@ -1606,7 +1621,7 @@ if OD_PrereqsOK({
     function app.drawSettings()
         local ctx = app.gui.ctx
         ImGui.PushFont(ctx, app.gui.st.fonts.default)
-        local w = 700*app.settings.current.uiScale
+        local w = 700 * app.settings.current.uiScale
         -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger
         -- closing this window. So we increment a counter which will be reset if the shortcut is
         -- being captured, so that we can know to ignore the captured key unless some frames have passed.
@@ -1625,9 +1640,12 @@ if OD_PrereqsOK({
             app.temp.settingsWindowOpen = true
             app.settings.current.settingsWindowPos = { ImGui.GetWindowPos(ctx) }
             ImGui.SeparatorText(ctx, 'General')
-            -- app.temp.scale = 
-            app.settings.current.uiScale = app.gui:setting('dragdouble', T.SETTINGS.UI_SCALE.LABEL, T.SETTINGS.UI_SCALE.HINT,
-                app.settings.current.uiScale*100, {default = app.settings.default.uiScale*100 ,min = 50, max = 200, speed = 1, format = '%.f%%', updateOnRelease = true, flags = (ImGui.SliderFlags_AlwaysClamp)})/100
+            -- app.temp.scale =
+            app.settings.current.uiScale = app.gui:setting('dragdouble', T.SETTINGS.UI_SCALE.LABEL,
+                    T.SETTINGS.UI_SCALE.HINT,
+                    app.settings.current.uiScale * 100,
+                    { default = app.settings.default.uiScale * 100, min = 50, max = 200, speed = 1, format = '%.f%%', updateOnRelease = true, flags = (ImGui.SliderFlags_AlwaysClamp) }) /
+                100
             app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
                 .LABEL, T.SETTINGS.FOLLOW_SELECTED_TRACK.HINT, app.settings.current.followSelectedTrack)
             app.settings.current.mouseScrollReversed = app.gui:setting('checkbox', T.SETTINGS.MW_REVERSED.LABEL,
@@ -1882,7 +1900,7 @@ if OD_PrereqsOK({
 
     function app.drawMainWindow()
         local ctx = app.gui.ctx
-        
+
         if app.refreshWindowSizeOnNextFrame then
             app.refreshWindowSize()
         end
@@ -1948,13 +1966,15 @@ if OD_PrereqsOK({
             if app.gui.mainWindow.debugOverLay then
                 local left, top = ImGui.GetCursorScreenPos(app.gui.ctx)
                 ImGui.DrawList_AddRectFilled(ImGui.GetForegroundDrawList(ctx), app.gui.mainWindow.debugOverLay[1] + left,
-                    app.gui.mainWindow.debugOverLay[2] + top, app.gui.mainWindow.debugOverLay[1]+ app.gui.mainWindow.debugOverLay[3] + left,
-                    app.gui.mainWindow.debugOverLay[2] + app.gui.mainWindow.debugOverLay[4] + top, 0xff000088,0, ImGui.DrawFlags_Closed)
+                    app.gui.mainWindow.debugOverLay[2] + top,
+                    app.gui.mainWindow.debugOverLay[1] + app.gui.mainWindow.debugOverLay[3] + left,
+                    app.gui.mainWindow.debugOverLay[2] + app.gui.mainWindow.debugOverLay[4] + top, 0xff000088, 0,
+                    ImGui.DrawFlags_Closed)
             end
 
             app.drawTopBar()
 
-            if ImGui.BeginChild(ctx, '##body', 0.0, - app.gui.st.sizes.hintHeight) then
+            if ImGui.BeginChild(ctx, '##body', 0.0, -app.gui.st.sizes.hintHeight) then
                 if app.page == APP_PAGE.MIXER then
                     app.drawMixer()
                     if app.isShortcutPressed('closeScript') and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.ignoreEscapeKey then open = false end
@@ -2053,7 +2073,7 @@ if OD_PrereqsOK({
     ---------------------------------------
     -- make it so that script gets terminated on a relaunch
     reaper.set_action_options(1)
-    
+
     -- app.settings:save()
     app.logger:logInfo('Started')
     app.logger:logAppInfo(app.logger.LOG_LEVEL.DEBUG, app)
