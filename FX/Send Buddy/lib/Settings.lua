@@ -87,6 +87,7 @@ SM_Settings = OD_Settings:new({
             "LV2",
             "LV2i"
         },
+        uiScale = 1,
 
         -- Defineable in GUI
         favorites = {},

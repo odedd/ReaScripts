@@ -475,8 +475,8 @@ DB = {
                     send.app = self.app
                     send.calculateShortName = function(self)
                         self.shortName = self.app.minimizeText(send.name,
-                            self.app.settings.current.sendWidth -
-                            r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
+                            self.app.settings.current.sendWidth * self.app.gui.scale -
+                            r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()))
                     end
                     if send.type == SEND_TYPE.HW then send.name = send:_getChannelAlias() end
                     send:_refreshVolAndPan()
@@ -827,9 +827,6 @@ DB.getTracks = function(self)
                     local _, fxName = r.TrackFX_GetFXName(self.object, i, '')
                     local offline = r.TrackFX_GetOffline(self.object, i)
                     local enabled = r.TrackFX_GetEnabled(self.object, i)
-                    -- local shortName, shortened = self.app.minimizeText(fxName:gsub('.-%:', ''):gsub('%(.-%)$', ''),
-                    --     self.app.settings.current.sendWidth -
-                    --     r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
                     local insert =
                     {
                         order = i,
@@ -840,8 +837,8 @@ DB.getTracks = function(self)
                         calculateShortName = function(self)
                             self.shortName, self.shortened = self.db.app.minimizeText(
                                 self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''):gsub("^%s+", ''):gsub("%s+$", ''),
-                                self.db.app.settings.current.sendWidth -
-                                r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 2)
+                                self.db.app.settings.current.sendWidth * self.db.app.gui.scale -
+                                r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) )
                         end,
                         offline = offline,
                         enabled = enabled,

@@ -60,6 +60,10 @@ T.SETTINGS = {
         LABEL = '%s group',
         HINT = '%s group separator color.',
     },
+    UI_SCALE = {
+        LABEL = 'UI scale',
+        HINT = 'Scale of the UI graphics. Double click to reset.',
+    }
 }
 
 T.SEND_TYPE_NAMES = {
@@ -85,13 +89,13 @@ T.SETTINGS.LISTS = {
 }
 
 T.AUTO_MODE_DESCRIPTIONS = {
-    [AUTO_MODE.TRACK] = {order = 0, label = 'Track', description = 'Follow track automation mode'},
-    [AUTO_MODE.TRIM_READ] = {order = 1, label = 'Trim/Read', description = 'Envelopes are active but faders are all for trim'},
-    [AUTO_MODE.READ] = {order = 2, label = 'Read', description = 'Play faders with armed envelopes'},
-    [AUTO_MODE.TOUCH] = {order = 3, label = 'Touch', description = 'Record fader movements to armed envelopes'},
-    [AUTO_MODE.LATCH] = {order = 4, label = 'Latch', description = 'Record fader movements after first movement'},
-    [AUTO_MODE.LATCH_PREVIEW] = {order = 5, label = 'Latch Preview', description = 'Allow adjusting parameters but do not apply to envelopes'},
-    [AUTO_MODE.WRITE] = {order = 6, label = 'Write', description = 'Record fader positions to armed envelopes'},
+    [AUTO_MODE.TRACK] = { order = 0, label = 'Track', description = 'Follow track automation mode' },
+    [AUTO_MODE.TRIM_READ] = { order = 1, label = 'Trim/Read', description = 'Envelopes are active but faders are all for trim' },
+    [AUTO_MODE.READ] = { order = 2, label = 'Read', description = 'Play faders with armed envelopes' },
+    [AUTO_MODE.TOUCH] = { order = 3, label = 'Touch', description = 'Record fader movements to armed envelopes' },
+    [AUTO_MODE.LATCH] = { order = 4, label = 'Latch', description = 'Record fader movements after first movement' },
+    [AUTO_MODE.LATCH_PREVIEW] = { order = 5, label = 'Latch Preview', description = 'Allow adjusting parameters but do not apply to envelopes' },
+    [AUTO_MODE.WRITE] = { order = 6, label = 'Write', description = 'Record fader positions to armed envelopes' },
 }
 
 T.ERROR = {
