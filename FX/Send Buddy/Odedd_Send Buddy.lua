@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Fix: Mono/stereo icon missing 
+--   Scrollbar size fixed
 
 ---------------------------------------
 -- SETUP ------------------------------
