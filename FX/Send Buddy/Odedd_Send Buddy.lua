@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.1.0
+-- @version 1.1.1
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   UI is now scalable.
+--   Settings window zoom control updated
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -1621,8 +1621,9 @@ if OD_PrereqsOK({
             app.temp.settingsWindowOpen = true
             app.settings.current.settingsWindowPos = { ImGui.GetWindowPos(ctx) }
             ImGui.SeparatorText(ctx, 'General')
+            -- app.temp.scale = 
             app.settings.current.uiScale = app.gui:setting('dragdouble', T.SETTINGS.UI_SCALE.LABEL, T.SETTINGS.UI_SCALE.HINT,
-                app.settings.current.uiScale*100, {default = app.settings.default.uiScale*100 ,min = 50, max = 200, speed = 1, format = '%.f%%', flags = (ImGui.SliderFlags_AlwaysClamp | ImGui.SliderFlags_NoInput)})/100
+                app.settings.current.uiScale*100, {default = app.settings.default.uiScale*100 ,min = 50, max = 200, speed = 1, format = '%.f%%', updateOnRelease = true, flags = (ImGui.SliderFlags_AlwaysClamp)})/100
             app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
                 .LABEL, T.SETTINGS.FOLLOW_SELECTED_TRACK.HINT, app.settings.current.followSelectedTrack)
             app.settings.current.mouseScrollReversed = app.gui:setting('checkbox', T.SETTINGS.MW_REVERSED.LABEL,

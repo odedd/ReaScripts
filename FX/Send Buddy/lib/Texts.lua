@@ -61,8 +61,8 @@ T.SETTINGS = {
         HINT = '%s group separator color.',
     },
     UI_SCALE = {
-        LABEL = 'UI scale',
-        HINT = 'Scale of the UI graphics. Double click to reset.',
+        LABEL = 'Zoom',
+        HINT = 'Interface scale. Double click to enter manually.',
     }
 }
 
