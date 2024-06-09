@@ -500,19 +500,18 @@ SM_Gui.init = function(self, fonts)
         elseif stType == 'dragint' then
             _, retval1 = ImGui.DragInt(ctx, '##' .. text, val, data.step, data.min, data.max)
         elseif stType == 'dragdouble' then
-            if data.updateOnRelease then
+            if data.dontUnpdateWhileEnteringManually then
                 self.app.temp.tempSettingsVal = self.app.temp.tempSettingsVal or {}
                 self.app.temp.tempSettingsVal[text] = self.app.temp.tempSettingsVal[text] or val
             end
             _, retval1 = ImGui.DragDouble(ctx, '##' .. text,
-                data.updateOnRelease and self.app.temp.tempSettingsVal[text] or val, data.speed, data.min, data.max,
+                data.dontUnpdateWhileEnteringManually and self.app.temp.tempSettingsVal[text] or val, data.speed, data.min, data.max,
                 data.format, data.flags or 0)
-            if data.updateOnRelease then
-                if ImGui.IsItemActive(ctx) then
+            if data.dontUnpdateWhileEnteringManually then
+                if ImGui.IsItemActive(ctx) and not ImGui.IsMouseDragging(ctx,ImGui.MouseButton_Left) then
                     self.app.temp.tempSettingsVal[text] = retval1
                     retval1 = val
-                end
-                if ImGui.IsItemDeactivated(ctx) then
+                else
                     self.app.temp.tempSettingsVal[text] = nil
                 end
             end

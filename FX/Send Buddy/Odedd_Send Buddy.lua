@@ -22,6 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
+--   Scale control editing now reacts to mouse drag instantly
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -1640,11 +1641,10 @@ if OD_PrereqsOK({
             app.temp.settingsWindowOpen = true
             app.settings.current.settingsWindowPos = { ImGui.GetWindowPos(ctx) }
             ImGui.SeparatorText(ctx, 'General')
-            -- app.temp.scale =
             app.settings.current.uiScale = app.gui:setting('dragdouble', T.SETTINGS.UI_SCALE.LABEL,
                     T.SETTINGS.UI_SCALE.HINT,
                     app.settings.current.uiScale * 100,
-                    { default = app.settings.default.uiScale * 100, min = 50, max = 200, speed = 1, format = '%.f%%', updateOnRelease = true, flags = (ImGui.SliderFlags_AlwaysClamp) }) /
+                    { default = app.settings.default.uiScale * 100, min = 50, max = 200, speed = 1, format = '%.f%%', dontUnpdateWhileEnteringManually = true, flags = (ImGui.SliderFlags_AlwaysClamp) }) /
                 100
             app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
                 .LABEL, T.SETTINGS.FOLLOW_SELECTED_TRACK.HINT, app.settings.current.followSelectedTrack)
