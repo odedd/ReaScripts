@@ -39,6 +39,14 @@ function OD_Gui:addFont(key, file, size, recalculation)
     self.st.fonts[key] = r.ImGui_CreateFont(OD_LocalOrCommon(file, self.app.scr.dir), math.floor(size * scale))
 end
 
+function OD_Gui:reAddFonts()
+    for key, font in pairs(self.originalFonts) do
+        r.ImGui_Detach(self.ctx, self.st.fonts[key])
+        self:addFont(key, font.file, font.size)
+        r.ImGui_Attach(self.ctx, self.st.fonts[key])
+    end
+end
+
 function OD_Gui:init(addDefaultFonts)
     local addDefaultFonts = (addDefaultFonts == nil) and (not self.st.fonts) or addDefaultFonts
     if addDefaultFonts then
@@ -88,8 +96,8 @@ function OD_Gui:init(addDefaultFonts)
 
 end
 
-OD_Gui.recalculateZoom = function(self)
-    OD_Gui.updateTextHeightsToScale(self)
+OD_Gui.recalculateZoom = function(self, scale)
+    OD_Gui.updateCachedTextHeightsToScale(self)
 end
 
 OD_Gui.reloadZoomFonts = function(self) -- FIND A SMART WAY TO USE THIS
@@ -98,10 +106,10 @@ OD_Gui.reloadZoomFonts = function(self) -- FIND A SMART WAY TO USE THIS
         self:addFont(key, font.file, font.size, true)
         r.ImGui_Attach(self.ctx, self.st.fonts[key])
     end
-    self:updateTextHeightsToScale()
+    self:updateCachedTextHeightsToScale()
 end
 
-OD_Gui.updateTextHeightsToScale = function(self)
+OD_Gui.updateCachedTextHeightsToScale = function(self)
 
     if self.st.fonts.default then
         r.ImGui_PushFont(self.ctx, self.st.fonts.default)
@@ -112,6 +120,12 @@ OD_Gui.updateTextHeightsToScale = function(self)
     if self.st.fonts.small then
         r.ImGui_PushFont(self.ctx, self.st.fonts.small)
         self.TEXT_BASE_WIDTH_SMALL, self.TEXT_BASE_HEIGHT_SMALL = r.ImGui_CalcTextSize(self.ctx, 'A'),
+            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+        r.ImGui_PopFont(self.ctx)
+    end
+    if self.st.fonts.medium then
+        r.ImGui_PushFont(self.ctx, self.st.fonts.medium)
+        self.TEXT_BASE_WIDTH_MEDIUM, self.TEXT_BASE_HEIGHT_MEDIUM = r.ImGui_CalcTextSize(self.ctx, 'A'),
             r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
         r.ImGui_PopFont(self.ctx)
     end

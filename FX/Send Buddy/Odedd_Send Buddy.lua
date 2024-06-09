@@ -22,14 +22,12 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Scale control editing now reacts to mouse drag instantly
+--   Many layout tweaks and fixes
 
 ---------------------------------------
 -- SETUP ------------------------------
 ---------------------------------------
 r = reaper
--- package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
--- ImGui = require 'imgui' '0.9.1'
 
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
 
@@ -103,26 +101,27 @@ if OD_PrereqsOK({
 
 
     function app.minimizeText(text, maxWidth)
+        local key = app.settings.current.uiScale .. maxWidth
         app.maxTextLen = app.maxTextLen or {}
-        -- if app.maxTextLen[maxWidth] == nil then
-        local i = 0
-        while ImGui.CalcTextSize(app.gui.ctx, string.rep('A', i)) < maxWidth do
-            i = i + 1
+        if app.maxTextLen[key] == nil then
+            local i = 0
+            while ImGui.CalcTextSize(app.gui.ctx, string.rep('A', i)) < maxWidth do
+                i = i + 1
+            end
+            app.maxTextLen[key] = i
         end
-        app.maxTextLen[maxWidth] = i
-        -- end
-        if text:len() > app.maxTextLen[maxWidth] then
+        if text:len() > app.maxTextLen[key] then
             if app.settings.current.textMinimizationStyle == MINIMIZATION_STYLE.PT then
                 -- text = text:gsub(' ', '')
-                text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('[^%a%d%/%.]', '')
-                text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub(' ', '')
-                text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('a', '')
-                text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('e', '')
-                text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('i', '')
-                text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('o', '')
-                text = text:len() <= app.maxTextLen[maxWidth] and text or text:gsub('u', '')
+                text = text:len() <= app.maxTextLen[key] and text or text:gsub(' ', '')
+                text = text:len() <= app.maxTextLen[key] and text or text:gsub('[^%a%d%/%.]', '')
+                text = text:len() <= app.maxTextLen[key] and text or text:gsub('a', '')
+                text = text:len() <= app.maxTextLen[key] and text or text:gsub('e', '')
+                text = text:len() <= app.maxTextLen[key] and text or text:gsub('i', '')
+                text = text:len() <= app.maxTextLen[key] and text or text:gsub('o', '')
+                text = text:len() <= app.maxTextLen[key] and text or text:gsub('u', '')
                 local lastLen = text:len()
-                while text:len() > app.maxTextLen[maxWidth] do -- remove lowercase one by one
+                while text:len() > app.maxTextLen[key] do -- remove lowercase one by one
                     text = text:gsub('([a-z]+)[a-z]', '%1')
                     if lastLen == text:len() then
                         lastLen = text:len()
@@ -131,7 +130,7 @@ if OD_PrereqsOK({
                         lastLen = text:len()
                     end
                 end
-                while text:len() > app.maxTextLen[maxWidth] do -- remove uppercase one by one
+                while text:len() > app.maxTextLen[key] do -- remove uppercase one by one
                     text = text:gsub('([A-Z]+)[A-Z]', '%1')
                     if lastLen == text:len() then
                         break
@@ -140,32 +139,10 @@ if OD_PrereqsOK({
                     end
                 end
             end
-            return text:sub(1, app.maxTextLen[maxWidth]):gsub("%s+$", ''), true -- trim to max length
+            return text:sub(1, app.maxTextLen[key]):gsub("%s+$", ''), true -- trim to max length
         end
         return text, false
     end
-
-    -- function app.minimizeText2(text, maxWidth)
-    -- local ctx = app.gui.ctx
-    --     if select(1, ImGui.CalcTextSize(ctx, text)) > maxWidth then
-    --         -- text = text:gsub(' ', '')
-    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('[^%a%d]', '')
-    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub(' ', '')
-    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('a', '')
-    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('e', '')
-    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('i', '')
-    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('o', '')
-    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('u', '')
-    --         text = (select(1, ImGui.CalcTextSize(ctx, text)) <= maxWidth) and text or text:gsub('%d', '')
-    --         for i = 1, text:len() do
-    --             if select(1, ImGui.CalcTextSize(ctx, text:sub(1, i))) > maxWidth then
-    --                 text = text:sub(1, i - 1)
-    --             end
-    --         end
-    --         return text:sub(1, app.maxTextLen), true
-    --     end
-    --     return text, false
-    -- end
 
     ---------------------------------------
     -- UI ---------------------------------
@@ -184,9 +161,7 @@ if OD_PrereqsOK({
 
     function app.refreshWindowSize()
         if app.page then
-            -- local max_w, max_h = ImGui.Viewport_GetSize(ImGui.GetMainViewport(app.gui.ctx))
             local width = app.page.width
-            -- app.settings.current.lastWindowWidth = app.gui.mainWindow.size and app.gui.mainWindow.size[1] or width
             local minHeight = app.page.minHeight or 0
             if app.page == APP_PAGE.MIXER then
                 width, minHeight, app.gui.mainWindow.mixerInsertsH, app.gui.mainWindow.debugOverLay = app
@@ -599,7 +574,7 @@ if OD_PrereqsOK({
             end
             local drawAutoMode = function(w)
                 local label = app.minimizeText(T.AUTO_MODE_DESCRIPTIONS[s.autoMode].label,
-                    w - select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2)
+                    w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 4)
                 app.gui:pushColors(app.gui.st.col.buttons.autoMode[s.autoMode])
                 if ImGui.Button(ctx, label .. '##autoMode' .. s.order, w) then
                     ImGui.OpenPopup(ctx, '##autoModeMenu' .. s.order)
@@ -1082,7 +1057,6 @@ if OD_PrereqsOK({
                     end
                 end
 
-                -- ImGui.Dummy(ctx, app.gui.st.sizes.sendTypeSeparatorWidth, 0)
                 ImGui.EndGroup(ctx)
                 ImGui.SameLine(ctx)
                 if count > 0 then
@@ -1092,10 +1066,6 @@ if OD_PrereqsOK({
                         local fillerW, fillerH = insertsPadding +
                             (math.floor(app.settings.current.sendWidth * app.settings.current.uiScale) + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))) *
                             count - select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)), h
-                        -- insertsPadding +
-                        -- (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2) *
-                        -- (app.settings.current.maxNumInserts + 1) -
-                        -- select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
 
                         ImGui.SameLine(ctx)
                         ImGui.DrawList_AddRectFilled(app.gui.draw_list, left - insertsPadding, top,
@@ -1195,7 +1165,6 @@ if OD_PrereqsOK({
                 { name = 'sendName' }
             }
         end
-        -- ImGui.BeginGroup(ctx)
         app.temp.autoModeMenuOpen = false
         app.temp.midiRouteMenuOpen = false
         app.temp.inputTargetVolLabel = false
@@ -1223,15 +1192,12 @@ if OD_PrereqsOK({
                 left, top + totalH
             })
             local text = (T.SEND_TYPE_NAMES[type].TITLE):upper()
-            ImGui.PushFont(ctx, app.gui.st.fonts.default)
-            local vTextHeight, vTextWidth = ImGui.CalcTextSize(ctx, text)
-            ImGui.PopFont(ctx)
             ImGui.DrawList_AddConvexPolyFilled(app.gui.draw_list, points,
                 app.settings.current.sendTypeColor[type])
-            local textTop = top --+ select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
-            local textLeft = left + w - vTextWidth
-            app.gui:drawVerticalText(app.gui.draw_list, text, textLeft,
-                textTop, gui.st.basecolors.text, true)
+            local textTop = top + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))
+            local textRight = left + w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
+            app.gui:drawVerticalText(app.gui.draw_list, text, textRight,
+                textTop, gui.st.basecolors.text, true, true)
             ImGui.Dummy(ctx, app.gui.st.sizes.sendTypeSeparatorWidth, 1)
             ImGui.EndGroup(ctx)
             ImGui.SameLine(ctx)
@@ -1251,10 +1217,7 @@ if OD_PrereqsOK({
                 ImGui.SameLine(ctx)
             end
         end
-        -- ImGui.EndGroup(ctx)
-        -- end
         ImGui.PopFont(ctx)
-        -- ImGui.EndGroup(ctx)
         if app.hint.main.text == '' then
             app:setHoveredHint('main',
                 'Hold ' .. app.gui.descModAlt .. ' for more controls. Hold shift for envelopes.')
@@ -1284,15 +1247,6 @@ if OD_PrereqsOK({
     end
 
     function app.drawSearch()
-        -- OD_ReleaseGlobalKeys()
-        -- local function nocase(s)
-        --     s = string.gsub(s, "%a", function(c)
-        --         return string.format("[%s%s]", string.lower(c),
-        --             string.upper(c))
-        --     end)
-        --     return s
-        -- end
-
         local function filterResults(query)
             app.temp.searchInput = query
             app.temp.searchResults = {}
@@ -1322,7 +1276,6 @@ if OD_PrereqsOK({
                         end
                     end
                     if allWordsFound then
-                        -- local result = OD_DeepCopy(asset)
                         asset.foundIndexes = foundIndexes
                         table.insert(app.temp.searchResults, asset)
                     end
@@ -1347,7 +1300,7 @@ if OD_PrereqsOK({
         local hintContext = nil
         local w = select(1, ImGui.GetContentRegionAvail(ctx))
 
-        ImGui.PushFont(ctx, app.gui.st.fonts.medium)
+        local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx)
         app.gui:pushStyles(app.gui.st.vars.searchWindow)
         app.gui:pushColors(app.gui.st.col.searchWindow)
         app.temp.searchResults = app.temp.searchResults or {}
@@ -1361,7 +1314,7 @@ if OD_PrereqsOK({
         local rv, searchInput = ImGui.InputText(ctx, "##searchInput", app.temp.searchInput)
 
         local h = select(2, ImGui.GetContentRegionAvail(ctx))
-        local maxSearchResults = math.floor(h / (app.gui.TEXT_BASE_HEIGHT_LARGE))
+        local maxSearchResults = math.floor(h / (fontLineHeight))
 
         if rv then
             filterResults(searchInput)
@@ -1425,7 +1378,7 @@ if OD_PrereqsOK({
         end
 
         local selectableFlags = ImGui.SelectableFlags_SpanAllColumns
-        local outer_size = { 0.0, app.gui.TEXT_BASE_HEIGHT_LARGE * h / (app.gui.TEXT_BASE_HEIGHT_LARGE) }
+        local outer_size = { 0.0, fontLineHeight * h / (fontLineHeight) }
         local tableFlags = ImGui.TableFlags_ScrollY
         local lastGroup = nil
 
@@ -1443,19 +1396,19 @@ if OD_PrereqsOK({
                 -- local currentScreenY =
 
                 if result.group ~= lastGroup then
-                    ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, app.gui.TEXT_BASE_HEIGHT_LARGE)
+                    ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
                     absIndex = absIndex + 1
                     ImGui.TableSetColumnIndex(ctx, 0)
                     ImGui.SeparatorText(ctx, i == 1 and app.temp.lastInvisibleGroup or result.group)
                     lastGroup = result.group
-                    if select(2, ImGui.GetCursorScreenPos(ctx)) <= upperRowY + app.gui.TEXT_BASE_HEIGHT_LARGE then
+                    if select(2, ImGui.GetCursorScreenPos(ctx)) <= upperRowY + fontLineHeight then
                         app.temp.lastInvisibleGroup = result.group
                         foundInvisibleGroup = true
                     end
                 end
                 if not foundInvisibleGroup then app.temp.lastInvisibleGroup = nil end
                 ImGui.PushID(ctx, 'result' .. i)
-                ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, app.gui.TEXT_BASE_HEIGHT_LARGE)
+                ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
                 absIndex = absIndex + 1
                 ImGui.TableSetColumnIndex(ctx, 0)
                 if (app.temp.checkScrollDown or app.temp.checkScrollUp) and i == app.temp.highlightedResult then
@@ -1472,7 +1425,7 @@ if OD_PrereqsOK({
 
                 if result.type == ASSETS.TRACK then
                     ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx))
-                    local size = app.gui.TEXT_BASE_HEIGHT_LARGE -
+                    local size = fontLineHeight -
                         select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding)) * 2
                     ImGui.ColorButton(ctx, 'color', result.color,
                         ImGui.ColorEditFlags_NoBorder |
@@ -1481,8 +1434,7 @@ if OD_PrereqsOK({
                 end
 
                 if result.group == FAVORITE_GROUP then
-                    -- app.gui:pushColors(app.gui.st.col.searchWindow.favorite)
-                    ImGui.PushFont(ctx, app.gui.st.fonts.icons_medium)
+                    ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
                     app.gui:pushColors(app.gui.st.col.search.favorite)
                     ImGui.Text(ctx, ICONS.STAR)
                     app.gui:popColors(app.gui.st.col.search.favorite)
@@ -1533,22 +1485,21 @@ if OD_PrereqsOK({
 
                 ImGui.PopID(ctx)
             end
-            if app.temp.checkScrollDown and highlightedY > upperRowY + maxSearchResults * app.gui.TEXT_BASE_HEIGHT_LARGE then
+            if app.temp.checkScrollDown and highlightedY > upperRowY + maxSearchResults * fontLineHeight then
                 ImGui.SetScrollY(ctx,
                     ImGui.GetScrollY(ctx) +
-                    (highlightedY - (upperRowY + (maxSearchResults - 1) * app.gui.TEXT_BASE_HEIGHT_LARGE) - 1))
+                    (highlightedY - (upperRowY + (maxSearchResults - 1) * fontLineHeight) - 1))
                 app.temp.checkScrollDown = false
             end
-            if app.temp.checkScrollUp and highlightedY <= upperRowY + app.gui.TEXT_BASE_HEIGHT_LARGE then
+            if app.temp.checkScrollUp and highlightedY <= upperRowY + fontLineHeight then
                 ImGui.SetScrollY(ctx,
-                    ImGui.GetScrollY(ctx) - (upperRowY - highlightedY + 1) - app.gui.TEXT_BASE_HEIGHT_LARGE - 1)
+                    ImGui.GetScrollY(ctx) - (upperRowY - highlightedY + 1) - fontLineHeight - 1)
                 app.temp.checkScrollUp = false
             end
             ImGui.EndTable(ctx)
         end
         app.gui:popColors(app.gui.st.col.searchWindow)
         app.gui:popStyles(app.gui.st.vars.searchWindow)
-        ImGui.PopFont(ctx)
         if hintResult then
             local action = (hintResult.type == ASSETS.TRACK and 'add a send to track %s' or 'create a new track with FX %s')
                 :format(hintResult.searchText[1].text)
@@ -1572,7 +1523,6 @@ if OD_PrereqsOK({
     end
 
     function app.drawErrorNoTrack()
-        -- OD_ReleaseGlobalKeys()
         local ctx = app.gui.ctx
         app.db:sync()
         local w, h =
@@ -1588,7 +1538,6 @@ if OD_PrereqsOK({
             ImGui.SetCursorPos(ctx, (w - ImGui.CalcTextSize(ctx, text)) / 2,
                 h / 2 + app.gui.TEXT_BASE_HEIGHT * 2)
             ImGui.Text(ctx, text)
-            -- app.gui:popStyles(app.gui.st.vars.bigButton)
             ImGui.EndChild(ctx)
         end
     end
@@ -1621,7 +1570,6 @@ if OD_PrereqsOK({
 
     function app.drawSettings()
         local ctx = app.gui.ctx
-        ImGui.PushFont(ctx, app.gui.st.fonts.default)
         local w = 700 * app.settings.current.uiScale
         -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger
         -- closing this window. So we increment a counter which will be reset if the shortcut is
@@ -1750,7 +1698,6 @@ if OD_PrereqsOK({
             app.db:sync(true)
             app.settings:save()
         end
-        ImGui.PopFont(ctx)
     end
 
     function app.drawTopBar()
@@ -1858,14 +1805,10 @@ if OD_PrereqsOK({
     function app.drawHint(window)
         local ctx = app.gui.ctx
         local status, col = app:getHint(window)
-        -- ImGui.Spacing(ctx)
         ImGui.Separator(ctx)
-        -- ImGui.Spacing(ctx)
         if col then app.gui:pushColors(app.gui.st.col[col]) end
-        ImGui.PushFont(ctx, app.gui.st.fonts.default)
-        ImGui.AlignTextToFramePadding(ctx)
+        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + select(2,ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))*2)
         ImGui.Text(ctx, status)
-        ImGui.PopFont(ctx)
         if col then app.gui:popColors(app.gui.st.col[col]) end
         app:setHint(window, '')
     end
@@ -2000,7 +1943,7 @@ if OD_PrereqsOK({
     end
 
     function app.loop()
-        local change = app.gui:recalculateZoom()
+        local change = app.gui:recalculateZoom(app.settings.current.uiScale)
         if change ~= 1 then
             app.settings.current.lastWindowWidth = app.settings.current.lastWindowWidth * change
             app.settings.current.lastWindowHeight = app.settings.current.lastWindowHeight * change
@@ -2011,11 +1954,12 @@ if OD_PrereqsOK({
         app.db:syncUIVol()
         app.gui:pushColors(app.gui.st.col.main)
         app.gui:pushStyles(app.gui.st.vars.main)
-        ImGui.PushFont(ctx, app.gui.st.fonts.large)
+        ImGui.PushFont(ctx, app.gui.st.fonts.default)
 
         app.handlePageSwitch()
         app.open = app.drawMainWindow()
         ImGui.PopFont(ctx)
+
         app.gui:popColors(app.gui.st.col.main)
         app.gui:popStyles(app.gui.st.vars.main)
         if app.page.giveFocus and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow) and app.focusMainReaperWindow and not (ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) or ImGui.IsAnyMouseDown(ctx) or ImGui.IsAnyItemActive(ctx) or ImGui.IsKeyPressed(ctx, ImGui.Key_Escape)) then
