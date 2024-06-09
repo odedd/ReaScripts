@@ -22,6 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
+--   Fix rescaling issue with some buttons
 --   Scrollbar size fixed
 --   Shift menu sizing fixed
 
@@ -256,7 +257,7 @@ if OD_PrereqsOK({
                 (app.settings.current.sendTypeVisibility[type] and app.db.numSends[type] or 0)
             visibleSendTypes = visibleSendTypes + (app.settings.current.sendTypeVisibility[type] and 1 or 0)
         end
-        local w = (app.settings.current.sendWidth * app.settings.current.uiScale + ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ItemSpacing)) *
+        local w = (math.floor(app.settings.current.sendWidth * app.settings.current.uiScale) + ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ItemSpacing)) *
             visibleSendNum +
             (app.gui.st.sizes.sendTypeSeparatorWidth + ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_ItemSpacing)) *
             visibleSendTypes +
@@ -929,11 +930,11 @@ if OD_PrereqsOK({
                 select(2, ImGui.GetContentRegionAvail(ctx)) - app.gui.TEXT_BASE_HEIGHT_SMALL * 2 -
                 ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 4)
             
-            local w = app.settings.current.sendWidth * app.settings.current.uiScale
+            local w = math.floor(app.settings.current.sendWidth * app.settings.current.uiScale)
             if parts.name then
                 parts = { parts }
             else
-                w = app.settings.current.sendWidth * app.settings.current.uiScale / #parts -
+                w = math.floor(app.settings.current.sendWidth * app.settings.current.uiScale) / #parts -
                     ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) / #
                     parts
             end
@@ -1077,7 +1078,7 @@ if OD_PrereqsOK({
                         local left, top = ImGui.GetCursorScreenPos(ctx)
                         local insertsPadding = app.settings.current.uiScale
                         local fillerW, fillerH = insertsPadding +
-                            (app.settings.current.sendWidth * app.settings.current.uiScale + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))) *
+                            (math.floor(app.settings.current.sendWidth * app.settings.current.uiScale) + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))) *
                             count - select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)), h
                         -- insertsPadding +
                         -- (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2) *
@@ -1096,7 +1097,7 @@ if OD_PrereqsOK({
                             if type == SEND_TYPE.SEND then
                                 drawSend(s, { name = 'inserts' })
                             else
-                                ImGui.Dummy(ctx, app.settings.current.sendWidth * app.settings.current.uiScale, 0)
+                                ImGui.Dummy(ctx, math.floor(app.settings.current.sendWidth * app.settings.current.uiScale), 0)
                             end
                             ImGui.EndGroup(ctx)
                             ImGui.SameLine(ctx)
