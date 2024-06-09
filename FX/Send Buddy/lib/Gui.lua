@@ -8,7 +8,20 @@ SM_Gui = OD_Gui:new({
 
 SM_Gui.init = function(self, fonts)
     OD_Gui.addFont(self, 'vertical', 'Resources/Fonts/Cousine-90deg.otf', 11)
-    OD_Gui.init(self, true)
+
+    local small = 16
+    local default = 18
+    local large = 22
+    self:createFonts({
+        default = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = default },
+        small = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = small },
+        large = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = large },
+        large_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = large },
+        icons_small = { file = 'Resources/Fonts/Icons-Regular.otf', size = small },
+        icons_large = { file = 'Resources/Fonts/Icons-Regular.otf', size = large }
+    })
+
+    OD_Gui.init(self, false)
 
     self.st.basecolors = {
         darkestBG = 0x131313ff,
@@ -387,7 +400,7 @@ SM_Gui.init = function(self, fonts)
         }
     end
 
-    self.updateTextHeightsToScale = function(self)
+    self.updateCachedTextHeightsToScale = function(self)
         ImGui.PushFont(self.ctx, self.st.fonts.vertical)
         self.VERTICAL_TEXT_BASE_WIDTH, self.VERTICAL_TEXT_BASE_HEIGHT = ImGui.CalcTextSize(self.ctx, 'A')
         self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET = -2
@@ -407,21 +420,17 @@ SM_Gui.init = function(self, fonts)
         }
         ImGui.PopFont(self.ctx)
     end
-    self.recalculateZoom = function(self)
-        if self.scale ~= self.app.settings.current.uiScale then
-            local change = self.app.settings.current.uiScale / (self.scale or self.app.settings.current.uiScale)
-            self.scale = self.app.settings.current.uiScale
+    self.recalculateZoom = function(self, scale)
+        if self.scale ~= scale then
+            local change = scale / (self.scale or scale) -- return change to allow for scaling of other elements (eg. Resize window)
+            self.scale = scale
 
-            for key, font in pairs(self.originalFonts) do
-                r.ImGui_Detach(self.ctx, self.st.fonts[key])
-                self:addFont(key, font.file, font.size)
-                r.ImGui_Attach(self.ctx, self.st.fonts[key])
-            end
-            self:updateTextHeightsToScale()
+            self:reAddFonts()
+
             self:updateVarsToScale()
             self:pushStyles(self.st.vars.main)
-            OD_Gui.recalculateZoom(self)
-            self:updateTextHeightsToScale()
+            OD_Gui.recalculateZoom(self, scale)
+            self:updateCachedTextHeightsToScale()
             self:updateSizesToScale()
             self:popStyles(self.st.vars.main)
             return change
@@ -429,7 +438,7 @@ SM_Gui.init = function(self, fonts)
         return 1
     end
 
-    self:recalculateZoom()
+    self:recalculateZoom(self.app.settings.current.uiScale)
 
 
     self.drawSadFace = function(self, sizeFactor, color)
@@ -442,12 +451,15 @@ SM_Gui.init = function(self, fonts)
         ImGui.DrawList_AddLine(self.draw_list, x + sz / 2, y + sz / 10, x - sz / 2, y + sz / 2.5, 0x000000ff, sz / 9)
     end
 
-    self.drawVerticalText = function(self, drawList, text, x, y, color, yIsTop)
+    self.drawVerticalText = function(self, drawList, text, x, y, color, yIsTop, xIsRight)
         local color = color or 0xffffffff
         ImGui.PushFont(self.ctx, self.st.fonts.vertical)
         local letterspacing = (self.VERTICAL_TEXT_BASE_HEIGHT + self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET)
         if yIsTop then
             y = y + letterspacing * #text
+        end
+        if xIsRight then
+            x = x - self.VERTICAL_TEXT_BASE_WIDTH
         end
         local posX, posY = (x or select(1, ImGui.GetCursorScreenPos(self.ctx))),
             (y or select(2, ImGui.GetCursorScreenPos(self.ctx))) - letterspacing * #text

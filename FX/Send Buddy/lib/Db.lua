@@ -474,9 +474,12 @@ DB = {
 
                     send.app = self.app
                     send.calculateShortName = function(self)
+                        ImGui.PushFont(self.app.gui.ctx, self.app.gui.st.fonts.small)
+
                         self.shortName = self.app.minimizeText(send.name,
-                            self.app.settings.current.sendWidth * self.app.gui.scale -
-                            r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding()))
+                            math.floor(self.app.settings.current.sendWidth * self.app.settings.current.uiScale) -
+                            r.ImGui_GetStyleVar(self.app.gui.ctx, r.ImGui_StyleVar_FramePadding())*4)
+                        ImGui.PopFont(self.app.gui.ctx)
                     end
                     if send.type == SEND_TYPE.HW then send.name = send:_getChannelAlias() end
                     send:_refreshVolAndPan()
@@ -835,10 +838,12 @@ DB.getTracks = function(self)
                         shortName = fxName,
                         shortened = false,
                         calculateShortName = function(self)
+                            ImGui.PushFont(self.db.app.gui.ctx, self.db.app.gui.st.fonts.small)
                             self.shortName, self.shortened = self.db.app.minimizeText(
                                 self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''):gsub("^%s+", ''):gsub("%s+$", ''),
-                                self.db.app.settings.current.sendWidth * self.db.app.gui.scale -
-                                r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) )
+                                math.floor(self.db.app.settings.current.sendWidth * self.db.app.settings.current.uiScale) -
+                                r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding())*4)
+                            ImGui.PopFont(self.db.app.gui.ctx)
                         end,
                         offline = offline,
                         enabled = enabled,
