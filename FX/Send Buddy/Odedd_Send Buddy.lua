@@ -23,6 +23,7 @@
 --   [nomain] lib/**
 -- @changelog
 --   Scrollbar size fixed
+--   Shift menu sizing fixed
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -326,7 +327,8 @@ if OD_PrereqsOK({
             end
             local drawEnvMuteButton = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.mute[false])
-                if ImGui.Button(ctx, 'MUTE\nENV##mEnvelope' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL * 2.5 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)) * 2.5) then
+                local h = 5 * (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2) / 2  - select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
+                if ImGui.Button(ctx, 'MUTE\nENV##mEnvelope' .. s.order, w, h) then
                     s:toggleMuteEnv()
                 end
                 app:setHoveredHint('main',
@@ -335,7 +337,8 @@ if OD_PrereqsOK({
             end
             local drawEnvPanButton = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.route)
-                if ImGui.Button(ctx, 'PAN\nENV##pEnvelope' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL * 2.5 + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)) * 2.5) then
+                local h = 5 * (app.gui.TEXT_BASE_HEIGHT_SMALL + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2) / 2  - select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
+                if ImGui.Button(ctx, 'PAN\nENV##pEnvelope' .. s.order, w, h) then
                     s:togglePanEnv()
                 end
                 app:setHoveredHint('main',
