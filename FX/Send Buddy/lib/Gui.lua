@@ -408,12 +408,25 @@ SM_Gui.init = function(self, fonts)
         ImGui.PopFont(self.ctx)
     end
     self.recalculateZoom = function(self)
-        self:updateVarsToScale()
-        self:pushStyles(self.st.vars.main)
-        OD_Gui.recalculateZoom(self)
-        self:updateTextHeightsToScale()
-        self:updateSizesToScale()
-        self:popStyles(self.st.vars.main)
+        if self.scale ~= self.app.settings.current.uiScale then
+            local change = self.app.settings.current.uiScale / (self.scale or self.app.settings.current.uiScale)
+            self.scale = self.app.settings.current.uiScale
+
+            for key, font in pairs(self.originalFonts) do
+                r.ImGui_Detach(self.ctx, self.st.fonts[key])
+                self:addFont(key, font.file, font.size)
+                r.ImGui_Attach(self.ctx, self.st.fonts[key])
+            end
+            self:updateTextHeightsToScale()
+            self:updateVarsToScale()
+            self:pushStyles(self.st.vars.main)
+            OD_Gui.recalculateZoom(self)
+            self:updateTextHeightsToScale()
+            self:updateSizesToScale()
+            self:popStyles(self.st.vars.main)
+            return change
+        end
+        return 1
     end
 
     self:recalculateZoom()
@@ -421,8 +434,8 @@ SM_Gui.init = function(self, fonts)
 
     self.drawSadFace = function(self, sizeFactor, color)
         local x, y = ImGui.GetCursorScreenPos(self.ctx)
-        -- local sz = self.TEXT_BASE_WIDTH * sizeFactor
-        local sz = 20 * sizeFactor * self.app.settings.current.uiScale
+        local sz = self.TEXT_BASE_WIDTH * sizeFactor
+        -- local sz = 20 * sizeFactor * self.app.settings.current.uiScale
         ImGui.DrawList_AddCircleFilled(self.draw_list, x, y, sz, color, 36)
         ImGui.DrawList_AddCircleFilled(self.draw_list, x - sz / 3.5, y - sz / 5, sz / 9, 0x000000ff, 36)
         ImGui.DrawList_AddCircleFilled(self.draw_list, x + sz / 3.5, y - sz / 5, sz / 9, 0x000000ff, 36)
@@ -476,7 +489,7 @@ SM_Gui.init = function(self, fonts)
         else
             ImGui.SameLine(ctx)
             widgetWidth = itemWidth - ImGui.GetTextLineHeight(ctx) -
-            ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2
+                ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2
         end
         ImGui.PushItemWidth(ctx, widgetWidth)
 
@@ -487,8 +500,11 @@ SM_Gui.init = function(self, fonts)
         elseif stType == 'dragint' then
             _, retval1 = ImGui.DragInt(ctx, '##' .. text, val, data.step, data.min, data.max)
         elseif stType == 'dragdouble' then
-            _, retval1 = ImGui.DragDouble(ctx, '##' .. text, val, data.speed, data.min, data.max, data.format)
-            -- format: = "%.3f"
+            _, retval1 = ImGui.DragDouble(ctx, '##' .. text, val, data.speed, data.min, data.max, data.format,data.flags or 0)
+            if ImGui.IsMouseDoubleClicked(ctx, 0) then
+                retval1 = data.default
+            end
+        
         elseif stType == 'button' then
             retval1 = ImGui.Button(ctx, data.label, widgetWidth)
         elseif stType == 'file' then

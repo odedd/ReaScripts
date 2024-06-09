@@ -13,7 +13,6 @@ OD_Gui = {
             hint = 0xCCCCCCFF,
         }
     },
-    scale = 1,
     reaperHWND = reaper.GetMainHwnd()
 }
 
@@ -87,8 +86,6 @@ function OD_Gui:init(addDefaultFonts)
     r.ImGui_Attach(self.ctx, self.icons.caution)
     r.ImGui_Attach(self.ctx, self.icons.error)
 
-    self:recalculateZoom()
-
 end
 
 OD_Gui.recalculateZoom = function(self)
@@ -98,7 +95,7 @@ end
 OD_Gui.reloadZoomFonts = function(self) -- FIND A SMART WAY TO USE THIS
     for key, font in pairs(self.originalFonts) do
         r.ImGui_Detach(self.ctx, self.st.fonts[key])
-        self:addFont(key, font.file, font.size)
+        self:addFont(key, font.file, font.size, true)
         r.ImGui_Attach(self.ctx, self.st.fonts[key])
     end
     self:updateTextHeightsToScale()

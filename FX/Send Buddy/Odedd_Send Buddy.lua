@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.0.16
+-- @version 1.1.0
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Partly rollback to 1.0.14
+--   UI is now scalable.
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -192,10 +192,10 @@ if OD_PrereqsOK({
                 width, minHeight, app.gui.mainWindow.mixerInsertsH, app.gui.mainWindow.debugOverLay = app.calculateMixerWindowSize()
                 app.gui.mainWindow.mixerW = width
             end
-            app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.page.width,
-                (minHeight or app.page.minHeight or 0) or 0
-            ImGui.SetNextWindowSize(app.gui.ctx, math.max(app.settings.current.lastWindowWidth or 0, app.page.width),
-                math.max(app.settings.current.lastWindowHeight or 0, app.page.height or 0))
+            app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.page.width * app.settings.current.uiScale,
+                ((minHeight or app.page.minHeight or 0) or 0) 
+            ImGui.SetNextWindowSize(app.gui.ctx, math.max(app.settings.current.lastWindowWidth or 0, app.page.width * app.settings.current.uiScale),
+                math.max(app.settings.current.lastWindowHeight or 0, (app.page.height or 0) * app.settings.current.uiScale ))
             app.refreshWindowSizeOnNextFrame = false
         end
     end
@@ -1621,6 +1621,8 @@ if OD_PrereqsOK({
             app.temp.settingsWindowOpen = true
             app.settings.current.settingsWindowPos = { ImGui.GetWindowPos(ctx) }
             ImGui.SeparatorText(ctx, 'General')
+            app.settings.current.uiScale = app.gui:setting('dragdouble', T.SETTINGS.UI_SCALE.LABEL, T.SETTINGS.UI_SCALE.HINT,
+                app.settings.current.uiScale*100, {default = app.settings.default.uiScale*100 ,min = 50, max = 200, speed = 1, format = '%.f%%', flags = (ImGui.SliderFlags_AlwaysClamp | ImGui.SliderFlags_NoInput)})/100
             app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
                 .LABEL, T.SETTINGS.FOLLOW_SELECTED_TRACK.HINT, app.settings.current.followSelectedTrack)
             app.settings.current.mouseScrollReversed = app.gui:setting('checkbox', T.SETTINGS.MW_REVERSED.LABEL,
@@ -1973,6 +1975,12 @@ if OD_PrereqsOK({
     end
 
     function app.loop()
+        local change = app.gui:recalculateZoom()
+        if change ~= 1 then
+            app.settings.current.lastWindowWidth = app.settings.current.lastWindowWidth * change
+            app.settings.current.lastWindowHeight = app.settings.current.lastWindowHeight * change
+            app.refreshWindowSizeOnNextFrame = true
+        end
         app:checkProjectChange()
         local ctx = app.gui.ctx
         app.db:syncUIVol()
