@@ -1,3 +1,5 @@
+-- @noindex
+
 _OD_KEYS = {}
 _OD_INTERCEPTED_KEYS = {}
 _OD_KEYS_CUTOFF = -2
