@@ -671,6 +671,7 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
             reaper.GetSetMediaTrackInfo_String(newTrack, "P_NAME", trackName, true)
             local rv = reaper.CreateTrackSend(self.track.object, newTrack)
             self:getTracks()
+            r.SetOnlyTrackSelected( self.track.object )
             self:sync(true)
             for _, send in ipairs(self.sends) do
                 if send.destTrack ~= nil and (send.destTrack.object == newTrack) then

@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Many layout tweaks and fixes
+--   Maintain currently selected track when adding a send to a folder track whose index is lower than the selected track's index
 
 ---------------------------------------
 -- SETUP ------------------------------
