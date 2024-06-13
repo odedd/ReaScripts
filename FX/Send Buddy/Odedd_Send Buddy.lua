@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.1.5
+-- @version 1.1.6
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Many layout tweaks and fixes
+--   Maintain currently selected track when adding a send to a folder track whose index is lower than the selected track's index
 
 ---------------------------------------
 -- SETUP ------------------------------
