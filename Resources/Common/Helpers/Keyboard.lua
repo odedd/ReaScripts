@@ -335,7 +335,7 @@ OD_IsGlobalKeyPressed = function(key, intercept, override_cutoff)
     _OD_INTERCEPTED_KEYS[key] = true
     r.JS_VKeys_Intercept(key, 1)
   end
-  if r.JS_VKeys_GetState(_OD_KEYS_CUTOFF):byte(key) ~= 0 then
+  if r.JS_VKeys_GetState(override_cutoff or _OD_KEYS_CUTOFF):byte(key) ~= 0 then
     if _OD_KEYS[key] == nil then -- make sure key went from not pressed to pressed
       _OD_KEYS[key] = true
       return true
@@ -353,7 +353,7 @@ OD_GetKeyPressed = function(from, to, intercept, override_cutoff)
   to = to or 255
   for i = from, to do
     if OD_KEYCODE_NAMES[i] ~= nil then
-      if OD_IsGlobalKeyDown(i, intercept, override_cutoff) then
+      if OD_IsGlobalKeyPressed(i, intercept, override_cutoff) then
         return i
       end
     end
