@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="a9ad04b84d47327318e22443ffbfbb533bde6386">
+<index version="1" name="Odedd ReaScripts" commit="91e74352c73d7ea22e83f944b4421d7e4b967368">
   <category name="FX/Send Buddy">
     <reapack name="Odedd_Send Buddy.lua" type="script" desc="Send Buddy">
       <metadata>
@@ -1006,6 +1006,17 @@ Shift menu sizing fixed]]></changelog>
         <source file="lib/Settings.lua">https://github.com/odedd/ReaScripts/raw/f9db42cdb9aef0938a0e83d5d78902cbfab5e992/FX/Send%20Buddy/lib/Settings.lua</source>
         <source file="lib/Texts.lua">https://github.com/odedd/ReaScripts/raw/f9db42cdb9aef0938a0e83d5d78902cbfab5e992/FX/Send%20Buddy/lib/Texts.lua</source>
         <source file="lib/Todos.lua">https://github.com/odedd/ReaScripts/raw/f9db42cdb9aef0938a0e83d5d78902cbfab5e992/FX/Send%20Buddy/lib/Todos.lua</source>
+      </version>
+    </reapack>
+  </category>
+  <category name="Private">
+    <reapack name="Odedd_set stereo width of selected tracks to 0.lua" type="script" desc="Set stereo width of selected tracks to 0">
+      <metadata>
+        <link rel="website">http://forum.cockos.com/showthread.php?t=189761</link>
+        <link rel="donation">https://www.paypal.me/cfillion</link>
+      </metadata>
+      <version name="1.0" author="odedd" time="2024-06-19T15:45:14Z">
+        <source main="main">https://github.com/odedd/ReaScripts/raw/44252f136004da5c419d07ef8fedc7d828958bb9/Private/Odedd_set%20stereo%20width%20of%20selected%20tracks%20to%200.lua</source>
       </version>
     </reapack>
   </category>
