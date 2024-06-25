@@ -1,6 +1,6 @@
 -- @description Pro tools style marker navigation
 -- @author Oded Davidov
--- @version 1.0.3
+-- @version 1.0.4
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -26,7 +26,7 @@
 --   [nomain] ../Resources/Fonts/* > Resources/Fonts/
 --   [nomain] ../Resources/Icons/* > Resources/Icons/
 -- @changelog
---   Number keys pressed before script is launched are no longer captured
+--   Proper undo points
 
 r = reaper
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
@@ -198,10 +198,12 @@ if OD_PrereqsOK({
         for i = 0, r.CountProjectMarkers(0) - 1 do
             local _, isrgn, pos, rgnend, name, idx, color = r.EnumProjectMarkers3(0, i)
             if (createRegion and isrgn and start == pos and finish == rgnend) or (createRegion == false and isrgn == false and pos == cursorPos) then
+                r.Undo_BeginBlock()
                 r.SetProjectMarkerByIndex(0, i, isrgn, pos, rgnend, numMarkerCode, name, color)
                 if createRegion then r.SetEditCurPos(start, false, false) end
                 r.Main_OnCommand(createRegion and 40616 or 40614, 0)
                 if createRegion then r.SetEditCurPos(cursorPos, false, false) end
+                r.Undo_EndBlock('Edit ' .. (createRegion and 'region' or 'marker') .. ' with id #' .. numMarkerCode, 8)
                 return false
             elseif createRegion and idx == numMarkerCode and isrgn == true then -- if creating a region and a region with the same number already exists, display message
                 r.ShowMessageBox('Region with the same number already exists', Scr.name, 0)
@@ -210,18 +212,24 @@ if OD_PrereqsOK({
         end
 
         if createRegion then
+            r.Undo_BeginBlock()
+
             r.AddProjectMarker(0, true, start, finish, '', numMarkerCode)
             if (editAfterAdding and not toggleEditingBehavior) or (editAfterAdding == false and toggleEditingBehavior) then
                 r.SetEditCurPos(start, false, false)
                 r.Main_OnCommand(40616, 0)
                 r.SetEditCurPos(cursorPos, false, false)
             end
+            r.Undo_EndBlock('Create region with id #' .. numMarkerCode, 8)
         else
+            r.Undo_BeginBlock()
+
             r.AddProjectMarker(0, false, cursorPos, 0, '', numMarkerCode)
             if (editAfterAdding and not toggleEditingBehavior) or (editAfterAdding == false and toggleEditingBehavior) then
                 r.SetEditCurPos(cursorPos, false, false)
                 r.Main_OnCommand(40614, 0)
             end
+            r.Undo_EndBlock('Create marker with id #' .. numMarkerCode, 8)
         end
     end
 
