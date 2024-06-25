@@ -1,6 +1,6 @@
 -- @description Pro tools style marker navigation
 -- @author Oded Davidov
--- @version 1.0.1
+-- @version 1.0.2
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
