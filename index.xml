@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="d7fd879dad0336abf20b1fa8035745f6d05e73b4">
+<index version="1" name="Odedd ReaScripts" commit="7f37a9dbaa805027682003f03d77a35e3c5189d1">
   <category name="FX/Send Buddy">
     <reapack name="Odedd_Send Buddy.lua" type="script" desc="Send Buddy">
       <metadata>
