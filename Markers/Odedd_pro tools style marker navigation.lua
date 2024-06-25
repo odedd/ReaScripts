@@ -1,6 +1,6 @@
 -- @description Pro tools style marker navigation
 -- @author Oded Davidov
--- @version 1.0.2
+-- @version 1.0.3
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -26,7 +26,7 @@
 --   [nomain] ../Resources/Fonts/* > Resources/Fonts/
 --   [nomain] ../Resources/Icons/* > Resources/Icons/
 -- @changelog
---   Initial release
+--   Number keys pressed before script is launched are no longer captured
 
 r = reaper
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
@@ -230,8 +230,8 @@ if OD_PrereqsOK({
         local timeFromLastKey = time - lastKeyTime
         local timeFromStart = time - startTime
 
-        local key = OD_GetKeyPressed(OD_KEYCODES['0'], OD_KEYCODES['9'], true, 0)
-        key = key or OD_GetKeyPressed(OD_KEYCODES.NUMPAD0, OD_KEYCODES.NUMPAD9, true, 0)
+        local key = OD_GetKeyPressed(OD_KEYCODES['0'], OD_KEYCODES['9'], true, -timeFromStart)
+        key = key or OD_GetKeyPressed(OD_KEYCODES.NUMPAD0, OD_KEYCODES.NUMPAD9, true, -timeFromStart)
 
         if key then
             if debugMode then
@@ -249,13 +249,13 @@ if OD_PrereqsOK({
             end
             local numMarkerCode = tonumber(markerCode) or -1
             if numMarkerCode == -1 then return false end
-            local forward = not OD_IsGlobalKeyDown(prevModifier, false, startTime - r.time_precise())
+            local forward = not OD_IsGlobalKeyDown(prevModifier, false, -timeFromStart)
             seekMarkerOrRegion(numMarkerCode, forward)
         elseif OD_IsGlobalKeyPressed(OD_KEYCODES.ENTER, true, -keyStateCutoff) then
             local numMarkerCode = tonumber(markerCode) or -1
             if numMarkerCode == -1 then return false end
-            local createRegion = OD_IsGlobalKeyDown(regionModifier, false, startTime - r.time_precise())
-            local toggleEditingBehavior = OD_IsGlobalKeyDown(editModifier, false, startTime - r.time_precise())
+            local createRegion = OD_IsGlobalKeyDown(regionModifier, false, -timeFromStart)
+            local toggleEditingBehavior = OD_IsGlobalKeyDown(editModifier, false, -timeFromStart)
             if debugMode then
                 r.ShowConsoleMsg('Pressed Enter\n')
                 r.ShowConsoleMsg('createRegion: ' .. tostring(createRegion) .. '\n')
