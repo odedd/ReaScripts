@@ -1,3 +1,4 @@
+-- @noindex
 -- @description Set stereo width of selected tracks to 0
 -- @version 1.0
 -- @author odedd
