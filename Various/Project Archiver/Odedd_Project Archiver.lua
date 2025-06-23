@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.8.1
+-- @version 0.8.2
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -61,11 +61,15 @@ if OD_PrereqsOK({
         output = OD_Logger.LOG_OUTPUT.FILE
     })
 
-    app:connect('gui', Gui)
+    local gui = PA_Gui:new({})
+
+    app:connect('gui', gui)
     app:connect('op', Op)
+    Op.app=app
     app:connect('logger', logger)
     app:init()
     logger:init()
+    app.gui:init();
 
     function app:checkProjectChange(force)
         if force or OD_DidProjectGUIDChange() then
@@ -77,7 +81,7 @@ if OD_PrereqsOK({
 
     local settings = PA_Settings.current
 
-    Gui.tables = {
+    app.gui.tables = {
         horizontal = {
             flags1 = r.ImGui_TableFlags_NoSavedSettings() | r.ImGui_TableFlags_ScrollX() | r.ImGui_TableFlags_ScrollY() |
                 r.ImGui_TableFlags_BordersOuter() | r.ImGui_TableFlags_Borders() | r.ImGui_TableFlags_Resizable() |
@@ -85,12 +89,12 @@ if OD_PrereqsOK({
         }
     }
 
-    Gui.st.col.item = 0x333333ff;
-    Gui.st.col.item_keep = 0x2a783fff;
-    Gui.st.col.item_delete = 0x852f29ff;
-    Gui.st.col.item_ignore = 0x852f29ff;
+    app.gui.st.col.item = 0x333333ff;
+    app.gui.st.col.item_keep = 0x2a783fff;
+    app.gui.st.col.item_delete = 0x852f29ff;
+    app.gui.st.col.item_ignore = 0x852f29ff;
 
-    Gui.st.col.status = {
+    app.gui.st.col.status = {
         [STATUS.IGNORE] = 0x333333ff,
         [STATUS.SCANNED] = nil,
         [STATUS.MINIMIZING] = 0x703d19ff,
@@ -231,7 +235,7 @@ if OD_PrereqsOK({
     ---------------------------------------
 
     function app.drawPerform(open)
-        local ctx = Gui.ctx
+        local ctx = app.gui.ctx
         local bottom_lines = 2
         local overview_width = 200
         local line_height = r.ImGui_GetTextLineHeight(ctx)
@@ -241,7 +245,7 @@ if OD_PrereqsOK({
                 (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines +
                     r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2)
             if r.ImGui_BeginChild(ctx, 'mediaFiles', 0, childHeight) then
-                if r.ImGui_BeginTable(ctx, 'table_scrollx', 10, Gui.tables.horizontal.flags1) then
+                if r.ImGui_BeginTable(ctx, 'table_scrollx', 10, app.gui.tables.horizontal.flags1) then
                     local parent_open, depth, open_depth = true, 0, 0
                     r.ImGui_TableSetupColumn(ctx, 'File', r.ImGui_TableColumnFlags_NoHide(), 250) -- Make the first column not hideable to match our use of TableSetupScrollFreeze()
                     r.ImGui_TableSetupColumn(ctx, 'Type', r.ImGui_TableColumnFlags_NoHide(), 50)  -- Make the first column not hideable to match our use of TableSetupScrollFreeze()
@@ -276,15 +280,15 @@ if OD_PrereqsOK({
                             curScrPos[2] = curScrPos[2] + 1
 
                             overview_width = r.ImGui_GetContentRegionAvail(ctx)
-                            r.ImGui_DrawList_AddRectFilled(Gui.draw_list, curScrPos[1], curScrPos[2],
+                            r.ImGui_DrawList_AddRectFilled(app.gui.draw_list, curScrPos[1], curScrPos[2],
                                 curScrPos[1] + overview_width, curScrPos[2] + line_height - 1, (fileInfo.status >=
-                                    STATUS.MINIMIZED or #(fileInfo.sections or {}) > 0) and Gui.st.col.item_keep or
-                                Gui.st.col.item)
+                                    STATUS.MINIMIZED or #(fileInfo.sections or {}) > 0) and app.gui.st.col.item_keep or
+                                app.gui.st.col.item)
 
                             for i, sect in OD_PairsByOrder(fileInfo.sections or {}) do
-                                r.ImGui_DrawList_AddRectFilled(Gui.draw_list, curScrPos[1] + overview_width * sect.from,
+                                r.ImGui_DrawList_AddRectFilled(app.gui.draw_list, curScrPos[1] + overview_width * sect.from,
                                     curScrPos[2], curScrPos[1] + overview_width * sect.to, curScrPos[2] + line_height - 1,
-                                    Gui.st.col.item_delete)
+                                    app.gui.st.col.item_delete)
                             end
                             -- r.ImGui_ProgressBar(ctx, 0,nil, nil,string.format("%.2f", fileInfo.srclen))
                             r.ImGui_TableNextColumn(ctx) -- orig. size
@@ -301,9 +305,9 @@ if OD_PrereqsOK({
                                         (fileInfo.newFileSize / fileInfo.sourceFileSize * 100)))
                             end
                             r.ImGui_TableNextColumn(ctx) -- status
-                            if Gui.st.col.status[fileInfo.status] then
+                            if app.gui.st.col.status[fileInfo.status] then
                                 r.ImGui_TableSetBgColor(ctx, r.ImGui_TableBgTarget_CellBg(),
-                                    Gui.st.col.status[fileInfo.status])
+                                    app.gui.st.col.status[fileInfo.status])
                             end
                             r.ImGui_Text(ctx, STATUS_DESCRIPTIONS[fileInfo.status] ..
                                 (fileInfo.status_info ~= '' and (' (%s)'):format(fileInfo.status_info) or ''))
@@ -320,9 +324,9 @@ if OD_PrereqsOK({
     end
 
     function app.drawWarning()
-        local ctx = Gui.ctx
-        local center = { Gui.mainWindow.pos[1] + Gui.mainWindow.size[1] / 2,
-            Gui.mainWindow.pos[2] + Gui.mainWindow.size[2] / 2 } -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
+        local ctx = app.gui.ctx
+        local center = { app.gui.mainWindow.pos[1] + app.gui.mainWindow.size[1] / 2,
+            app.gui.mainWindow.pos[2] + app.gui.mainWindow.size[2] / 2 } -- {r.ImGui_Viewport_GetCenter(r.ImGui_GetMainViewport(ctx))}
         local okButtonLabel = app.popup.secondWarningShown and 'Come on already let\'s do it!' or 'I do'
         local cancelButtonLabel = 'Nope'
         local okPressed = false
@@ -428,7 +432,7 @@ if OD_PrereqsOK({
             (r.ImGui_GetFrameHeightWithSpacing(ctx) * bottom_lines +
                 r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemSpacing()) * 2))
         local status, col = app:getStatus('main')
-        if col then r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col[col]) end
+        if col then r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), app.gui.st.col[col]) end
         r.ImGui_Spacing(ctx)
         r.ImGui_Text(ctx, status)
         app:setHint('main', '')
@@ -471,7 +475,7 @@ if OD_PrereqsOK({
     end
 
     function app.drawMainWindow()
-        local ctx = Gui.ctx
+        local ctx = app.gui.ctx
         local max_w, max_h = r.ImGui_Viewport_GetSize(r.ImGui_GetMainViewport(ctx))
         app.warningCount = 0
 
@@ -481,7 +485,7 @@ if OD_PrereqsOK({
             Scr.name .. ' v' .. Scr.version .. " by " .. Scr.developer .. "##mainWindow",
             not app.coPerform,
             r.ImGui_WindowFlags_NoDocking() | r.ImGui_WindowFlags_NoCollapse() | r.ImGui_WindowFlags_MenuBar())
-        Gui.mainWindow = {
+        app.gui.mainWindow = {
             pos = { r.ImGui_GetWindowPos(ctx) },
             size = { r.ImGui_GetWindowSize(ctx) }
         }
@@ -527,13 +531,13 @@ if OD_PrereqsOK({
             r.ImGui_SeparatorText(ctx, 'Settings')
 
             r.ImGui_Bullet(ctx)
-            settings.backup = Gui.setting(
+            settings.backup = app.gui.setting(
                 'checkbox',
                 T.SETTINGS.BACKUP.LABEL,
                 T.SETTINGS.BACKUP.HINT,
                 settings.backup)
             if settings.backup then
-                settings.backupDestination = Gui.setting(
+                settings.backupDestination = app.gui.setting(
                     'folder',
                     T.SETTINGS.BACKUP_DESTINATION.LABEL,
                     T.SETTINGS.BACKUP_DESTINATION.HINT,
@@ -543,19 +547,19 @@ if OD_PrereqsOK({
             end
 
             r.ImGui_Bullet(ctx)
-            settings.keepActiveTakesOnly = Gui.setting(
+            settings.keepActiveTakesOnly = app.gui.setting(
                 'checkbox',
                 T.SETTINGS.KEEP_ACTIVE_TAKES_ONLY.LABEL,
                 T.SETTINGS.KEEP_ACTIVE_TAKES_ONLY.HINT,
                 settings.keepActiveTakesOnly)
 
             if settings.minimize and not settings.backup then
-                Gui.settingIcon(Gui.icons.caution, T.CAUTION_MINIMIZE)
+                app.gui.settingIcon(app.gui.icons.caution, T.CAUTION_MINIMIZE)
                 app.warningCount = app.warningCount + 1
             else
                 r.ImGui_Bullet(ctx)
             end
-            settings.minimize = Gui.setting(
+            settings.minimize = app.gui.setting(
                 'checkbox',
                 T.SETTINGS.MINIMIZE.LABEL,
                 T.SETTINGS.MINIMIZE.HINT,
@@ -563,7 +567,7 @@ if OD_PrereqsOK({
 
             r.ImGui_Indent(ctx)
             if not settings.minimize then r.ImGui_BeginDisabled(ctx) end
-            settings.padding = Gui.setting(
+            settings.padding = app.gui.setting(
                 'dragdouble',
                 T.SETTINGS.PADDING.LABEL,
                 T.SETTINGS.PADDING.HINT,
@@ -575,7 +579,7 @@ if OD_PrereqsOK({
                 })
             if settings.padding < 0 then settings.padding = 0 end
 
-            settings.minimizeSourceTypes = Gui.setting(
+            settings.minimizeSourceTypes = app.gui.setting(
                 'combo',
                 T.SETTINGS.MINIMIZE_SOURCE_TYPES.LABEL,
                 T.SETTINGS.MINIMIZE_SOURCE_TYPES.HINT,
@@ -583,7 +587,7 @@ if OD_PrereqsOK({
                     list = MINIMIZE_SOURCE_TYPES_LIST
                 })
 
-            settings.glueFormat = Gui.setting(
+            settings.glueFormat = app.gui.setting(
                 'combo',
                 T.SETTINGS.GLUE_FORMAT.LABEL,
                 T.SETTINGS.GLUE_FORMAT.HINT,
@@ -594,12 +598,12 @@ if OD_PrereqsOK({
             r.ImGui_Unindent(ctx)
             if settings.backup or settings.collect ~= 0 then
                 if settings.collectOperation == COLLECT_OPERATION.MOVE then
-                    Gui.settingIcon(Gui.icons.caution, T.CAUTION_COLLECT_MOVE)
+                    app.gui.settingIcon(app.gui.icons.caution, T.CAUTION_COLLECT_MOVE)
                     app.warningCount = app.warningCount + 1
                 else
                     r.ImGui_Bullet(ctx)
                 end
-                settings.collectOperation = Gui.setting(
+                settings.collectOperation = app.gui.setting(
                     'combo',
                     T.SETTINGS.COLLECT_OPERATION.LABEL,
                     T.SETTINGS.COLLECT_OPERATION.HINT,
@@ -627,7 +631,7 @@ if OD_PrereqsOK({
                     settings.collect = OD_BfSet(settings.collect, COLLECT.EXTERNAL, app.temp.originalBackupValue)
                     app.temp.originalBackupValue = nil
                 end
-                local op = Gui.setting('checkbox', option.LABEL, option.HINT,
+                local op = app.gui.setting('checkbox', option.LABEL, option.HINT,
                     (settings.backup and bwVal == COLLECT.EXTERNAL) and true or OD_BfCheck(settings.collect, bwVal))
                 settings.collect = OD_BfSet(settings.collect, bwVal, op)
                 if settings.backup and bwVal == COLLECT.EXTERNAL then
@@ -637,7 +641,7 @@ if OD_PrereqsOK({
                     r.ImGui_EndDisabled(ctx)
                 end
                 if OD_BfCheck(settings.collect, bwVal) then
-                    settings.targetPaths[option.targetPath] = OD_Trim(Gui.setting('text_with_hint',
+                    settings.targetPaths[option.targetPath] = OD_Trim(app.gui.setting('text_with_hint',
                         option.LABEL .. ' path',
                         option.TEXT_HELP, settings.targetPaths[option.targetPath], { hint = option.TEXT_HINT }, true))
                     if settings.targetPaths[option.targetPath] == '' then settings.targetPaths[option.targetPath] = nil end
@@ -648,12 +652,12 @@ if OD_PrereqsOK({
 
 
             if settings.freezeHandling == FREEZE_HANDLING.REMOVE then
-                Gui.settingIcon(Gui.icons.caution, T.CAUTION_FREEZE_REMOVE)
+                app.gui.settingIcon(app.gui.icons.caution, T.CAUTION_FREEZE_REMOVE)
                 app.warningCount = app.warningCount + 1
             else
                 r.ImGui_Bullet(ctx)
             end
-            settings.freezeHandling = Gui.setting(
+            settings.freezeHandling = app.gui.setting(
                 'combo',
                 T.SETTINGS.FREEZE_HANDLING.LABEL,
                 T.SETTINGS.FREEZE_HANDLING.HINT,
@@ -663,30 +667,30 @@ if OD_PrereqsOK({
 
             if not settings.backup then
                 if settings.cleanMediaFolder then
-                    Gui.settingIcon(Gui.icons.caution, T.CAUTION_CLEAN_MEDIA_FOLDER)
+                    app.gui.settingIcon(app.gui.icons.caution, T.CAUTION_CLEAN_MEDIA_FOLDER)
                     app.warningCount = app.warningCount + 1
                 else
                     r.ImGui_Bullet(ctx)
                 end
-                settings.cleanMediaFolder = Gui.setting(
+                settings.cleanMediaFolder = app.gui.setting(
                     'checkbox',
                     T.SETTINGS.CLEAN_MEDIA_FOLDER.LABEL,
                     T.SETTINGS.CLEAN_MEDIA_FOLDER.HINT,
                     settings.cleanMediaFolder)
             else
-                Gui.settingSpacing()
+                app.gui.settingSpacing()
             end
             if (settings.minimize or settings.cleanMediaFolder) and not settings.backup then
                 if settings.cleanMediaFolder and settings.deleteMethod == DELETE_METHOD.KEEP_IN_FOLDER then
-                    Gui.settingIcon(Gui.icons.error, T.ERROR_KEEP_IN_FOLDER)
+                    app.gui.settingIcon(app.gui.icons.error, T.ERROR_KEEP_IN_FOLDER)
                     app.warningCount = app.warningCount + 1
                 elseif settings.deleteMethod == DELETE_METHOD.DELETE_FROM_DISK then
-                    Gui.settingIcon(Gui.icons.caution, T.CAUTION_DELETE)
+                    app.gui.settingIcon(app.gui.icons.caution, T.CAUTION_DELETE)
                     app.warningCount = app.warningCount + 1
                 else
                     r.ImGui_Bullet(ctx)
                 end
-                settings.deleteMethod = Gui.setting(
+                settings.deleteMethod = app.gui.setting(
                     'combo',
                     T.SETTINGS.DELETE_METHODS.LABEL,
                     T.SETTINGS.DELETE_METHODS.HINT,
@@ -694,7 +698,7 @@ if OD_PrereqsOK({
                         list = DELETE_METHODS_LIST
                     })
             else
-                Gui.settingSpacing()
+                app.gui.settingSpacing()
             end
 
             if app.coPerform and coroutine.status(app.coPerform) == 'suspended' then r.ImGui_EndDisabled(ctx) end
@@ -720,11 +724,11 @@ if OD_PrereqsOK({
         waitForMessageBox()
         checkPerform()
 
-        r.ImGui_PushFont(Gui.ctx, Gui.st.fonts.default)
+        r.ImGui_PushFont(app.gui.ctx, app.gui.st.fonts.default)
         app.open = app.drawMainWindow()
-        r.ImGui_PopFont(Gui.ctx)
+        r.ImGui_PopFont(app.gui.ctx)
         -- checkExternalCommand()
-        if app.coPerform or app.popup.msg or (app.open and not reaper.ImGui_IsKeyPressed(Gui.ctx, reaper.ImGui_Key_Escape())) then
+        if app.coPerform or app.popup.msg or (app.open and not reaper.ImGui_IsKeyPressed(app.gui.ctx, reaper.ImGui_Key_Escape())) then
             r.defer(app.loop)
         end
     end
