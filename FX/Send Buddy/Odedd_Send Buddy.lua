@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.1.6
+-- @version 1.1.7
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Maintain currently selected track when adding a send to a folder track whose index is lower than the selected track's index
+--   Internal change for supporting future scripts
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -1127,9 +1127,9 @@ if OD_PrereqsOK({
             ImGui.SetNextItemWidth(ctx, w)
             local x, y = ImGui.GetCursorScreenPos(ctx)
             ImGui.DrawList_AddLine(app.gui.draw_list, x, y - (sepH / 2),
-                x + w, y - (sepH / 2), gui.st.basecolors.midBG, 1 * app.settings.current.uiScale)
+                x + w, y - (sepH / 2), app.gui.st.basecolors.midBG, 1 * app.settings.current.uiScale)
             ImGui.DrawList_AddLine(app.gui.draw_list, x, y + (sepH / 2),
-                x + w, y + (sepH / 2), gui.st.basecolors.midBG, 1 * app.settings.current.uiScale)
+                x + w, y + (sepH / 2), app.gui.st.basecolors.midBG, 1 * app.settings.current.uiScale)
             ImGui.SetCursorPosY(ctx, postButtonY)
         end
 
@@ -1197,7 +1197,7 @@ if OD_PrereqsOK({
             local textTop = top + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))
             local textRight = left + w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
             app.gui:drawVerticalText(app.gui.draw_list, text, textRight,
-                textTop, gui.st.basecolors.text, true, true)
+                textTop, app.gui.st.basecolors.text, true, true)
             ImGui.Dummy(ctx, app.gui.st.sizes.sendTypeSeparatorWidth, 1)
             ImGui.EndGroup(ctx)
             ImGui.SameLine(ctx)
