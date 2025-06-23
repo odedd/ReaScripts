@@ -9,8 +9,8 @@ OD_App = {
                 error('OD_App:connect: object with name ' .. objectname .. ' already exists')
             end
         end
-        self[objectname] = o
-        o.app = self
+        self[objectname] = OD_DeepCopy(o)
+        self[objectname].app = self
     end
 }
 

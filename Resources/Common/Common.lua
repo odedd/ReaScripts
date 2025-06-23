@@ -22,17 +22,17 @@ function OD_FindContentKey(content, key, self)
             if val then
                 local url, description = matchUrlInString(val)
                 if url and description ~= '' then
-                    Scr[key:lower()] = Scr[key:lower()] or {} 
+                    Scr[key:lower()] = Scr[key:lower()] or {}
                     -- val = {[description] = url}
                     Scr[key:lower()][description] = url
                 else
                     Scr[key:lower()] = val
                 end
                 -- if Scr[key:lower()] then
-                    -- if type(Scr[key:lower()]) ~= 'table' then
-                        -- Scr[key:lower()] = { Scr[key:lower()] }
-                    -- end
-                    -- table.insert(Scr[key:lower()], val)
+                -- if type(Scr[key:lower()]) ~= 'table' then
+                -- Scr[key:lower()] = { Scr[key:lower()] }
+                -- end
+                -- table.insert(Scr[key:lower()], val)
                 -- else
                 -- end
             end
@@ -53,11 +53,11 @@ local function OD_GetScr()
     Scr.version = Scr.version or "0.0.0"
     Scr.major_version = OD_GetMajorVersion(Scr.version)
     Scr.minor_version = OD_GetMinorVersion(Scr.version)
-    Scr.dfsetfile = Scr.dir..Scr.no_ext..'.ini'
+    Scr.dfsetfile = Scr.dir .. Scr.no_ext .. '.ini'
     Scr.namespace = "Odedd"
     Scr.name = Scr.description
     Scr.developer = Scr.author
-    Scr.context_name = Scr.namespace .. ' ' .. Scr.name .. ' v' .. Scr.version
+    Scr.context_name = Scr.namespace .. ' ' .. Scr.name
     Scr.ext_name = Scr.namespace:gsub(' ', '_') .. '_' .. Scr.name:gsub(' ', '_')
     r.ver = tonumber(r.GetAppVersion():match("[%d%.]+"))
 end
@@ -73,16 +73,17 @@ local function OD_GetOS()
 end
 
 local function prereqCheck(args)
-
     args = args or {}
-    args.scripts = args.scripts or {} -- {"cfillion_Apply render preset.lua" , "r.GetResourcePath() .. '/Scripts/ReaTeam Scripts/Rendering/cfillion_Apply render preset.lua'"}
+    args.scripts = args.scripts or
+    {}                                -- {"cfillion_Apply render preset.lua" , "r.GetResourcePath() .. '/Scripts/ReaTeam Scripts/Rendering/cfillion_Apply render preset.lua'"}
     local errors = {}
-
+    local reapackFilter = nil
+    
     local reaimgui_script_path = args.reaimgui_path or r.GetResourcePath() ..
-                                     '/Scripts/ReaTeam Extensions/API/imgui.lua'
+        '/Scripts/ReaTeam Extensions/API/imgui.lua'
     local check_reimgui = args.reaimgui or (args.reaimgui_version ~= nil) or false
     local reaimgui_version = args.reaimgui_version or '0.7'
-    
+
     local check_sws = args.sws
 
     local check_js = args.js or (args.js_version ~= nil) or false
@@ -112,10 +113,14 @@ local function prereqCheck(args)
             if r.JS_ReaScriptAPI_Version() < js_version then
                 table.insert(errors, ('JS_ReaScriptAPI version must be %s or above.\nPlease update via ReaPack.'):format(
                     js_version))
+                reapackFilter = (reapackFilter and (reapackFilter .. ' OR ') or '') ..
+                '"js_ReaScriptAPI: API functions for ReaScripts"'
             end
         else
             table.insert(errors,
                 'This script requires the JS_ReaScriptAPI extension.\nPlease install it via ReaPack.')
+            reapackFilter = (reapackFilter and (reapackFilter .. ' OR ') or '') ..
+            '"js_ReaScriptAPI: API functions for ReaScripts"'
         end
     end
 
@@ -126,15 +131,20 @@ local function prereqCheck(args)
             if not status then
                 table.insert(errors, ('ReaImgui version must be %s or above.\nPlease update via ReaPack.'):format(
                     reaimgui_version))
+                reapackFilter = (reapackFilter and (reapackFilter .. ' OR ') or '') ..
+                '"ReaImGui: ReaScript binding for Dear ImGui"'
             elseif not r.ImGui_ColorConvertU32ToDouble4 then
                 table.insert(errors,
                     "ReaImGui error.\nPlease reinstall it via ReaPack.\n\nIf you already installed it, remember to restart reaper.")
+                reapackFilter = (reapackFilter and (reapackFilter .. ' OR ') or '') ..
+                '"ReaImGui: ReaScript binding for Dear ImGui"'
             end
         else
             table.insert(errors, 'This script requires ReaImgui.\nPlease install it via ReaPack.')
+            reapackFilter = (reapackFilter and (reapackFilter .. ' OR ') or '').. '"ReaImGui: ReaScript binding for Dear ImGui"'
         end
     end
-    return errors
+    return errors, reapackFilter
 end
 
 local function OD_GetReaperInfo()
@@ -154,9 +164,12 @@ function OD_Init()
 end
 
 function OD_PrereqsOK(args)
-    local errors = prereqCheck(args)
+    local errors, reapackFilter = prereqCheck(args)
     if #errors > 0 then
         r.MB(table.concat(errors, '\n------------\n'), Scr.name, 0)
+        if reapackFilter and reaper.ReaPack_BrowsePackages then
+            reaper.ReaPack_BrowsePackages(reapackFilter)
+        end
     end
 
     return (next(errors) == nil)

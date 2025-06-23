@@ -1,6 +1,8 @@
+-- @noindex
+
 _OD_KEYS = {}
 _OD_INTERCEPTED_KEYS = {}
-
+_OD_KEYS_CUTOFF = -2
 -- taken from here https://forums.cockos.com/showpost.php?p=2608321&postcount=12
 OD_KEYCODES = {
   LBUTTON     = 0x01, --  The left mouse button
@@ -309,23 +311,32 @@ OD_KEYCODE_NAMES = {
 }
 
 
-OD_IsGlobalKeyDown = function(key)
-  return r.JS_VKeys_GetState(0):byte(key) == 1
-end
-OD_ReleaseGlobalKeys = function()
-  for _, key in ipairs(_OD_INTERCEPTED_KEYS) do
-    r.JS_VKeys_Intercept(key, -1)
-    _OD_INTERCEPTED_KEYS[key] = nil
-  end
-end
-OD_IsGlobalKeyPressed = function(key, intercept)
+OD_IsGlobalKeyDown = function(key, intercept, override_cutoff)
+  if key == nil or key == -1 then return false end
   intercept = intercept or false
   if intercept and not _OD_INTERCEPTED_KEYS[key] then
-    table.insert(_OD_INTERCEPTED_KEYS, key)
+    _OD_INTERCEPTED_KEYS[key] = true
     r.JS_VKeys_Intercept(key, 1)
   end
-  if r.JS_VKeys_GetState(0):byte(key) ~= 0 then
-    if _OD_KEYS[key] == nil then
+  return r.JS_VKeys_GetState(override_cutoff or _OD_KEYS_CUTOFF):byte(key) == 1
+end
+OD_ReleaseGlobalKeys = function()
+  for key, v in pairs(_OD_INTERCEPTED_KEYS) do
+    if OD_KEYCODE_NAMES[key] ~= nil then
+      r.JS_VKeys_Intercept(key, -1)
+      _OD_INTERCEPTED_KEYS[key] = nil
+    end
+  end
+end
+OD_IsGlobalKeyPressed = function(key, intercept, override_cutoff)
+  if key == nil or key == -1 then return false end
+  intercept = intercept or false
+  if intercept and not _OD_INTERCEPTED_KEYS[key] then
+    _OD_INTERCEPTED_KEYS[key] = true
+    r.JS_VKeys_Intercept(key, 1)
+  end
+  if r.JS_VKeys_GetState(override_cutoff or _OD_KEYS_CUTOFF):byte(key) ~= 0 then
+    if _OD_KEYS[key] == nil then -- make sure key went from not pressed to pressed
       _OD_KEYS[key] = true
       return true
     end
@@ -337,24 +348,26 @@ OD_IsGlobalKeyPressed = function(key, intercept)
   return false
 end
 
-OD_GetKeyPressed = function(from, to)
+OD_GetKeyPressed = function(from, to, intercept, override_cutoff)
   from = from or 0
   to = to or 255
   for i = from, to do
-    if r.JS_VKeys_GetState(0):byte(i) == 1 then
-      return i
+    if OD_KEYCODE_NAMES[i] ~= nil then
+      if OD_IsGlobalKeyPressed(i, intercept, override_cutoff) then
+        return i
+      end
     end
   end
 end
 
-OD_PrintKeysPressed = function()
+OD_PrintKeysPressed = function(override_cutoff)
   local escapePressed = false
-    for i = 0, 255 do
-      if r.JS_VKeys_GetState(0):byte(OD_KEYCODES.ESCAPE) ~= 0 then
-        escapePressed = true
-      elseif r.JS_VKeys_GetState(0):byte(i) == 1 then
-        r.ShowConsoleMsg(OD_KEYCODE_NAMES[i] .. '\n')
-      end
+  for i = 0, 255 do
+    if r.JS_VKeys_GetState(override_cutoff or _OD_KEYS_CUTOFF):byte(OD_KEYCODES.ESCAPE) ~= 0 then
+      escapePressed = true
+    elseif r.JS_VKeys_GetState(0):byte(i) == 1 then
+      r.ShowConsoleMsg(OD_KEYCODE_NAMES[i] .. '\n')
     end
-    if not escapePressed then reaper.defer(OD_PrintKeysPressed) end
+  end
+  if not escapePressed then reaper.defer(OD_PrintKeysPressed) end
 end

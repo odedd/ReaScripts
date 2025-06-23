@@ -24,16 +24,27 @@ function OD_Gui:new(o)
 end
 
 function OD_Gui:createFonts(fonts)
-    self.st.fonts = self.st.fonts or {}
     for k, font in pairs(fonts) do
         self:addFont(k, font.file, font.size)
-        -- self.st.fonts[k] = r.ImGui_CreateFont(OD_LocalOrCommon(font.file, self.app.scr.dir), font.size)
     end
 end
 
-function OD_Gui:addFont(key, file, size)
+function OD_Gui:addFont(key, file, size, recalculation)
+    if not recalculation then
+        self.originalFonts = self.originalFonts or {}
+        self.originalFonts[key] = { file = file, size = size } -- save for recalculating zoom later
+    end
     self.st.fonts = self.st.fonts or {}
-    self.st.fonts[key] = r.ImGui_CreateFont(OD_LocalOrCommon(file, self.app.scr.dir), size)
+    local scale =  self.app.settings.current.uiScale 
+    self.st.fonts[key] = r.ImGui_CreateFont(OD_LocalOrCommon(file, self.app.scr.dir), math.floor(size * scale))
+end
+
+function OD_Gui:reAddFonts()
+    for key, font in pairs(self.originalFonts) do
+        r.ImGui_Detach(self.ctx, self.st.fonts[key])
+        self:addFont(key, font.file, font.size)
+        r.ImGui_Attach(self.ctx, self.st.fonts[key])
+    end
 end
 
 function OD_Gui:init(addDefaultFonts)
@@ -69,16 +80,36 @@ function OD_Gui:init(addDefaultFonts)
     self.descModCtrlCmd = (OS_is.mac or OS_is.mac_arm) and 'cmd' or 'control'
     self.descModAlt = (OS_is.mac or OS_is.mac_arm) and 'opt' or 'alt'
 
-    self.vars = {
-        framePaddingX = select(1, r.ImGui_GetStyleVar(self.ctx, r.ImGui_StyleVar_FramePadding())),
-        framePaddingY = select(2, r.ImGui_GetStyleVar(self.ctx, r.ImGui_StyleVar_FramePadding()))
-    }
-
     self.popups = {
         singleInput = {
             status = ""
         }
     }
+
+    self.icons = {
+        caution = r.ImGui_CreateImage(OD_LocalOrCommon('Resources/Icons/caution.png', self.app.scr.dir)),
+        error = r.ImGui_CreateImage(OD_LocalOrCommon('Resources/Icons/error.png', self.app.scr.dir))
+    }
+
+    r.ImGui_Attach(self.ctx, self.icons.caution)
+    r.ImGui_Attach(self.ctx, self.icons.error)
+
+end
+
+OD_Gui.recalculateZoom = function(self, scale)
+    OD_Gui.updateCachedTextHeightsToScale(self)
+end
+
+OD_Gui.reloadZoomFonts = function(self) -- FIND A SMART WAY TO USE THIS
+    for key, font in pairs(self.originalFonts) do
+        r.ImGui_Detach(self.ctx, self.st.fonts[key])
+        self:addFont(key, font.file, font.size, true)
+        r.ImGui_Attach(self.ctx, self.st.fonts[key])
+    end
+    self:updateCachedTextHeightsToScale()
+end
+
+OD_Gui.updateCachedTextHeightsToScale = function(self)
 
     if self.st.fonts.default then
         r.ImGui_PushFont(self.ctx, self.st.fonts.default)
@@ -89,6 +120,12 @@ function OD_Gui:init(addDefaultFonts)
     if self.st.fonts.small then
         r.ImGui_PushFont(self.ctx, self.st.fonts.small)
         self.TEXT_BASE_WIDTH_SMALL, self.TEXT_BASE_HEIGHT_SMALL = r.ImGui_CalcTextSize(self.ctx, 'A'),
+            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
+        r.ImGui_PopFont(self.ctx)
+    end
+    if self.st.fonts.medium then
+        r.ImGui_PushFont(self.ctx, self.st.fonts.medium)
+        self.TEXT_BASE_WIDTH_MEDIUM, self.TEXT_BASE_HEIGHT_MEDIUM = r.ImGui_CalcTextSize(self.ctx, 'A'),
             r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
         r.ImGui_PopFont(self.ctx)
     end
@@ -110,14 +147,6 @@ function OD_Gui:init(addDefaultFonts)
             r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
         r.ImGui_PopFont(self.ctx)
     end
-
-    self.icons = {
-        caution = r.ImGui_CreateImage(OD_LocalOrCommon('Resources/Icons/caution.png', self.app.scr.dir)),
-        error = r.ImGui_CreateImage(OD_LocalOrCommon('Resources/Icons/error.png', self.app.scr.dir))
-    }
-
-    r.ImGui_Attach(self.ctx, self.icons.caution)
-    r.ImGui_Attach(self.ctx, self.icons.error)
 end
 
 function OD_Gui:pushColors(key)
@@ -180,7 +209,7 @@ function OD_Gui:setting(stType, text, hint, val, data, sameline)
         r.ImGui_SameLine(ctx)
         r.ImGui_SetCursorPosX(ctx, r.ImGui_GetCursorPosX(ctx) -
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_ItemInnerSpacing()))
-        widgetWidth = itemWidth - self.TEXT_BASE_WIDTH * 2 -
+        widgetWidth = itemWidth - ImGui.GetTextLineHeight(ctx) -
             r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
     end
     r.ImGui_PushItemWidth(ctx, widgetWidth)
