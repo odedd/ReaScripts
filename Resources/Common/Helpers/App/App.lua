@@ -3,7 +3,7 @@
 OD_App = {
     logLevel = OD_Logger.LOG_LEVEL.NONE,
     temp = {},
-    connect = function(self, objectname, o)
+    connect = function(self, objectname, o, deep_copy)
         for k, v in pairs(self) do
             if k == objectname then
                 error('OD_App:connect: object with name ' .. objectname .. ' already exists')
@@ -49,6 +49,8 @@ function OD_Gui_App:setHint(window, text, color, ctx)
         if color then
             r.ImGui_PopStyleColor(ctx)
         end
+        self.hint[window] = {
+            text = text,
             color = color
         }
     end
@@ -196,6 +198,8 @@ end
 function OD_Gui_App:getHint(window)
     if window == 'main' then
         return self.hint[window].text, self.hint[window].color
+        return self.hint[window].text, self.hint[window].color
+    end
 end
 
 -- ! OD_Perform_App
@@ -217,6 +221,8 @@ function OD_Perform_App:getStatus(window)
     end
     return OD_Gui_App.getHint(self, window)
     -- return self.hint[window].text, self.hint[window].color
+    -- return self.hint[window].text, self.hint[window].color
+    -- end
 end
 
 function OD_Perform_App:checkPerform()
