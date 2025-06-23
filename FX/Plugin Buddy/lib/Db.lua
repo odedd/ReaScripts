@@ -35,7 +35,7 @@ DB = {
         self:getTracks()
         self:assembleAssets()
     end,
-    sync = function(self, refresh) -- not sure this is needed
+    sync = function(self, refresh)                             -- not sure this is needed
         self.refresh = refresh or false
         self.current_project = r.GetProjectStateChangeCount(0) -- if project changed, force full sync
         if self.current_project ~= self.previous_project then
@@ -171,7 +171,7 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
             reaper.GetSetMediaTrackInfo_String(newTrack, "P_NAME", trackName, true)
             local rv = reaper.CreateTrackSend(self.track.object, newTrack)
             self:getTracks()
-            r.SetOnlyTrackSelected( self.track.object )
+            r.SetOnlyTrackSelected(self.track.object)
             self:sync(true)
             for _, send in ipairs(self.sends) do
                 if send.destTrack ~= nil and (send.destTrack.object == newTrack) then
@@ -192,11 +192,11 @@ DB.getSelectedTracks = function(self)
     local numTracks = r.CountSelectedTracks(0);
     local tracks = {};
     for i = 0, numTracks - 1 do
-        local track = r.GetSelectedTrack(0,i)
+        local track = r.GetSelectedTrack(0, i)
 
         for i, trk in ipairs(self.tracks) do
             if track == trk.object then
-                table.insert(tracks,trk)
+                table.insert(tracks, trk)
             end
         end
     end
@@ -222,15 +222,15 @@ DB.getTracks = function(self)
             numInserts = 0,
             inserts = {},
             addInsert = function(self, fxName) -- undo point is created by TrackFX_AddByName
-                            local fxIndex = r.TrackFX_AddByName(self.object, fxName, false, -1)
-                            if fxIndex == -1 then
-                                self.db.app.logger:logError('Cannot add ' .. fxName .. ' to ' .. trackName)
-                                return false
-                            end
-                            self.db:sync(true)
-                            self.db.app.focusMainReaperWindow = false
-                            return true
-                        end,
+                local fxIndex = r.TrackFX_AddByName(self.object, fxName, false, -1)
+                if fxIndex == -1 then
+                    self.db.app.logger:logError('Cannot add ' .. fxName .. ' to ' .. trackName)
+                    return false
+                end
+                self.db:sync(true)
+                self.db.app.focusMainReaperWindow = false
+                return true
+            end,
             _refreshColor = function(self)
                 local color = ImGui.ColorConvertNative(reaper.GetTrackColor(track)) * 0x100 | 0xff
                 self.color = color
@@ -264,7 +264,7 @@ DB.getTracks = function(self)
                             self.shortName, self.shortened = self.db.app.minimizeText(
                                 self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''):gsub("^%s+", ''):gsub("%s+$", ''),
                                 math.floor(self.db.app.settings.current.sendWidth * self.db.app.settings.current.uiScale) -
-                                r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding())*4)
+                                r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 4)
                             ImGui.PopFont(self.db.app.gui.ctx)
                         end,
                         offline = offline,
@@ -452,13 +452,12 @@ end
 
 DB.markFavorites = function(self)
     for _, asset in ipairs(self.assets) do
-        if OD_HasValue(self.app.tags.current.favorites, asset.type .. ' ' .. asset.load) then
+        if OD_HasValue(self.app.tags.current.favorites, asset.id) then
             asset.originalGroup = asset.group
             asset.group = FAVORITE_GROUP
         end
     end
 end
-
 -- ASSETS
 
 DB.assembleAssets = function(self)
@@ -532,10 +531,14 @@ DB.assembleAssets = function(self)
             count = count + 1
         end
     end
-    self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
+    for _, asset in ipairs(self.assets) do
+        asset.id = asset.type .. ' ' .. asset.load
+        asset.tags = self.app.tags.current.taggedAssets[asset.id] or {}
+    end
 
     self:markFavorites()
     self:sortAssets()
+    self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
 end
 
 DB.sortAssets = function(self)

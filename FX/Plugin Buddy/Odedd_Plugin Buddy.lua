@@ -448,7 +448,13 @@ if OD_PrereqsOK({
                     end
                 end
                 ImGui.PopStyleVar(ctx)
-
+                for i, tagId in ipairs(result.tags) do
+                    local tag = app.tags.current.tagInfo[tagId]
+                    ImGui.PushStyleColor(ctx, ImGui.Col_Button,  tag.color)
+                    ImGui.SmallButton(ctx, tag.name)
+                    ImGui.PopStyleColor(ctx)
+                    ImGui.SameLine(ctx)
+                end
                 ImGui.PopID(ctx)
             end
             if app.temp.checkScrollDown and highlightedY > upperRowY + maxSearchResults * fontLineHeight then
