@@ -471,7 +471,6 @@ DB.getTags = function(self)
         end
         self.tags[id].id = id
         self.tags[id].app = self.app
-
         local col = self.tags[id].color
         local hoveredCol = OD_OffsetRgbaByHSL(col,0,0,0.06)
         local activeCol = OD_OffsetRgbaByHSL(col,0,0,0.1)
@@ -486,6 +485,10 @@ DB.getTags = function(self)
             self.app.tags:save()
             -- body
         end
+    end
+
+    for id, tag in pairs(self.tags) do
+        tag.hasChildren = tag.children ~= nil and next(tag.children)
     end
 end
 DB.markFavorites = function(self)

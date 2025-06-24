@@ -262,28 +262,43 @@ if OD_PrereqsOK({
 
         local ctx = app.gui.ctx
         local h = select(2, ImGui.GetContentRegionAvail(ctx))
+        local w = app.settings.current.keywordPanelWidth * app.settings.current.uiScale
         local node_flags = ImGui.TreeNodeFlags_OpenOnArrow | ImGui.TreeNodeFlags_OpenOnDoubleClick
             | ImGui.TreeNodeFlags_Framed | ImGui.TreeNodeFlags_SpanAllColumns
         -- Keyword Area
         local paddingX = select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * app.settings.current.uiScale
-        if ImGui.BeginChild(ctx, 'keywordArea', app.settings.current.keywordPanelWidth * app.settings.current.uiScale, h) then
-            local function drawTagsOfParent(parentId, depth)
-                local function drawTagNode(tag, depth)
-                    
-
+        local paddingY = select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * app.settings.current.uiScale
+        if ImGui.BeginChild(ctx, 'keywordArea', w, h) then
+            local function drawTagsOfParent(parentId, indent)
+                local function drawTagNode(tag)
                     app.gui:pushColors(tag.colors)
                     app.gui:pushStyles(app.gui.st.vars.tag)
                     ImGui.PushFont(ctx, app.gui.st.fonts.small)
-                    if ImGui.SmallButton(ctx, tag.name) then
+                    local globalX, globalY = ImGui.GetCursorScreenPos(ctx)
+                    local x, y = ImGui.GetCursorPos(ctx)
+                    local triangleW = app.gui.st.vars.tagList[ImGui.StyleVar_IndentSpacing][1] 
+                    local extraW = tag.hasChildren and triangleW or 0
+                    local tagW, tagH = ImGui.CalcTextSize(ctx, tag.name) + paddingX*2 + extraW, ImGui.GetTextLineHeight(ctx)
+                    ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),globalX, globalY, globalX+tagW, globalY+tagH, tag.colors[ImGui.Col_Button],10)
+                    if tag.hasChildren then
+                        if tag.open then
+                            ImGui.DrawList_AddTriangleFilled(ImGui.GetWindowDrawList(ctx),globalX+paddingX,globalY+paddingY,globalX+paddingX+tagH/2,globalY+paddingY,globalX+paddingX/4+tagH/2,globalY+triangleW, tag.colors[ImGui.Col_Text])
+                        else   
+                            ImGui.DrawList_AddTriangleFilled(ImGui.GetWindowDrawList(ctx),globalX+paddingX,globalY+paddingY,globalX+paddingX,globalY+tagH-paddingY,globalX+triangleW,globalY+tagH/2, tag.colors[ImGui.Col_Text])
+                        end
+                    end
+                    ImGui.SetCursorPosX(ctx, x+paddingX+extraW)
+                    ImGui.Text(ctx, tag.name)
+                    ImGui.SetCursorPos(ctx, x, y)
+                    if ImGui.InvisibleButton(ctx, tag.id,tagW,tagH) then
                         tag:toggleOpen(not tag.open)
                     end
-                    
                     ImGui.PopFont(ctx)
                     app.gui:popColors(tag.colors)
                     app.gui:popStyles(app.gui.st.vars.tag)
                     
                     if tag.open then
-                        drawTagsOfParent(tag.id, 1)
+                        drawTagsOfParent(tag.id, true)
                         -- ImGui.TreePop(ctx)
                     end
                 end
@@ -291,22 +306,18 @@ if OD_PrereqsOK({
                 app.gui:pushStyles(app.gui.st.vars.tagList)
                 for id, tag in OD_PairsByOrder(app.db.tags) do
                     if tag.parentId == parentId then
-                        local i = 0
-                        while i < depth do
+                        if indent then
                             ImGui.Indent(ctx)
-                            i = i + 1
                         end
-                        drawTagNode(tag, depth)
-                        i = 0
-                        while i < depth do
+                        drawTagNode(tag)
+                        if indent then
                             ImGui.Unindent(ctx)
-                            i = i + 1
                         end
                     end
                 end
                 app.gui:popStyles(app.gui.st.vars.tagList)
             end
-            drawTagsOfParent(nil, 0)
+            drawTagsOfParent(nil, false)
 
             ImGui.EndChild(ctx)
         end
@@ -329,11 +340,13 @@ if OD_PrereqsOK({
                 nil,
                 ImGui.MouseButton_Left)
             if mouseDeltaX ~= 0 then
-                local newWidth = origX - paddingX + mouseDeltaX
-                if newWidth > app.settings.current.minKeywordPanelWidth then
+                -- local newWidth = (origX - paddingX) + mouseDeltaX/app.settings.current.uiScale
+                local newWidth = (w + mouseDeltaX)/app.settings.current.uiScale
+                if newWidth > app.settings.current.minKeywordPanelWidth * app.settings.current.uiScale then
                     app.settings.current.keywordPanelWidth = newWidth
-                    app.settings:save()
                     ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
+                else
+                    app.settings.current.keywordPanelWidth = app.settings.current.minKeywordPanelWidth * app.settings.current.uiScale
                 end
             end
         end
