@@ -5,6 +5,7 @@ DB = {
     fxChains = {},
     trackTemplates = {},
     tracks = {},
+    tags = {},
     setUndoPoint = function(self, name, type, trackparm)
         type = type or -1
         trackparm = trackparm or -1
@@ -33,6 +34,7 @@ DB = {
         self:getFXChains()
         self:getTrackTemplates()
         self:getTracks()
+        self:getTags()
         self:assembleAssets()
     end,
     sync = function(self, refresh)                             -- not sure this is needed
@@ -450,6 +452,42 @@ DB.getPlugins = function(self)
     self.app.logger:logInfo('Found ' .. i .. ' plugins')
 end
 
+DB.getTags = function(self)
+    self.tags = OD_DeepCopy(self.app.tags.current.tagInfo)
+    for id, tagInfo in pairs(self.app.tags.current.tagInfo) do
+        if tagInfo.parentId and self.tags[tagInfo.parentId] then
+            self.tags[id].parent = self.tags[tagInfo.parentId]
+            self.tags[id].parent.children = self.tags[id].parent.children or {}
+            -- self.tags[id].toplevel = false
+            table.insert(self.tags[id].parent.children, self.tags[id])
+            self.app.logger:logDebug('Added "' ..
+            self.tags[id].name .. '" (parent: "' .. self.tags[id].parent.name .. '")')
+        elseif tagInfo.parentId then
+            -- self.tags[id].toplevel = true
+            self.app.logger:logError('Illegal parent ID for tag "' .. self.tags[id].name .. '"')
+        else
+            -- self.tags[id].toplevel = true
+            self.app.logger:logDebug('Added "' .. self.tags[id].name .. '"')
+        end
+        self.tags[id].id = id
+        self.tags[id].app = self.app
+
+        local col = self.tags[id].color
+        local hoveredCol = OD_OffsetRgbaByHSL(col,0,0,0.06)
+        local activeCol = OD_OffsetRgbaByHSL(col,0,0,0.1)
+        local textCol = OD_ColorIsBright(col) and 0x000000ff or 0xffffffff
+        self.tags[id].colors = {[ImGui.Col_Button] = col,
+            [ImGui.Col_ButtonHovered] = hoveredCol,
+            [ImGui.Col_ButtonActive] = activeCol,
+            [ImGui.Col_Text] = textCol}
+        self.tags[id].toggleOpen = function(self, state)
+            self.open = state
+            self.app.tags.current.tagInfo[id].open = state
+            self.app.tags:save()
+            -- body
+        end
+    end
+end
 DB.markFavorites = function(self)
     for _, asset in ipairs(self.assets) do
         if OD_HasValue(self.app.tags.current.favorites, asset.id) then

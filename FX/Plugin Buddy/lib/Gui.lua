@@ -153,14 +153,6 @@ PB_Gui.init = function(self, fonts)
     self.updateVarsToScale = function(self)
         local scale = self.app.settings.current.uiScale
         self.st.vars = {
-            pan = {
-                [ImGui.StyleVar_GrabMinSize] = { 6 * scale, nil },
-                [ImGui.StyleVar_GrabRounding] = { self.st.rounding * 2 * scale, nil },
-            },
-            vol = {
-                [ImGui.StyleVar_GrabMinSize] = { 8 * scale, nil },
-                [ImGui.StyleVar_GrabRounding] = { self.st.rounding * 2 * scale, nil },
-            },
             main = {
                 [ImGui.StyleVar_FrameRounding] = { self.st.rounding * scale, nil },
                 [ImGui.StyleVar_ItemSpacing] = { 4 * scale, 4 * scale },
@@ -176,6 +168,14 @@ PB_Gui.init = function(self, fonts)
                 [ImGui.StyleVar_SeparatorTextBorderSize] = { 1 * scale, nil },
                 [ImGui.StyleVar_SeparatorTextPadding] = { 0, 0 },
             },
+            tag = {
+                [ImGui.StyleVar_FrameRounding] = { 20 * scale, nil },
+                [ImGui.StyleVar_FramePadding] = {8*scale, 2*scale },
+            },
+            tagList = {
+                [ImGui.StyleVar_IndentSpacing] = { 12 * scale, nil },
+            },
+
             bigButton = {
                 [ImGui.StyleVar_FrameRounding] = { 10 * scale, nil },
                 [ImGui.StyleVar_FramePadding] = { 20 * scale, 10 * scale },
@@ -184,9 +184,6 @@ PB_Gui.init = function(self, fonts)
                 [ImGui.StyleVar_GrabMinSize] = { 8 * scale, nil },
                 [ImGui.StyleVar_FramePadding] = { -1 * scale, -1 * scale },
                 [ImGui.StyleVar_GrabRounding] = { 100 * scale, nil },
-                [ImGui.StyleVar_FrameRounding] = { 100 * scale, nil },
-            },
-            addSendButton = {
                 [ImGui.StyleVar_FrameRounding] = { 100 * scale, nil },
             }
         }
