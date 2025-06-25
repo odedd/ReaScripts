@@ -222,19 +222,61 @@ if OD_PrereqsOK({
 
     function app.drawSearch()
         local function filterResults(query)
-            app.temp.searchInput = query
+            query = query or {}
+            query.text = query.text or app.temp.searchInput
+            app.temp.searchInput = query.text
             app.temp.searchResults = {}
-            query = query:gsub('%s+', ' ')
+
+            app.temp.filter = app.temp.filter or {}
+            app.temp.filter.text = (query.text or app.temp.searchInput):gsub('%s+', ' ')
+            app.temp.filter.tags = app.temp.filter.tags or {}
+            if query.addTags then
+                for tagId, positive in pairs(query.addTags) do
+                    app.temp.filter.tags[tagId] = positive
+                end
+            end
+
+            if query.removeTags then
+                for i, tagId in ipairs(query.removeTags) do
+                    app.temp.filter.tags[tagId] = nil
+                end
+            end
+
             for i, asset in ipairs(app.db.assets) do
                 local skip = false
                 if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then skip = true end
                 if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK_TEMPLATE then skip = true end
                 -- if app.temp.addSendType == SEND_TYPE.RECV and asset.type ~= ASSETS.TRACK then skip = true end
                 -- if asset.type == ASSETS.TRACK and asset.load == app.db.track.guid then skip = true end
+
+                -- -- FILTER TAGS
+                for tagId, positive in pairs(app.temp.filter.tags) do
+                    -- if OD_HasValue(asset.tags,)
+                    local hasValue = OD_HasValue(asset.tags, tagId)
+                    if not hasValue then
+                        local tag = app.db.tags[tagId]
+                        -- r.ShowConsoleMsg(tostring(tag.descendants)..'\n')
+                        if tag and tag.descendants then
+                            for _, descendant in ipairs(tag.descendants) do
+                                -- r.ShowConsoleMsg(descendant.name..'\n')
+                                if OD_HasValue(asset.tags, descendant.id) then
+                                    hasValue = true
+                                    break
+                                end
+                            end
+                        end
+                    end
+                    if positive and not hasValue then
+                        skip = true
+                    elseif not positive and hasValue then
+                        skip = true
+                    end
+                end
                 if not skip then
+                    -- FILTER TEXT
                     local foundIndexes = {}
                     local allWordsFound = true
-                    for word in query:lower():gmatch("%S+") do
+                    for word in app.temp.filter.text:lower():gmatch("%S+") do
                         local wordFound = false
                         for j, assetWord in ipairs(asset.searchText) do
                             local pos = string.find((assetWord.text):lower(), OD_EscapePattern(word))
@@ -261,49 +303,169 @@ if OD_PrereqsOK({
         end
 
         local ctx = app.gui.ctx
-        local h = select(2, ImGui.GetContentRegionAvail(ctx))
-        local w = app.settings.current.keywordPanelWidth * app.settings.current.uiScale
+        local tagAreaH = select(2, ImGui.GetContentRegionAvail(ctx))
+        local tagAreaGlobalX, tagAreaGlobalY = ImGui.GetCursorScreenPos(ctx)
+        local tagAreaW = app.settings.current.keywordPanelWidth * app.settings.current.uiScale
         local node_flags = ImGui.TreeNodeFlags_OpenOnArrow | ImGui.TreeNodeFlags_OpenOnDoubleClick
             | ImGui.TreeNodeFlags_Framed | ImGui.TreeNodeFlags_SpanAllColumns
         -- Keyword Area
         local paddingX = select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * app.settings.current.uiScale
         local paddingY = select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * app.settings.current.uiScale
-        if ImGui.BeginChild(ctx, 'keywordArea', w, h) then
-            local function drawTagsOfParent(parentId, indent)
-                local function drawTagNode(tag)
-                    app.gui:pushColors(tag.colors)
-                    app.gui:pushStyles(app.gui.st.vars.tag)
-                    ImGui.PushFont(ctx, app.gui.st.fonts.small)
-                    local globalX, globalY = ImGui.GetCursorScreenPos(ctx)
-                    local x, y = ImGui.GetCursorPos(ctx)
-                    local triangleW = app.gui.st.vars.tagList[ImGui.StyleVar_IndentSpacing][1] 
-                    local extraW = tag.hasChildren and triangleW or 0
-                    local tagW, tagH = ImGui.CalcTextSize(ctx, tag.name) + paddingX*2 + extraW, ImGui.GetTextLineHeight(ctx)
-                    ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),globalX, globalY, globalX+tagW, globalY+tagH, tag.colors[ImGui.Col_Button],10)
-                    if tag.hasChildren then
+        if ImGui.BeginChild(ctx, 'keywordArea', tagAreaW, tagAreaH) then
+            local function drawTagsBy(parentId, indent, onlyActive)
+                local function drawTagNode(tag, preview) --preview is for previewing when drag and dropping, so no drag&drop functionality of its own
+                    if preview or ImGui.GetDragDropPayload(ctx, 'TAG') ~= tostring(tag.id) then
+                        app.gui:pushColors(tag.colors)
+                        app.gui:pushStyles(app.gui.st.vars.tag)
+                        ImGui.PushFont(ctx, app.gui.st.fonts.small)
+                        local w = select(1, ImGui.GetContentRegionAvail(ctx))
+                        local globalX, globalY = ImGui.GetCursorScreenPos(ctx)
+                        local x, y = ImGui.GetCursorPos(ctx)
+                        local triangleW = app.gui.st.vars.tagList[ImGui.StyleVar_IndentSpacing][1]
+                        local extraW = tag.hasDescendants and triangleW or 0
+                        local tagW, tagH = ImGui.CalcTextSize(ctx, tag.name) + paddingX * 2 + extraW,
+                            ImGui.GetTextLineHeight(ctx)
+                        local col = tag.colors[ImGui.Col_Button]
+                        local hovering = false
+                        if ImGui.IsMouseHoveringRect(ctx, globalX, globalY, globalX + w, globalY + tagH) then
+                            --- TODO: show edit button
+                            hovering = true
+                            if ImGui.IsMouseHoveringRect(ctx, globalX, globalY, globalX + tagW, globalY + tagH) then
+                                if ImGui.IsMouseDown(ctx, ImGui.MouseButton_Left) then
+                                    col = tag.colors[ImGui.Col_ButtonActive]
+                                    if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
+                                        tag:toggleOpen(not tag.open)
+                                    end
+                                else
+                                    col = tag.colors[ImGui.Col_ButtonHovered]
+                                end
+                            end
+                        end
+                        ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), globalX, globalY, globalX + tagW,
+                            globalY + tagH, col, 10)
+                        if tag.hasDescendants then
+                            if tag.open then
+                                ImGui.DrawList_AddTriangleFilled(ImGui.GetWindowDrawList(ctx), globalX + paddingX,
+                                    globalY + paddingY, globalX + paddingX + tagH / 2, globalY + paddingY,
+                                    globalX + paddingX / 4 + tagH / 2, globalY + triangleW, tag.colors[ImGui.Col_Text])
+                            else
+                                ImGui.DrawList_AddTriangleFilled(ImGui.GetWindowDrawList(ctx), globalX + paddingX,
+                                    globalY + paddingY, globalX + paddingX, globalY + tagH - paddingY,
+                                    globalX + triangleW,
+                                    globalY + tagH / 2, tag.colors[ImGui.Col_Text])
+                            end
+                            if ImGui.InvisibleButton(ctx, tag.id, triangleW + paddingX, tagH) then
+                                tag:toggleOpen(not tag.open)
+                            end
+                            ImGui.SameLine(ctx)
+                        end
+                        ImGui.SetCursorPosX(ctx, x + paddingX + extraW)
+                        ImGui.Text(ctx, tag.name)
+                        app.gui:popColors(tag.colors)
+                        app.gui:popStyles(app.gui.st.vars.tag)
+
+                        ImGui.SetCursorScreenPos(ctx, globalX, globalY)
+                        ImGui.InvisibleButton(ctx, 'drag' .. tag.id, tagW, tagH)
+                        if not preview and ImGui.BeginDragDropSource(ctx, ImGui.DragDropFlags_None) then
+                            ImGui.SetDragDropPayload(ctx, 'TAG', tostring(tag.id))
+                            ImGui.Text(ctx, tag.name)
+                            -- drawTagNode(tag, true)
+                            ImGui.EndDragDropSource(ctx)
+                        end
+                        if not preview and ImGui.BeginDragDropTarget(ctx) then
+                            local rv, payload
+                            rv, payload = ImGui.AcceptDragDropPayload(ctx, 'TAG', nil,
+                                ImGui.DragDropFlags_AcceptBeforeDelivery)
+                            if rv then
+                                local payloadTag = app.db.tags[tonumber(payload)]
+                                drawTagNode(payloadTag, true)
+                                if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
+                                    r.ShowConsoleMsg('got it\n')
+                                end
+                                -- local payload_n = tonumber(payload)
+                                -- if widgets.dragdrop.mode == mode_copy then
+                                -- widgets.dragdrop.names[n] = widgets.dragdrop.names[payload_n]
+                                -- end
+                                -- if widgets.dragdrop.mode == mode_move then
+                                -- widgets.dragdrop.names[n] = widgets.dragdrop.names[payload_n]
+                                -- widgets.dragdrop.names[payload_n] = ''
+                                -- end
+                                -- if widgets.dragdrop.mode == mode_swap then
+                                -- widgets.dragdrop.names[n] = widgets.dragdrop.names[payload_n]
+                                -- widgets.dragdrop.names[payload_n] = name
+                                -- end
+                            end
+                            ImGui.EndDragDropTarget(ctx)
+                        end
+                        local nextLineX, nextLineY = ImGui.GetCursorPos(ctx)
+                        if hovering or tag.status ~= nil then
+                            ImGui.PushID(ctx, tag.id)
+                            ImGui.PushFont(ctx, app.gui.st.fonts.icons_tiny)
+                            app.gui:pushColors(app.gui.st.col.tagButtons)
+                            app.gui:pushStyles(app.gui.st.vars.tagButtons)
+                            local btnW = (select(1, ImGui.CalcTextSize(ctx, "+")) + app.gui.st.vars.tagButtons[ImGui.StyleVar_FramePadding][1])
+                            local function drawCloseButton(tag)
+                                app.gui:pushColors(app.gui.st.col.activeTagButton)
+                                local btnX, btnY = ImGui.GetCursorScreenPos(ctx)
+                                -- ImGui.SetCursorScreenPos(ctx,
+                                --     btnX, btnY)
+                                local icon = tag.status and ICONS.PLUS or ICONS.MINUS
+                                if ImGui.IsMouseHoveringRect(ctx, btnX, btnY, btnX + btnW, btnY + btnW) then
+                                    icon = ICONS
+                                        .CLOSE
+                                end
+                                if ImGui.Button(ctx, icon) then
+                                    tag.status = nil
+                                    filterResults({ removeTags = { tag.id } })
+                                end
+                                app.gui:popColors(app.gui.st.col.activeTagButton)
+                            end
+                            if tag.status ~= nil then
+                                ImGui.SetCursorScreenPos(ctx, tagAreaGlobalX + tagAreaW - btnW * (tag.status and 1 or 2),
+                                    globalY)
+                                drawCloseButton(tag)
+                            end
+                            if hovering then
+                                ImGui.SetCursorScreenPos(ctx,
+                                    tagAreaGlobalX + tagAreaW -
+                                    btnW *
+                                    3, globalY)
+                                ImGui.Button(ctx, ICONS.PENCIL)
+                                ImGui.SameLine(ctx)
+                                if tag.status ~= false and ImGui.Button(ctx, ICONS.MINUS) then
+                                    tag.status = false
+                                    filterResults({ addTags = { [tag.id] = false } })
+                                end
+                                ImGui.SameLine(ctx)
+                                if tag.status ~= true then
+                                    ImGui.SetCursorScreenPos(ctx,
+                                        tagAreaGlobalX + tagAreaW -
+                                        btnW, globalY)
+                                    if ImGui.Button(ctx, ICONS.PLUS) then
+                                        tag.status = true
+                                        filterResults({ addTags = { [tag.id] = true } })
+                                    end
+                                end
+                            end
+                            app.gui:popColors(app.gui.st.col.tagButtons)
+                            app.gui:popStyles(app.gui.st.vars.tagButtons)
+                            ImGui.PopFont(ctx)
+                            ImGui.PopID(ctx)
+                        end
+                        -- don't delete the next 2 lines. They are there to correct the spacing when hovering over the line
+                        ImGui.SetCursorPos(ctx, nextLineX, nextLineY)
+                        ImGui.Dummy(ctx, 0, 0)
+
+                        ImGui.PopFont(ctx)
                         if tag.open then
-                            ImGui.DrawList_AddTriangleFilled(ImGui.GetWindowDrawList(ctx),globalX+paddingX,globalY+paddingY,globalX+paddingX+tagH/2,globalY+paddingY,globalX+paddingX/4+tagH/2,globalY+triangleW, tag.colors[ImGui.Col_Text])
-                        else   
-                            ImGui.DrawList_AddTriangleFilled(ImGui.GetWindowDrawList(ctx),globalX+paddingX,globalY+paddingY,globalX+paddingX,globalY+tagH-paddingY,globalX+triangleW,globalY+tagH/2, tag.colors[ImGui.Col_Text])
+                            drawTagsBy(tag.id, true)
+                            -- ImGui.TreePop(ctx)
                         end
                     end
-                    ImGui.SetCursorPosX(ctx, x+paddingX+extraW)
-                    ImGui.Text(ctx, tag.name)
-                    ImGui.SetCursorPos(ctx, x, y)
-                    if ImGui.InvisibleButton(ctx, tag.id,tagW,tagH) then
-                        tag:toggleOpen(not tag.open)
-                    end
-                    ImGui.PopFont(ctx)
-                    app.gui:popColors(tag.colors)
-                    app.gui:popStyles(app.gui.st.vars.tag)
-                    
-                    if tag.open then
-                        drawTagsOfParent(tag.id, true)
-                        -- ImGui.TreePop(ctx)
-                    end
                 end
-                
+
                 app.gui:pushStyles(app.gui.st.vars.tagList)
+
                 for id, tag in OD_PairsByOrder(app.db.tags) do
                     if tag.parentId == parentId then
                         if indent then
@@ -317,19 +479,23 @@ if OD_PrereqsOK({
                 end
                 app.gui:popStyles(app.gui.st.vars.tagList)
             end
-            drawTagsOfParent(nil, false)
+
+            -- drawTagsBy(nil, false, true) -- draw Active Tags
+            drawTagsBy(nil, false)
 
             ImGui.EndChild(ctx)
         end
         ImGui.SameLine(ctx)
         -- Separator Resize Line
         local origX = select(1, ImGui.GetCursorPosX(ctx))
-        local separatorX = select(1, ImGui.GetCursorScreenPos(ctx)) + paddingX
+        local separatorX = select(1, ImGui.GetCursorScreenPos(ctx))
         local separatorY = select(2, ImGui.GetCursorScreenPos(ctx))
-
-        ImGui.DrawList_AddLine(ImGui.GetForegroundDrawList(ctx), separatorX, separatorY, separatorX, separatorY + h,
+        local spacing = select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
+        ImGui.DrawList_AddLine(ImGui.GetForegroundDrawList(ctx), separatorX, separatorY, separatorX,
+            separatorY + tagAreaH,
             ImGui.GetStyleColor(ctx, ImGui.Col_Separator))
-        ImGui.InvisibleButton(ctx, '##separator', paddingX * 2 + 1, h)
+        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacing)
+        ImGui.InvisibleButton(ctx, '##separator', spacing * 2 + 1, tagAreaH)
         if ImGui.IsItemHovered(ctx) then
             app:setHoveredHint('main', 'Drag to change keyword list width', nil, nil, 1)
             ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
@@ -341,12 +507,13 @@ if OD_PrereqsOK({
                 ImGui.MouseButton_Left)
             if mouseDeltaX ~= 0 then
                 -- local newWidth = (origX - paddingX) + mouseDeltaX/app.settings.current.uiScale
-                local newWidth = (w + mouseDeltaX)/app.settings.current.uiScale
+                local newWidth = (tagAreaW + mouseDeltaX) / app.settings.current.uiScale
                 if newWidth > app.settings.current.minKeywordPanelWidth * app.settings.current.uiScale then
                     app.settings.current.keywordPanelWidth = newWidth
                     ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
                 else
-                    app.settings.current.keywordPanelWidth = app.settings.current.minKeywordPanelWidth * app.settings.current.uiScale
+                    app.settings.current.keywordPanelWidth = app.settings.current.minKeywordPanelWidth *
+                        app.settings.current.uiScale
                 end
             end
         end
@@ -365,7 +532,7 @@ if OD_PrereqsOK({
 
             if app.pageSwitched then
                 -- app.db:init()
-                filterResults('')
+                filterResults({ text = '' })
                 ImGui.SetKeyboardFocusHere(ctx, 0)
             end
             ImGui.SetNextItemWidth(ctx, w)
@@ -375,7 +542,7 @@ if OD_PrereqsOK({
             local maxSearchResults = math.floor(h / (fontLineHeight))
 
             if rv then
-                filterResults(searchInput)
+                filterResults({ text = searchInput })
                 app.temp.scrollToTop = true
             end
 
@@ -421,7 +588,7 @@ if OD_PrereqsOK({
                     if app.temp.highlightedResult then
                         local result = app.temp.searchResults[app.temp.highlightedResult]
                         local fav = result:toggleFavorite()
-                        filterResults(searchInput)
+                        filterResults({ text = searchInput })
                         if fav then
                             for i, r in ipairs(app.temp.searchResults) do
                                 -- if r.type == oldType and r.load == oldLoad then

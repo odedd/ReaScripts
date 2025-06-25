@@ -9,6 +9,7 @@ PB_Gui = OD_Gui:new({
 PB_Gui.init = function(self, fonts)
     OD_Gui.addFont(self, 'vertical', 'Resources/Fonts/Cousine-90deg.otf', 11)
 
+    local tiny = 12
     local small = 16
     local default = 18
     local large = 22
@@ -17,6 +18,7 @@ PB_Gui.init = function(self, fonts)
         small = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = small },
         large = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = large },
         large_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = large },
+        icons_tiny = { file = 'Resources/Fonts/Icons-Regular.otf', size = tiny },
         icons_small = { file = 'Resources/Fonts/Icons-Regular.otf', size = small },
         icons_large = { file = 'Resources/Fonts/Icons-Regular.otf', size = large }
     })
@@ -81,6 +83,20 @@ PB_Gui.init = function(self, fonts)
                 hovered = { [ImGui.Col_Text] = self.st.basecolors.active },
                 active = { [ImGui.Col_Text] = self.st.basecolors.midText },
             }
+        },
+        tagButtons = {
+            [ImGui.Col_Text] = self.st.basecolors.main,
+            [ImGui.Col_Button] = 0x00000000,
+            [ImGui.Col_ButtonHovered] = self.st.basecolors.mainDarker,
+            [ImGui.Col_ButtonActive] = self.st.basecolors.mainDark
+            -- [ImGui.Col_Border] = 0x00000000
+        },
+        activeTagButton = {
+            [ImGui.Col_Text] = self.st.basecolors.mainBrightest,
+        --     [ImGui.Col_Button] = 0x00000000,
+        --     [ImGui.Col_ButtonHovered] = self.st.basecolors.mainDarkest,
+        --     [ImGui.Col_ButtonActive] = self.st.basecolors.mainDarker
+        --     -- [ImGui.Col_Border] = 0x00000000
         },
         searchWindow = {
             [ImGui.Col_TableBorderStrong] = 0x00000000,
@@ -172,6 +188,15 @@ PB_Gui.init = function(self, fonts)
                 [ImGui.StyleVar_FrameRounding] = { 20 * scale, nil },
                 [ImGui.StyleVar_FramePadding] = {8*scale, 2*scale },
             },
+            tagButtons = {
+                [ImGui.StyleVar_FrameRounding] = { 100 * scale, nil },
+                [ImGui.StyleVar_FramePadding] = {2*scale, 2*scale },
+                [ImGui.StyleVar_ItemSpacing] = {0,0}
+                -- [ImGui.StyleVar_FrameBorderSize] = {2, nil },
+            },
+            -- activeTagButton = {
+            --     [ImGui.StyleVar_FrameBorderSize] = {2, nil },
+            -- },
             tagList = {
                 [ImGui.StyleVar_IndentSpacing] = { 12 * scale, nil },
             },

@@ -457,11 +457,8 @@ DB.getTags = function(self)
     for id, tagInfo in pairs(self.app.tags.current.tagInfo) do
         if tagInfo.parentId and self.tags[tagInfo.parentId] then
             self.tags[id].parent = self.tags[tagInfo.parentId]
-            self.tags[id].parent.children = self.tags[id].parent.children or {}
-            -- self.tags[id].toplevel = false
-            table.insert(self.tags[id].parent.children, self.tags[id])
             self.app.logger:logDebug('Added "' ..
-            self.tags[id].name .. '" (parent: "' .. self.tags[id].parent.name .. '")')
+                self.tags[id].name .. '" (parent: "' .. self.tags[id].parent.name .. '")')
         elseif tagInfo.parentId then
             -- self.tags[id].toplevel = true
             self.app.logger:logError('Illegal parent ID for tag "' .. self.tags[id].name .. '"')
@@ -471,24 +468,49 @@ DB.getTags = function(self)
         end
         self.tags[id].id = id
         self.tags[id].app = self.app
+        self.tags[id].allTags = self.tags
+
         local col = self.tags[id].color
-        local hoveredCol = OD_OffsetRgbaByHSL(col,0,0,0.06)
-        local activeCol = OD_OffsetRgbaByHSL(col,0,0,0.1)
+        local hoveredCol = OD_OffsetRgbaByHSL(col, 0, 0, 0.06)
+        local activeCol = OD_OffsetRgbaByHSL(col, 0, 0, 0.1)
         local textCol = OD_ColorIsBright(col) and 0x000000ff or 0xffffffff
-        self.tags[id].colors = {[ImGui.Col_Button] = col,
+        self.tags[id].colors = {
+            [ImGui.Col_Button] = col,
             [ImGui.Col_ButtonHovered] = hoveredCol,
             [ImGui.Col_ButtonActive] = activeCol,
-            [ImGui.Col_Text] = textCol}
+            [ImGui.Col_Text] = textCol
+        }
         self.tags[id].toggleOpen = function(self, state)
             self.open = state
             self.app.tags.current.tagInfo[id].open = state
             self.app.tags:save()
             -- body
         end
+        -- self.tags[id].allTags = self.tags
+        self.tags[id].addDescendants = function(self)
+            if self.descendants == nil then
+                self.descendants = {}
+
+                local function collectAllDescendants(tag)
+                    for _, candidate in pairs(self.allTags) do
+                        if candidate.parentId == tag.id then
+                            table.insert(self.descendants, candidate)
+                            collectAllDescendants(candidate)
+                        end
+                    end
+                end
+
+                collectAllDescendants(self)
+            end
+        end
     end
 
+
     for id, tag in pairs(self.tags) do
-        tag.hasChildren = tag.children ~= nil and next(tag.children)
+        tag:addDescendants()
+    end
+    for id, tag in pairs(self.tags) do
+        tag.hasDescendants = tag.descendants ~= nil and next(tag.descendants)
     end
 end
 DB.markFavorites = function(self)
