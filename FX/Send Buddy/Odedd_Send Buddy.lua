@@ -1071,7 +1071,7 @@ if OD_PrereqsOK({
                         ImGui.DrawList_AddRectFilled(app.gui.draw_list, left - insertsPadding, top,
                             left + fillerW,
                             top + fillerH,
-                            gui.st.basecolors.darkestBG, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
+                            app.gui.st.basecolors.darkestBG, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
                     end
                     for i, s in OD_PairsByOrder(app.db.sends) do
                         if s.type == type then
