@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.1.7
+-- @version 1.1.8
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
