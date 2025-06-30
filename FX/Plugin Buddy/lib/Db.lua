@@ -454,21 +454,41 @@ end
 
 DB.getTags = function(self)
     self.tags = OD_DeepCopy(self.app.tags.current.tagInfo)
+    -- Detect and fix cycles (self-parenting or circular references)
+    local function hasCycle(tagId, visited)
+        visited = visited or {}
+        if visited[tagId] then return true end
+        visited[tagId] = true
+        local parentId = self.tags[tagId] and self.tags[tagId].parentId
+        if parentId and self.tags[parentId] then
+            return hasCycle(parentId, visited)
+        end
+        return false
+    end
+
     for id, tagInfo in pairs(self.app.tags.current.tagInfo) do
-        if tagInfo.parentId and self.tags[tagInfo.parentId] then
+        -- Remove illegal parentId if it would cause a stack overflow (cycle)
+        if tagInfo.parentId and (tagInfo.parentId == id or hasCycle(id)) then
+            self.app.logger:logError('Cycle detected for tag "' .. (self.tags[id] and self.tags[id].name or tostring(id)) .. '", removing parentId')
+            self.tags[id].parentId = nil
+            tagInfo.parentId = nil
+        end
+
+        if tagInfo.parentId and self.tags[tagInfo.parentId] and tagInfo.parentId ~= id then
             self.tags[id].parent = self.tags[tagInfo.parentId]
             self.app.logger:logDebug('Added "' ..
                 self.tags[id].name .. '" (parent: "' .. self.tags[id].parent.name .. '")')
+        elseif tagInfo.parentId and tagInfo.parentId == id then
+            self.app.logger:logError('Illegal parent ID for tag "' .. self.tags[id].name .. '" (parent=own ID)')
         elseif tagInfo.parentId then
-            -- self.tags[id].toplevel = true
             self.app.logger:logError('Illegal parent ID for tag "' .. self.tags[id].name .. '"')
         else
-            -- self.tags[id].toplevel = true
             self.app.logger:logDebug('Added "' .. self.tags[id].name .. '"')
         end
         self.tags[id].id = id
         self.tags[id].app = self.app
         self.tags[id].allTags = self.tags
+        self.tags[id].db = self
 
         local col = self.tags[id].color
         local hoveredCol = OD_OffsetRgbaByHSL(col, 0, 0, 0.06)
@@ -482,20 +502,21 @@ DB.getTags = function(self)
         }
         self.tags[id].toggleOpen = function(self, state)
             self.open = state
-            self.app.tags.current.tagInfo[id].open = state
+            self.app.tags.current.tagInfo[self.id].open = state
             self.app.tags:save()
-            -- body
         end
-        -- self.tags[id].allTags = self.tags
         self.tags[id].addDescendants = function(self)
             if self.descendants == nil then
                 self.descendants = {}
 
-                local function collectAllDescendants(tag)
-                    for _, candidate in pairs(self.allTags) do
+                local function collectAllDescendants(tag, visited)
+                    visited = visited or {}
+                    if visited[tag.id] then return end
+                    visited[tag.id] = true
+                    for candidateId, candidate in pairs(self.allTags) do
                         if candidate.parentId == tag.id then
                             table.insert(self.descendants, candidate)
-                            collectAllDescendants(candidate)
+                            collectAllDescendants(candidate, visited)
                         end
                     end
                 end
@@ -503,11 +524,115 @@ DB.getTags = function(self)
                 collectAllDescendants(self)
             end
         end
-    end
+        self.tags[id].addSiblings = function(self)
+            if self.siblings == nil then
+                self.siblings = {}
+                if self.parentId then
+                    for candidateId, candidate in pairs(self.allTags) do
+                        if candidate.parentId == self.parentId and candidate.id ~= self.id then
+                            table.insert(self.siblings, candidate)
+                        end
+                    end
+                end
+            end
+        end
 
+        -- Move this tag to a new position relative to a target tag
+        self.tags[id].moveTo = function(self, targetTag, position)
+            -- Defensive checks
+            if not targetTag or not position then
+                self.app.logger:logError('moveTo: targetTag or position is nil')
+                return false
+            end
+            if not targetTag.id then
+                self.app.logger:logError('moveTo: targetTag.id is nil')
+                return false
+            end
+
+            local tagInfo = self.app.tags.current.tagInfo
+            local oldParentId = self.parentId
+            local oldOrder = self.order
+            local newParentId
+            local newOrder
+
+            if position == "inside" then
+                newParentId = targetTag.id
+                targetTag.open = true
+                newOrder = 1
+            elseif position == "before" then
+                newParentId = targetTag.parentId
+                newOrder = targetTag.order or 1
+            elseif position == "after" then
+                newParentId = targetTag.parentId
+                newOrder = (targetTag.order or 1) + 1
+            else
+                self.app.logger:logError('moveTo: invalid position "' .. tostring(position) .. '"')
+                return false
+            end
+
+            -- Collect siblings under the new parent
+            local siblings = {}
+            for candidateId, candidate in OD_PairsByOrder(self.allTags) do
+                if candidate.parentId == newParentId then
+                    table.insert(siblings, candidateId)
+                end
+            end
+
+            -- Remove self from siblings if present (for move)
+            local filteredSiblings = {}
+            for _, sibId in ipairs(siblings) do
+                if sibId ~= self.id then
+                    table.insert(filteredSiblings, sibId)
+                end
+            end
+
+            -- Clamp newOrder to valid range
+            if newOrder < 1 then newOrder = 1 end
+            if newOrder > #filteredSiblings + 1 then newOrder = #filteredSiblings + 1 end
+
+            -- Insert self at the correct position
+            if position == "inside" then
+                table.insert(filteredSiblings, 1, self.id)
+            elseif position == "before" or position == "after" then
+                table.insert(filteredSiblings, newOrder, self.id)
+            end
+
+            -- Reorder all siblings (including self)
+            for i, sibId in ipairs(filteredSiblings) do
+                tagInfo[sibId].order = i
+                if sibId == self.id then
+                    tagInfo[sibId].parentId = newParentId
+                end
+            end
+
+            -- If parent changed, reorder old parent's siblings as well
+            if oldParentId ~= newParentId then
+                local oldSiblings = {}
+                for candidateId, candidate in OD_PairsByOrder(self.allTags) do
+                    if candidate.parentId == oldParentId and candidate.id ~= self.id then
+                        table.insert(oldSiblings, candidateId)
+                    end
+                end
+                table.sort(oldSiblings, function(a, b) return tagInfo[a].order < tagInfo[b].order end)
+                for i, sibId in ipairs(oldSiblings) do
+                    tagInfo[sibId].order = i
+                end
+            end
+
+            self.parentId = newParentId
+            self.order = nil -- will be set by above loop
+
+            self.app.tags:save()
+            -- Rescan tags into the DB after move
+            self.db:getTags()
+        end
+    end
 
     for id, tag in pairs(self.tags) do
         tag:addDescendants()
+    end
+    for id, tag in pairs(self.tags) do
+        tag:addSiblings()
     end
     for id, tag in pairs(self.tags) do
         tag.hasDescendants = tag.descendants ~= nil and next(tag.descendants)
