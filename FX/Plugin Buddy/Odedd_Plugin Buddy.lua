@@ -331,9 +331,9 @@ if OD_PrereqsOK({
                     -- ImGui.PopStyleColor(ctx)
                     -- ImGui.PopStyleVar(ctx)
                     ImGui.InvisibleButton(ctx, 'dropTarget' .. position .. tag.id, w, height)
-                    if ImGui.IsItemHovered(ctx) then
-                        r.ShowConsoleMsg(position .. ' ' .. tag.name .. '\n')
-                    end
+                    -- if ImGui.IsItemHovered(ctx) then
+                    --     r.ShowConsoleMsg(position .. ' ' .. tag.name .. '\n')
+                    -- end
 
                     ImGui.SetCursorPos(ctx, x, y)     --'#dropTargetBefore'+tag.id,w, y-spacing)
 
