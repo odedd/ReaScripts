@@ -470,7 +470,7 @@ DB.getTags = function(self)
         -- Remove illegal parentId if it would cause a stack overflow (cycle)
         if tagInfo.parentId and (tagInfo.parentId == id or hasCycle(id)) then
             self.app.logger:logError('Cycle detected for tag "' ..
-            (self.tags[id] and self.tags[id].name or tostring(id)) .. '", removing parentId')
+                (self.tags[id] and self.tags[id].name or tostring(id)) .. '", removing parentId')
             self.tags[id].parentId = nil
             tagInfo.parentId = nil
         end
@@ -557,24 +557,23 @@ DB.getTags = function(self)
             local newParentId
             local newOrder
 
+            self.app.logger:logDebug('move tag "' .. self.name .. '" to ' .. tostring(position) .. ' "' .. targetTag.name .. '"')
             if position == "inside" then
                 newParentId = targetTag.id
                 newOrder = 1
                 targetTag:toggleOpen(true, false)
-                self.app.logger:logDebug('open "'.. targetTag.name ..'"')
-            elseif position == "before" then
+                self.app.logger:logDebug('open "' .. targetTag.name .. '"')
+            elseif position == "before" or position == "after" then
                 newParentId = targetTag.parentId
-                newOrder = targetTag.order or 1
-                if targetTag.parent then targetTag.parent:toggleOpen(true, false) end
-            elseif position == "after" then
-                newParentId = targetTag.parentId
-                newOrder = (targetTag.order or 1) + 1
-                if targetTag.parent then targetTag.parent:toggleOpen(true, false) end
+                newOrder = (targetTag.order or 1) + ((position == "after") and 1 or 0)
+                if targetTag.parent then
+                    targetTag.parent:toggleOpen(true, false)
+                    self.app.logger:logDebug('open "' .. targetTag.name .. '"')
+                end
             else
                 self.app.logger:logError('moveTo: invalid position "' .. tostring(position) .. '"')
                 return false
             end
-            self.app.logger:logDebug('move ' .. tostring(position) .. ' "'.. targetTag.name ..'"')
 
             -- Collect siblings under the new parent
             local siblings = {}
