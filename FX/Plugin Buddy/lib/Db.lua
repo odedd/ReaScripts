@@ -469,7 +469,8 @@ DB.getTags = function(self)
     for id, tagInfo in pairs(self.app.tags.current.tagInfo) do
         -- Remove illegal parentId if it would cause a stack overflow (cycle)
         if tagInfo.parentId and (tagInfo.parentId == id or hasCycle(id)) then
-            self.app.logger:logError('Cycle detected for tag "' .. (self.tags[id] and self.tags[id].name or tostring(id)) .. '", removing parentId')
+            self.app.logger:logError('Cycle detected for tag "' ..
+            (self.tags[id] and self.tags[id].name or tostring(id)) .. '", removing parentId')
             self.tags[id].parentId = nil
             tagInfo.parentId = nil
         end
@@ -500,10 +501,11 @@ DB.getTags = function(self)
             [ImGui.Col_ButtonActive] = activeCol,
             [ImGui.Col_Text] = textCol
         }
-        self.tags[id].toggleOpen = function(self, state)
+        self.tags[id].toggleOpen = function(self, state, persist)
+            persist = (persist == nil) and true or persist
             self.open = state
             self.app.tags.current.tagInfo[self.id].open = state
-            self.app.tags:save()
+            if persist then self.app.tags:save() end
         end
         self.tags[id].addDescendants = function(self)
             if self.descendants == nil then
@@ -557,18 +559,22 @@ DB.getTags = function(self)
 
             if position == "inside" then
                 newParentId = targetTag.id
-                targetTag.open = true
                 newOrder = 1
+                targetTag:toggleOpen(true, false)
+                self.app.logger:logDebug('open "'.. targetTag.name ..'"')
             elseif position == "before" then
                 newParentId = targetTag.parentId
                 newOrder = targetTag.order or 1
+                if targetTag.parent then targetTag.parent:toggleOpen(true, false) end
             elseif position == "after" then
                 newParentId = targetTag.parentId
                 newOrder = (targetTag.order or 1) + 1
+                if targetTag.parent then targetTag.parent:toggleOpen(true, false) end
             else
                 self.app.logger:logError('moveTo: invalid position "' .. tostring(position) .. '"')
                 return false
             end
+            self.app.logger:logDebug('move ' .. tostring(position) .. ' "'.. targetTag.name ..'"')
 
             -- Collect siblings under the new parent
             local siblings = {}
