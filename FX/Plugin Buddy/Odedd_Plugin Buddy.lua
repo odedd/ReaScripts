@@ -302,7 +302,6 @@ if OD_PrereqsOK({
             -- if receiving track, add assign all results to ALL_TRACKS_GROUP and sort them by track order
         end
 
-        app.temp.draggedTagsShown = app.temp.draggedTagsShown or {}
         local ctx = app.gui.ctx
         local tagAreaH = select(2, ImGui.GetContentRegionAvail(ctx))
         local tagAreaGlobalX, tagAreaGlobalY = ImGui.GetCursorScreenPos(ctx)
@@ -324,18 +323,21 @@ if OD_PrereqsOK({
                     local previewPreOffsetY = previewPreOffsetY or 0
                     local previewPostOffsetY = previewPostOffsetY or 0
                     local w = ImGui.GetContentRegionAvail(ctx) * app.settings.current.uiScale
-                    ImGui.SetCursorPosY(ctx, y - height - offsetY)     --'#dropTargetBefore'+tag.id,w, y-spacing)
-                    -- ImGui.PushStyleVar(ctx, ImGui.StyleVar_FrameBorderSize, 2)
-                    -- ImGui.PushStyleColor(ctx, ImGui.Col_Button, 0xffffff11)
-                    -- ImGui.Button(ctx, '##dropTarget' .. position .. tag.id, w, height)
-                    -- ImGui.PopStyleColor(ctx)
-                    -- ImGui.PopStyleVar(ctx)
-                    ImGui.InvisibleButton(ctx, 'dropTarget' .. position .. tag.id, w, height)
-                    -- if ImGui.IsItemHovered(ctx) then
-                    --     r.ShowConsoleMsg(position .. ' ' .. tag.name .. '\n')
-                    -- end
+                    ImGui.SetCursorPosY(ctx, y - height - offsetY) --'#dropTargetBefore'+tag.id,w, y-spacing)
+                    if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG then
+                        ImGui.PushStyleVar(ctx, ImGui.StyleVar_FrameBorderSize, 2)
+                        ImGui.PushStyleColor(ctx, ImGui.Col_Button, 0xffffff11)
+                        ImGui.Button(ctx, '##dropTarget' .. position .. tag.id, w, height)
+                        ImGui.PopStyleColor(ctx)
+                        ImGui.PopStyleVar(ctx)
+                    else
+                        ImGui.InvisibleButton(ctx, 'dropTarget' .. position .. tag.id, w, height)
+                    end
+                    if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG and ImGui.IsItemHovered(ctx) then
+                        app.logger:logDebug('Hover over target: ' .. position .. ' ' .. tag.name)
+                    end
 
-                    ImGui.SetCursorPos(ctx, x, y)     --'#dropTargetBefore'+tag.id,w, y-spacing)
+                    ImGui.SetCursorPos(ctx, x, y) --'#dropTargetBefore'+tag.id,w, y-spacing)
 
                     if not preview and ImGui.BeginDragDropTarget(ctx) then
                         local rv, payload
@@ -489,7 +491,8 @@ if OD_PrereqsOK({
                         if not preview then
                             local open = (tag.hasDescendants and tag.open)
                             local requierdSpacing = open and spacingY or 0
-                            drawDropTarget(tag, tagH + (open and spacingY or 0), 'inside', (open and 0 or spacingY), spacingY,
+                            drawDropTarget(tag, tagH + (open and spacingY or 0), 'inside', (open and 0 or spacingY),
+                                spacingY,
                                 0)
                         end
                         ImGui.PopFont(ctx)
@@ -515,8 +518,14 @@ if OD_PrereqsOK({
                 -- local lastTag = nil
                 -- Collect all tags with the given parentId, preserving order
                 local lastTag = nil
+                local firstTag = nil
                 for id, tag in OD_PairsByOrder(app.db.tags) do
                     if tag.parentId == parentId then
+                        if firstTag == nil and parentId == nil and not preview then
+                            local availH = ImGui.GetCursorPosY(ctx)
+                            drawDropTarget(tag, availH, 'before', spacingY, 0, 0)
+                            firstTag = tag
+                        end
                         drawTagNode(tag, indent, preview)
                         lastTag = tag
                     end
