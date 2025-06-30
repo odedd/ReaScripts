@@ -1,10 +1,10 @@
--- @description Scout Buddy
+-- @description Scout
 -- @author Oded Davidov
 -- @version 0.0.1
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
---   # Scout Buddy
+--   # Scout
 --   Plugin selector with advanced tagging capabilities.
 --
 --   This script is free, but as always, donations are most welcome at https://paypal.me/odedda :)
@@ -540,8 +540,7 @@ if OD_PrereqsOK({
                 app.gui:popStyles(app.gui.st.vars.tagList)
             end
 
-            ImGui.Text(ctx, "Filters")
-            ImGui.Separator(ctx)
+            ImGui.SeparatorText(ctx, "Filters")
             ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
             drawTagsOfParent(nil, false, false)
             ImGui.Dummy(ctx, 0, 0)
@@ -596,6 +595,7 @@ if OD_PrereqsOK({
                 -- app.db:init()
                 app.filterResults({ text = '' })
             end
+            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx)+1)
 
             local h = select(2, ImGui.GetContentRegionAvail(ctx))
             local maxSearchResults = math.floor(h / (fontLineHeight))
@@ -674,7 +674,6 @@ if OD_PrereqsOK({
                 local foundInvisibleGroup = false
                 local absIndex = 0
                 for i, result in ipairs(app.temp.searchResults) do
-                    -- local currentScreenY =
 
                     if result.group ~= lastGroup then
                         ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
@@ -1010,14 +1009,18 @@ if OD_PrereqsOK({
         end
         ImGui.PopFont(ctx)
         ImGui.BeginGroup(ctx)
-        ImGui.PushFont(ctx, app.gui.st.fonts.large_bold)
         app.gui:pushColors(app.gui.st.col.title)
+        ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+        -- app.gui:pushColors(app.gui.st.col.title)
+        -- ImGui.AlignTextToFramePadding(ctx)
+        ImGui.Text(ctx,ICONS.SEARCH)
+        ImGui.PopFont(ctx)
+        ImGui.SameLine(ctx)
+        ImGui.PushFont(ctx, app.gui.st.fonts.large)
         ImGui.AlignTextToFramePadding(ctx)
-        ImGui.Text(ctx, app.scr.name)
+        ImGui.Text(ctx, app.scr.name..'|')
         app:setHoveredHint('main', app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
         app.gui:popColors(app.gui.st.col.title)
-        ImGui.PopFont(ctx)
-        ImGui.PushFont(ctx, app.gui.st.fonts.large)
         ImGui.SameLine(ctx)
             if app.pageSwitched then
                 -- app.db:init()
@@ -1035,11 +1038,11 @@ if OD_PrereqsOK({
         end
         ImGui.SameLine(ctx)
         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
-        
         local rv, btn = beginRightIconMenu(ctx, menu)
+        ImGui.Dummy(ctx,0,0)
         ImGui.PopFont(ctx)
         ImGui.EndGroup(ctx)
-        ImGui.Separator(ctx)
+        -- ImGui.Separator(ctx)
         if rv then
             if btn == 'close' then
                 app.exit = true
