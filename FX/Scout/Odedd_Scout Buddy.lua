@@ -336,14 +336,15 @@ if OD_PrereqsOK({
         local tagAreaGlobalX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - tagAreaW - windowPadding
         if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG then ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),
                 tagAreaGlobalX, 10, tagAreaGlobalX + tagAreaW, 1000, 0xffffff22) end
-        -- Search Area
+        app.gui:pushStyles(app.gui.st.vars.searchWindow)
+            app.gui:pushColors(app.gui.st.col.searchWindow)
+            
+                -- Search Area
         local selectedResult = nil
         local hintResult = nil
         local hintContext = nil
         if ImGui.BeginChild(ctx, 'searchArea', w - tagAreaW - spacingX - windowPadding) then
             local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx)
-            app.gui:pushStyles(app.gui.st.vars.searchWindow)
-            app.gui:pushColors(app.gui.st.col.searchWindow)
             app.temp.searchResults = app.temp.searchResults or {}
 
             if app.pageSwitched then
@@ -538,8 +539,7 @@ if OD_PrereqsOK({
                 end
                 ImGui.EndTable(ctx)
             end
-            app.gui:popColors(app.gui.st.col.searchWindow)
-            app.gui:popStyles(app.gui.st.vars.searchWindow)
+            
             if hintResult then
                 local action = (hintResult.type == ASSETS.TRACK and 'add a send to track %s' or 'add %s to selected track(s)')
                     :format(hintResult.searchText[1].text)
@@ -869,6 +869,8 @@ if OD_PrereqsOK({
             ImGui.Dummy(ctx, 0, 0)
             ImGui.EndChild(ctx)
         end
+        app.gui:popColors(app.gui.st.col.searchWindow)
+            app.gui:popStyles(app.gui.st.vars.searchWindow)
     end
 
     function app.drawErrorNoTrack()
