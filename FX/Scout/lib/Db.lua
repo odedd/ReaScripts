@@ -34,6 +34,7 @@ DB = {
         self:getFXChains()
         self:getFXFolders()
         self:getFXCategories()
+        self:getFXDevelopers()
         self:getTrackTemplates()
         self:getTracks()
         self:getTags()
@@ -559,6 +560,66 @@ DB.getFXCategories = function(self)
 end
 
 
+DB.getFXDevelopers = function(self)
+    self.app.logger:logDebug('-- DB.getFXDevelopers()')
+    self.fxDevelopers = {}
+    self.pluginToDeveloper = {}
+
+    local content = OD_GetContent(r.GetResourcePath() .. "/" .. "reaper-fxtags.ini")
+    content = content:gsub("\r\n", "\n"):gsub("\r", "\n")
+
+    -- Extract only [developer] section up to next section or end
+    local developerSection = content:match("%[developer%](.-)\n%[")
+    if not developerSection then
+        developerSection = content:match("%[developer%](.*)")
+    end
+
+    if developerSection then
+        local pluginCount = 0
+        local developerCount = 0
+        for line in developerSection:gmatch("[^\n]+") do
+            local plugin, developer = line:match("([^=]+)=(.+)")
+            if plugin and developer then
+                plugin = plugin:gsub("^%s+", ""):gsub("%s+$", "")
+                developer = developer:gsub("^%s+", ""):gsub("%s+$", "")
+                pluginCount = pluginCount + 1
+
+                -- Add to fxDevelopers table
+                if not self.fxDevelopers[developer] then
+                    self.fxDevelopers[developer] = {}
+                    developerCount = developerCount + 1
+                end
+                table.insert(self.fxDevelopers[developer], plugin)
+
+                -- Add to reverse map
+                self.pluginToDeveloper[plugin] = developer
+
+                self.app.logger:logDebug('Added plugin "' .. plugin .. '" to developer "' .. developer .. '"')
+            end
+        end
+        self.app.logger:logInfo('Parsed ' ..
+            pluginCount .. ' plugins into ' .. developerCount .. ' developers')
+    else
+        self.app.logger:logError('Could not find [developer] section in reaper-fxtags.ini')
+    end
+
+    -- Update FILTER_MENU if needed
+    FILTER_MENU['Developers'].items = {}
+
+    local developerNames = {}
+    for name in pairs(self.fxDevelopers) do
+        table.insert(developerNames, name)
+    end
+    table.sort(developerNames)
+
+    for index, developerName in ipairs(developerNames) do
+        FILTER_MENU['Developers'].items[developerName] = {
+            order = index,
+            query = { fxDeveloper = developerName }
+        }
+    end
+end
+
 DB.getTrackTemplates = function(self)
     self.app.logger:logDebug('-- DB.getTrackTemplates()')
     self.trackTemplates = {}
@@ -864,15 +925,25 @@ DB.assembleAssets = function(self)
             if self.pluginToFolders then
                 folders = self.pluginToFolders[plugin.ident] or {}
             end
-
+            
             local categories = {}
+            local nameToCheck
             if self.pluginToCategories then
                 local path, file, ext = OD_DissectFilename(plugin.ident)
-                local nameToCheck = file .. '.' .. ext
-
+                nameToCheck = (file .. '.' .. ext):gsub('[ -]', '_')
+                
                 if self.pluginToCategories[nameToCheck] then
                     categories = self.pluginToCategories[nameToCheck]
                 end
+            end
+            local developer
+
+            if self.pluginToDeveloper then
+                if not nameToCheck then
+                    local path, file, ext = OD_DissectFilename(plugin.ident)
+                    nameToCheck = (file .. '.' .. ext):gsub('[ -]', '_')
+                end
+                developer = self.pluginToDeveloper[nameToCheck] 
             end
 
             table.insert(self.assets, {
@@ -885,6 +956,7 @@ DB.assembleAssets = function(self)
                 fx_type = plugin.fx_type,
                 folders = folders,
                 categories = categories,
+                developer = developer,
                 toggleFavorite = toggleFavorite
             })
             count = count + 1

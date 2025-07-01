@@ -233,43 +233,25 @@ if OD_PrereqsOK({
             for tagId, positive in pairs(query.addTags) do
                 app.temp.filter.tags[tagId] = positive
             end
+            query.addTags = nil
         end
 
         if query.removeTags then
             for i, tagId in ipairs(query.removeTags) do
                 app.temp.filter.tags[tagId] = nil
             end
+            query.removeTags = nil
         end
 
-        if query.type then
-            if query.type == 'all' then
-                app.temp.filter.type = nil
-            else
-                app.temp.filter.type = query.type
+        for queryType, queryValue in pairs(query) do
+            if queryType ~= 'text' then
+                if queryValue == 'all' then
+                    app.temp.filter[queryType] = nil
+                else
+                    app.temp.filter[queryType] = queryValue
+                end
             end
         end
-        if query.fx_type then
-            if query.fx_type == 'all' then
-                app.temp.filter.fx_type = nil
-            else
-                app.temp.filter.fx_type = query.fx_type
-            end
-        end
-        if query.fxFolderId then
-            if query.fxFolderId == 'all' then
-                app.temp.filter.fxFolderId = nil
-            else
-                app.temp.filter.fxFolderId = query.fxFolderId
-            end
-        end
-        if query.fxCategory then
-            if query.fxCategory == 'all' then
-                app.temp.filter.fxCategory = nil
-            else
-                app.temp.filter.fxCategory = query.fxCategory
-            end
-        end
-
 
         for i, asset in ipairs(app.db.assets) do
             if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then goto skip end
@@ -287,6 +269,10 @@ if OD_PrereqsOK({
             if app.temp.filter.fxCategory then
                 if not asset.categories then goto skip end
                 if not OD_HasValue(asset.categories, app.temp.filter.fxCategory) then goto skip end
+            end
+            if app.temp.filter.fxDeveloper then
+                if not asset.developer then goto skip end
+                if asset.developer ~= app.temp.filter.fxDeveloper then goto skip end
             end
             -- -- FILTER TAGS
             -- if skip then goto continue end
@@ -355,12 +341,14 @@ if OD_PrereqsOK({
         local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
         local windowPadding = ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)
         local tagAreaGlobalX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - tagAreaW - windowPadding
-        if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG then ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),
-                tagAreaGlobalX, 10, tagAreaGlobalX + tagAreaW, 1000, 0xffffff22) end
+        if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG then
+            ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),
+                tagAreaGlobalX, 10, tagAreaGlobalX + tagAreaW, 1000, 0xffffff22)
+        end
         app.gui:pushStyles(app.gui.st.vars.searchWindow)
-            app.gui:pushColors(app.gui.st.col.searchWindow)
-            
-                -- Search Area
+        app.gui:pushColors(app.gui.st.col.searchWindow)
+
+        -- Search Area
         local selectedResult = nil
         local hintResult = nil
         local hintContext = nil
@@ -560,7 +548,7 @@ if OD_PrereqsOK({
                 end
                 ImGui.EndTable(ctx)
             end
-            
+
             if hintResult then
                 local action = (hintResult.type == ASSETS.TRACK and 'add a send to track %s' or 'add %s to selected track(s)')
                     :format(hintResult.searchText[1].text)
@@ -854,7 +842,7 @@ if OD_PrereqsOK({
                                 end
                             end
 
-                            if ImGui.MenuItem(ctx, 'All' .. "##filterMenu" .. menuId .. "-All",nil,selected) then
+                            if ImGui.MenuItem(ctx, 'All' .. "##filterMenu" .. menuId .. "-All", nil, selected) then
                                 app.filterResults(menuInfo.allQuery)
                             end
                             ImGui.Separator(ctx)
@@ -891,7 +879,7 @@ if OD_PrereqsOK({
             ImGui.EndChild(ctx)
         end
         app.gui:popColors(app.gui.st.col.searchWindow)
-            app.gui:popStyles(app.gui.st.vars.searchWindow)
+        app.gui:popStyles(app.gui.st.vars.searchWindow)
     end
 
     function app.drawErrorNoTrack()
