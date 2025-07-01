@@ -244,14 +244,15 @@ if OD_PrereqsOK({
         if query.type then
             if query.type == 'all' then
                 app.temp.filter.type = nil
-                app.temp.filter.fx_type = nil
             else
                 app.temp.filter.type = query.type
-                if query.type == ASSETS.PLUGIN and query.fx_type then
-                    app.temp.filter.fx_type = query.fx_type
-                else
-                    app.temp.filter.fx_type = nil
-                end
+            end
+        end
+        if query.fx_type then
+            if query.fx_type == 'all' then
+                app.temp.filter.fx_type = nil
+            else
+                app.temp.filter.fx_type = query.fx_type
             end
         end
 
@@ -328,12 +329,13 @@ if OD_PrereqsOK({
         local tagAreaH = select(2, ImGui.GetContentRegionAvail(ctx))
         local tagAreaW = app.settings.current.filterPanelWidth * app.settings.current.uiScale
         local node_flags = ImGui.TreeNodeFlags_OpenOnArrow | ImGui.TreeNodeFlags_OpenOnDoubleClick
-        | ImGui.TreeNodeFlags_Framed | ImGui.TreeNodeFlags_SpanAllColumns
-        local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)-- * app.settings.current.uiScale
+            | ImGui.TreeNodeFlags_Framed | ImGui.TreeNodeFlags_SpanAllColumns
+        local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) -- * app.settings.current.uiScale
         local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
         local windowPadding = ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)
-        local tagAreaGlobalX = select(1,ImGui.GetCursorScreenPos(ctx)) + w - tagAreaW - windowPadding
-        if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG then ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),tagAreaGlobalX, 10,tagAreaGlobalX+tagAreaW,1000, 0xffffff22) end
+        local tagAreaGlobalX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - tagAreaW - windowPadding
+        if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG then ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),
+                tagAreaGlobalX, 10, tagAreaGlobalX + tagAreaW, 1000, 0xffffff22) end
         -- Search Area
         local selectedResult = nil
         local hintResult = nil
@@ -591,8 +593,8 @@ if OD_PrereqsOK({
             end
         end
 
-        ImGui.SameLine(ctx)                -- Filter Area
-        if ImGui.BeginChild(ctx, 'filterArea', tagAreaW - spacingX*2, tagAreaH) then
+        ImGui.SameLine(ctx) -- Filter Area
+        if ImGui.BeginChild(ctx, 'filterArea', tagAreaW - spacingX * 2, tagAreaH) then
             local function drawTagsOfParent(parentId, indent, preview)
                 local drawTagNode
                 -- preview is for previewing when drag and dropping, so no drag&drop functionality of its own
@@ -820,14 +822,18 @@ if OD_PrereqsOK({
                 app.gui:popStyles(app.gui.st.vars.tagList)
             end
 
-            ImGui.SeparatorText(ctx, "Filters")
-            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
-
             local function drawFilterMenu(menu, menuId)
                 for k, menuInfo in OD_PairsByOrder(menu) do
                     if ImGui.BeginMenu(ctx, k .. '##filterMenu' .. menuId) then
                         if menuInfo.allQuery then
-                            if ImGui.MenuItem(ctx, 'All' .. "##filterMenu" .. menuId .. "-All") then
+                            local selected = true
+                            for k, v in pairs(menuInfo.allQuery) do
+                                if app.temp.filter[k] ~= ((menuInfo.allQuery[k] ~= 'all') and menuInfo.allQuery[k] or nil) then
+                                    selected = false
+                                end
+                            end
+
+                            if ImGui.MenuItem(ctx, 'All' .. "##filterMenu" .. menuId .. "-All",nil,selected) then
                                 app.filterResults(menuInfo.allQuery)
                             end
                             ImGui.Separator(ctx)
@@ -837,7 +843,13 @@ if OD_PrereqsOK({
                             if value.submenu then
                                 drawFilterMenu({ [item] = value.submenu }, menuId .. '-' .. item)
                             elseif value.query then
-                                if ImGui.MenuItem(ctx, item) then
+                                local selected = true
+                                for k, v in pairs(value.query) do
+                                    if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then
+                                        selected = false
+                                    end
+                                end
+                                if ImGui.MenuItem(ctx, item, nil, selected) then
                                     app.filterResults(value.query)
                                 end
                             end
@@ -847,6 +859,8 @@ if OD_PrereqsOK({
                 end
             end
 
+            ImGui.SeparatorText(ctx, "Filters")
+            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
             drawFilterMenu(FILTER_MENU, 'root')
 
             ImGui.SeparatorText(ctx, "Tags")
@@ -855,8 +869,6 @@ if OD_PrereqsOK({
             ImGui.Dummy(ctx, 0, 0)
             ImGui.EndChild(ctx)
         end
-
-        
     end
 
     function app.drawErrorNoTrack()
