@@ -485,7 +485,7 @@ DB.getFXFolders = function(self)
     FILTER_MENU['Folders'].items = {}
     for id, fxFolder in OD_PairsByOrder(self.fxFolders) do
         FILTER_MENU['Folders'].items[fxFolder.name] = {
-            order = fxFolder.order,
+            order = tonumber(fxFolder.order),
             query = { fxFolderId = id }
         }
     end
