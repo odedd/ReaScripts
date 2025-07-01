@@ -65,7 +65,7 @@ if OD_PrereqsOK({
     local projPath, projFileName = OD_GetProjectPaths()
 
     local logger = OD_Logger:new({
-        level = OD_Logger.LOG_LEVEL.ERROR,
+        level = OD_Logger.LOG_LEVEL.INFO,
         output = OD_Logger.LOG_OUTPUT.CONSOLE,
         filename = projPath .. Scr.name .. '_' .. projFileName .. '.log'
     })
@@ -255,6 +255,13 @@ if OD_PrereqsOK({
                 app.temp.filter.fx_type = query.fx_type
             end
         end
+        if query.fxFolderId then
+            if query.fxFolderId == 'all' then
+                app.temp.filter.fxFolderId = nil
+            else
+                app.temp.filter.fxFolderId = query.fxFolderId
+            end
+        end
 
 
         for i, asset in ipairs(app.db.assets) do
@@ -266,7 +273,10 @@ if OD_PrereqsOK({
             -- FILTER TYPE
             if app.temp.filter.type and asset.type ~= app.temp.filter.type then goto skip end
             if app.temp.filter.fx_type and asset.fx_type ~= app.temp.filter.fx_type then goto skip end
-
+            if app.temp.filter.fxFolderId then
+                if not asset.folders then goto skip end
+                if not OD_HasValue(asset.folders, app.temp.filter.fxFolderId) then goto skip end
+            end
             -- -- FILTER TAGS
             -- if skip then goto continue end
             for tagId, positive in pairs(app.temp.filter.tags) do
@@ -577,7 +587,7 @@ if OD_PrereqsOK({
         end
         if ImGui.IsItemActive(ctx) then
             ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
-            local mouseDeltaX, mouseDeltaY = ImGui.GetMouseDragDelta(ctx, nil,
+            local mouseDeltaX, mouseDeltaY = ImGui.GetMguiouseDragDelta(ctx, nil,
                 nil,
                 ImGui.MouseButton_Left)
             if mouseDeltaX ~= 0 then

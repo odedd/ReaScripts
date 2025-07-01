@@ -62,6 +62,11 @@ FILTER_MENU = {
                 },
             }
         }
+    },
+    ['Folders'] = {
+        order = 2,
+        allQuery = { fxFolderId = 'all' },
+        items = {} -- added in Db.lua once folders are loaded
     }
 }
 for i, fx_type_name in ipairs(FX_TYPE) do

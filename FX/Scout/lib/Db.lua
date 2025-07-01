@@ -32,6 +32,7 @@ DB = {
         self.masterTrack = reaper.GetMasterTrack(0)
         self:getPlugins()
         self:getFXChains()
+        self:getFXFolders()
         self:getTrackTemplates()
         self:getTracks()
         self:getTags()
@@ -412,6 +413,83 @@ DB.getFXChains = function(self)
     end
     self.app.logger:logInfo('Found ' .. count .. ' FX chains')
 end
+DB.getFXFolders = function(self)
+    self.app.logger:logDebug('-- DB.getFXFolders()')
+    self.fxFolders = {}
+
+    local content = OD_GetContent(r.GetResourcePath() .. "/" .. "reaper-fxfolders.ini"):gsub("\r\n", "\n"):gsub("\r",
+        "\n")
+
+    -- Parse folder names
+    local folder_names = {}
+    local foldersSection = content:match("%[Folders%](.-)\n%[")
+    if not foldersSection then
+        foldersSection = content:match("%[Folders%](.*)") -- if it's the last section
+    end
+
+    local folderCount = 0
+    if foldersSection then
+        -- parse ids
+        local parsedIds = {}
+        for line in foldersSection:gmatch("[^\r\n]+") do
+            local id, parsedId = line:match("Id(%d+)=(.+)")
+            if id and parsedId then
+                parsedIds[id] = parsedId
+            end
+        end
+        for line in foldersSection:gmatch("[^\r\n]+") do
+            local id, name = line:match("Name(%d+)=(.+)")
+            if id and name then
+                self.fxFolders[parsedIds[id]] = { order = id, name = name }
+                folderCount = folderCount + 1
+                self.app.logger:logDebug('Found folder "' .. name .. '" (id: ' .. parsedIds[id] .. ')')
+            end
+        end
+        self.app.logger:logDebug('Found ' .. folderCount .. ' folder IDs')
+    else
+        self.app.logger:logError('Could not parse [Folders] section')
+    end
+
+    for id, folder in pairs(self.fxFolders) do
+        local count = 0
+        local pattern = "%[Folder" .. id .. "%](.-)\n%["
+        local section = content:match(pattern)
+        if not section then
+            section = content:match("%[Folder" .. id .. "%](.*)")
+        end
+        if section then
+            local items = {}
+            for line in section:gmatch("[^\r\n]+") do
+                local id, name = line:match("Item(%d+)=(.+)")
+                if name and id then
+                    items[id] = { order = id, name = name }
+                end
+            end
+            for line in section:gmatch("[^\r\n]+") do
+                local id, type = line:match("Type(%d+)=(.+)")
+                if type and id then
+                    items[id].type = type
+                    self.app.logger:logDebug('Added ' ..
+                        items[id].name .. ' to ' .. folder.name .. ' (type ' .. items[id].type .. ')')
+                    count = count + 1
+                end
+            end
+            self.app.logger:logDebug('Added ' .. count .. ' plugins to ' .. folder.name)
+            self.fxFolders[id].items = items
+        end
+    end
+    self.app.logger:logInfo('Found ' .. folderCount .. ' FX folders')
+
+    -- Update FILTER_MENU
+
+    FILTER_MENU['Folders'].items = {}
+    for id, fxFolder in OD_PairsByOrder(self.fxFolders) do
+        FILTER_MENU['Folders'].items[fxFolder.name] = {
+            order = fxFolder.order,
+            query = { fxFolderId = id }
+        }
+    end
+end
 DB.getTrackTemplates = function(self)
     self.app.logger:logDebug('-- DB.getTrackTemplates()')
     self.trackTemplates = {}
@@ -557,7 +635,8 @@ DB.getTags = function(self)
             local newParentId
             local newOrder
 
-            self.app.logger:logDebug('move tag "' .. self.name .. '" to ' .. tostring(position) .. ' "' .. targetTag.name .. '"')
+            self.app.logger:logDebug('move tag "' ..
+                self.name .. '" to ' .. tostring(position) .. ' "' .. targetTag.name .. '"')
             if position == "inside" then
                 newParentId = targetTag.id
                 newOrder = 1
@@ -711,6 +790,16 @@ DB.assembleAssets = function(self)
     end
     for _, plugin in ipairs(self.plugins) do
         if self.app.settings.current.fxTypeVisibility[plugin.fx_type] then
+            local folders = {}
+            for id, fxFolder in pairs(self.fxFolders) do
+                for pId, item in pairs(fxFolder.items) do
+                    if item.name == plugin.ident then
+                        table.insert(folders, id)
+                    end
+                end
+            end
+
+
             table.insert(self.assets, {
                 db = self,
                 type = ASSETS.PLUGIN,
@@ -719,6 +808,7 @@ DB.assembleAssets = function(self)
                 group = plugin.group,
                 vendor = plugin.vendor,
                 fx_type = plugin.fx_type,
+                folders = folders,
                 toggleFavorite = toggleFavorite
             })
             count = count + 1
