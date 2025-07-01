@@ -587,7 +587,7 @@ if OD_PrereqsOK({
         end
         if ImGui.IsItemActive(ctx) then
             ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
-            local mouseDeltaX, mouseDeltaY = ImGui.GetMguiouseDragDelta(ctx, nil,
+            local mouseDeltaX, mouseDeltaY = ImGui.GetMouseDragDelta(ctx, nil,
                 nil,
                 ImGui.MouseButton_Left)
             if mouseDeltaX ~= 0 then
