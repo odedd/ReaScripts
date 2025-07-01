@@ -241,14 +241,33 @@ if OD_PrereqsOK({
             end
         end
 
+        if query.type then
+            if query.type == 'all' then
+                app.temp.filter.type = nil
+                app.temp.filter.fx_type = nil
+            else
+                app.temp.filter.type = query.type
+                if query.type == ASSETS.PLUGIN and query.fx_type then
+                    app.temp.filter.fx_type = query.fx_type
+                else
+                    app.temp.filter.fx_type = nil
+                end
+            end
+        end
+
+
         for i, asset in ipairs(app.db.assets) do
-            local skip = false
-            if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then skip = true end
-            if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK_TEMPLATE then skip = true end
+            if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then goto skip end
+            -- if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK_TEMPLATE then goto skip end
             -- if app.temp.addSendType == SEND_TYPE.RECV and asset.type ~= ASSETS.TRACK then skip = true end
             -- if asset.type == ASSETS.TRACK and asset.load == app.db.track.guid then skip = true end
 
+            -- FILTER TYPE
+            if app.temp.filter.type and asset.type ~= app.temp.filter.type then goto skip end
+            if app.temp.filter.fx_type and asset.fx_type ~= app.temp.filter.fx_type then goto skip end
+
             -- -- FILTER TAGS
+            -- if skip then goto continue end
             for tagId, positive in pairs(app.temp.filter.tags) do
                 -- if OD_HasValue(asset.tags,)
                 local hasValue = OD_HasValue(asset.tags, tagId)
@@ -266,35 +285,37 @@ if OD_PrereqsOK({
                     end
                 end
                 if positive and not hasValue then
-                    skip = true
+                    -- skip = true
+                    goto skip
                 elseif not positive and hasValue then
-                    skip = true
+                    -- skip = true
+                    goto skip
                 end
             end
-            if not skip then
-                -- FILTER TEXT
-                local foundIndexes = {}
-                local allWordsFound = true
-                for word in app.temp.filter.text:lower():gmatch("%S+") do
-                    local wordFound = false
-                    for j, assetWord in ipairs(asset.searchText) do
-                        local pos = string.find((assetWord.text):lower(), OD_EscapePattern(word))
-                        if pos then
-                            foundIndexes[j] = foundIndexes[j] or {}
-                            table.insert(foundIndexes[j], { from = pos, to = pos + #word - 1, order = pos })
-                            wordFound = true
-                        end
-                    end
-                    if not wordFound then
-                        allWordsFound = false
-                        break
+
+            -- FILTER TEXT
+            local foundIndexes = {}
+            local allWordsFound = true
+            for word in app.temp.filter.text:lower():gmatch("%S+") do
+                local wordFound = false
+                for j, assetWord in ipairs(asset.searchText) do
+                    local pos = string.find((assetWord.text):lower(), OD_EscapePattern(word))
+                    if pos then
+                        foundIndexes[j] = foundIndexes[j] or {}
+                        table.insert(foundIndexes[j], { from = pos, to = pos + #word - 1, order = pos })
+                        wordFound = true
                     end
                 end
-                if allWordsFound then
-                    asset.foundIndexes = foundIndexes
-                    table.insert(app.temp.searchResults, asset)
+                if not wordFound then
+                    allWordsFound = false
+                    break
                 end
             end
+            if allWordsFound then
+                asset.foundIndexes = foundIndexes
+                table.insert(app.temp.searchResults, asset)
+            end
+            ::skip::
         end
         app.temp.highlightedResult = #app.temp.searchResults > 0 and 1 or nil
         app.temp.lastInvisibleGroup = nil
@@ -542,6 +563,35 @@ if OD_PrereqsOK({
 
             ImGui.SeparatorText(ctx, "Filters")
             ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
+
+            local function drawFilterMenu(menu, menuId)
+                for k, menuInfo in pairs(menu) do
+                    if ImGui.BeginMenu(ctx, k .. '##filterMenu' .. menuId) then
+                        if menuInfo.allQuery then
+                            if ImGui.MenuItem(ctx, 'All' .. "##filterMenu" .. menuId .. "-All") then
+                                app.filterResults(menuInfo.allQuery)
+                            end
+                            ImGui.Separator(ctx)
+                        end
+
+                        for item, value in pairs(menuInfo.items) do
+                            if value.submenu then
+                                drawFilterMenu({ [item] = value.submenu }, menuId..'-'..item)
+                            elseif value.query then
+                                if ImGui.MenuItem(ctx, item) then
+                                    app.filterResults(value.query)
+                                end
+                            end
+                        end
+                        ImGui.EndMenu(ctx)
+                    end
+                end
+            end
+
+            drawFilterMenu(FILTER_MENU, 'root')
+
+            ImGui.SeparatorText(ctx, "Keywords")
+            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
             drawTagsOfParent(nil, false, false)
             ImGui.Dummy(ctx, 0, 0)
             ImGui.EndChild(ctx)
@@ -595,7 +645,7 @@ if OD_PrereqsOK({
                 -- app.db:init()
                 app.filterResults({ text = '' })
             end
-            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx)+1)
+            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + 1)
 
             local h = select(2, ImGui.GetContentRegionAvail(ctx))
             local maxSearchResults = math.floor(h / (fontLineHeight))
@@ -674,7 +724,6 @@ if OD_PrereqsOK({
                 local foundInvisibleGroup = false
                 local absIndex = 0
                 for i, result in ipairs(app.temp.searchResults) do
-
                     if result.group ~= lastGroup then
                         ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
                         absIndex = absIndex + 1
@@ -977,7 +1026,7 @@ if OD_PrereqsOK({
             -- local prevX = ImGui.GetCursorPosX(ctx) - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
             for i, btn in ipairs(buttons) do
                 -- local w = select(1, ImGui.CalcTextSize(ctx, ICONS[(btn.icon):upper()])) +
-                    -- ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
+                -- ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
                 -- local x = prevX - w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
                 -- prevX = x
                 -- ImGui.SetCursorPosX(ctx, x)
@@ -1005,35 +1054,39 @@ if OD_PrereqsOK({
 
         for i, btn in ipairs(menu) do
             menuW = menuW + select(1, ImGui.CalcTextSize(ctx, ICONS[(btn.icon):upper()])) +
-                ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2 + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+                ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2 +
+                ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
         end
         ImGui.PopFont(ctx)
         ImGui.BeginGroup(ctx)
-        local  h = select(2,ImGui.CalcTextSize(ctx, 'Y')) 
-        + select(2,ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))*2
-        + select(2,ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))*2
-        + select(2,ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding))
+        local h = select(2, ImGui.CalcTextSize(ctx, 'Y'))
+            + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
+            + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)) * 2
+            + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding))
         ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
         app.gui:pushColors(app.gui.st.col.topBar.background)
-        ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),app.gui.mainWindow.pos[1],app.gui.mainWindow.pos[2], app.gui.mainWindow.pos[1]+app.gui.mainWindow.size[1],app.gui.mainWindow.pos[2]+h,ImGui.GetColor(ctx, ImGui.Col_FrameBg),app.gui.st.vars.main[ImGui.StyleVar_WindowRounding][1],ImGui.DrawFlags_RoundCornersTop)
+        ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), app.gui.mainWindow.pos[1], app.gui.mainWindow.pos[2],
+            app.gui.mainWindow.pos[1] + app.gui.mainWindow.size[1], app.gui.mainWindow.pos[2] + h,
+            ImGui.GetColor(ctx, ImGui.Col_FrameBg), app.gui.st.vars.main[ImGui.StyleVar_WindowRounding][1],
+            ImGui.DrawFlags_RoundCornersTop)
         app.gui:popColors(app.gui.st.col.topBar.background)
         app.gui:pushColors(app.gui.st.col.title)
         -- app.gui:pushColors(app.gui.st.col.title)
         -- ImGui.AlignTextToFramePadding(ctx)
-        ImGui.Text(ctx,ICONS.SEARCH)
+        ImGui.Text(ctx, ICONS.SEARCH)
         ImGui.PopFont(ctx)
         ImGui.SameLine(ctx)
         ImGui.PushFont(ctx, app.gui.st.fonts.large)
         ImGui.AlignTextToFramePadding(ctx)
-        ImGui.Text(ctx, app.scr.name..'|')
+        ImGui.Text(ctx, app.scr.name .. '|')
         app:setHoveredHint('main', app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
         app.gui:popColors(app.gui.st.col.title)
         ImGui.SameLine(ctx)
-            if app.pageSwitched then
-                -- app.db:init()
-                app.filterResults({ text = '' })
-                ImGui.SetKeyboardFocusHere(ctx, 0)
-            end
+        if app.pageSwitched then
+            -- app.db:init()
+            app.filterResults({ text = '' })
+            ImGui.SetKeyboardFocusHere(ctx, 0)
+        end
 
         local w = select(1, ImGui.GetContentRegionAvail(ctx)) - menuW
 
@@ -1048,7 +1101,7 @@ if OD_PrereqsOK({
         ImGui.SameLine(ctx)
         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
         local rv, btn = beginRightIconMenu(ctx, menu)
-        -- ImGui.Dummy(ctx,0,0)
+        ImGui.Dummy(ctx, 0, 0)
         ImGui.PopFont(ctx)
         ImGui.EndGroup(ctx)
         -- ImGui.Separator(ctx)
@@ -1186,7 +1239,7 @@ if OD_PrereqsOK({
             end
 
             app.drawTopBar()
-            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx)+ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
+            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
 
             if ImGui.BeginChild(ctx, '##body', 0.0, -app.gui.st.sizes.hintHeight) then
                 if app.page == APP_PAGE.SEARCH_FX then
