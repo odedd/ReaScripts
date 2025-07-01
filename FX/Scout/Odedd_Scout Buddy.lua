@@ -65,7 +65,7 @@ if OD_PrereqsOK({
     local projPath, projFileName = OD_GetProjectPaths()
 
     local logger = OD_Logger:new({
-        level = OD_Logger.LOG_LEVEL.INFO,
+        level = OD_Logger.LOG_LEVEL.ERROR,
         output = OD_Logger.LOG_OUTPUT.CONSOLE,
         filename = projPath .. Scr.name .. '_' .. projFileName .. '.log'
     })
@@ -262,6 +262,13 @@ if OD_PrereqsOK({
                 app.temp.filter.fxFolderId = query.fxFolderId
             end
         end
+        if query.fxCategory then
+            if query.fxCategory == 'all' then
+                app.temp.filter.fxCategory = nil
+            else
+                app.temp.filter.fxCategory = query.fxCategory
+            end
+        end
 
 
         for i, asset in ipairs(app.db.assets) do
@@ -276,6 +283,10 @@ if OD_PrereqsOK({
             if app.temp.filter.fxFolderId then
                 if not asset.folders then goto skip end
                 if not OD_HasValue(asset.folders, app.temp.filter.fxFolderId) then goto skip end
+            end
+            if app.temp.filter.fxCategory then
+                if not asset.categories then goto skip end
+                if not OD_HasValue(asset.categories, app.temp.filter.fxCategory) then goto skip end
             end
             -- -- FILTER TAGS
             -- if skip then goto continue end

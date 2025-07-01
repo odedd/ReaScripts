@@ -33,6 +33,7 @@ DB = {
         self:getPlugins()
         self:getFXChains()
         self:getFXFolders()
+        self:getFXCategories()
         self:getTrackTemplates()
         self:getTracks()
         self:getTags()
@@ -416,28 +417,27 @@ end
 DB.getFXFolders = function(self)
     self.app.logger:logDebug('-- DB.getFXFolders()')
     self.fxFolders = {}
+    self.pluginToFolders = {}
 
     local content = OD_GetContent(r.GetResourcePath() .. "/" .. "reaper-fxfolders.ini"):gsub("\r\n", "\n"):gsub("\r",
         "\n")
 
     -- Parse folder names
-    local folder_names = {}
     local foldersSection = content:match("%[Folders%](.-)\n%[")
     if not foldersSection then
-        foldersSection = content:match("%[Folders%](.*)") -- if it's the last section
+        foldersSection = content:match("%[Folders%](.*)")
     end
 
     local folderCount = 0
     if foldersSection then
-        -- parse ids
         local parsedIds = {}
-        for line in foldersSection:gmatch("[^\r\n]+") do
+        for line in foldersSection:gmatch("[^\n]+") do
             local id, parsedId = line:match("Id(%d+)=(.+)")
             if id and parsedId then
                 parsedIds[id] = parsedId
             end
         end
-        for line in foldersSection:gmatch("[^\r\n]+") do
+        for line in foldersSection:gmatch("[^\n]+") do
             local id, name = line:match("Name(%d+)=(.+)")
             if id and name then
                 self.fxFolders[parsedIds[id]] = { order = id, name = name }
@@ -451,7 +451,6 @@ DB.getFXFolders = function(self)
     end
 
     for id, folder in pairs(self.fxFolders) do
-        local count = 0
         local pattern = "%[Folder" .. id .. "%](.-)\n%["
         local section = content:match(pattern)
         if not section then
@@ -459,29 +458,35 @@ DB.getFXFolders = function(self)
         end
         if section then
             local items = {}
-            for line in section:gmatch("[^\r\n]+") do
-                local id, name = line:match("Item(%d+)=(.+)")
-                if name and id then
-                    items[id] = { order = id, name = name }
+            for line in section:gmatch("[^\n]+") do
+                local itemId, itemName = line:match("Item(%d+)=(.+)")
+                if itemName and itemId then
+                    items[itemId] = { order = itemId, name = itemName }
                 end
             end
-            for line in section:gmatch("[^\r\n]+") do
-                local id, type = line:match("Type(%d+)=(.+)")
-                if type and id then
-                    items[id].type = type
+            for line in section:gmatch("[^\n]+") do
+                local itemId, type = line:match("Type(%d+)=(.+)")
+                if type and itemId and items[itemId] then
+                    items[itemId].type = type
                     self.app.logger:logDebug('Added ' ..
-                        items[id].name .. ' to ' .. folder.name .. ' (type ' .. items[id].type .. ')')
-                    count = count + 1
+                        items[itemId].name .. ' to ' .. folder.name .. ' (type ' .. type .. ')')
                 end
             end
-            self.app.logger:logDebug('Added ' .. count .. ' plugins to ' .. folder.name)
+
             self.fxFolders[id].items = items
+
+            -- Build reverse lookup for pluginToFolders
+            for _, item in pairs(items) do
+                if not self.pluginToFolders[item.name] then
+                    self.pluginToFolders[item.name] = {}
+                end
+                table.insert(self.pluginToFolders[item.name], id)
+            end
         end
     end
     self.app.logger:logInfo('Found ' .. folderCount .. ' FX folders')
 
     -- Update FILTER_MENU
-
     FILTER_MENU['Folders'].items = {}
     for id, fxFolder in OD_PairsByOrder(self.fxFolders) do
         FILTER_MENU['Folders'].items[fxFolder.name] = {
@@ -490,6 +495,70 @@ DB.getFXFolders = function(self)
         }
     end
 end
+
+DB.getFXCategories = function(self)
+    self.app.logger:logDebug('-- DB.getFXCategories()')
+    self.fxCategories = {}
+    self.pluginToCategories = {}
+
+    local content = OD_GetContent(r.GetResourcePath() .. "/" .. "reaper-fxtags.ini")
+    content = content:gsub("\r\n", "\n"):gsub("\r", "\n")
+
+    -- Extract only [category] section up to next section or end
+    local categorySection = content:match("%[category%](.-)\n%[")
+    if not categorySection then
+        categorySection = content:match("%[category%](.*)")
+    end
+
+    if categorySection then
+        local categoryCount = 0
+        local pluginCount = 0
+        for line in categorySection:gmatch("[^\n]+") do
+            local plugin, categoriesStr = line:match("([^=]+)=(.+)")
+            if plugin and categoriesStr then
+                pluginCount = pluginCount + 1
+                for category in categoriesStr:gmatch("[^|]+") do
+                    category = category:gsub("^%s+", ""):gsub("%s+$", "")
+                    if not self.fxCategories[category] then
+                        categoryCount = categoryCount + 1
+                        self.fxCategories[category] = {}
+                    end
+                    table.insert(self.fxCategories[category], plugin)
+
+                    -- Build reverse lookup table
+                    if not self.pluginToCategories[plugin] then
+                        self.pluginToCategories[plugin] = {}
+                    end
+                    table.insert(self.pluginToCategories[plugin], category)
+
+                    self.app.logger:logDebug('Added plugin "' .. plugin .. '" to category "' .. category .. '"')
+                end
+            end
+        end
+        self.app.logger:logInfo('Parsed ' ..
+            pluginCount .. ' plugins into ' .. categoryCount .. ' categories')
+    else
+        self.app.logger:logError('Could not find [category] section in reaper-fxtags.ini')
+    end
+
+    -- Update FILTER_MENU
+    FILTER_MENU['Categories'].items = {}
+
+    local categoryNames = {}
+    for name in pairs(self.fxCategories) do
+        table.insert(categoryNames, name)
+    end
+    table.sort(categoryNames)
+
+    for index, categoryName in ipairs(categoryNames) do
+        FILTER_MENU['Categories'].items[categoryName] = {
+            order = index,
+            query = { fxCategory = categoryName }
+        }
+    end
+end
+
+
 DB.getTrackTemplates = function(self)
     self.app.logger:logDebug('-- DB.getTrackTemplates()')
     self.trackTemplates = {}
@@ -791,14 +860,20 @@ DB.assembleAssets = function(self)
     for _, plugin in ipairs(self.plugins) do
         if self.app.settings.current.fxTypeVisibility[plugin.fx_type] then
             local folders = {}
-            for id, fxFolder in pairs(self.fxFolders) do
-                for pId, item in pairs(fxFolder.items) do
-                    if item.name == plugin.ident then
-                        table.insert(folders, id)
-                    end
-                end
+
+            if self.pluginToFolders then
+                folders = self.pluginToFolders[plugin.ident] or {}
             end
 
+            local categories = {}
+            if self.pluginToCategories then
+                local path, file, ext = OD_DissectFilename(plugin.ident)
+                local nameToCheck = file .. '.' .. ext
+
+                if self.pluginToCategories[nameToCheck] then
+                    categories = self.pluginToCategories[nameToCheck]
+                end
+            end
 
             table.insert(self.assets, {
                 db = self,
@@ -809,6 +884,7 @@ DB.assembleAssets = function(self)
                 vendor = plugin.vendor,
                 fx_type = plugin.fx_type,
                 folders = folders,
+                categories = categories,
                 toggleFavorite = toggleFavorite
             })
             count = count + 1
