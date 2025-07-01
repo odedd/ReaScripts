@@ -324,21 +324,21 @@ if OD_PrereqsOK({
 
     function app.drawSearch()
         local ctx = app.gui.ctx
+        local w = select(1, ImGui.GetContentRegionAvail(ctx))
         local tagAreaH = select(2, ImGui.GetContentRegionAvail(ctx))
-        local tagAreaGlobalX, tagAreaGlobalY = ImGui.GetCursorScreenPos(ctx)
         local tagAreaW = app.settings.current.filterPanelWidth * app.settings.current.uiScale
         local node_flags = ImGui.TreeNodeFlags_OpenOnArrow | ImGui.TreeNodeFlags_OpenOnDoubleClick
-            | ImGui.TreeNodeFlags_Framed | ImGui.TreeNodeFlags_SpanAllColumns
-        local paddingX = select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * app.settings.current.uiScale
-        local paddingY = select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * app.settings.current.uiScale
+        | ImGui.TreeNodeFlags_Framed | ImGui.TreeNodeFlags_SpanAllColumns
+        local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)-- * app.settings.current.uiScale
         local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
-
+        local windowPadding = ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)
+        local tagAreaGlobalX = select(1,ImGui.GetCursorScreenPos(ctx)) + w - tagAreaW - windowPadding
+        if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG then ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),tagAreaGlobalX, 10,tagAreaGlobalX+tagAreaW,1000, 0xffffff22) end
         -- Search Area
         local selectedResult = nil
         local hintResult = nil
         local hintContext = nil
-        local w = select(1, ImGui.GetContentRegionAvail(ctx))
-        if ImGui.BeginChild(ctx, 'searchArea', w - tagAreaW - spacingX - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)) then
+        if ImGui.BeginChild(ctx, 'searchArea', w - tagAreaW - spacingX - windowPadding) then
             local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx)
             app.gui:pushStyles(app.gui.st.vars.searchWindow)
             app.gui:pushColors(app.gui.st.col.searchWindow)
@@ -562,15 +562,13 @@ if OD_PrereqsOK({
         ImGui.SameLine(ctx)
 
         -- Separator Resize Line
-        local origX = select(1, ImGui.GetCursorPosX(ctx))
         local separatorX = select(1, ImGui.GetCursorScreenPos(ctx))
         local separatorY = select(2, ImGui.GetCursorScreenPos(ctx))
-        local spacing = select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
         ImGui.DrawList_AddLine(ImGui.GetForegroundDrawList(ctx), separatorX, separatorY, separatorX,
             separatorY + tagAreaH,
             ImGui.GetStyleColor(ctx, ImGui.Col_Separator))
-        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacing)
-        ImGui.InvisibleButton(ctx, '##separator', spacing * 2 + 1, tagAreaH)
+        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
+        ImGui.InvisibleButton(ctx, '##separator', spacingX * 2 + 1, tagAreaH)
         if ImGui.IsItemHovered(ctx) then
             app:setHoveredHint('main', 'Drag to change tag list width', nil, nil, 1)
             ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
@@ -594,7 +592,7 @@ if OD_PrereqsOK({
         end
 
         ImGui.SameLine(ctx)                -- Filter Area
-        if ImGui.BeginChild(ctx, 'filterArea', tagAreaW, tagAreaH) then
+        if ImGui.BeginChild(ctx, 'filterArea', tagAreaW - spacingX*2, tagAreaH) then
             local function drawTagsOfParent(parentId, indent, preview)
                 local drawTagNode
                 -- preview is for previewing when drag and dropping, so no drag&drop functionality of its own
@@ -851,7 +849,7 @@ if OD_PrereqsOK({
 
             drawFilterMenu(FILTER_MENU, 'root')
 
-            ImGui.SeparatorText(ctx, "Keywords")
+            ImGui.SeparatorText(ctx, "Tags")
             ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
             drawTagsOfParent(nil, false, false)
             ImGui.Dummy(ctx, 0, 0)
