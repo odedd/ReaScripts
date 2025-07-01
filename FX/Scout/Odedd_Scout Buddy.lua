@@ -1009,8 +1009,15 @@ if OD_PrereqsOK({
         end
         ImGui.PopFont(ctx)
         ImGui.BeginGroup(ctx)
-        app.gui:pushColors(app.gui.st.col.title)
+        local  h = select(2,ImGui.CalcTextSize(ctx, 'Y')) 
+        + select(2,ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))*2
+        + select(2,ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))*2
+        + select(2,ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding))
         ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+        app.gui:pushColors(app.gui.st.col.topBar.background)
+        ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),app.gui.mainWindow.pos[1],app.gui.mainWindow.pos[2], app.gui.mainWindow.pos[1]+app.gui.mainWindow.size[1],app.gui.mainWindow.pos[2]+h,ImGui.GetColor(ctx, ImGui.Col_FrameBg),app.gui.st.vars.main[ImGui.StyleVar_WindowRounding][1],ImGui.DrawFlags_RoundCornersTop)
+        app.gui:popColors(app.gui.st.col.topBar.background)
+        app.gui:pushColors(app.gui.st.col.title)
         -- app.gui:pushColors(app.gui.st.col.title)
         -- ImGui.AlignTextToFramePadding(ctx)
         ImGui.Text(ctx,ICONS.SEARCH)
@@ -1030,16 +1037,18 @@ if OD_PrereqsOK({
 
         local w = select(1, ImGui.GetContentRegionAvail(ctx)) - menuW
 
+        app.gui:pushColors(app.gui.st.col.topBar.background)
         ImGui.SetNextItemWidth(ctx, w)
         local rv, searchInput = ImGui.InputText(ctx, "##searchInput", app.temp.searchInput)
         if rv then
             app.filterResults({ text = searchInput })
             app.temp.scrollToTop = true
         end
+        app.gui:popColors(app.gui.st.col.topBar.background)
         ImGui.SameLine(ctx)
         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
         local rv, btn = beginRightIconMenu(ctx, menu)
-        ImGui.Dummy(ctx,0,0)
+        -- ImGui.Dummy(ctx,0,0)
         ImGui.PopFont(ctx)
         ImGui.EndGroup(ctx)
         -- ImGui.Separator(ctx)
@@ -1177,6 +1186,7 @@ if OD_PrereqsOK({
             end
 
             app.drawTopBar()
+            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx)+ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
 
             if ImGui.BeginChild(ctx, '##body', 0.0, -app.gui.st.sizes.hintHeight) then
                 if app.page == APP_PAGE.SEARCH_FX then

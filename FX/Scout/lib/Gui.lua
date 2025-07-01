@@ -48,7 +48,7 @@ PB_Gui.init = function(self, fonts)
         mainBright = 0xb73849ff,
         mainBrighter = 0xc74859ff,
         mainBrightest = 0xd75869ff,
-        textBright = 0xf7f7f7ff,
+        textBright = 0xd7d7d7ff,
         textDark = 0x7c7c7cff,
     }
     self.st.colpresets = {
@@ -128,6 +128,11 @@ PB_Gui.init = function(self, fonts)
                 [ImGui.Col_Text] = self.st.basecolors.main,
             }
         },
+        topBar = {
+            background = {
+                [ImGui.Col_FrameBg] = self.st.basecolors.darkBG 
+            }
+        },
         main = {
             [ImGui.Col_Tab] = self.st.basecolors.darkHovered,
             [ImGui.Col_TabHovered] = self.st.basecolors.darkActive,
@@ -139,6 +144,7 @@ PB_Gui.init = function(self, fonts)
             [ImGui.Col_FrameBgActive] = self.st.basecolors.darkActive,
             [ImGui.Col_SliderGrab] = self.st.basecolors.widgetBG,
             [ImGui.Col_SliderGrabActive] = self.st.basecolors.active,
+            [ImGui.Col_Text] = self.st.basecolors.textBright,
             [ImGui.Col_TextSelectedBg] = self.st.basecolors.darkActive,
             [ImGui.Col_HeaderHovered] = self.st.basecolors.headerHovered,
             [ImGui.Col_Header] = self.st.basecolors.header,
@@ -156,6 +162,7 @@ PB_Gui.init = function(self, fonts)
             [ImGui.Col_CheckMark] = self.st.basecolors.main,
             [ImGui.Col_HeaderActive] = self.st.basecolors.main,
             [ImGui.Col_DragDropTarget] = self.st.basecolors.mainBright,
+            [ImGui.Col_WindowBg] = 0x181818EE,
         },
         title = {
             [ImGui.Col_Text] = self.st.basecolors.mainBright,
@@ -172,7 +179,7 @@ PB_Gui.init = function(self, fonts)
             main = {
                 [ImGui.StyleVar_FrameRounding] = { self.st.rounding * scale, nil },
                 [ImGui.StyleVar_ItemSpacing] = { 4 * scale, 4 * scale },
-                [ImGui.StyleVar_WindowRounding] = { 10 * scale, nil },
+                [ImGui.StyleVar_WindowRounding] = { 12 * scale, nil },
                 [ImGui.StyleVar_WindowPadding] = { 8 * scale, 8 * scale },
                 [ImGui.StyleVar_ScrollbarSize] = { 10 * scale, nil },
                 [ImGui.StyleVar_FramePadding] = { 4 * scale, 3 * scale },
