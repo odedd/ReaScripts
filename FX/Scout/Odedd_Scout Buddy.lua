@@ -565,7 +565,7 @@ if OD_PrereqsOK({
             ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
 
             local function drawFilterMenu(menu, menuId)
-                for k, menuInfo in pairs(menu) do
+                for k, menuInfo in OD_PairsByOrder(menu) do
                     if ImGui.BeginMenu(ctx, k .. '##filterMenu' .. menuId) then
                         if menuInfo.allQuery then
                             if ImGui.MenuItem(ctx, 'All' .. "##filterMenu" .. menuId .. "-All") then
@@ -574,9 +574,9 @@ if OD_PrereqsOK({
                             ImGui.Separator(ctx)
                         end
 
-                        for item, value in pairs(menuInfo.items) do
+                        for item, value in OD_PairsByOrder(menuInfo.items) do
                             if value.submenu then
-                                drawFilterMenu({ [item] = value.submenu }, menuId..'-'..item)
+                                drawFilterMenu({ [item] = value.submenu }, menuId .. '-' .. item)
                             elseif value.query then
                                 if ImGui.MenuItem(ctx, item) then
                                     app.filterResults(value.query)

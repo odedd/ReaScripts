@@ -49,11 +49,13 @@ ALL_TRACKS_GROUP = 'All tracks'
 
 FILTER_MENU = {
     ['Type'] = {
+        order = 1,
         allQuery = { type = 'all' },
         items = {
-            ['Track Templates'] = { query = { type = ASSETS.TRACK_TEMPLATE } },
-            ['FX Chains'] = { query = { type = ASSETS.FX_CHAIN } },
+            ['Track Templates'] = { order = 2, query = { type = ASSETS.TRACK_TEMPLATE } },
+            ['FX Chains'] = { order = 3, query = { type = ASSETS.FX_CHAIN } },
             ['Plugin'] = {
+                order = 1, 
                 submenu = {
                     allQuery = { type=ASSETS.PLUGIN, fx_type = nil },
                     items = {}
@@ -63,5 +65,9 @@ FILTER_MENU = {
     }
 }
 for i, fx_type_name in ipairs(FX_TYPE) do
-    FILTER_MENU['Type'].items['Plugin'].submenu.items[fx_type_name] = { query = { type = ASSETS.PLUGIN, fx_type = fx_type_name } }
+    FILTER_MENU['Type'].items['Plugin'].submenu.items[fx_type_name] = { 
+        order = i,
+        query = {
+            type = ASSETS.PLUGIN, fx_type = fx_type_name 
+        } }
 end
