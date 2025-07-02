@@ -254,7 +254,7 @@ if OD_PrereqsOK({
         end
 
         for i, asset in ipairs(app.db.assets) do
-            if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then goto skip end
+            -- if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then goto skip end
             -- if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK_TEMPLATE then goto skip end
             -- if app.temp.addSendType == SEND_TYPE.RECV and asset.type ~= ASSETS.TRACK then skip = true end
             -- if asset.type == ASSETS.TRACK and asset.load == app.db.track.guid then skip = true end

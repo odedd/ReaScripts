@@ -59,12 +59,12 @@ DB = {
 
 DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
     self:beginUndoBlock()
-    if sendType == SEND_TYPE.HW then
-        local sndIdx = reaper.CreateTrackSend(self.track.object, nil)
-        reaper.SetTrackSendInfo_Value(self.track.object, sendType, sndIdx, 'I_DSTCHAN', assetType)
-        self:sync(true)
-        return
-    end
+    -- if sendType == SEND_TYPE.HW then
+    --     local sndIdx = reaper.CreateTrackSend(self.track.object, nil)
+    --     reaper.SetTrackSendInfo_Value(self.track.object, sendType, sndIdx, 'I_DSTCHAN', assetType)
+    --     self:sync(true)
+    --     return
+    -- end
     if assetType == ASSETS.TRACK_TEMPLATE then
         -- since track templates are loaded under the last selected track,
         -- and as root folders, I need to create a new dummy track inside the folder,
@@ -871,7 +871,8 @@ DB.assembleAssets = function(self)
             type = ASSETS.TRACK,
             searchText = { { text = track.name } },
             load = track.guid,
-            group = track.hasReceives and RECEIVES_GROUP or TRACKS_GROUP,
+            -- group = track.hasReceives and RECEIVES_GROUP or TRACKS_GROUP,
+            group = TRACKS_GROUP,
             order = track.order,
             color = track.color,
             toggleFavorite = toggleFavorite
@@ -938,14 +939,15 @@ end
 
 DB.sortAssets = function(self)
     local groupPriority = {}
+    local prioritiesCount = 0
     for i, group in ipairs(self.app.settings.current.fxTypeOrder) do
         groupPriority[group] = i
+        prioritiesCount = prioritiesCount
     end
-    groupPriority[FAVORITE_GROUP] = -4
-    groupPriority[RECEIVES_GROUP] = -3
+    groupPriority[FX_CHAINS_GROUP] = -3
     groupPriority[TRACKS_GROUP] = -2
-    groupPriority[FX_CHAINS_GROUP] = -1
-    groupPriority[TRACK_TEMPLATES_GROUP] = 0
+    groupPriority[TRACK_TEMPLATES_GROUP] = -1
+    groupPriority[FAVORITE_GROUP] = -4
 
     table.sort(self.assets, function(a, b)
         local aPriority = groupPriority[a.group] or 100
