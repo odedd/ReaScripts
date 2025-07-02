@@ -44,12 +44,12 @@ if OD_PrereqsOK({
     package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
     ImGui = require 'imgui' '0.9.1'
 
+    dofile(p .. 'lib/Texts.lua')
     dofile(p .. 'lib/Constants.lua')
     dofile(p .. 'lib/Settings.lua')
     dofile(p .. 'lib/Tags.lua')
     dofile(p .. 'lib/Gui.lua')
     dofile(p .. 'lib/Db.lua')
-    dofile(p .. 'lib/Texts.lua')
 
     -- @noindex
 
@@ -451,6 +451,85 @@ if OD_PrereqsOK({
         app.gui:pushStyles(app.gui.st.vars.searchWindow)
         app.gui:pushColors(app.gui.st.col.searchWindow)
 
+        -- Filter Line
+        -- local function drawFilterLine(menu, menuId)
+        --     local function getSelectedFilterLabel(menuKey, menuInfo)
+        --         -- Find which item is currently selected
+        --         if menuInfo.allQuery then
+        --             local allSelected = true
+        --             for k, v in pairs(menuInfo.allQuery) do
+        --                 if app.temp.filter[k] ~= ((menuInfo.allQuery[k] ~= 'all') and menuInfo.allQuery[k] or nil) then
+        --                     allSelected = false
+        --                 end
+        --             end
+        --             if allSelected then
+        --                 return menuKey .. ": All"
+        --             end
+        --         end
+        --         for item, value in OD_PairsByOrder(menuInfo.items) do
+        --             if value.query then
+        --                 local selected = true
+        --                 for k, v in pairs(value.query) do
+        --                     if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then
+        --                         selected = false
+        --                     end
+        --                 end
+        --                 if selected then
+        --                     return menuKey .. ": " .. item
+        --                 end
+        --             elseif value.submenu then
+        --                 -- Recursively check submenus
+        --                 local label = getSelectedFilterLabel(item, value.submenu)
+        --                 if label and label ~= item .. ": All" then
+        --                     return menuKey .. ": " .. label:match(": (.+)$")
+        --                 end
+        --             end
+        --         end
+        --         return menuKey
+        --     end
+
+        --     for k, menuInfo in OD_PairsByOrder(menu) do
+        --         if ImGui.BeginMenu(ctx, getSelectedFilterLabel(k, menuInfo) .. '##filterMenu' .. menuId) then
+        --             if menuInfo.allQuery then
+        --                 local selected = true
+        --                 for k, v in pairs(menuInfo.allQuery) do
+        --                     if app.temp.filter[k] ~= ((menuInfo.allQuery[k] ~= 'all') and menuInfo.allQuery[k] or nil) then
+        --                         selected = false
+        --                     end
+        --                 end
+
+        --                 if ImGui.MenuItem(ctx, 'All' .. "##filterMenu" .. menuId .. "-All", nil, selected) then
+        --                     app.filterResults(menuInfo.allQuery)
+        --                 end
+        --                 ImGui.Separator(ctx)
+        --             end
+
+        --             for item, value in OD_PairsByOrder(menuInfo.items) do
+        --                 if value.submenu then
+        --                     drawFilterLine({ [item] = value.submenu }, menuId .. '-' .. item)
+        --                 elseif value.query then
+        --                     local selected = true
+        --                     for k, v in pairs(value.query) do
+        --                         if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then
+        --                             selected = false
+        --                         end
+        --                     end
+        --                     if ImGui.MenuItem(ctx, item, nil, selected) then
+        --                         app.filterResults(value.query)
+        --                     end
+        --                 end
+        --             end
+        --             ImGui.EndMenu(ctx)
+        --         end
+        --     end
+        -- end
+        -- if ImGui.BeginChild(ctx, 'testing', nil, ImGui.GetTextLineHeight(ctx), nil, ImGui.WindowFlags_MenuBar) then
+        --     if ImGui.BeginMenuBar(ctx) then
+        --         drawFilterLine(FILTER_MENU, 'root')
+        --         ImGui.EndMenuBar(ctx)
+        --     end
+        --     ImGui.EndChild(ctx)
+        -- end
         -- Search Area
         local selectedResult, hintResult, hintContext = nil, nil, nil
         if ImGui.BeginChild(ctx, 'searchArea', w - tagAreaW - spacingX - windowPadding) then
@@ -663,11 +742,11 @@ if OD_PrereqsOK({
             local mouseDeltaX = select(1, ImGui.GetMouseDragDelta(ctx, nil, nil, ImGui.MouseButton_Left))
             if mouseDeltaX ~= 0 then
                 local newWidth = (tagAreaW - mouseDeltaX) / app.settings.current.uiScale
-                if newWidth > app.settings.current.minFilterPanelWidth  then
+                if newWidth > app.settings.current.minFilterPanelWidth then
                     app.settings.current.filterPanelWidth = newWidth
                     ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
                 else
-                    app.settings.current.filterPanelWidth = app.settings.current.minFilterPanelWidth 
+                    app.settings.current.filterPanelWidth = app.settings.current.minFilterPanelWidth
                 end
             end
         end
@@ -900,7 +979,6 @@ if OD_PrereqsOK({
 
                 app.gui:popStyles(app.gui.st.vars.tagList)
             end
-
             local function drawFilterMenu(menu, menuId)
                 for k, menuInfo in OD_PairsByOrder(menu) do
                     if ImGui.BeginMenu(ctx, k .. '##filterMenu' .. menuId) then
@@ -951,6 +1029,7 @@ if OD_PrereqsOK({
         app.gui:popColors(app.gui.st.col.searchWindow)
         app.gui:popStyles(app.gui.st.vars.searchWindow)
     end
+
     function app.drawErrorNoTrack()
         local ctx = app.gui.ctx
         app.db:sync()

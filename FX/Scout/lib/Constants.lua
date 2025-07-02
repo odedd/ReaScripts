@@ -47,38 +47,38 @@ FX_CHAINS_GROUP = 'FX Chains'
 ALL_TRACKS_GROUP = 'All tracks'
 
 FILTER_MENU = {
-    ['Type'] = {
+    [T.FILTER_MENU.TYPE] = {
         order = 1,
         allQuery = { type = 'all' },
         items = {
             ['Track Templates'] = { order = 2, query = { type = ASSETS.TRACK_TEMPLATE } },
             ['FX Chains'] = { order = 3, query = { type = ASSETS.FX_CHAIN } },
-            ['Plugins'] = { order = 1, query = { type = ASSETS.PLUGIN } },
+            ['FX'] = { order = 1, query = { type = ASSETS.PLUGIN } },
         }
     },
-    ['Plugin Type'] = {
+    [T.FILTER_MENU.FX_TYPE] = {
         order = 2,
         allQuery = { fx_type = 'all' },
         items = {}
     },
-    ['Folders'] = {
+    [T.FILTER_MENU.FOLDER] = {
         order = 3,
         allQuery = { fxFolderId = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     },
-    ['Categories'] = {
+    [T.FILTER_MENU.CATEGORY] = {
         order = 4,
         allQuery = { fxCategory = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     },
-    ['Developers'] = {
+    [T.FILTER_MENU.DEVELOPER] = {
         order = 5,
         allQuery = { fxDeveloper = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     }
 }
 for i, fx_type_name in ipairs(FX_TYPE) do
-    FILTER_MENU['Plugin Type'].items[fx_type_name] = {
+    FILTER_MENU[T.FILTER_MENU.FX_TYPE].items[fx_type_name] = {
         order = i,
         query = {
             fx_type = fx_type_name
