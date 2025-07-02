@@ -74,8 +74,8 @@ PB_Settings = OD_Settings:new({
         uiScale = 1,
 
         -- set In the UI
-        filterPanelWidth = 120,
-        minFilterPanelWidth = 130,
+        filterPanelWidth = 140,
+        minFilterPanelWidth = 140,
         -- Internal
         lastDockId = nil,
     },
