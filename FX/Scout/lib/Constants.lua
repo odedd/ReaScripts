@@ -74,7 +74,7 @@ FILTER_MENU = {
         items = {} -- added in Db.lua once folders are loaded
     },
     ['Developers'] = {
-        order = 3,
+        order = 4,
         allQuery = { fxDeveloper = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     }

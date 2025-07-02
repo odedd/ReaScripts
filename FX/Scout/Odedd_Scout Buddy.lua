@@ -263,16 +263,16 @@ if OD_PrereqsOK({
             if app.temp.filter.type and asset.type ~= app.temp.filter.type then goto skip end
             if app.temp.filter.fx_type and asset.fx_type ~= app.temp.filter.fx_type then goto skip end
             if app.temp.filter.fxFolderId then
-                if not asset.folders then goto skip end
-                if not OD_HasValue(asset.folders, app.temp.filter.fxFolderId) then goto skip end
+                if asset.type ~= ASSETS.PLUGIN then goto skip end
+                if not asset:isInFolder(app.temp.filter.fxFolderId) then goto skip end
             end
             if app.temp.filter.fxCategory then
-                if not asset.categories then goto skip end
-                if not OD_HasValue(asset.categories, app.temp.filter.fxCategory) then goto skip end
+                if asset.type ~= ASSETS.PLUGIN then goto skip end
+                if not asset:isInCategory(app.temp.filter.fxCategory) then goto skip end
             end
             if app.temp.filter.fxDeveloper then
-                if not asset.developer then goto skip end
-                if asset.developer ~= app.temp.filter.fxDeveloper then goto skip end
+                if not asset.vendor then goto skip end
+                if asset.vendor ~= app.temp.filter.fxDeveloper then goto skip end
             end
             -- -- FILTER TAGS
             -- if skip then goto continue end

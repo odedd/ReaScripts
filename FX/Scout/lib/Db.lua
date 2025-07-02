@@ -34,11 +34,11 @@ DB = {
         self:getFXChains()
         self:getFXFolders()
         self:getFXCategories()
-        self:getFXDevelopers()
         self:getTrackTemplates()
         self:getTracks()
         self:getTags()
         self:assembleAssets()
+        self:updateDevelopersFilterMenu()
     end,
     sync = function(self, refresh)                             -- not sure this is needed
         self.refresh = refresh or false
@@ -365,6 +365,10 @@ DB.addPlugin = function(self, full_name, fx_type, instrument, ident)
                 name = vendor and name:gsub(' %(' .. OD_EscapePattern(vendor) .. '%).-$', '') or name
             end
         end
+        if vendor ~= '' and vendor ~= nil then
+            self.fxDevelopers = self.fxDevelopers or {}
+            self.fxDevelopers[vendor] = true
+        end
         return true, name, (vendor == '' and nil or vendor)
     end
 
@@ -559,56 +563,12 @@ DB.getFXCategories = function(self)
     end
 end
 
-
-DB.getFXDevelopers = function(self)
-    self.app.logger:logDebug('-- DB.getFXDevelopers()')
-    self.fxDevelopers = {}
-    self.pluginToDeveloper = {}
-
-    local content = OD_GetContent(r.GetResourcePath() .. "/" .. "reaper-fxtags.ini")
-    content = content:gsub("\r\n", "\n"):gsub("\r", "\n")
-
-    -- Extract only [developer] section up to next section or end
-    local developerSection = content:match("%[developer%](.-)\n%[")
-    if not developerSection then
-        developerSection = content:match("%[developer%](.*)")
-    end
-
-    if developerSection then
-        local pluginCount = 0
-        local developerCount = 0
-        for line in developerSection:gmatch("[^\n]+") do
-            local plugin, developer = line:match("([^=]+)=(.+)")
-            if plugin and developer then
-                plugin = plugin:gsub("^%s+", ""):gsub("%s+$", "")
-                developer = developer:gsub("^%s+", ""):gsub("%s+$", "")
-                pluginCount = pluginCount + 1
-
-                -- Add to fxDevelopers table
-                if not self.fxDevelopers[developer] then
-                    self.fxDevelopers[developer] = {}
-                    developerCount = developerCount + 1
-                end
-                table.insert(self.fxDevelopers[developer], plugin)
-
-                -- Add to reverse map
-                self.pluginToDeveloper[plugin] = developer
-
-                self.app.logger:logDebug('Added plugin "' .. plugin .. '" to developer "' .. developer .. '"')
-            end
-        end
-        self.app.logger:logInfo('Parsed ' ..
-            pluginCount .. ' plugins into ' .. developerCount .. ' developers')
-    else
-        self.app.logger:logError('Could not find [developer] section in reaper-fxtags.ini')
-    end
-
-    -- Update FILTER_MENU if needed
+DB.updateDevelopersFilterMenu = function(self)
     FILTER_MENU['Developers'].items = {}
 
     local developerNames = {}
-    for name in pairs(self.fxDevelopers) do
-        table.insert(developerNames, name)
+    for s, c in pairs(self.fxDevelopers) do
+        table.insert(developerNames, s)
     end
     table.sort(developerNames)
 
@@ -920,43 +880,47 @@ DB.assembleAssets = function(self)
     end
     for _, plugin in ipairs(self.plugins) do
         if self.app.settings.current.fxTypeVisibility[plugin.fx_type] then
-            local folders = {}
-
-            if self.pluginToFolders then
-                folders = self.pluginToFolders[plugin.ident] or {}
-            end
-            
-            local categories = {}
-            local nameToCheck
-            if self.pluginToCategories then
-                local path, file, ext = OD_DissectFilename(plugin.ident)
-                nameToCheck = (file .. '.' .. ext):gsub('[ -]', '_')
-                
-                if self.pluginToCategories[nameToCheck] then
-                    categories = self.pluginToCategories[nameToCheck]
-                end
-            end
-            local developer
-
-            if self.pluginToDeveloper then
-                if not nameToCheck then
-                    local path, file, ext = OD_DissectFilename(plugin.ident)
-                    nameToCheck = (file .. '.' .. ext):gsub('[ -]', '_')
-                end
-                developer = self.pluginToDeveloper[nameToCheck] 
-            end
-
             table.insert(self.assets, {
                 db = self,
                 type = ASSETS.PLUGIN,
                 searchText = { { text = plugin.name }, { text = plugin.vendor or '' }, { text = plugin.fx_type, hide = true } },
                 load = plugin.ident,
+                -- categoryPluginID = categoryPluginID,
                 group = plugin.group,
                 vendor = plugin.vendor,
                 fx_type = plugin.fx_type,
-                folders = folders,
-                categories = categories,
-                developer = developer,
+                categories = {}, -- for use with caching when filtering occurs
+                folders = {},    -- for use with caching when filtering occurs
+                isInCategory = function(self, categoryName)
+                    -- caching so that time intensive search only happens on the first filtering
+                    if self.categories[categoryName] ~= nil then
+                        return self.categories[categoryName]
+                    end
+                    local path, file, ext = OD_DissectFilename(self.load)
+                    local categoryPluginID = (file .. '.' .. ext):gsub('[ -]', '_')
+
+                    if self.db.pluginToCategories[categoryPluginID] then
+                        self.categories[categoryName] = OD_HasValue(self.db.pluginToCategories[categoryPluginID],
+                            categoryName)
+                    else
+                        self.categories[categoryName] = false
+                    end
+                    return self.categories[categoryName]
+                end,
+                isInFolder = function(self, folderId)
+                    -- caching so that time intensive search only happens on the first filtering
+                    if self.folders[folderId] ~= nil then
+                        return self.folders[folderId]
+                    end
+
+                    if self.db.pluginToFolders[self.load] then
+                        self.folders[folderId] = OD_HasValue(self.db.pluginToFolders[self.load],
+                            folderId)
+                    else
+                        self.folders[folderId] = false
+                    end
+                    return self.folders[folderId]
+                end,
                 toggleFavorite = toggleFavorite
             })
             count = count + 1
