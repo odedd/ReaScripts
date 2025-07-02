@@ -1236,7 +1236,6 @@ if OD_PrereqsOK({
             + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
             + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)) * 2
             + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding))
-        ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
         app.gui:pushColors(app.gui.st.col.topBar.background)
         ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), app.gui.mainWindow.pos[1], app.gui.mainWindow.pos[2],
             app.gui.mainWindow.pos[1] + app.gui.mainWindow.size[1], app.gui.mainWindow.pos[2] + h,
@@ -1246,13 +1245,21 @@ if OD_PrereqsOK({
         app.gui:pushColors(app.gui.st.col.title)
         -- app.gui:pushColors(app.gui.st.col.title)
         -- ImGui.AlignTextToFramePadding(ctx)
+        ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
         ImGui.Text(ctx, ICONS.SEARCH)
         ImGui.PopFont(ctx)
         ImGui.SameLine(ctx)
         ImGui.PushFont(ctx, app.gui.st.fonts.large)
         ImGui.AlignTextToFramePadding(ctx)
-        ImGui.Text(ctx, app.scr.name .. '|')
+        ImGui.Text(ctx, app.scr.name)
         app:setHoveredHint('main', app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
+        ImGui.SameLine(ctx)
+        local curX, curY = ImGui.GetCursorPos(ctx)
+        ImGui.SetCursorPos(ctx, curX - 1.5 *  app.settings.current.uiScale, curY + 2.2 * app.settings.current.uiScale)
+        ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+        ImGui.Text(ctx, ICONS.RIGHT)
+        ImGui.PopFont(ctx)
+        ImGui.SetCursorPosY(ctx, curY)
         app.gui:popColors(app.gui.st.col.title)
         ImGui.SameLine(ctx)
         if app.pageSwitched then
