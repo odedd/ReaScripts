@@ -87,3 +87,9 @@ for i, fx_type_name in ipairs(FX_TYPE) do
             fx_type = fx_type_name
         } }
 end
+
+FILTER_CAPSULE_ORDER = {
+    'Categories',
+    'Folders',
+    'Developers'
+}

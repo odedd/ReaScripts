@@ -221,7 +221,7 @@ if OD_PrereqsOK({
     end
 
     function app.filterResults(query)
-        query = query or {}
+        query = OD_DeepCopy(query) or {}
         query.text = query.text or app.temp.searchInput
         app.temp.searchInput = query.text
         app.temp.searchResults = {}
@@ -854,7 +854,7 @@ if OD_PrereqsOK({
                             elseif value.query then
                                 local selected = true
                                 for k, v in pairs(value.query) do
-                                    if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then
+                                    if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then --TODO: this always results to value.query[k]
                                         selected = false
                                     end
                                 end
@@ -1113,23 +1113,68 @@ if OD_PrereqsOK({
             ImGui.SetKeyboardFocusHere(ctx, 0)
         end
 
+        app.gui:pushColors(app.gui.st.col.topBar.background)
         local w = select(1, ImGui.GetContentRegionAvail(ctx)) - menuW
 
-        app.gui:pushColors(app.gui.st.col.topBar.background)
         ImGui.SetNextItemWidth(ctx, w)
         local rv, searchInput = ImGui.InputText(ctx, "##searchInput", app.temp.searchInput)
         if rv then
             app.filterResults({ text = searchInput })
             app.temp.scrollToTop = true
         end
-        app.gui:popColors(app.gui.st.col.topBar.background)
         ImGui.SameLine(ctx)
         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
         local rv, btn = beginRightIconMenu(ctx, menu)
         ImGui.Dummy(ctx, 0, 0)
         ImGui.PopFont(ctx)
         ImGui.EndGroup(ctx)
-        -- ImGui.Separator(ctx)
+
+
+        local activeFilters = {}
+        for i, filterKey in ipairs(FILTER_CAPSULE_ORDER) do
+            local filterItem = nil
+            local selectedItemName
+            for itemName, item in pairs(FILTER_MENU[filterKey].items) do
+                for queryKey, queryValue in pairs(item.query) do
+                    if app.temp.filter[queryKey] == queryValue then
+                        local filter = {
+                            key = filterKey,
+                            item = item,
+                            itemName = itemName,
+                            allQuery = FILTER_MENU[filterKey].allQuery
+                        }
+                        table.insert(activeFilters, filter)
+                        break
+                    end
+                end
+            end
+        end
+        if #activeFilters > 0 then
+            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
+            local h2 = select(2, ImGui.CalcTextSize(ctx, 'Y'))
+                + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
+                + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))*2
+            ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), app.gui.mainWindow.pos[1],
+                app.gui.mainWindow.pos[2] + h,
+                app.gui.mainWindow.pos[1] + app.gui.mainWindow.size[1], app.gui.mainWindow.pos[2] + h + h2,
+                ImGui.GetColor(ctx, ImGui.Col_FrameBg), app.gui.st.vars.main[ImGui.StyleVar_WindowRounding][1],
+                ImGui.DrawFlags_RoundCornersTop)
+            ImGui.AlignTextToFramePadding(ctx)
+            
+            for i, filter in ipairs(activeFilters) do
+                if i ~= 1 then
+                    ImGui.SameLine(ctx)
+                    ImGui.Text(ctx, ' | ')
+                    ImGui.SameLine(ctx)
+                end
+                ImGui.Text(ctx, filter.key .. ': ' .. filter.itemName)
+                ImGui.SameLine(ctx)
+                if ImGui.SmallButton(ctx, 'x##' .. filter.key .. 'All') then
+                    app.filterResults(filter.allQuery)
+                end
+            end
+        end
+        app.gui:popColors(app.gui.st.col.topBar.background)
         if rv then
             if btn == 'close' then
                 app.exit = true
