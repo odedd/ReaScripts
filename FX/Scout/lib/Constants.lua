@@ -87,7 +87,9 @@ for i, fx_type_name in ipairs(FX_TYPE) do
 end
 
 FILTER_CAPSULE_ORDER = {
-    'Categories',
-    'Folders',
-    'Developers'
+    T.FILTER_MENU.TYPE,
+    T.FILTER_MENU.FX_TYPE,
+    T.FILTER_MENU.CATEGORY,
+    T.FILTER_MENU.FOLDER,
+    T.FILTER_MENU.DEVELOPER
 }

@@ -228,7 +228,7 @@ if OD_PrereqsOK({
 
         -- Prepare filter
         local filter = app.temp.filter or {}
-        filter.text = searchText:gsub('%s+', ' ')
+        filter.text = query.text:gsub('%s+', ' ')
         filter.tags = filter.tags or {}
 
         -- Add/remove tags
