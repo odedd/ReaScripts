@@ -41,51 +41,49 @@ PLUGIN = {
     INTERNAL = { 'Video Processor', 'Container' },
 }
 FAVORITE_GROUP = 'Favorite'
-RECEIVES_GROUP = 'Tracks with receives'
-TRACKS_GROUP = 'Other tracks'
+TRACKS_GROUP = 'Tracks'
 TRACK_TEMPLATES_GROUP = 'Track Templates'
 FX_CHAINS_GROUP = 'FX Chains'
 ALL_TRACKS_GROUP = 'All tracks'
 
 FILTER_MENU = {
-    ['Type'] = {
+    [T.FILTER_MENU.TYPE] = {
         order = 1,
-        allQuery = { type = 'all', fx_type = 'all' },
+        allQuery = { type = 'all' },
         items = {
             ['Track Templates'] = { order = 2, query = { type = ASSETS.TRACK_TEMPLATE } },
             ['FX Chains'] = { order = 3, query = { type = ASSETS.FX_CHAIN } },
-            ['Plugin'] = {
-                order = 1,
-                submenu = {
-                    allQuery = { type = ASSETS.PLUGIN, fx_type = 'all' },
-                    items = {}
-                },
-            }
+            ['FX'] = { order = 1, query = { type = ASSETS.PLUGIN } },
         }
     },
-    ['Folders'] = {
+    [T.FILTER_MENU.FX_TYPE] = {
         order = 2,
+        allQuery = { fx_type = 'all' },
+        items = {}
+    },
+    [T.FILTER_MENU.FOLDER] = {
+        order = 3,
         allQuery = { fxFolderId = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     },
-    ['Categories'] = {
-        order = 3,
+    [T.FILTER_MENU.CATEGORY] = {
+        order = 4,
         allQuery = { fxCategory = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     },
-    ['Developers'] = {
-        order = 4,
+    [T.FILTER_MENU.DEVELOPER] = {
+        order = 5,
         allQuery = { fxDeveloper = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     }
 }
 for i, fx_type_name in ipairs(FX_TYPE) do
-    FILTER_MENU['Type'].items['Plugin'].submenu.items[fx_type_name] = { 
+    FILTER_MENU[T.FILTER_MENU.FX_TYPE].items[fx_type_name] = {
         order = i,
         query = {
-            type = ASSETS.PLUGIN,
             fx_type = fx_type_name
-        } }
+        }
+    }
 end
 
 FILTER_CAPSULE_ORDER = {

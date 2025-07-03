@@ -44,12 +44,12 @@ if OD_PrereqsOK({
     package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
     ImGui = require 'imgui' '0.9.1'
 
+    dofile(p .. 'lib/Texts.lua')
     dofile(p .. 'lib/Constants.lua')
     dofile(p .. 'lib/Settings.lua')
     dofile(p .. 'lib/Tags.lua')
     dofile(p .. 'lib/Gui.lua')
     dofile(p .. 'lib/Db.lua')
-    dofile(p .. 'lib/Texts.lua')
 
     -- @noindex
 
@@ -226,88 +226,77 @@ if OD_PrereqsOK({
         app.temp.searchInput = query.text
         app.temp.searchResults = {}
 
-        app.temp.filter = app.temp.filter or {}
-        app.temp.filter.text = (query.text or app.temp.searchInput):gsub('%s+', ' ')
-        app.temp.filter.tags = app.temp.filter.tags or {}
+        -- Prepare filter
+        local filter = app.temp.filter or {}
+        filter.text = searchText:gsub('%s+', ' ')
+        filter.tags = filter.tags or {}
+
+        -- Add/remove tags
         if query.addTags then
             for tagId, positive in pairs(query.addTags) do
-                app.temp.filter.tags[tagId] = positive
+                filter.tags[tagId] = positive
             end
-            query.addTags = nil
         end
-
         if query.removeTags then
-            for i, tagId in ipairs(query.removeTags) do
-                app.temp.filter.tags[tagId] = nil
+            for _, tagId in ipairs(query.removeTags) do
+                filter.tags[tagId] = nil
             end
-            query.removeTags = nil
         end
 
+        -- Other filter fields
         for queryType, queryValue in pairs(query) do
-            if queryType ~= 'text' then
-                if queryValue == 'all' then
-                    app.temp.filter[queryType] = nil
-                else
-                    app.temp.filter[queryType] = queryValue
-                end
+            if queryType ~= 'text' and queryType ~= 'addTags' and queryType ~= 'removeTags' then
+                filter[queryType] = (queryValue ~= 'all') and queryValue or nil
             end
         end
+        app.temp.filter = filter
 
-        for i, asset in ipairs(app.db.assets) do
-            if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then goto skip end
-            -- if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK_TEMPLATE then goto skip end
-            -- if app.temp.addSendType == SEND_TYPE.RECV and asset.type ~= ASSETS.TRACK then skip = true end
-            -- if asset.type == ASSETS.TRACK and asset.load == app.db.track.guid then skip = true end
+        -- Filtering assets
+        local assets = app.db.assets
+        local tagsTable = app.db.tags
+        local filterTags = filter.tags
+        local filterText = filter.text:lower()
 
-            -- FILTER TYPE
-            if app.temp.filter.type and asset.type ~= app.temp.filter.type then goto skip end
-            if app.temp.filter.fx_type and asset.fx_type ~= app.temp.filter.fx_type then goto skip end
-            if app.temp.filter.fxFolderId then
-                if asset.type ~= ASSETS.PLUGIN then goto skip end
-                if not asset:isInFolder(app.temp.filter.fxFolderId) then goto skip end
+        for i = 1, #assets do
+            local asset = assets[i]
+
+            -- Type filters
+            if (filter.type and asset.type ~= filter.type)
+                or (filter.fx_type and asset.fx_type ~= filter.fx_type)
+                or (filter.fxDeveloper and (not asset.vendor or asset.vendor ~= filter.fxDeveloper))
+                or (filter.fxFolderId and (asset.type ~= ASSETS.PLUGIN or not asset:isInFolder(filter.fxFolderId)))
+                or (filter.fxCategory and (asset.type ~= ASSETS.PLUGIN or not asset:isInCategory(filter.fxCategory)))
+            then
+                goto skip
             end
-            if app.temp.filter.fxCategory then
-                if asset.type ~= ASSETS.PLUGIN then goto skip end
-                if not asset:isInCategory(app.temp.filter.fxCategory) then goto skip end
-            end
-            if app.temp.filter.fxDeveloper then
-                if not asset.vendor then goto skip end
-                if asset.vendor ~= app.temp.filter.fxDeveloper then goto skip end
-            end
-            -- -- FILTER TAGS
-            -- if skip then goto continue end
-            for tagId, positive in pairs(app.temp.filter.tags) do
-                -- if OD_HasValue(asset.tags,)
+
+            -- Tag filters
+            for tagId, positive in pairs(filterTags) do
                 local hasValue = OD_HasValue(asset.tags, tagId)
                 if not hasValue then
-                    local tag = app.db.tags[tagId]
-                    -- r.ShowConsoleMsg(tostring(tag.descendants)..'\n')
+                    local tag = tagsTable[tagId]
                     if tag and tag.descendants then
-                        for _, descendant in ipairs(tag.descendants) do
-                            -- r.ShowConsoleMsg(descendant.name..'\n')
-                            if OD_HasValue(asset.tags, descendant.id) then
+                        for d = 1, #tag.descendants do
+                            if OD_HasValue(asset.tags, tag.descendants[d].id) then
                                 hasValue = true
                                 break
                             end
                         end
                     end
                 end
-                if positive and not hasValue then
-                    -- skip = true
-                    goto skip
-                elseif not positive and hasValue then
-                    -- skip = true
+                if (positive and not hasValue) or (not positive and hasValue) then
                     goto skip
                 end
             end
 
-            -- FILTER TEXT
+            -- Text filter
             local foundIndexes = {}
             local allWordsFound = true
-            for word in app.temp.filter.text:lower():gmatch("%S+") do
+            for word in filterText:gmatch("%S+") do
                 local wordFound = false
-                for j, assetWord in ipairs(asset.searchText) do
-                    local pos = string.find((assetWord.text):lower(), OD_EscapePattern(word))
+                for j = 1, #asset.searchText do
+                    local assetWord = asset.searchText[j]
+                    local pos = string.find(assetWord.text:lower(), word, 1, true)
                     if pos then
                         foundIndexes[j] = foundIndexes[j] or {}
                         table.insert(foundIndexes[j], { from = pos, to = pos + #word - 1, order = pos })
@@ -321,102 +310,272 @@ if OD_PrereqsOK({
             end
             if allWordsFound then
                 asset.foundIndexes = foundIndexes
-                table.insert(app.temp.searchResults, asset)
+                app.temp.searchResults[#app.temp.searchResults + 1] = asset
             end
             ::skip::
         end
-        app.temp.highlightedResult = #app.temp.searchResults > 0 and 1 or nil
+
+        app.temp.highlightedResult = (#app.temp.searchResults > 0) and 1 or nil
         app.temp.lastInvisibleGroup = nil
-        -- if receiving track, add assign all results to ALL_TRACKS_GROUP and sort them by track order
     end
+
+    -- function app.filterResults2(query)
+    --     query = query or {}
+    --     query.text = query.text or app.temp.searchInput
+    --     app.temp.searchInput = query.text
+    --     app.temp.searchResults = {}
+
+    --     app.temp.filter = app.temp.filter or {}
+    --     app.temp.filter.text = (query.text or app.temp.searchInput):gsub('%s+', ' ')
+    --     app.temp.filter.tags = app.temp.filter.tags or {}
+    --     if query.addTags then
+    --         for tagId, positive in pairs(query.addTags) do
+    --             app.temp.filter.tags[tagId] = positive
+    --         end
+    --         query.addTags = nil
+    --     end
+
+    --     if query.removeTags then
+    --         for i, tagId in ipairs(query.removeTags) do
+    --             app.temp.filter.tags[tagId] = nil
+    --         end
+    --         query.removeTags = nil
+    --     end
+
+    --     for queryType, queryValue in pairs(query) do
+    --         if queryType ~= 'text' then
+    --             if queryValue == 'all' then
+    --                 app.temp.filter[queryType] = nil
+    --             else
+    --                 app.temp.filter[queryType] = queryValue
+    --             end
+    --         end
+    --     end
+
+    --     for i, asset in ipairs(app.db.assets) do
+    --         -- if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then goto skip end
+    --         -- if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK_TEMPLATE then goto skip end
+    --         -- if app.temp.addSendType == SEND_TYPE.RECV and asset.type ~= ASSETS.TRACK then skip = true end
+    --         -- if asset.type == ASSETS.TRACK and asset.load == app.db.track.guid then skip = true end
+
+    --         -- FILTER TYPE
+    --         if app.temp.filter.type and asset.type ~= app.temp.filter.type then goto skip end
+    --         if app.temp.filter.fx_type and asset.fx_type ~= app.temp.filter.fx_type then goto skip end
+    --         if app.temp.filter.fxFolderId then
+    --             if asset.type ~= ASSETS.PLUGIN then goto skip end
+    --             if not asset:isInFolder(app.temp.filter.fxFolderId) then goto skip end
+    --         end
+    --         if app.temp.filter.fxCategory then
+    --             if asset.type ~= ASSETS.PLUGIN then goto skip end
+    --             if not asset:isInCategory(app.temp.filter.fxCategory) then goto skip end
+    --         end
+    --         if app.temp.filter.fxDeveloper then
+    --             if not asset.vendor then goto skip end
+    --             if asset.vendor ~= app.temp.filter.fxDeveloper then goto skip end
+    --         end
+    --         -- -- FILTER TAGS
+    --         -- if skip then goto continue end
+    --         for tagId, positive in pairs(app.temp.filter.tags) do
+    --             -- if OD_HasValue(asset.tags,)
+    --             local hasValue = OD_HasValue(asset.tags, tagId)
+    --             if not hasValue then
+    --                 local tag = app.db.tags[tagId]
+    --                 -- r.ShowConsoleMsg(tostring(tag.descendants)..'\n')
+    --                 if tag and tag.descendants then
+    --                     for _, descendant in ipairs(tag.descendants) do
+    --                         -- r.ShowConsoleMsg(descendant.name..'\n')
+    --                         if OD_HasValue(asset.tags, descendant.id) then
+    --                             hasValue = true
+    --                             break
+    --                         end
+    --                     end
+    --                 end
+    --             end
+    --             if positive and not hasValue then
+    --                 -- skip = true
+    --                 goto skip
+    --             elseif not positive and hasValue then
+    --                 -- skip = true
+    --                 goto skip
+    --             end
+    --         end
+
+    --         -- FILTER TEXT
+    --         local foundIndexes = {}
+    --         local allWordsFound = true
+    --         for word in app.temp.filter.text:lower():gmatch("%S+") do
+    --             local wordFound = false
+    --             for j, assetWord in ipairs(asset.searchText) do
+    --                 local pos = string.find((assetWord.text):lower(), OD_EscapePattern(word))
+    --                 if pos then
+    --                     foundIndexes[j] = foundIndexes[j] or {}
+    --                     table.insert(foundIndexes[j], { from = pos, to = pos + #word - 1, order = pos })
+    --                     wordFound = true
+    --                 end
+    --             end
+    --             if not wordFound then
+    --                 allWordsFound = false
+    --                 break
+    --             end
+    --         end
+    --         if allWordsFound then
+    --             asset.foundIndexes = foundIndexes
+    --             table.insert(app.temp.searchResults, asset)
+    --         end
+    --         ::skip::
+    --     end
+    --     app.temp.highlightedResult = #app.temp.searchResults > 0 and 1 or nil
+    --     app.temp.lastInvisibleGroup = nil
+    --     -- if receiving track, add assign all results to ALL_TRACKS_GROUP and sort them by track order
+    -- end
 
     function app.drawSearch()
         local ctx = app.gui.ctx
         local w = select(1, ImGui.GetContentRegionAvail(ctx))
         local tagAreaH = select(2, ImGui.GetContentRegionAvail(ctx))
         local tagAreaW = app.settings.current.filterPanelWidth * app.settings.current.uiScale
-        local node_flags = ImGui.TreeNodeFlags_OpenOnArrow | ImGui.TreeNodeFlags_OpenOnDoubleClick
-            | ImGui.TreeNodeFlags_Framed | ImGui.TreeNodeFlags_SpanAllColumns
-        local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) -- * app.settings.current.uiScale
+        local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
         local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
         local windowPadding = ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)
         local tagAreaGlobalX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - tagAreaW - windowPadding
+        local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx)
+        local tagInfo = app.tags.current.tagInfo
+        local searchResults = app.temp.searchResults or {}
+        local highlightedResult = app.temp.highlightedResult
+
         if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG then
             ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),
                 tagAreaGlobalX, 10, tagAreaGlobalX + tagAreaW, 1000, 0xffffff22)
         end
+
         app.gui:pushStyles(app.gui.st.vars.searchWindow)
         app.gui:pushColors(app.gui.st.col.searchWindow)
 
-        -- Search Area
-        local selectedResult = nil
-        local hintResult = nil
-        local hintContext = nil
-        if ImGui.BeginChild(ctx, 'searchArea', w - tagAreaW - spacingX - windowPadding) then
-            local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx)
-            app.temp.searchResults = app.temp.searchResults or {}
+        -- Filter Line
+        -- local function drawFilterLine(menu, menuId)
+        --     local function getSelectedFilterLabel(menuKey, menuInfo)
+        --         -- Find which item is currently selected
+        --         if menuInfo.allQuery then
+        --             local allSelected = true
+        --             for k, v in pairs(menuInfo.allQuery) do
+        --                 if app.temp.filter[k] ~= ((menuInfo.allQuery[k] ~= 'all') and menuInfo.allQuery[k] or nil) then
+        --                     allSelected = false
+        --                 end
+        --             end
+        --             if allSelected then
+        --                 return menuKey .. ": All"
+        --             end
+        --         end
+        --         for item, value in OD_PairsByOrder(menuInfo.items) do
+        --             if value.query then
+        --                 local selected = true
+        --                 for k, v in pairs(value.query) do
+        --                     if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then
+        --                         selected = false
+        --                     end
+        --                 end
+        --                 if selected then
+        --                     return menuKey .. ": " .. item
+        --                 end
+        --             elseif value.submenu then
+        --                 -- Recursively check submenus
+        --                 local label = getSelectedFilterLabel(item, value.submenu)
+        --                 if label and label ~= item .. ": All" then
+        --                     return menuKey .. ": " .. label:match(": (.+)$")
+        --                 end
+        --             end
+        --         end
+        --         return menuKey
+        --     end
 
+        --     for k, menuInfo in OD_PairsByOrder(menu) do
+        --         if ImGui.BeginMenu(ctx, getSelectedFilterLabel(k, menuInfo) .. '##filterMenu' .. menuId) then
+        --             if menuInfo.allQuery then
+        --                 local selected = true
+        --                 for k, v in pairs(menuInfo.allQuery) do
+        --                     if app.temp.filter[k] ~= ((menuInfo.allQuery[k] ~= 'all') and menuInfo.allQuery[k] or nil) then
+        --                         selected = false
+        --                     end
+        --                 end
+
+        --                 if ImGui.MenuItem(ctx, 'All' .. "##filterMenu" .. menuId .. "-All", nil, selected) then
+        --                     app.filterResults(menuInfo.allQuery)
+        --                 end
+        --                 ImGui.Separator(ctx)
+        --             end
+
+        --             for item, value in OD_PairsByOrder(menuInfo.items) do
+        --                 if value.submenu then
+        --                     drawFilterLine({ [item] = value.submenu }, menuId .. '-' .. item)
+        --                 elseif value.query then
+        --                     local selected = true
+        --                     for k, v in pairs(value.query) do
+        --                         if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then
+        --                             selected = false
+        --                         end
+        --                     end
+        --                     if ImGui.MenuItem(ctx, item, nil, selected) then
+        --                         app.filterResults(value.query)
+        --                     end
+        --                 end
+        --             end
+        --             ImGui.EndMenu(ctx)
+        --         end
+        --     end
+        -- end
+        -- if ImGui.BeginChild(ctx, 'testing', nil, ImGui.GetTextLineHeight(ctx), nil, ImGui.WindowFlags_MenuBar) then
+        --     if ImGui.BeginMenuBar(ctx) then
+        --         drawFilterLine(FILTER_MENU, 'root')
+        --         ImGui.EndMenuBar(ctx)
+        --     end
+        --     ImGui.EndChild(ctx)
+        -- end
+        -- Search Area
+        local selectedResult, hintResult, hintContext = nil, nil, nil
+        if ImGui.BeginChild(ctx, 'searchArea', w - tagAreaW - spacingX - windowPadding) then
             if app.pageSwitched then
-                -- app.db:init()
                 app.filterResults({ text = '' })
             end
             ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + 1)
 
             local h = select(2, ImGui.GetContentRegionAvail(ctx))
-            local maxSearchResults = math.floor(h / (fontLineHeight))
+            local maxSearchResults = math.floor(h / fontLineHeight)
 
-
-
+            -- Keyboard navigation
             if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
-                -- app.temp.ignoreEscapeKey = true
-                -- app.setPage(APP_PAGE.MIXER)
-            elseif app.temp.highlightedResult then
-                hintResult = app.temp.searchResults[app.temp.highlightedResult]
+                -- handle escape
+            elseif highlightedResult then
+                hintResult = searchResults[highlightedResult]
                 hintContext = 'Enter'
-                if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) then
-                    if app.temp.highlightedResult < #app.temp.searchResults then
-                        app.temp.highlightedResult = app.temp.highlightedResult + 1
-                        app.temp.checkScrollDown = true
-                    end
+                if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) and highlightedResult < #searchResults then
+                    app.temp.highlightedResult = highlightedResult + 1
+                    app.temp.checkScrollDown = true
                 elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageDown) then
-                    if app.temp.highlightedResult + maxSearchResults - 3 < #app.temp.searchResults then
-                        app.temp.highlightedResult = app.temp.highlightedResult + maxSearchResults - 3
-                        app.temp.checkScrollDown = true
-                    elseif app.temp.highlightedResult ~= #app.temp.searchResults then
-                        app.temp.highlightedResult = #app.temp.searchResults
+                    local newIdx = math.min(highlightedResult + maxSearchResults - 3, #searchResults)
+                    if highlightedResult ~= newIdx then
+                        app.temp.highlightedResult = newIdx
                         app.temp.checkScrollDown = true
                     end
                 elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageUp) then
-                    if app.temp.highlightedResult - maxSearchResults - 3 > 1 then
-                        app.temp.highlightedResult = app.temp.highlightedResult - maxSearchResults - 3
-                        app.temp.checkScrollUp = true
-                    elseif app.temp.highlightedResult ~= 1 then
-                        app.temp.highlightedResult = 1
+                    local newIdx = math.max(highlightedResult - maxSearchResults - 3, 1)
+                    if highlightedResult ~= newIdx then
+                        app.temp.highlightedResult = newIdx
                         app.temp.checkScrollUp = true
                     end
-                elseif ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) then
-                    if app.temp.highlightedResult > 1 then
-                        app.temp.highlightedResult = app.temp.highlightedResult - 1
-                        app.temp.checkScrollUp = true
-                    end
+                elseif ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) and highlightedResult > 1 then
+                    app.temp.highlightedResult = highlightedResult - 1
+                    app.temp.checkScrollUp = true
                 elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
-                    if app.temp.highlightedResult then
-                        selectedResult = app.temp.searchResults[app.temp.highlightedResult]
-                    else
-                        ImGui.SetKeyboardFocusHere(ctx, -1)
-                    end
-                elseif app.isShortcutPressed('markFavorite') then
-                    if app.temp.highlightedResult then
-                        local result = app.temp.searchResults[app.temp.highlightedResult]
-                        local fav = result:toggleFavorite()
-                        app.filterResults({ text = searchInput })
-                        if fav then
-                            for i, r in ipairs(app.temp.searchResults) do
-                                -- if r.type == oldType and r.load == oldLoad then
-                                if r == result then
-                                    app.temp.highlightedResult = i
-                                    break
-                                end
+                    selectedResult = searchResults[highlightedResult]
+                elseif app.isShortcutPressed('markFavorite') and highlightedResult then
+                    local result = searchResults[highlightedResult]
+                    local fav = result:toggleFavorite()
+                    app.filterResults({ text = app.temp.searchInput })
+                    if fav then
+                        for i = 1, #app.temp.searchResults do
+                            if app.temp.searchResults[i] == result then
+                                app.temp.highlightedResult = i
+                                break
                             end
                         end
                     end
@@ -424,21 +583,20 @@ if OD_PrereqsOK({
             end
 
             local selectableFlags = ImGui.SelectableFlags_SpanAllColumns
-            local outer_size = { 0.0, fontLineHeight * h / (fontLineHeight) }
+            local outer_size = { 0.0, fontLineHeight * h / fontLineHeight }
             local tableFlags = ImGui.TableFlags_ScrollY
             local lastGroup = nil
-
             local upperRowY = select(2, ImGui.GetCursorScreenPos(ctx))
+
             if ImGui.BeginTable(ctx, "##searchResults", 1, tableFlags, table.unpack(outer_size)) then
                 ImGui.TableSetupScrollFreeze(ctx, 0, 1)
-                if app.temp.scrollToTop == true then
+                if app.temp.scrollToTop then
                     ImGui.SetScrollY(ctx, 0)
                     app.temp.scrollToTop = false
                 end
-                local highlightedY = 0
-                local foundInvisibleGroup = false
-                local absIndex = 0
-                for i, result in ipairs(app.temp.searchResults) do
+                local highlightedY, foundInvisibleGroup, absIndex = 0, false, 0
+                for i = 1, #searchResults do
+                    local result = searchResults[i]
                     if result.group ~= lastGroup then
                         ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
                         absIndex = absIndex + 1
@@ -455,25 +613,22 @@ if OD_PrereqsOK({
                     ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
                     absIndex = absIndex + 1
                     ImGui.TableSetColumnIndex(ctx, 0)
-                    if (app.temp.checkScrollDown or app.temp.checkScrollUp) and i == app.temp.highlightedResult then
+                    if (app.temp.checkScrollDown or app.temp.checkScrollUp) and i == highlightedResult then
                         highlightedY = select(2, ImGui.GetCursorScreenPos(ctx))
                     end
-                    if ImGui.Selectable(ctx, '', i == app.temp.highlightedResult, selectableFlags, 0, 0) then
+                    if ImGui.Selectable(ctx, '', i == highlightedResult, selectableFlags, 0, 0) then
                         selectedResult = result
                     end
                     if ImGui.IsItemHovered(ctx) then
-                        hintResult = app.temp.searchResults[i]
+                        hintResult = result
                         hintContext = 'Click'
                     end
                     ImGui.SameLine(ctx)
 
                     if result.type == ASSETS.TRACK then
-                        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx))
-                        local size = fontLineHeight -
-                            select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding)) * 2
+                        local size = fontLineHeight - select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
                         ImGui.ColorButton(ctx, 'color', result.color,
-                            ImGui.ColorEditFlags_NoBorder |
-                            ImGui.ColorEditFlags_NoTooltip, size, size)
+                            ImGui.ColorEditFlags_NoBorder | ImGui.ColorEditFlags_NoTooltip, size, size)
                         ImGui.SameLine(ctx)
                     end
 
@@ -487,9 +642,9 @@ if OD_PrereqsOK({
                     end
 
                     -- draw result name, highlighting the search query
-
                     ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 0.0, 0.0)
-                    for j, st in ipairs(result.searchText) do
+                    for j = 1, #(result.searchText) do
+                        local st = result.searchText[j]
                         if not st.hide then
                             if j > 1 then
                                 ImGui.Text(ctx, ' ')
@@ -499,7 +654,7 @@ if OD_PrereqsOK({
                                 app.gui:pushColors(app.gui.st.col.search.mainResult)
                             end
                             local curIndex = 1
-                            for k, highlight in OD_PairsByOrder(result.foundIndexes[j] or {}) do
+                            for _, highlight in OD_PairsByOrder(result.foundIndexes[j] or {}) do
                                 if curIndex <= highlight.from then
                                     ImGui.Text(ctx, (st.text):sub(curIndex, highlight.from - 1))
                                     ImGui.SameLine(ctx)
@@ -526,8 +681,8 @@ if OD_PrereqsOK({
                         end
                     end
                     ImGui.PopStyleVar(ctx)
-                    for i, tagId in ipairs(result.tags) do
-                        local tag = app.tags.current.tagInfo[tagId]
+                    for t = 1, #(result.tags or {}) do
+                        local tag = tagInfo[result.tags[t]]
                         ImGui.PushStyleColor(ctx, ImGui.Col_Button, tag.color)
                         ImGui.SmallButton(ctx, tag.name)
                         ImGui.PopStyleColor(ctx)
@@ -559,12 +714,10 @@ if OD_PrereqsOK({
             else
                 app:setHint('main', '')
             end
-            if selectedResult then
-                if app.page == APP_PAGE.SEARCH_FX then
-                    local tracks = app.db:getSelectedTracks()
-                    for i, trk in ipairs(tracks) do
-                        trk:addInsert(selectedResult.load)
-                    end
+            if selectedResult and app.page == APP_PAGE.SEARCH_FX then
+                local tracks = app.db:getSelectedTracks()
+                for i = 1, #tracks do
+                    tracks[i]:addInsert(selectedResult.load)
                 end
             end
             ImGui.EndChild(ctx)
@@ -586,18 +739,14 @@ if OD_PrereqsOK({
         end
         if ImGui.IsItemActive(ctx) then
             ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
-            local mouseDeltaX, mouseDeltaY = ImGui.GetMouseDragDelta(ctx, nil,
-                nil,
-                ImGui.MouseButton_Left)
+            local mouseDeltaX = select(1, ImGui.GetMouseDragDelta(ctx, nil, nil, ImGui.MouseButton_Left))
             if mouseDeltaX ~= 0 then
-                -- local newWidth = (origX - paddingX) + mouseDeltaX/app.settings.current.uiScale
                 local newWidth = (tagAreaW - mouseDeltaX) / app.settings.current.uiScale
-                if newWidth > app.settings.current.minFilterPanelWidth * app.settings.current.uiScale then
+                if newWidth > app.settings.current.minFilterPanelWidth then
                     app.settings.current.filterPanelWidth = newWidth
                     ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
                 else
-                    app.settings.current.filterPanelWidth = app.settings.current.minFilterPanelWidth *
-                        app.settings.current.uiScale
+                    app.settings.current.filterPanelWidth = app.settings.current.minFilterPanelWidth
                 end
             end
         end
@@ -830,7 +979,6 @@ if OD_PrereqsOK({
 
                 app.gui:popStyles(app.gui.st.vars.tagList)
             end
-
             local function drawFilterMenu(menu, menuId)
                 for k, menuInfo in OD_PairsByOrder(menu) do
                     if ImGui.BeginMenu(ctx, k .. '##filterMenu' .. menuId) then

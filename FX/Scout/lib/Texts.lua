@@ -52,11 +52,18 @@ T.SETTINGS = {
 
 T.SETTINGS.LISTS = {
     [T.SETTINGS.TEXT_MINIMIZATION_STYLE.LABEL] = {
-        [MINIMIZATION_STYLE.PT] = 'Pro-Tools style',
-        [MINIMIZATION_STYLE.TRIM] = 'Trim text to length',
+        PT = 'Pro-Tools style',
+        TRIM = 'Trim text to length',
     },
 }
 
+T.FILTER_MENU = {
+    TYPE = 'Search For',
+    FX_TYPE = 'FX Type',
+    FOLDER = 'Folder',
+    CATEGORY = 'Category',
+    DEVELOPER = 'Developer'
+}
 T.ERROR = {
     NO_DOCK = ([[
 No previous dock found.
