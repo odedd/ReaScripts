@@ -431,13 +431,16 @@ if OD_PrereqsOK({
 
     function app.drawSearch()
         local ctx = app.gui.ctx
+        app.gui:pushStyles(app.gui.st.vars.searchWindow)
+        app.gui:pushColors(app.gui.st.col.searchWindow)
+
         local w = select(1, ImGui.GetContentRegionAvail(ctx))
         local tagAreaH = select(2, ImGui.GetContentRegionAvail(ctx))
         local tagAreaW = app.settings.current.filterPanelWidth * app.settings.current.uiScale
         local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
         local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
         local windowPadding = ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)
-        local tagAreaGlobalX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - tagAreaW - windowPadding
+        local tagAreaGlobalX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - tagAreaW -- windowPadding
         local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx)
         local tagInfo = app.tags.current.tagInfo
         local searchResults = app.temp.searchResults or {}
@@ -448,95 +451,12 @@ if OD_PrereqsOK({
                 tagAreaGlobalX, 10, tagAreaGlobalX + tagAreaW, 1000, 0xffffff22)
         end
 
-        app.gui:pushStyles(app.gui.st.vars.searchWindow)
-        app.gui:pushColors(app.gui.st.col.searchWindow)
-
-        -- Filter Line
-        -- local function drawFilterLine(menu, menuId)
-        --     local function getSelectedFilterLabel(menuKey, menuInfo)
-        --         -- Find which item is currently selected
-        --         if menuInfo.allQuery then
-        --             local allSelected = true
-        --             for k, v in pairs(menuInfo.allQuery) do
-        --                 if app.temp.filter[k] ~= ((menuInfo.allQuery[k] ~= 'all') and menuInfo.allQuery[k] or nil) then
-        --                     allSelected = false
-        --                 end
-        --             end
-        --             if allSelected then
-        --                 return menuKey .. ": All"
-        --             end
-        --         end
-        --         for item, value in OD_PairsByOrder(menuInfo.items) do
-        --             if value.query then
-        --                 local selected = true
-        --                 for k, v in pairs(value.query) do
-        --                     if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then
-        --                         selected = false
-        --                     end
-        --                 end
-        --                 if selected then
-        --                     return menuKey .. ": " .. item
-        --                 end
-        --             elseif value.submenu then
-        --                 -- Recursively check submenus
-        --                 local label = getSelectedFilterLabel(item, value.submenu)
-        --                 if label and label ~= item .. ": All" then
-        --                     return menuKey .. ": " .. label:match(": (.+)$")
-        --                 end
-        --             end
-        --         end
-        --         return menuKey
-        --     end
-
-        --     for k, menuInfo in OD_PairsByOrder(menu) do
-        --         if ImGui.BeginMenu(ctx, getSelectedFilterLabel(k, menuInfo) .. '##filterMenu' .. menuId) then
-        --             if menuInfo.allQuery then
-        --                 local selected = true
-        --                 for k, v in pairs(menuInfo.allQuery) do
-        --                     if app.temp.filter[k] ~= ((menuInfo.allQuery[k] ~= 'all') and menuInfo.allQuery[k] or nil) then
-        --                         selected = false
-        --                     end
-        --                 end
-
-        --                 if ImGui.MenuItem(ctx, 'All' .. "##filterMenu" .. menuId .. "-All", nil, selected) then
-        --                     app.filterResults(menuInfo.allQuery)
-        --                 end
-        --                 ImGui.Separator(ctx)
-        --             end
-
-        --             for item, value in OD_PairsByOrder(menuInfo.items) do
-        --                 if value.submenu then
-        --                     drawFilterLine({ [item] = value.submenu }, menuId .. '-' .. item)
-        --                 elseif value.query then
-        --                     local selected = true
-        --                     for k, v in pairs(value.query) do
-        --                         if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then
-        --                             selected = false
-        --                         end
-        --                     end
-        --                     if ImGui.MenuItem(ctx, item, nil, selected) then
-        --                         app.filterResults(value.query)
-        --                     end
-        --                 end
-        --             end
-        --             ImGui.EndMenu(ctx)
-        --         end
-        --     end
-        -- end
-        -- if ImGui.BeginChild(ctx, 'testing', nil, ImGui.GetTextLineHeight(ctx), nil, ImGui.WindowFlags_MenuBar) then
-        --     if ImGui.BeginMenuBar(ctx) then
-        --         drawFilterLine(FILTER_MENU, 'root')
-        --         ImGui.EndMenuBar(ctx)
-        --     end
-        --     ImGui.EndChild(ctx)
-        -- end
-        -- Search Area
         local selectedResult, hintResult, hintContext = nil, nil, nil
-        if ImGui.BeginChild(ctx, 'searchArea', w - tagAreaW - spacingX - windowPadding) then
+        if ImGui.BeginChild(ctx, 'searchArea', w - tagAreaW - spacingX) then
             if app.pageSwitched then
                 app.filterResults({ text = '' })
             end
-            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + 1)
+            -- ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - 1)
 
             local h = select(2, ImGui.GetContentRegionAvail(ctx))
             local maxSearchResults = math.floor(h / fontLineHeight)
@@ -626,7 +546,8 @@ if OD_PrereqsOK({
                     ImGui.SameLine(ctx)
 
                     if result.type == ASSETS.TRACK then
-                        local size = fontLineHeight - select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
+                        local size = fontLineHeight -
+                            select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
                         ImGui.ColorButton(ctx, 'color', result.color,
                             ImGui.ColorEditFlags_NoBorder | ImGui.ColorEditFlags_NoTooltip, size, size)
                         ImGui.SameLine(ctx)
@@ -787,7 +708,8 @@ if OD_PrereqsOK({
                             local payloadTag = app.db.tags[tonumber(payload)]
                             ImGui.SetCursorPos(ctx, x, y + previewPreOffsetY)
                             drawTagNode(payloadTag, position == 'inside', true)
-                            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - previewPreOffsetY + previewPostOffsetY)
+                            ImGui.SetCursorPosY(ctx,
+                                ImGui.GetCursorPosY(ctx) - previewPreOffsetY + previewPostOffsetY)
                             if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
                                 payloadTag:moveTo(tag, position)
                             end
@@ -895,7 +817,8 @@ if OD_PrereqsOK({
                                 app.gui:popColors(app.gui.st.col.activeTagButton)
                             end
                             if tag.status ~= nil then
-                                ImGui.SetCursorScreenPos(ctx, tagAreaGlobalX + tagAreaW - btnW * (tag.status and 1 or 2),
+                                ImGui.SetCursorScreenPos(ctx,
+                                    tagAreaGlobalX + tagAreaW - btnW * (tag.status and 1 or 2),
                                     globalY)
                                 drawCloseButton(tag)
                             end
@@ -1111,14 +1034,14 @@ if OD_PrereqsOK({
                     T.SETTINGS.SEND_FOLDER_NAME.HINT, app.settings.current.sendFolderName,
                     { hint = T.SETTINGS.SEND_FOLDER_NAME.LABEL }, true)
             end
-            app.settings.current.textMinimizationStyle = app.gui:setting('combo',
-                T.SETTINGS.TEXT_MINIMIZATION_STYLE.LABEL, T.SETTINGS.TEXT_MINIMIZATION_STYLE.HINT,
-                app.settings.current.textMinimizationStyle,
-                {
-                    list = T.SETTINGS.LISTS[T.SETTINGS.TEXT_MINIMIZATION_STYLE.LABEL][MINIMIZATION_STYLE.PT] ..
-                        '\0' ..
-                        T.SETTINGS.LISTS[T.SETTINGS.TEXT_MINIMIZATION_STYLE.LABEL][MINIMIZATION_STYLE.TRIM] .. '\0'
-                })
+            -- app.settings.current.textMinimizationStyle = app.gui:setting('combo',
+            --     T.SETTINGS.TEXT_MINIMIZATION_STYLE.LABEL, T.SETTINGS.TEXT_MINIMIZATION_STYLE.HINT,
+            --     app.settings.current.textMinimizationStyle,
+            --     {
+            --         list = T.SETTINGS.LISTS[T.SETTINGS.TEXT_MINIMIZATION_STYLE.LABEL][MINIMIZATION_STYLE.PT] ..
+            --             '\0' ..
+            --             T.SETTINGS.LISTS[T.SETTINGS.TEXT_MINIMIZATION_STYLE.LABEL][MINIMIZATION_STYLE.TRIM] .. '\0'
+            --     })
 
             ImGui.SeparatorText(ctx, 'Shortcuts')
             local resetCounter = false
@@ -1224,122 +1147,161 @@ if OD_PrereqsOK({
 
         local menuW = 0
         ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
+        app.gui:pushStyles(app.gui.st.vars.topBar)
+        app.gui:pushColors(app.gui.st.col.topBar)
 
-        for i, btn in ipairs(menu) do
-            menuW = menuW + select(1, ImGui.CalcTextSize(ctx, ICONS[(btn.icon):upper()])) +
-                ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2 +
+        if ImGui.BeginChild(ctx, 'topBar', nil, nil, ImGui.ChildFlags_AutoResizeY|ImGui.ChildFlags_AlwaysUseWindowPadding) then
+            local topBarW = select(1, ImGui.GetContentRegionAvail(ctx)) - menuW
+            for i, btn in ipairs(menu) do
+                menuW = menuW + select(1, ImGui.CalcTextSize(ctx, ICONS[(btn.icon):upper()])) +
+                    ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2 +
+                    ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+            end
+            ImGui.PopFont(ctx)
+            ImGui.BeginGroup(ctx)
+            app.gui:pushColors(app.gui.st.col.title)
+            ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+            ImGui.AlignTextToFramePadding(ctx)
+            ImGui.Text(ctx, ICONS.SEARCH)
+            ImGui.PopFont(ctx)
+            ImGui.SameLine(ctx)
+            ImGui.PushFont(ctx, app.gui.st.fonts.large)
+
+            ImGui.AlignTextToFramePadding(ctx)
+            ImGui.Text(ctx, app.scr.name .. '|')
+            app:setHoveredHint('main', app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
+            app.gui:popColors(app.gui.st.col.title)
+            ImGui.SameLine(ctx)
+            if app.pageSwitched then
+                -- app.db:init()
+                app.filterResults({ text = '' })
+                ImGui.SetKeyboardFocusHere(ctx, 0)
+            end
+
+            -- app.gui:pushColors(app.gui.st.col.topBar.background)
+            local w = select(1, ImGui.GetContentRegionAvail(ctx)) - menuW +
                 ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
-        end
-        ImGui.PopFont(ctx)
-        ImGui.BeginGroup(ctx)
-        local h = select(2, ImGui.CalcTextSize(ctx, 'Y'))
-            + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
-            + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)) * 2
-            + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding))
-        ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
-        app.gui:pushColors(app.gui.st.col.topBar.background)
-        ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), app.gui.mainWindow.pos[1], app.gui.mainWindow.pos[2],
-            app.gui.mainWindow.pos[1] + app.gui.mainWindow.size[1], app.gui.mainWindow.pos[2] + h,
-            ImGui.GetColor(ctx, ImGui.Col_FrameBg), app.gui.st.vars.main[ImGui.StyleVar_WindowRounding][1],
-            ImGui.DrawFlags_RoundCornersTop)
-        app.gui:popColors(app.gui.st.col.topBar.background)
-        app.gui:pushColors(app.gui.st.col.title)
-        -- app.gui:pushColors(app.gui.st.col.title)
-        -- ImGui.AlignTextToFramePadding(ctx)
-        ImGui.Text(ctx, ICONS.SEARCH)
-        ImGui.PopFont(ctx)
-        ImGui.SameLine(ctx)
-        ImGui.PushFont(ctx, app.gui.st.fonts.large)
-        ImGui.AlignTextToFramePadding(ctx)
-        ImGui.Text(ctx, app.scr.name .. '|')
-        app:setHoveredHint('main', app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
-        app.gui:popColors(app.gui.st.col.title)
-        ImGui.SameLine(ctx)
-        if app.pageSwitched then
-            -- app.db:init()
-            app.filterResults({ text = '' })
-            ImGui.SetKeyboardFocusHere(ctx, 0)
-        end
 
-        app.gui:pushColors(app.gui.st.col.topBar.background)
-        local w = select(1, ImGui.GetContentRegionAvail(ctx)) - menuW
+            ImGui.SetNextItemWidth(ctx, w)
+            local rv, searchInput = ImGui.InputText(ctx, "##searchInput", app.temp.searchInput)
+            if rv then
+                app.filterResults({ text = searchInput })
+                app.temp.scrollToTop = true
+            end
+            ImGui.SameLine(ctx)
+            ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
+            local rv, btn = beginRightIconMenu(ctx, menu)
+            ImGui.Dummy(ctx, 0, 0)
+            ImGui.PopFont(ctx)
+            ImGui.EndGroup(ctx)
 
-        ImGui.SetNextItemWidth(ctx, w)
-        local rv, searchInput = ImGui.InputText(ctx, "##searchInput", app.temp.searchInput)
-        if rv then
-            app.filterResults({ text = searchInput })
-            app.temp.scrollToTop = true
-        end
-        ImGui.SameLine(ctx)
-        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
-        local rv, btn = beginRightIconMenu(ctx, menu)
-        ImGui.Dummy(ctx, 0, 0)
-        ImGui.PopFont(ctx)
-        ImGui.EndGroup(ctx)
-
-
-        local activeFilters = {}
-        for i, filterKey in ipairs(FILTER_CAPSULE_ORDER) do
-            local filterItem = nil
-            local selectedItemName
-            for itemName, item in pairs(FILTER_MENU[filterKey].items) do
-                for queryKey, queryValue in pairs(item.query) do
-                    if app.temp.filter[queryKey] == queryValue then
-                        local filter = {
-                            key = filterKey,
-                            item = item,
-                            itemName = itemName,
-                            allQuery = FILTER_MENU[filterKey].allQuery
-                        }
-                        table.insert(activeFilters, filter)
-                        break
+            local activeFilters = {}
+            for i, filterKey in ipairs(FILTER_CAPSULE_ORDER) do
+                local filterItem = nil
+                local selectedItemName
+                for itemName, item in pairs(FILTER_MENU[filterKey].items) do
+                    for queryKey, queryValue in pairs(item.query) do
+                        if app.temp.filter[queryKey] == queryValue then
+                            local filter = {
+                                key = filterKey,
+                                item = item,
+                                itemName = itemName,
+                                allQuery = FILTER_MENU[filterKey].allQuery
+                            }
+                            table.insert(activeFilters, filter)
+                            break
+                        end
                     end
                 end
             end
-        end
-        if #activeFilters > 0 then
-            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
-            local h2 = select(2, ImGui.CalcTextSize(ctx, 'Y'))
-                + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
-                + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))*2
-            ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), app.gui.mainWindow.pos[1],
-                app.gui.mainWindow.pos[2] + h,
-                app.gui.mainWindow.pos[1] + app.gui.mainWindow.size[1], app.gui.mainWindow.pos[2] + h + h2,
-                ImGui.GetColor(ctx, ImGui.Col_FrameBg), app.gui.st.vars.main[ImGui.StyleVar_WindowRounding][1],
-                ImGui.DrawFlags_RoundCornersTop)
-            ImGui.AlignTextToFramePadding(ctx)
-            
-            for i, filter in ipairs(activeFilters) do
-                if i ~= 1 then
-                    ImGui.SameLine(ctx)
-                    ImGui.Text(ctx, ' | ')
-                    ImGui.SameLine(ctx)
+            ImGui.PushFont(ctx, app.gui.st.fonts.small)
+            ImGui.EndChild(ctx)
+
+
+            if #activeFilters > 0 then
+                app.gui:pushStyles(app.gui.st.vars.topBarActiveFiltersArea)
+                app.gui:pushColors(app.gui.st.col.topBarActiveFiltersArea)
+
+                ImGui.PushFont(ctx, app.gui.st.fonts.icons_tiny)
+                local closeButtonSizeW, closeButtonSizeH = ImGui.CalcTextSize(ctx, 'x')
+                local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
+                local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+                ImGui.PopFont(ctx)
+
+                ImGui.AlignTextToFramePadding(ctx)
+
+                if ImGui.BeginChild(ctx, 'activeFilterArea', topBarW, nil, ImGui.ChildFlags_AutoResizeY) then
+                    for i, filter in ipairs(activeFilters) do
+                        if i ~= 1 then
+                            ImGui.SameLine(ctx)
+                        end
+                        ImGui.BeginGroup(ctx)
+                        local text = filter.key .. ': ' .. filter.itemName
+                        local x1, y1 = ImGui.GetCursorScreenPos(ctx)
+                        local textW, textH = ImGui.CalcTextSize(ctx, text)
+                        local h = ImGui.GetTextLineHeight(ctx)
+                        local x2, y2 = x1 + textW + spacingX + closeButtonSizeW + paddingX * 2, y1 + h + paddingY * 2
+                        ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), x1, y1, x2, y2,
+                            ImGui.GetColor(ctx, ImGui.Col_Button), ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
+                        ImGui.SetCursorPos(ctx, ImGui.GetCursorPosX(ctx) + paddingX, ImGui.GetCursorPosY(ctx) + paddingY)
+                        ImGui.Text(ctx, text)
+                        ImGui.SameLine(ctx)
+                        ImGui.PushFont(ctx, app.gui.st.fonts.icons_tiny)
+                        ImGui.SetCursorScreenPos(ctx, x2 - closeButtonSizeW - paddingX,
+                        y1 + paddingY + (textH - closeButtonSizeH) / 2)
+                        local x, y = ImGui.GetCursorPos(ctx)
+                        if ImGui.InvisibleButton(ctx, 'x##' .. filter.key .. 'All', closeButtonSizeW, closeButtonSizeH) then
+                            app.filterResults(filter.allQuery)
+                        end
+                        local col = app.gui.st.col.main[ImGui.Col_Text]
+                        if ImGui.IsItemHovered(ctx) then
+                            ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                            if ImGui.IsItemActive(ctx) then
+                                col = app.gui.st.col.main[ImGui.Col_ButtonActive]
+                            else
+                                col = app.gui.st.col.main[ImGui.Col_ButtonHovered]
+                            end
+                        end
+                        ImGui.SetCursorPos(ctx, x, y)
+                        ImGui.TextColored(ctx, col, ICONS.CLOSE)
+                        ImGui.PopFont(ctx)
+                        ImGui.SetCursorScreenPos(ctx, x2, y2)
+                        ImGui.Dummy(ctx, 0, 0)
+                        ImGui.EndGroup(ctx)
+                    end
+                    ImGui.EndChild(ctx)
                 end
-                ImGui.Text(ctx, filter.key .. ': ' .. filter.itemName)
-                ImGui.SameLine(ctx)
-                if ImGui.SmallButton(ctx, 'x##' .. filter.key .. 'All') then
-                    app.filterResults(filter.allQuery)
+                app.gui:popStyles(app.gui.st.vars.topBarActiveFiltersArea)
+                app.gui:popColors(app.gui.st.col.topBarActiveFiltersArea)
+            end
+            ImGui.PopFont(ctx)
+            -- app.gui:popColors(app.gui.st.col.topBar)
+            if rv then
+                if btn == 'close' then
+                    app.exit = true
+                elseif btn == 'undock' then
+                    app.gui.mainWindow.dockTo = 0
+                elseif btn == 'dock_down' then
+                    if app.settings.current.lastDockId then
+                        app.gui.mainWindow.dockTo = app.settings.current.lastDockId
+                    else
+                        app:msg(T.ERROR.NO_DOCK)
+                    end
+                elseif btn == 'gear' then
+                    ImGui.OpenPopup(ctx, Scr.name .. ' Settings##settingsWindow')
+                elseif btn == 'money' then
+                    OD_OpenLink(Scr.donation)
                 end
             end
         end
-        app.gui:popColors(app.gui.st.col.topBar.background)
-        if rv then
-            if btn == 'close' then
-                app.exit = true
-            elseif btn == 'undock' then
-                app.gui.mainWindow.dockTo = 0
-            elseif btn == 'dock_down' then
-                if app.settings.current.lastDockId then
-                    app.gui.mainWindow.dockTo = app.settings.current.lastDockId
-                else
-                    app:msg(T.ERROR.NO_DOCK)
-                end
-            elseif btn == 'gear' then
-                ImGui.OpenPopup(ctx, Scr.name .. ' Settings##settingsWindow')
-            elseif btn == 'money' then
-                OD_OpenLink(Scr.donation)
-            end
-        end
+        -- ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), app.gui.mainWindow.pos[1],
+        --     app.gui.mainWindow.pos[2],
+        --     app.gui.mainWindow.pos[1] + app.gui.mainWindow.size[1], select(2, ImGui.GetCursorScreenPos(ctx)),
+        --     ImGui.GetColor(ctx, ImGui.Col_FrameBg), app.gui.st.vars.main[ImGui.StyleVar_WindowRounding][1],
+        --     ImGui.DrawFlags_RoundCornersTop)
+
+        app.gui:popColors(app.gui.st.col.topBar)
+        app.gui:popStyles(app.gui.st.vars.topBar)
     end
 
     function app.drawHint(window)

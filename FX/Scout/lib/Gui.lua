@@ -15,6 +15,7 @@ PB_Gui.init = function(self, fonts)
     local large = 22
     self:createFonts({
         default = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = default },
+        -- tiny = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = tiny },
         small = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = small },
         large = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = large },
         large_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = large },
@@ -72,6 +73,7 @@ PB_Gui.init = function(self, fonts)
         },
     }
     self.st.rounding = 2
+    self.st.windowPadding = 8
     -- dofile(p .. 'lib/Gui.lua')
     self.st.col = {
         hint = {
@@ -99,6 +101,7 @@ PB_Gui.init = function(self, fonts)
         --     -- [ImGui.Col_Border] = 0x00000000
         },
         searchWindow = {
+            -- [ImGui.Col_ChildBg] = 0x44000044,
             [ImGui.Col_TableBorderStrong] = 0x00000000,
             [ImGui.Col_TextSelectedBg] = self.st.basecolors.main,
             [ImGui.Col_Header] = self.st.basecolors.mainDark,
@@ -129,9 +132,15 @@ PB_Gui.init = function(self, fonts)
             }
         },
         topBar = {
-            background = {
-                [ImGui.Col_FrameBg] = self.st.basecolors.darkBG 
-            }
+            [ImGui.Col_ChildBg] = self.st.basecolors.darkBG,
+            [ImGui.Col_FrameBg] = self.st.basecolors.darkBG 
+        },
+        topBarActiveFiltersArea = {
+            -- [ImGui.Col_ChildBg] = self.st.basecolors.darkestBG,
+            [ImGui.Col_ChildBg] = 0x00000000,
+            [ImGui.Col_Button] = self.st.basecolors.darkBG,
+            [ImGui.Col_FrameBg] = self.st.basecolors.darkBG 
+
         },
         main = {
             [ImGui.Col_Tab] = self.st.basecolors.darkHovered,
@@ -163,7 +172,7 @@ PB_Gui.init = function(self, fonts)
             [ImGui.Col_CheckMark] = self.st.basecolors.main,
             [ImGui.Col_HeaderActive] = self.st.basecolors.main,
             [ImGui.Col_DragDropTarget] = self.st.basecolors.mainBright,
-            [ImGui.Col_WindowBg] = 0x181818EE,
+            [ImGui.Col_WindowBg] = 0x181818FF,
         },
         title = {
             [ImGui.Col_Text] = self.st.basecolors.mainBright,
@@ -181,13 +190,31 @@ PB_Gui.init = function(self, fonts)
                 [ImGui.StyleVar_FrameRounding] = { self.st.rounding * scale, nil },
                 [ImGui.StyleVar_ItemSpacing] = { 4 * scale, 4 * scale },
                 [ImGui.StyleVar_WindowRounding] = { 12 * scale, nil },
-                [ImGui.StyleVar_WindowPadding] = { 8 * scale, 8 * scale },
+                -- [ImGui.StyleVar_WindowPadding] = { 0 * scale, 0 * scale },
+                [ImGui.StyleVar_WindowPadding] = { self.st.windowPadding * scale, self.st.windowPadding * scale },
                 [ImGui.StyleVar_ScrollbarSize] = { 15 * scale, nil },
                 [ImGui.StyleVar_FramePadding] = { 4 * scale, 3 * scale },
                 [ImGui.StyleVar_ItemInnerSpacing] = { 4 * scale, 4 * scale },
                 [ImGui.StyleVar_SeparatorTextBorderSize] = { 1 * scale, nil },
             },
+            topBar = {
+                [ImGui.StyleVar_FrameRounding] = { 12 * scale, nil },
+                [ImGui.StyleVar_WindowPadding] = { self.st.windowPadding*scale, self.st.windowPadding * scale },
+                [ImGui.StyleVar_ChildRounding] = { 12 * scale, nil },
+                -- [ImGui.StyleVar_Wind] = { 10 * scale, 30 },
+            },
+            topBarActiveFiltersArea = {
+                [ImGui.StyleVar_ItemSpacing] = { select(1, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_ItemSpacing)),0},
+                [ImGui.StyleVar_FramePadding] = { self.st.windowPadding*scale, 3 * scale },
+                -- [ImGui.StyleVar_Wind] = { 10 * scale, 30 },
+            },
+            topBarActiveFiltersAreaCloseButton = {
+                [ImGui.StyleVar_FramePadding] = { 0, 3 * scale },
+                -- [ImGui.StyleVar_Wind] = { 10 * scale, 30 },
+            },
             searchWindow = {
+                -- [ImGui.StyleVar_WindowPadding] = { 0 * scale, self.st.windowPadding * scale },
+                -- [ImGui.stylevar_child] = { 0 * scale, self.st.windowPadding * scale },
                 [ImGui.StyleVar_SeparatorTextAlign] = { 0, 0 },
                 [ImGui.StyleVar_SeparatorTextBorderSize] = { 1 * scale, nil },
                 [ImGui.StyleVar_SeparatorTextPadding] = { 0, 0 },
