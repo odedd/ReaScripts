@@ -1166,8 +1166,8 @@ if OD_PrereqsOK({
         local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
         local winPaddingX, winPaddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)
         local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
-
-        if ImGui.BeginChild(ctx, 'topBar', nil, nil, ImGui.ChildFlags_AutoResizeY|ImGui.ChildFlags_AlwaysUseWindowPadding) then
+        local h = ImGui.GetTextLineHeight(ctx)+paddingY*2+winPaddingY*2
+        if ImGui.BeginChild(ctx, 'topBar', nil, h, ImGui.ChildFlags_AlwaysUseWindowPadding) then
             local topBarW = select(1, ImGui.GetContentRegionAvail(ctx)) - menuW
             for i, btn in ipairs(menu) do
                 menuW = menuW + select(1, ImGui.CalcTextSize(ctx, ICONS[(btn.icon):upper()])) +
@@ -1189,9 +1189,10 @@ if OD_PrereqsOK({
             app.gui:popColors(app.gui.st.col.title)
             ImGui.SameLine(ctx)
             local x, y = ImGui.GetCursorScreenPos(ctx)
-            ImGui.DrawList_AddLine(ImGui.GetWindowDrawList(ctx), x+spacingX, y - paddingY, x+spacingX,
-            y + ImGui.GetTextLineHeightWithSpacing(ctx)+paddingY, app.gui.st.basecolors.main, 2*app.settings.current.uiScale)
-            ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX*3)
+            local width = 2*app.settings.current.uiScale
+            ImGui.DrawList_AddLine(ImGui.GetWindowDrawList(ctx), x+width/2, y - paddingY, x+width/2,
+            y + h-paddingY*2-winPaddingY, app.gui.st.basecolors.main, width)
+            ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + width + spacingX)
             if app.pageSwitched then
                 -- app.db:init()
                 app.filterResults({ text = '' })
