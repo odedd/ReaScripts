@@ -222,9 +222,9 @@ if OD_PrereqsOK({
 
     function app.filterResults(query)
         query = OD_DeepCopy(query) or {}
-        if query.clear then 
+        if query.clear then
             app.temp.searchInput = ''
-            app.temp.filter = {} 
+            app.temp.filter = {}
         end
         query.text = query.text or app.temp.searchInput
         app.temp.searchInput = query.text
@@ -1163,6 +1163,9 @@ if OD_PrereqsOK({
         ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
         app.gui:pushStyles(app.gui.st.vars.topBar)
         app.gui:pushColors(app.gui.st.col.topBar)
+        local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
+        local winPaddingX, winPaddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)
+        local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
 
         if ImGui.BeginChild(ctx, 'topBar', nil, nil, ImGui.ChildFlags_AutoResizeY|ImGui.ChildFlags_AlwaysUseWindowPadding) then
             local topBarW = select(1, ImGui.GetContentRegionAvail(ctx)) - menuW
@@ -1180,12 +1183,15 @@ if OD_PrereqsOK({
             ImGui.PopFont(ctx)
             ImGui.SameLine(ctx)
             ImGui.PushFont(ctx, app.gui.st.fonts.large)
-
             ImGui.AlignTextToFramePadding(ctx)
-            ImGui.Text(ctx, app.scr.name .. '|')
+            ImGui.Text(ctx, app.scr.name)
             app:setHoveredHint('main', app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
             app.gui:popColors(app.gui.st.col.title)
             ImGui.SameLine(ctx)
+            local x, y = ImGui.GetCursorScreenPos(ctx)
+            ImGui.DrawList_AddLine(ImGui.GetWindowDrawList(ctx), x+spacingX, y - paddingY, x+spacingX,
+            y + ImGui.GetTextLineHeightWithSpacing(ctx)+paddingY, app.gui.st.basecolors.main, 2*app.settings.current.uiScale)
+            ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX*3)
             if app.pageSwitched then
                 -- app.db:init()
                 app.filterResults({ text = '' })
@@ -1235,11 +1241,10 @@ if OD_PrereqsOK({
             if #activeFilters > 0 then
                 app.gui:pushStyles(app.gui.st.vars.topBarActiveFiltersArea)
                 app.gui:pushColors(app.gui.st.col.topBarActiveFiltersArea)
-
+                ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx)+spacingY)
                 ImGui.PushFont(ctx, app.gui.st.fonts.icons_tiny)
                 local closeButtonSizeW, closeButtonSizeH = ImGui.CalcTextSize(ctx, 'x')
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
-                local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
                 ImGui.PopFont(ctx)
 
                 ImGui.AlignTextToFramePadding(ctx)
@@ -1250,16 +1255,19 @@ if OD_PrereqsOK({
                             ImGui.SameLine(ctx)
                         end
                         ImGui.BeginGroup(ctx)
-                        local text = filter.key .. ': ' .. filter.itemName
+                        ImGui.AlignTextToFramePadding(ctx)
+                        local text = filter.key .. ' ' .. filter.itemName
                         local x1, y1 = ImGui.GetCursorScreenPos(ctx)
                         local textW, textH = ImGui.CalcTextSize(ctx, text)
                         local h = ImGui.GetTextLineHeight(ctx)
                         local x2, y2 = x1 + textW + spacingX + closeButtonSizeW + paddingX * 2, y1 + h + paddingY * 2
                         ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), x1, y1, x2, y2,
                             ImGui.GetColor(ctx, ImGui.Col_Button), ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
-                        ImGui.SetCursorPos(ctx, ImGui.GetCursorPosX(ctx) + paddingX, ImGui.GetCursorPosY(ctx) + paddingY)
-                        ImGui.Text(ctx, text)
+                        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX)--, ImGui.GetCursorPosY(ctx) + paddingY)
+                        ImGui.TextColored(ctx, app.gui.st.basecolors.main,filter.key)
                         ImGui.SameLine(ctx)
+                        ImGui.Text(ctx, filter.itemName)
+                        -- ImGui.SameLine(ctx)
                         ImGui.PushFont(ctx, app.gui.st.fonts.icons_tiny)
                         ImGui.SetCursorScreenPos(ctx, x2 - closeButtonSizeW - paddingX,
                             y1 + paddingY + (textH - closeButtonSizeH) / 2)
