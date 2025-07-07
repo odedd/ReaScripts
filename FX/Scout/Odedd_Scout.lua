@@ -296,11 +296,24 @@ if OD_PrereqsOK({
             -- Text filter
             local foundIndexes = {}
             local allWordsFound = true
+            local filterWords = {}
             for word in filterText:gmatch("%S+") do
-                local wordFound = false
+                table.insert(filterWords, word)
+            end
+
+            -- Pre-lowercase asset searchText if not already done
+            if not asset._searchTextLower then
+                asset._searchTextLower = {}
                 for j = 1, #asset.searchText do
-                    local assetWord = asset.searchText[j]
-                    local pos = string.find(assetWord.text:lower(), word, 1, true)
+                    asset._searchTextLower[j] = asset.searchText[j].text:lower()
+                end
+            end
+
+            for _, word in ipairs(filterWords) do
+                local wordFound = false
+                for j = 1, #asset._searchTextLower do
+                    local assetWordLower = asset._searchTextLower[j]
+                    local pos = string.find(assetWordLower, word, 1, true)
                     if pos then
                         foundIndexes[j] = foundIndexes[j] or {}
                         table.insert(foundIndexes[j], { from = pos, to = pos + #word - 1, order = pos })
@@ -312,6 +325,7 @@ if OD_PrereqsOK({
                     break
                 end
             end
+
             if allWordsFound then
                 asset.foundIndexes = foundIndexes
                 app.temp.searchResults[#app.temp.searchResults + 1] = asset
