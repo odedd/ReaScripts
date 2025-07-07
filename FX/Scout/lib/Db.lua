@@ -34,6 +34,7 @@ DB = {
         self:getFXChains()
         self:getFXFolders()
         self:getFXCategories()
+        self:getAllActions()
         self:getTrackTemplates()
         self:getTracks()
         self:getTags()
@@ -418,6 +419,42 @@ DB.getFXChains = function(self)
         count = count + 1
     end
     self.app.logger:logInfo('Found ' .. count .. ' FX chains')
+end
+DB.getAllActions = function(self, section)
+    self.app.logger:logDebug('-- DB.getAllActions()')
+    self.actions = {}
+    local idx = 0
+    section = section or 0 -- default to main section if not provided
+    while true do
+        local cmdId, name = reaper.kbd_enumerateActions(section, idx)
+        if cmdId == 0 then break end
+        local prefix, actionName = name:match("^(.-):%s*(.*)$")
+        if not prefix then
+            prefix = ""
+            actionName = name
+        end
+        name = actionName
+        -- Get keyboard shortcuts for this action
+        local shortcuts = {}
+        local shortcutCount = reaper.CountActionShortcuts(section, cmdId)
+        for sc = 0, shortcutCount - 1 do
+            local desc = reaper.GetActionShortcutDesc(section, cmdId, sc)
+            if desc and desc ~= "" then
+                table.insert(shortcuts, desc)
+            end
+        end
+
+        table.insert(self.actions, {
+            id = cmdId,
+            order = idx,
+            name = name,
+            prefix = prefix,
+            section = section,
+            shortcuts = shortcuts
+        })
+        idx = idx + 1
+    end
+    self.app.logger:logInfo('Found ' .. #self.actions .. ' actions in section ' .. tostring(section))
 end
 DB.getFXFolders = function(self)
     self.app.logger:logDebug('-- DB.getFXFolders()')
@@ -879,6 +916,19 @@ DB.assembleAssets = function(self)
         })
         count = count + 1
     end
+    for _, action in ipairs(self.actions) do
+        table.insert(self.assets, {
+            db = self,
+            type = ASSETS.ACTION,
+            searchText = { { text = action.name}, { text = action.prefix or ''  }},
+            load = action.id,
+            -- group = track.hasReceives and RECEIVES_GROUP or TRACKS_GROUP,
+            group = ACTIONS_GROUP,
+            order = action.order,
+            toggleFavorite = toggleFavorite
+        })
+        count = count + 1
+    end
     for _, plugin in ipairs(self.plugins) do
         if self.app.settings.current.fxTypeVisibility[plugin.fx_type] then
             table.insert(self.assets, {
@@ -949,6 +999,7 @@ DB.sortAssets = function(self)
     groupPriority[TRACKS_GROUP] = -2
     groupPriority[TRACK_TEMPLATES_GROUP] = -1
     groupPriority[FAVORITE_GROUP] = -4
+    groupPriority[ACTIONS_GROUP] = 10
 
     table.sort(self.assets, function(a, b)
         local aPriority = groupPriority[a.group] or 100

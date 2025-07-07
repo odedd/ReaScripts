@@ -15,6 +15,7 @@ ASSETS = {
     ['PLUGIN'] = 1,
     ['FX_CHAIN'] = 2,
     ['TRACK_TEMPLATE'] = 3,
+    ['ACTION'] = 4,
 }
 
 FX_TYPE =
@@ -44,6 +45,7 @@ FAVORITE_GROUP = 'Favorite'
 TRACKS_GROUP = 'Tracks'
 TRACK_TEMPLATES_GROUP = 'Track Templates'
 FX_CHAINS_GROUP = 'FX Chains'
+ACTIONS_GROUP = 'Actions'
 ALL_TRACKS_GROUP = 'All tracks'
 
 FILTER_MENU = {
