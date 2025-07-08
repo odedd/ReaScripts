@@ -428,8 +428,12 @@ if OD_PrereqsOK({
                     app.temp.checkScrollDown = false
                 elseif selectedRow and app.temp.checkScrollUp then
                     if selectedRow.totalIndex * fontLineHeight <= app.temp.tableScrollY + fontLineHeight then
-                        local skip = flatRows[selectedRow.totalIndex - 1].type == 'group'
-                        local scrollRows = (flatRows[selectedRow.totalIndex - 1].type == 'group' and 2 or 1)
+                        local skip
+                        if selectedRow.totalIndex == 1 then
+                            skip = false
+                        else
+                            skip = (flatRows[selectedRow.totalIndex - 1].type == 'group')
+                        end
                         ImGui.SetNextWindowScroll(ctx, 0,
                             (selectedRow.totalIndex - 1) * fontLineHeight -
                             (skip and fontLineHeight or 0))
