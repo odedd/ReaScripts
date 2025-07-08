@@ -349,6 +349,7 @@ if OD_PrereqsOK({
         local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
         local tagAreaScreenX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - tagAreaW -- X position for tag area
         local upperRowY = ImGui.GetCursorPosY(ctx)                                     -- Y position for upper row, used for "sticky" first group title
+        local upperRowScreenY = select(2,ImGui.GetCursorScreenPos(ctx))                                     -- Y position for upper row, used for "sticky" first group title
         local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx)
         local searchResultsH = select(2, ImGui.GetContentRegionAvail(ctx)) -
             fontLineHeight                                                   -- Height available for search results
@@ -506,8 +507,8 @@ if OD_PrereqsOK({
                         end
 
                         ImGui.ListClipper_Begin(app.gui.searchResultsClipper, #flatRows)
+                        firstGroup = nil
                         while ImGui.ListClipper_Step(app.gui.searchResultsClipper) do
-                            firstGroup = nil
                             local display_start, display_end = ImGui.ListClipper_GetDisplayRange(app.gui
                                 .searchResultsClipper)
                             local rowIdx = display_start + 1
@@ -520,7 +521,11 @@ if OD_PrereqsOK({
                                     ImGui.SeparatorText(ctx, row.group)
                                 elseif row.type == "result" then
                                     local result = row.result
-                                    if firstGroup == nil then firstGroup = result.group end
+                                    if firstGroup == nil and select(2,ImGui.GetCursorScreenPos(ctx)) >= upperRowScreenY then
+                                        -- screenCursorPos required to solve a case where the first row always determines the group, even when invisible, 
+                                        -- due to the way ListClipper_Step works
+                                        firstGroup = result.group
+                                    end
                                     -- if not foundInvisibleGroup then app.temp.lastInvisibleGroup = nil end
                                     ImGui.PushID(ctx, 'result' .. row.index)
                                     ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
@@ -1094,7 +1099,7 @@ if OD_PrereqsOK({
         local ctx = app.gui.ctx
         app.gui:pushStyles(app.gui.st.vars.topBar)
         app.gui:pushColors(app.gui.st.col.topBar)
-        
+
         local menu = {}
         local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
         local winPaddingX, winPaddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)
@@ -1312,6 +1317,7 @@ if OD_PrereqsOK({
         if col then app.gui:popColors(app.gui.st.col[col]) end
         app:setHint(window, '')
     end
+
     function app.drawMainWindow()
         local ctx = app.gui.ctx
 
