@@ -25,7 +25,8 @@ PB_Gui.init = function(self, fonts)
     })
 
     OD_Gui.init(self, false)
-
+    self.searchResultsClipper = ImGui.CreateListClipper(self.ctx)
+    ImGui.Attach(self.ctx, self.searchResultsClipper)
     self.st.basecolors = {
         darkestBG = 0x131313ff,
         darkerBG = 0x212123ff,
@@ -95,10 +96,10 @@ PB_Gui.init = function(self, fonts)
         },
         activeTagButton = {
             [ImGui.Col_Text] = self.st.basecolors.mainBrightest,
-        --     [ImGui.Col_Button] = 0x00000000,
-        --     [ImGui.Col_ButtonHovered] = self.st.basecolors.mainDarkest,
-        --     [ImGui.Col_ButtonActive] = self.st.basecolors.mainDarker
-        --     -- [ImGui.Col_Border] = 0x00000000
+            --     [ImGui.Col_Button] = 0x00000000,
+            --     [ImGui.Col_ButtonHovered] = self.st.basecolors.mainDarkest,
+            --     [ImGui.Col_ButtonActive] = self.st.basecolors.mainDarker
+            --     -- [ImGui.Col_Border] = 0x00000000
         },
         searchWindow = {
             -- [ImGui.Col_ChildBg] = 0x44000044,
@@ -133,13 +134,13 @@ PB_Gui.init = function(self, fonts)
         },
         topBar = {
             [ImGui.Col_ChildBg] = self.st.basecolors.darkBG,
-            [ImGui.Col_FrameBg] = self.st.basecolors.darkBG 
+            [ImGui.Col_FrameBg] = self.st.basecolors.darkBG
         },
         topBarActiveFiltersArea = {
             -- [ImGui.Col_ChildBg] = self.st.basecolors.darkestBG,
             [ImGui.Col_ChildBg] = 0x00000000,
             [ImGui.Col_Button] = self.st.basecolors.darkBG,
-            [ImGui.Col_FrameBg] = self.st.basecolors.darkBG 
+            [ImGui.Col_FrameBg] = self.st.basecolors.darkBG
 
         },
         main = {
@@ -199,13 +200,13 @@ PB_Gui.init = function(self, fonts)
             },
             topBar = {
                 [ImGui.StyleVar_FrameRounding] = { 12 * scale, nil },
-                [ImGui.StyleVar_WindowPadding] = { self.st.windowPadding*scale, self.st.windowPadding * scale },
+                [ImGui.StyleVar_WindowPadding] = { self.st.windowPadding * scale, self.st.windowPadding * scale },
                 [ImGui.StyleVar_ChildRounding] = { 12 * scale, nil },
                 -- [ImGui.StyleVar_Wind] = { 10 * scale, 30 },
             },
             topBarActiveFiltersArea = {
-                [ImGui.StyleVar_ItemSpacing] = { select(1, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_ItemSpacing)),0},
-                [ImGui.StyleVar_FramePadding] = { self.st.windowPadding*scale, 3 * scale },
+                [ImGui.StyleVar_ItemSpacing] = { select(1, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_ItemSpacing)), 0 },
+                [ImGui.StyleVar_FramePadding] = { self.st.windowPadding * scale, 3 * scale },
                 -- [ImGui.StyleVar_Wind] = { 10 * scale, 30 },
             },
             topBarActiveFiltersAreaCloseButton = {
@@ -215,18 +216,19 @@ PB_Gui.init = function(self, fonts)
             searchWindow = {
                 -- [ImGui.StyleVar_WindowPadding] = { 0 * scale, self.st.windowPadding * scale },
                 -- [ImGui.stylevar_child] = { 0 * scale, self.st.windowPadding * scale },
+                -- [ImGui.StyleVar_ItemSpa] = { 0, 20 },
                 [ImGui.StyleVar_SeparatorTextAlign] = { 0, 0 },
                 [ImGui.StyleVar_SeparatorTextBorderSize] = { 1 * scale, nil },
                 [ImGui.StyleVar_SeparatorTextPadding] = { 0, 0 },
             },
             tag = {
                 [ImGui.StyleVar_FrameRounding] = { 20 * scale, nil },
-                [ImGui.StyleVar_FramePadding] = {8*scale, 2*scale },
+                [ImGui.StyleVar_FramePadding] = { 8 * scale, 2 * scale },
             },
             tagButtons = {
                 [ImGui.StyleVar_FrameRounding] = { 100 * scale, nil },
-                [ImGui.StyleVar_FramePadding] = {2*scale, 2*scale },
-                [ImGui.StyleVar_ItemSpacing] = {0,0}
+                [ImGui.StyleVar_FramePadding] = { 2 * scale, 2 * scale },
+                [ImGui.StyleVar_ItemSpacing] = { 0, 0 }
                 -- [ImGui.StyleVar_FrameBorderSize] = {2, nil },
             },
             -- activeTagButton = {
@@ -271,7 +273,8 @@ PB_Gui.init = function(self, fonts)
     end
     self.recalculateZoom = function(self, scale)
         if self.scale ~= scale then
-            local change = scale / (self.scale or scale) -- return change to allow for scaling of other elements (eg. Resize window)
+            local change = scale /
+            (self.scale or scale)                        -- return change to allow for scaling of other elements (eg. Resize window)
             self.scale = scale
 
             self:reAddFonts()
@@ -366,10 +369,11 @@ PB_Gui.init = function(self, fonts)
                 self.app.temp.tempSettingsVal[text] = self.app.temp.tempSettingsVal[text] or val
             end
             _, retval1 = ImGui.DragDouble(ctx, '##' .. text,
-                data.dontUnpdateWhileEnteringManually and self.app.temp.tempSettingsVal[text] or val, data.speed, data.min, data.max,
+                data.dontUnpdateWhileEnteringManually and self.app.temp.tempSettingsVal[text] or val, data.speed,
+                data.min, data.max,
                 data.format, data.flags or 0)
             if data.dontUnpdateWhileEnteringManually then
-                if ImGui.IsItemActive(ctx) and not ImGui.IsMouseDragging(ctx,ImGui.MouseButton_Left) then
+                if ImGui.IsItemActive(ctx) and not ImGui.IsMouseDragging(ctx, ImGui.MouseButton_Left) then
                     self.app.temp.tempSettingsVal[text] = retval1
                     retval1 = val
                 else

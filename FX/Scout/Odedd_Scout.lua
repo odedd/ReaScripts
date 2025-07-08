@@ -337,176 +337,64 @@ if OD_PrereqsOK({
         app.temp.lastInvisibleGroup = nil
     end
 
-    -- function app.filterResults2(query)
-    --     query = query or {}
-    --     query.text = query.text or app.temp.searchInput
-    --     app.temp.searchInput = query.text
-    --     app.temp.searchResults = {}
-
-    --     app.temp.filter = app.temp.filter or {}
-    --     app.temp.filter.text = (query.text or app.temp.searchInput):gsub('%s+', ' ')
-    --     app.temp.filter.tags = app.temp.filter.tags or {}
-    --     if query.addTags then
-    --         for tagId, positive in pairs(query.addTags) do
-    --             app.temp.filter.tags[tagId] = positive
-    --         end
-    --         query.addTags = nil
-    --     end
-
-    --     if query.removeTags then
-    --         for i, tagId in ipairs(query.removeTags) do
-    --             app.temp.filter.tags[tagId] = nil
-    --         end
-    --         query.removeTags = nil
-    --     end
-
-    --     for queryType, queryValue in pairs(query) do
-    --         if queryType ~= 'text' then
-    --             if queryValue == 'all' then
-    --                 app.temp.filter[queryType] = nil
-    --             else
-    --                 app.temp.filter[queryType] = queryValue
-    --             end
-    --         end
-    --     end
-
-    --     for i, asset in ipairs(app.db.assets) do
-    --         -- if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then goto skip end
-    --         -- if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK_TEMPLATE then goto skip end
-    --         -- if app.temp.addSendType == SEND_TYPE.RECV and asset.type ~= ASSETS.TRACK then skip = true end
-    --         -- if asset.type == ASSETS.TRACK and asset.load == app.db.track.guid then skip = true end
-
-    --         -- FILTER TYPE
-    --         if app.temp.filter.type and asset.type ~= app.temp.filter.type then goto skip end
-    --         if app.temp.filter.fx_type and asset.fx_type ~= app.temp.filter.fx_type then goto skip end
-    --         if app.temp.filter.fxFolderId then
-    --             if asset.type ~= ASSETS.PLUGIN then goto skip end
-    --             if not asset:isInFolder(app.temp.filter.fxFolderId) then goto skip end
-    --         end
-    --         if app.temp.filter.fxCategory then
-    --             if asset.type ~= ASSETS.PLUGIN then goto skip end
-    --             if not asset:isInCategory(app.temp.filter.fxCategory) then goto skip end
-    --         end
-    --         if app.temp.filter.fxDeveloper then
-    --             if not asset.vendor then goto skip end
-    --             if asset.vendor ~= app.temp.filter.fxDeveloper then goto skip end
-    --         end
-    --         -- -- FILTER TAGS
-    --         -- if skip then goto continue end
-    --         for tagId, positive in pairs(app.temp.filter.tags) do
-    --             -- if OD_HasValue(asset.tags,)
-    --             local hasValue = OD_HasValue(asset.tags, tagId)
-    --             if not hasValue then
-    --                 local tag = app.db.tags[tagId]
-    --                 -- r.ShowConsoleMsg(tostring(tag.descendants)..'\n')
-    --                 if tag and tag.descendants then
-    --                     for _, descendant in ipairs(tag.descendants) do
-    --                         -- r.ShowConsoleMsg(descendant.name..'\n')
-    --                         if OD_HasValue(asset.tags, descendant.id) then
-    --                             hasValue = true
-    --                             break
-    --                         end
-    --                     end
-    --                 end
-    --             end
-    --             if positive and not hasValue then
-    --                 -- skip = true
-    --                 goto skip
-    --             elseif not positive and hasValue then
-    --                 -- skip = true
-    --                 goto skip
-    --             end
-    --         end
-
-    --         -- FILTER TEXT
-    --         local foundIndexes = {}
-    --         local allWordsFound = true
-    --         for word in app.temp.filter.text:lower():gmatch("%S+") do
-    --             local wordFound = false
-    --             for j, assetWord in ipairs(asset.searchText) do
-    --                 local pos = string.find((assetWord.text):lower(), OD_EscapePattern(word))
-    --                 if pos then
-    --                     foundIndexes[j] = foundIndexes[j] or {}
-    --                     table.insert(foundIndexes[j], { from = pos, to = pos + #word - 1, order = pos })
-    --                     wordFound = true
-    --                 end
-    --             end
-    --             if not wordFound then
-    --                 allWordsFound = false
-    --                 break
-    --             end
-    --         end
-    --         if allWordsFound then
-    --             asset.foundIndexes = foundIndexes
-    --             table.insert(app.temp.searchResults, asset)
-    --         end
-    --         ::skip::
-    --     end
-    --     app.temp.highlightedResult = #app.temp.searchResults > 0 and 1 or nil
-    --     app.temp.lastInvisibleGroup = nil
-    --     -- if receiving track, add assign all results to ALL_TRACKS_GROUP and sort them by track order
-    -- end
-
     function app.drawSearch()
         local ctx = app.gui.ctx
         app.gui:pushStyles(app.gui.st.vars.searchWindow)
         app.gui:pushColors(app.gui.st.col.searchWindow)
 
-        local w = select(1, ImGui.GetContentRegionAvail(ctx))
-        local tagAreaH = select(2, ImGui.GetContentRegionAvail(ctx))
+        -- Inline variable explanations for layout/UI parameters:
+        local w, h = ImGui.GetContentRegionAvail(ctx)
         local tagAreaW = app.settings.current.filterPanelWidth * app.settings.current.uiScale
         local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
         local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
-        local windowPadding = ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)
-        local tagAreaGlobalX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - tagAreaW -- windowPadding
+        local tagAreaScreenX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - tagAreaW -- X position for tag area
+        local upperRowY = ImGui.GetCursorPosY(ctx)                                     -- Y position for upper row, used for "sticky" first group title
         local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx)
+        local searchResultsH = select(2, ImGui.GetContentRegionAvail(ctx)) -
+            fontLineHeight                                                   -- Height available for search results
+        local maxSearchResults = math.floor(searchResultsH / fontLineHeight) -- Max results in available space
+
         local tagInfo = app.tags.current.tagInfo
-        local searchResults = app.temp.searchResults or {}
-        local highlightedResult = app.temp.highlightedResult
+        local searchResults = app.temp.searchResults or {} -- Current search results
+        local selectedResult, hintResult, hintContext = nil, nil, nil
+        local flatRows = {}
+
+        local tableFlags = ImGui.TableFlags_ScrollY                  -- Table flags for vertical scrolling
+        local selectableFlags = ImGui.SelectableFlags_SpanAllColumns -- Selectable flags for ImGui
 
         if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG then
             ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),
-                tagAreaGlobalX, 10, tagAreaGlobalX + tagAreaW, 1000, 0xffffff22)
+                tagAreaScreenX, 10, tagAreaScreenX + tagAreaW, 1000, 0xffffff22)
         end
 
-        local selectedResult, hintResult, hintContext = nil, nil, nil
-        if ImGui.BeginChild(ctx, 'searchArea', w - tagAreaW - spacingX) then
-            if app.pageSwitched then
-                app.filterResults({ text = '' })
-            end
-            -- ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - 1)
-
-            local h = select(2, ImGui.GetContentRegionAvail(ctx))
-            local maxSearchResults = math.floor(h / fontLineHeight)
-
-            -- Keyboard navigation
+        local handleKeyboardEvents = function()
             if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
                 -- handle escape
-            elseif highlightedResult then
-                hintResult = searchResults[highlightedResult]
+            elseif app.temp.highlightedResult then
+                hintResult = searchResults[app.temp.highlightedResult]
                 hintContext = 'Enter'
-                if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) and highlightedResult < #searchResults then
-                    app.temp.highlightedResult = highlightedResult + 1
+                if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) and app.temp.highlightedResult < #searchResults then
+                    app.temp.highlightedResult = app.temp.highlightedResult + 1
                     app.temp.checkScrollDown = true
                 elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageDown) then
-                    local newIdx = math.min(highlightedResult + maxSearchResults - 3, #searchResults)
-                    if highlightedResult ~= newIdx then
+                    local newIdx = math.min(app.temp.highlightedResult + maxSearchResults - 1, #searchResults)
+                    if app.temp.highlightedResult ~= newIdx then
                         app.temp.highlightedResult = newIdx
                         app.temp.checkScrollDown = true
                     end
                 elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageUp) then
-                    local newIdx = math.max(highlightedResult - maxSearchResults - 3, 1)
-                    if highlightedResult ~= newIdx then
+                    local newIdx = math.max(app.temp.highlightedResult - maxSearchResults - 3, 1)
+                    if app.temp.highlightedResult ~= newIdx then
                         app.temp.highlightedResult = newIdx
                         app.temp.checkScrollUp = true
                     end
-                elseif ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) and highlightedResult > 1 then
-                    app.temp.highlightedResult = highlightedResult - 1
+                elseif ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) and app.temp.highlightedResult > 1 then
+                    app.temp.highlightedResult = app.temp.highlightedResult - 1
                     app.temp.checkScrollUp = true
                 elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
-                    selectedResult = searchResults[highlightedResult]
-                elseif app.isShortcutPressed('markFavorite') and highlightedResult then
-                    local result = searchResults[highlightedResult]
+                    selectedResult = searchResults[app.temp.highlightedResult]
+                elseif app.isShortcutPressed('markFavorite') and app.temp.highlightedResult then
+                    local result = searchResults[app.temp.highlightedResult]
                     local fav = result:toggleFavorite()
                     app.filterResults({ text = app.temp.searchInput })
                     if fav then
@@ -519,130 +407,176 @@ if OD_PrereqsOK({
                     end
                 end
             end
+        end
+        local handleScrolling = function()
+            local selectedRow = nil
+            if app.temp.checkScrollDown or app.temp.checkScrollUp then
+                for i, row in ipairs(flatRows) do
+                    if row.index == app.temp.highlightedResult then
+                        selectedRow = row
+                        break
+                    end
+                end
 
-            local selectableFlags = ImGui.SelectableFlags_SpanAllColumns
-            local outer_size = { 0.0, fontLineHeight * h / fontLineHeight }
-            local tableFlags = ImGui.TableFlags_ScrollY
-            local lastGroup = nil
-            local upperRowY = select(2, ImGui.GetCursorScreenPos(ctx))
+                if selectedRow and app.temp.checkScrollDown then
+                    if selectedRow.totalIndex * fontLineHeight >= app.temp.tableScrollY + searchResultsH then
+                        local skip = flatRows[selectedRow.totalIndex].type == 'group'
+                        ImGui.SetNextWindowScroll(ctx, 0,
+                            (selectedRow.totalIndex) * fontLineHeight - searchResultsH +
+                            (skip and fontLineHeight or 0))
+                    end
+                    app.temp.checkScrollDown = false
+                elseif selectedRow and app.temp.checkScrollUp then
+                    if selectedRow.totalIndex * fontLineHeight <= app.temp.tableScrollY + fontLineHeight then
+                        local skip = flatRows[selectedRow.totalIndex - 1].type == 'group'
+                        local scrollRows = (flatRows[selectedRow.totalIndex - 1].type == 'group' and 2 or 1)
+                        ImGui.SetNextWindowScroll(ctx, 0,
+                            (selectedRow.totalIndex - 1) * fontLineHeight -
+                            (skip and fontLineHeight or 0))
+                    end
+                    app.temp.checkScrollUp = false
+                end
+            end
+        end
 
+        if ImGui.BeginChild(ctx, 'searchArea', w - tagAreaW - spacingX) then
+            if app.pageSwitched then
+                app.filterResults({ text = '' })
+            end
+
+            handleKeyboardEvents()
+            ImGui.SetCursorPosY(ctx, upperRowY + fontLineHeight)
+
+            local firstGroup = nil
             if #searchResults > 0 then
-                if ImGui.BeginTable(ctx, "##searchResults", 1, tableFlags, table.unpack(outer_size)) then
-                    ImGui.TableSetupScrollFreeze(ctx, 0, 1)
+                -- Build a flat list of rows: {type="group", group=...} or {type="result", result=...}
+                local lastGroup = nil
+                local totalFlatRows = 0 -- used for scrolling positioning
+                for i = 1, #searchResults do
+                    totalFlatRows = totalFlatRows + 1
+                    local result = searchResults[i]
+                    if result.group ~= lastGroup and i ~= 1 then
+                        table.insert(flatRows,
+                            { type = "group", group = result.group, groupObj = result, totalIndex = totalFlatRows })
+                        totalFlatRows = totalFlatRows + 1
+                    end
+                    lastGroup = result.group
+                    table.insert(flatRows,
+                        { type = "result", result = result, group = result.group, index = i, totalIndex = totalFlatRows })
+                end
+                handleScrolling()
+
+                if ImGui.BeginTable(ctx, "##searchResults", 1, tableFlags, 0, searchResultsH) then
+                    app.temp.tableScrollY = ImGui.GetScrollY(ctx)
                     if app.temp.scrollToTop then
                         ImGui.SetScrollY(ctx, 0)
                         app.temp.scrollToTop = false
                     end
-                    local highlightedY, foundInvisibleGroup, absIndex = 0, false, 0
-                    for i = 1, #searchResults do
-                        local result = searchResults[i]
-                        if result.group ~= lastGroup then
-                            ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
-                            absIndex = absIndex + 1
-                            ImGui.TableSetColumnIndex(ctx, 0)
-                            ImGui.SeparatorText(ctx, i == 1 and app.temp.lastInvisibleGroup or result.group)
-                            lastGroup = result.group
-                            if select(2, ImGui.GetCursorScreenPos(ctx)) <= upperRowY + fontLineHeight then
-                                app.temp.lastInvisibleGroup = result.group
-                                foundInvisibleGroup = true
-                            end
-                        end
-                        if not foundInvisibleGroup then app.temp.lastInvisibleGroup = nil end
-                        ImGui.PushID(ctx, 'result' .. i)
-                        ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
-                        absIndex = absIndex + 1
-                        ImGui.TableSetColumnIndex(ctx, 0)
-                        if (app.temp.checkScrollDown or app.temp.checkScrollUp) and i == highlightedResult then
-                            highlightedY = select(2, ImGui.GetCursorScreenPos(ctx))
-                        end
-                        if ImGui.Selectable(ctx, '', i == highlightedResult, selectableFlags, 0, 0) then
-                            selectedResult = result
-                        end
-                        if ImGui.IsItemHovered(ctx) then
-                            hintResult = result
-                            hintContext = 'Click'
-                        end
-                        ImGui.SameLine(ctx)
 
-                        if result.type == ASSETS.TRACK then
-                            local size = fontLineHeight -
-                                select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
-                            ImGui.ColorButton(ctx, 'color', result.color,
-                                ImGui.ColorEditFlags_NoBorder | ImGui.ColorEditFlags_NoTooltip, size, size)
-                            ImGui.SameLine(ctx)
-                        end
-
-                        if result.group == FAVORITE_GROUP then
-                            ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
-                            app.gui:pushColors(app.gui.st.col.search.favorite)
-                            ImGui.Text(ctx, ICONS.STAR)
-                            app.gui:popColors(app.gui.st.col.search.favorite)
-                            ImGui.PopFont(ctx)
-                            ImGui.SameLine(ctx)
-                        end
-
-                        -- draw result name, highlighting the search query
-                        ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 0.0, 0.0)
-                        for j = 1, #(result.searchText) do
-                            local st = result.searchText[j]
-                            if not st.hide then
-                                if j > 1 then
-                                    ImGui.Text(ctx, ' ')
-                                    ImGui.SameLine(ctx)
-                                    app.gui:pushColors(app.gui.st.col.search.secondaryResult)
-                                else
-                                    app.gui:pushColors(app.gui.st.col.search.mainResult)
+                    ImGui.ListClipper_Begin(app.gui.searchResultsClipper, #flatRows)
+                    while ImGui.ListClipper_Step(app.gui.searchResultsClipper) do
+                        firstGroup = nil
+                        local display_start, display_end = ImGui.ListClipper_GetDisplayRange(app.gui
+                            .searchResultsClipper)
+                        local rowIdx = display_start + 1
+                        while rowIdx <= display_end do
+                            local row = flatRows[rowIdx]
+                            if row.type == "group" then
+                                -- if absIndex ~= 1 then
+                                ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
+                                ImGui.TableSetColumnIndex(ctx, 0)
+                                ImGui.SeparatorText(ctx, row.group)
+                            elseif row.type == "result" then
+                                local result = row.result
+                                if firstGroup == nil then firstGroup = result.group end
+                                -- if not foundInvisibleGroup then app.temp.lastInvisibleGroup = nil end
+                                ImGui.PushID(ctx, 'result' .. row.index)
+                                ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
+                                ImGui.TableSetColumnIndex(ctx, 0)
+                                if ImGui.Selectable(ctx, '', row.index == app.temp.highlightedResult, selectableFlags, 0, 0) then
+                                    selectedResult = result
                                 end
-                                local curIndex = 1
-                                for _, highlight in OD_PairsByOrder(result.foundIndexes[j] or {}) do
-                                    if curIndex <= highlight.from then
-                                        ImGui.Text(ctx, (st.text):sub(curIndex, highlight.from - 1))
-                                        ImGui.SameLine(ctx)
-                                    end
-                                    if curIndex <= highlight.to + 1 then
-                                        app.gui:pushColors(app.gui.st.col.search.highlight)
-                                        local txt = (st.text):sub(math.max(curIndex, highlight.from), highlight.to)
-                                        ImGui.Text(ctx, txt)
-                                        app.gui:popColors(app.gui.st.col.search.highlight)
-                                        ImGui.SameLine(ctx)
-                                        curIndex = highlight.to + 1
-                                    end
+                                if ImGui.IsItemHovered(ctx) then
+                                    hintResult = result
+                                    hintContext = 'Click'
                                 end
-                                if curIndex <= #(st.text) then
-                                    local txt = (st.text):sub(curIndex, #(st.text))
-                                    ImGui.Text(ctx, txt)
+                                ImGui.SameLine(ctx)
+
+                                if result.type == ASSETS.TRACK then
+                                    local size = fontLineHeight -
+                                        select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
+                                    ImGui.ColorButton(ctx, 'color', result.color,
+                                        ImGui.ColorEditFlags_NoBorder | ImGui.ColorEditFlags_NoTooltip, size, size)
                                     ImGui.SameLine(ctx)
                                 end
-                                if j > 1 then
-                                    app.gui:popColors(app.gui.st.col.search.secondaryResult)
-                                else
-                                    app.gui:popColors(app.gui.st.col.search.mainResult)
+
+                                if result.group == FAVORITE_GROUP then
+                                    ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                                    app.gui:pushColors(app.gui.st.col.search.favorite)
+                                    ImGui.Text(ctx, ICONS.STAR)
+                                    app.gui:popColors(app.gui.st.col.search.favorite)
+                                    ImGui.PopFont(ctx)
+                                    ImGui.SameLine(ctx)
                                 end
+
+                                -- draw result name, highlighting the search query
+                                ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 0.0, 0.0)
+                                for j = 1, #(result.searchText) do
+                                    local st = result.searchText[j]
+                                    if not st.hide then
+                                        if j > 1 then
+                                            ImGui.Text(ctx, ' ')
+                                            ImGui.SameLine(ctx)
+                                            app.gui:pushColors(app.gui.st.col.search.secondaryResult)
+                                        else
+                                            app.gui:pushColors(app.gui.st.col.search.mainResult)
+                                        end
+                                        local curIndex = 1
+                                        for _, highlight in OD_PairsByOrder(result.foundIndexes[j] or {}) do
+                                            if curIndex <= highlight.from then
+                                                ImGui.Text(ctx, (st.text):sub(curIndex, highlight.from - 1))
+                                                ImGui.SameLine(ctx)
+                                            end
+                                            if curIndex <= highlight.to + 1 then
+                                                app.gui:pushColors(app.gui.st.col.search.highlight)
+                                                local txt = (st.text):sub(math.max(curIndex, highlight.from),
+                                                    highlight.to)
+                                                ImGui.Text(ctx, txt)
+                                                app.gui:popColors(app.gui.st.col.search.highlight)
+                                                ImGui.SameLine(ctx)
+                                                curIndex = highlight.to + 1
+                                            end
+                                        end
+                                        if curIndex <= #(st.text) then
+                                            local txt = (st.text):sub(curIndex, #(st.text))
+                                            ImGui.Text(ctx, txt)
+                                            ImGui.SameLine(ctx)
+                                        end
+                                        if j > 1 then
+                                            app.gui:popColors(app.gui.st.col.search.secondaryResult)
+                                        else
+                                            app.gui:popColors(app.gui.st.col.search.mainResult)
+                                        end
+                                    end
+                                end
+                                ImGui.PopStyleVar(ctx)
+                                for t = 1, #(result.tags or {}) do
+                                    local tag = tagInfo[result.tags[t]]
+                                    ImGui.PushStyleColor(ctx, ImGui.Col_Button, tag.color)
+                                    ImGui.SmallButton(ctx, tag.name)
+                                    ImGui.PopStyleColor(ctx)
+                                    ImGui.SameLine(ctx)
+                                end
+                                ImGui.PopID(ctx)
                             end
+                            rowIdx = rowIdx + 1
                         end
-                        ImGui.PopStyleVar(ctx)
-                        for t = 1, #(result.tags or {}) do
-                            local tag = tagInfo[result.tags[t]]
-                            ImGui.PushStyleColor(ctx, ImGui.Col_Button, tag.color)
-                            ImGui.SmallButton(ctx, tag.name)
-                            ImGui.PopStyleColor(ctx)
-                            ImGui.SameLine(ctx)
-                        end
-                        ImGui.PopID(ctx)
                     end
-                    if app.temp.checkScrollDown and highlightedY > upperRowY + maxSearchResults * fontLineHeight then
-                        ImGui.SetScrollY(ctx,
-                            ImGui.GetScrollY(ctx) +
-                            (highlightedY - (upperRowY + (maxSearchResults - 1) * fontLineHeight) - 1))
-                        app.temp.checkScrollDown = false
-                    end
-                    if app.temp.checkScrollUp and highlightedY <= upperRowY + fontLineHeight then
-                        ImGui.SetScrollY(ctx,
-                            ImGui.GetScrollY(ctx) - (upperRowY - highlightedY + 1) - fontLineHeight - 1)
-                        app.temp.checkScrollUp = false
-                    end
+                    ImGui.ListClipper_End(app.gui.searchResultsClipper)
                     ImGui.EndTable(ctx)
                 end
+                ImGui.SetCursorPosY(ctx, upperRowY)
+                ImGui.SeparatorText(ctx, firstGroup or '')
             else
                 app.drawErrorNoResults()
             end
@@ -657,6 +591,10 @@ if OD_PrereqsOK({
             else
                 app:setHint('main', '')
             end
+
+
+            -- Keyboard navigation
+
             if selectedResult and app.page == APP_PAGE.SEARCH_FX then
                 local tracks = app.db:getSelectedTracks()
                 for i = 1, #tracks do
@@ -669,13 +607,12 @@ if OD_PrereqsOK({
         ImGui.SameLine(ctx)
 
         -- Separator Resize Line
-        local separatorX = select(1, ImGui.GetCursorScreenPos(ctx))
-        local separatorY = select(2, ImGui.GetCursorScreenPos(ctx))
+        local separatorX, separatorY = ImGui.GetCursorScreenPos(ctx)
         ImGui.DrawList_AddLine(ImGui.GetForegroundDrawList(ctx), separatorX, separatorY, separatorX,
-            separatorY + tagAreaH,
+            separatorY + h,
             ImGui.GetStyleColor(ctx, ImGui.Col_Separator))
         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
-        ImGui.InvisibleButton(ctx, '##separator', spacingX * 2 + 1, tagAreaH)
+        ImGui.InvisibleButton(ctx, '##separator', spacingX * 2 + 1, searchResultsH)
         if ImGui.IsItemHovered(ctx) then
             app:setHoveredHint('main', 'Drag to change tag list width', nil, nil, 1)
             ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
@@ -695,7 +632,7 @@ if OD_PrereqsOK({
         end
 
         ImGui.SameLine(ctx) -- Filter Area
-        if ImGui.BeginChild(ctx, 'filterArea', tagAreaW - spacingX * 2, tagAreaH) then
+        if ImGui.BeginChild(ctx, 'filterArea', tagAreaW - spacingX * 2, searchResultsH) then
             local function drawTagsOfParent(parentId, indent, preview)
                 local drawTagNode
                 -- preview is for previewing when drag and dropping, so no drag&drop functionality of its own
@@ -840,13 +777,13 @@ if OD_PrereqsOK({
                             end
                             if tag.status ~= nil then
                                 ImGui.SetCursorScreenPos(ctx,
-                                    tagAreaGlobalX + tagAreaW - btnW * (tag.status and 1 or 2),
+                                    tagAreaScreenX + tagAreaW - btnW * (tag.status and 1 or 2),
                                     globalY)
                                 drawCloseButton(tag)
                             end
                             if hovering then
                                 ImGui.SetCursorScreenPos(ctx,
-                                    tagAreaGlobalX + tagAreaW -
+                                    tagAreaScreenX + tagAreaW -
                                     btnW *
                                     3, globalY)
                                 ImGui.Button(ctx, ICONS.PENCIL)
@@ -858,7 +795,7 @@ if OD_PrereqsOK({
                                 ImGui.SameLine(ctx)
                                 if tag.status ~= true then
                                     ImGui.SetCursorScreenPos(ctx,
-                                        tagAreaGlobalX + tagAreaW -
+                                        tagAreaScreenX + tagAreaW -
                                         btnW, globalY)
                                     if ImGui.Button(ctx, ICONS.PLUS) then
                                         tag.status = true
@@ -1180,7 +1117,7 @@ if OD_PrereqsOK({
         local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
         local winPaddingX, winPaddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)
         local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
-        local h = ImGui.GetTextLineHeight(ctx)+paddingY*2+winPaddingY*2
+        local h = ImGui.GetTextLineHeight(ctx) + paddingY * 2 + winPaddingY * 2
         if ImGui.BeginChild(ctx, 'topBar', nil, h, ImGui.ChildFlags_AlwaysUseWindowPadding) then
             local topBarW = select(1, ImGui.GetContentRegionAvail(ctx)) - menuW
             for i, btn in ipairs(menu) do
@@ -1203,9 +1140,9 @@ if OD_PrereqsOK({
             app.gui:popColors(app.gui.st.col.title)
             ImGui.SameLine(ctx)
             local x, y = ImGui.GetCursorScreenPos(ctx)
-            local width = 2*app.settings.current.uiScale
-            ImGui.DrawList_AddLine(ImGui.GetWindowDrawList(ctx), x+width/2, y - paddingY, x+width/2,
-            y + h-paddingY*2-winPaddingY, app.gui.st.basecolors.main, width)
+            local width = 2 * app.settings.current.uiScale
+            ImGui.DrawList_AddLine(ImGui.GetWindowDrawList(ctx), x + width / 2, y - paddingY, x + width / 2,
+                y + h - paddingY * 2 - winPaddingY, app.gui.st.basecolors.main, width)
             ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + width + spacingX)
             if app.pageSwitched then
                 -- app.db:init()
@@ -1256,7 +1193,7 @@ if OD_PrereqsOK({
             if #activeFilters > 0 then
                 app.gui:pushStyles(app.gui.st.vars.topBarActiveFiltersArea)
                 app.gui:pushColors(app.gui.st.col.topBarActiveFiltersArea)
-                ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx)+spacingY)
+                ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
                 ImGui.PushFont(ctx, app.gui.st.fonts.icons_tiny)
                 local closeButtonSizeW, closeButtonSizeH = ImGui.CalcTextSize(ctx, 'x')
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
@@ -1278,8 +1215,8 @@ if OD_PrereqsOK({
                         local x2, y2 = x1 + textW + spacingX + closeButtonSizeW + paddingX * 2, y1 + h + paddingY * 2
                         ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), x1, y1, x2, y2,
                             ImGui.GetColor(ctx, ImGui.Col_Button), ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
-                        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX)--, ImGui.GetCursorPosY(ctx) + paddingY)
-                        ImGui.TextColored(ctx, app.gui.st.basecolors.main,filter.key)
+                        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX) --, ImGui.GetCursorPosY(ctx) + paddingY)
+                        ImGui.TextColored(ctx, app.gui.st.basecolors.main, filter.key)
                         ImGui.SameLine(ctx)
                         ImGui.Text(ctx, filter.itemName)
                         -- ImGui.SameLine(ctx)
