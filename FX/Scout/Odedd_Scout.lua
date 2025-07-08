@@ -1091,7 +1091,62 @@ if OD_PrereqsOK({
     end
 
     function app.drawTopBar()
-        local function beginRightIconMenu(ctx, buttons)
+        local ctx = app.gui.ctx
+        app.gui:pushStyles(app.gui.st.vars.topBar)
+        app.gui:pushColors(app.gui.st.col.topBar)
+        
+        local menu = {}
+        local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
+        local winPaddingX, winPaddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)
+        local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+
+        local createMenu = function()
+            local menu = {}
+
+            table.insert(menu, { icon = 'money', hint = ('%s is free, but donations are welcome :)'):format(Scr.name) })
+            if ImGui.IsWindowDocked(ctx) then
+                table.insert(menu, { icon = 'undock', hint = 'Undock' })
+            else
+                table.insert(menu, { icon = 'dock_down', hint = 'Dock' })
+            end
+            if app.page == APP_PAGE.SEARCH_FX then
+                table.insert(menu, { icon = 'gear', hint = 'Settings' })
+            end
+            return menu
+        end
+        local calculateDimensions = function()
+            ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
+            local menuW, h = 0, ImGui.GetTextLineHeight(ctx) + paddingY * 2 + winPaddingY * 2
+            for i, btn in ipairs(menu) do
+                menuW = menuW + select(1, ImGui.CalcTextSize(ctx, ICONS[(btn.icon):upper()])) +
+                    ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2 +
+                    ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+            end
+            ImGui.PopFont(ctx)
+            return menuW, h
+        end
+        menu = createMenu()
+        local menuW, h = calculateDimensions()
+
+        local drawTextSearchInput = function()
+            if app.pageSwitched then
+                -- app.db:init()
+                app.filterResults({ text = '' })
+                ImGui.SetKeyboardFocusHere(ctx, 0)
+            end
+
+            -- app.gui:pushColors(app.gui.st.col.topBar.background)
+            local w = select(1, ImGui.GetContentRegionAvail(ctx)) - menuW +
+                ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+
+            ImGui.SetNextItemWidth(ctx, w)
+            local rv, searchInput = ImGui.InputText(ctx, "##searchInput", app.temp.searchInput)
+            if rv then
+                app.filterResults({ text = searchInput })
+                app.temp.scrollToTop = true
+            end
+        end
+        local drawIconMenu = function(ctx, buttons)
             -- local windowEnd = app.gui.mainWindow.size[1] - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) -
             --     ((ImGui.GetScrollMaxY(app.gui.ctx) > 0) and ImGui.GetStyleVar(ctx, ImGui.StyleVar_ScrollbarSize) or 0)
             -- ImGui.SameLine(ctx, windowEnd)
@@ -1110,36 +1165,7 @@ if OD_PrereqsOK({
             ImGui.PopFont(ctx)
             return clicked ~= nil, clicked
         end
-
-        local ctx = app.gui.ctx
-        local menu = {}
-        table.insert(menu, { icon = 'money', hint = ('%s is free, but donations are welcome :)'):format(Scr.name) })
-        if ImGui.IsWindowDocked(ctx) then
-            table.insert(menu, { icon = 'undock', hint = 'Undock' })
-        else
-            table.insert(menu, { icon = 'dock_down', hint = 'Dock' })
-        end
-        if app.page == APP_PAGE.SEARCH_FX then
-            table.insert(menu, { icon = 'gear', hint = 'Settings' })
-        end
-
-        local menuW = 0
-        ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
-        app.gui:pushStyles(app.gui.st.vars.topBar)
-        app.gui:pushColors(app.gui.st.col.topBar)
-        local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
-        local winPaddingX, winPaddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)
-        local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
-        local h = ImGui.GetTextLineHeight(ctx) + paddingY * 2 + winPaddingY * 2
-        if ImGui.BeginChild(ctx, 'topBar', nil, h, ImGui.ChildFlags_AlwaysUseWindowPadding) then
-            local topBarW = select(1, ImGui.GetContentRegionAvail(ctx)) - menuW
-            for i, btn in ipairs(menu) do
-                menuW = menuW + select(1, ImGui.CalcTextSize(ctx, ICONS[(btn.icon):upper()])) +
-                    ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2 +
-                    ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
-            end
-            ImGui.PopFont(ctx)
-            ImGui.BeginGroup(ctx)
+        local drawLogo = function()
             app.gui:pushColors(app.gui.st.col.title)
             ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
             ImGui.AlignTextToFramePadding(ctx)
@@ -1157,29 +1183,8 @@ if OD_PrereqsOK({
             ImGui.DrawList_AddLine(ImGui.GetWindowDrawList(ctx), x + width / 2, y - paddingY, x + width / 2,
                 y + h - paddingY * 2 - winPaddingY, app.gui.st.basecolors.main, width)
             ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + width + spacingX)
-            if app.pageSwitched then
-                -- app.db:init()
-                app.filterResults({ text = '' })
-                ImGui.SetKeyboardFocusHere(ctx, 0)
-            end
-
-            -- app.gui:pushColors(app.gui.st.col.topBar.background)
-            local w = select(1, ImGui.GetContentRegionAvail(ctx)) - menuW +
-                ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
-
-            ImGui.SetNextItemWidth(ctx, w)
-            local rv, searchInput = ImGui.InputText(ctx, "##searchInput", app.temp.searchInput)
-            if rv then
-                app.filterResults({ text = searchInput })
-                app.temp.scrollToTop = true
-            end
-            ImGui.SameLine(ctx)
-            ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
-            local rv, btn = beginRightIconMenu(ctx, menu)
-            ImGui.Dummy(ctx, 0, 0)
-            ImGui.PopFont(ctx)
-            ImGui.EndGroup(ctx)
-
+        end
+        local drawActiveFilters = function()
             local activeFilters = {}
             for i, filterKey in ipairs(FILTER_CAPSULE_ORDER) do
                 local filterItem = nil
@@ -1200,9 +1205,6 @@ if OD_PrereqsOK({
                 end
             end
             ImGui.PushFont(ctx, app.gui.st.fonts.small)
-            ImGui.EndChild(ctx)
-
-
             if #activeFilters > 0 then
                 app.gui:pushStyles(app.gui.st.vars.topBarActiveFiltersArea)
                 app.gui:pushColors(app.gui.st.col.topBarActiveFiltersArea)
@@ -1214,7 +1216,7 @@ if OD_PrereqsOK({
 
                 ImGui.AlignTextToFramePadding(ctx)
 
-                if ImGui.BeginChild(ctx, 'activeFilterArea', topBarW, nil, ImGui.ChildFlags_AutoResizeY) then
+                if ImGui.BeginChild(ctx, 'activeFilterArea', nil, nil, ImGui.ChildFlags_AutoResizeY) then
                     for i, filter in ipairs(activeFilters) do
                         if i ~= 1 then
                             ImGui.SameLine(ctx)
@@ -1227,7 +1229,8 @@ if OD_PrereqsOK({
                         local h = ImGui.GetTextLineHeight(ctx)
                         local x2, y2 = x1 + textW + spacingX + closeButtonSizeW + paddingX * 2, y1 + h + paddingY * 2
                         ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), x1, y1, x2, y2,
-                            ImGui.GetColor(ctx, ImGui.Col_Button), ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
+                            ImGui.GetColor(ctx, ImGui.Col_Button),
+                            ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
                         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX) --, ImGui.GetCursorPosY(ctx) + paddingY)
                         ImGui.TextColored(ctx, app.gui.st.basecolors.main, filter.key)
                         ImGui.SameLine(ctx)
@@ -1262,7 +1265,8 @@ if OD_PrereqsOK({
                 app.gui:popColors(app.gui.st.col.topBarActiveFiltersArea)
             end
             ImGui.PopFont(ctx)
-            -- app.gui:popColors(app.gui.st.col.topBar)
+        end
+        local function handleMenuButtons(rv, btn)
             if rv then
                 if btn == 'close' then
                     app.exit = true
@@ -1281,12 +1285,18 @@ if OD_PrereqsOK({
                 end
             end
         end
-        -- ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), app.gui.mainWindow.pos[1],
-        --     app.gui.mainWindow.pos[2],
-        --     app.gui.mainWindow.pos[1] + app.gui.mainWindow.size[1], select(2, ImGui.GetCursorScreenPos(ctx)),
-        --     ImGui.GetColor(ctx, ImGui.Col_FrameBg), app.gui.st.vars.main[ImGui.StyleVar_WindowRounding][1],
-        --     ImGui.DrawFlags_RoundCornersTop)
-
+        if ImGui.BeginChild(ctx, 'topBar', nil, h, ImGui.ChildFlags_AlwaysUseWindowPadding) then
+            drawLogo()
+            drawTextSearchInput()
+            ImGui.SameLine(ctx)
+            ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
+            local rv, btn = drawIconMenu(ctx, menu)
+            ImGui.Dummy(ctx, 0, 0) -- this prevents errors on UI resizing
+            ImGui.PopFont(ctx)
+            ImGui.EndChild(ctx)
+            drawActiveFilters()
+            handleMenuButtons(rv, btn)
+        end
         app.gui:popColors(app.gui.st.col.topBar)
         app.gui:popStyles(app.gui.st.vars.topBar)
     end
@@ -1302,35 +1312,6 @@ if OD_PrereqsOK({
         if col then app.gui:popColors(app.gui.st.col[col]) end
         app:setHint(window, '')
     end
-
-    function app.drawZoom()
-        local ctx = app.gui.ctx
-        local w = 100 * app.settings.current.uiScale
-        local gripWidth = 12 * app.settings.current.uiScale
-        local minZoom, maxZoom = 45, 110
-        ImGui.PushFont(ctx, app.gui.st.fonts.small)
-        app.gui:pushStyles(app.gui.st.vars.zoomSlider)
-        app.gui:pushColors(app.gui.st.col.zoomSlider)
-        ImGui.SetCursorPos(ctx,
-            app.gui.mainWindow.size[1] - w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) - gripWidth,
-            app.gui.mainWindow.size[2] - (app.gui.st.sizes.hintHeight + app.gui.TEXT_BASE_HEIGHT_SMALL) / 2 -
-            ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))
-        ImGui.SetNextItemWidth(ctx, w)
-        local rv, v = ImGui.SliderInt(ctx, '##zoom', app.settings.current.sendWidth, minZoom, maxZoom, '')
-        local shouldReset, v = app.resetOnDoubleClick('##zoom', v, app.settings.default.sendWidth)
-
-        ImGui.PopFont(ctx)
-        app.gui:popColors(app.gui.st.col.zoomSlider)
-        app.gui:popStyles(app.gui.st.vars.zoomSlider)
-        if rv or shouldReset then
-            app.settings.current.sendWidth = v
-            app.db:recalculateShortNames()
-            app.settings:save()
-            app.refreshWindowSizeOnNextFrame = true
-        end
-        app:setHoveredHint('main', 'Drag to zoom horizontally')
-    end
-
     function app.drawMainWindow()
         local ctx = app.gui.ctx
 
