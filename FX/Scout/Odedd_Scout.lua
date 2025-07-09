@@ -352,7 +352,7 @@ if OD_PrereqsOK({
             end
         end,
 
-        tinyIcon = function(id, icon)
+        tinyIcon = function(id, icon, highlighted, disabled)
             local ctx = app.gui.ctx
             local clicked = false
             local textW, textH = ImGui.CalcTextSize(ctx, 'I')
@@ -365,8 +365,9 @@ if OD_PrereqsOK({
             if ImGui.InvisibleButton(ctx, 'x##' .. id .. 'All', iconW, iconH) then
                 clicked = true
             end
-            local col = app.gui.st.col.activeFilterButton[ImGui.Col_Button]
-            if ImGui.IsItemHovered(ctx) then
+            local col = highlighted and app.gui.st.basecolors.textDark or
+                (disabled and app.gui.st.basecolors.textDark or app.gui.st.col.activeFilterButton[ImGui.Col_Button])
+            if not disabled and ImGui.IsItemHovered(ctx) then
                 ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
                 if ImGui.IsItemActive(ctx) then
                     col = app.gui.st.col.activeFilterButton[ImGui.Col_ButtonActive]
@@ -381,7 +382,7 @@ if OD_PrereqsOK({
             ImGui.PopFont(ctx)
             ImGui.SetCursorPos(ctx, x + iconW, y)
             ImGui.Dummy(ctx, 0, 0)
-            return clicked
+            if not disabled then return clicked end
         end
     }
 
@@ -400,7 +401,7 @@ if OD_PrereqsOK({
         local upperRowY = ImGui.GetCursorPosY(ctx)                                     -- Y position for upper row, used for "sticky" first group title
         local upperRowScreenY = select(2, ImGui.GetCursorScreenPos(ctx))               -- Y position for upper row, used for "sticky" first group title
         local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx)
-        local filterAreaH = select(2, ImGui.GetContentRegionAvail(ctx))             -- Height available for search results
+        local filterAreaH = select(2, ImGui.GetContentRegionAvail(ctx))                -- Height available for search results
 
         local tagInfo = app.tags.current.tagInfo
         local searchResults = app.temp.searchResults or {} -- Current search results
@@ -457,18 +458,11 @@ if OD_PrereqsOK({
                 app.gui:pushStyles(app.gui.st.vars.topBarActiveFiltersArea)
                 app.gui:pushColors(app.gui.st.col.topBarActiveFiltersArea)
                 ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
-                local closeButtonSizeW, closeButtonSizeH = app.widgets.calcTinyIconSize('x')
+                local closeButtonSizeW, closeButtonSizeH = app.widgets.calcTinyIconSize(ICONS.CLOSE)
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
-
+                local filterH = ImGui.GetTextLineHeight(ctx) + paddingY * 2
                 if ImGui.BeginChild(ctx, 'activeFilterArea', nil, nil, ImGui.ChildFlags_AutoResizeY) then
                     for i, filter in ipairs(activeFilters) do
-                        if i ~= 1 then
-                            ImGui.SameLine(ctx)
-                        end
-                        ImGui.BeginGroup(ctx)
-                        ImGui.AlignTextToFramePadding(ctx)
-                        local x1, y1 = ImGui.GetCursorScreenPos(ctx)
-
                         local text = filter.key .. ' ' .. filter.itemName
                         local textW, textH = ImGui.CalcTextSize(ctx, text)
                         if filter.type == 'tag' then
@@ -477,46 +471,49 @@ if OD_PrereqsOK({
                                 2 +
                                 ImGui.CalcTextSize(ctx, text)
                         end
-                        local h = ImGui.GetTextLineHeight(ctx)
-                        local x2, y2 = x1 + textW + spacingX + closeButtonSizeW + paddingX * 2, y1 + h + paddingY * 2
-                        ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), x1, y1, x2, y2,
-                            ImGui.GetColor(ctx, ImGui.Col_Button),
-                            ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
-                        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX) --, ImGui.GetCursorPosY(ctx) + paddingY)
-                        if filter.type == 'filter' then
-                            ImGui.TextColored(ctx, app.gui.st.basecolors.textDark, filter.key)
-                        elseif filter.type == 'tag' then
-                            local icon = filter.value and ICONS.PLUS or ICONS.MINUS
-                            local x, y = ImGui.GetCursorPos(ctx)
-                            local iconW, iconH = app.widgets.calcTinyIconSize(icon)
-                            ImGui.SetCursorPosY(ctx, y + (textH - iconH) / 2)
-                            local col = app.gui.st.basecolors.textDark
-                            ImGui.PushFont(ctx, app.gui.st.fonts.icons_tiny)
-                            ImGui.TextColored(ctx, col, icon)
-                            ImGui.PopFont(ctx)
-                            ImGui.SetCursorPos(ctx, x + iconW, y)
-                            ImGui.Dummy(ctx, 0, 0)
+                        local filterW = textW + spacingX + closeButtonSizeW + paddingX * 2
+                        if (i ~= 1) then
+                            ImGui.SameLine(ctx)
                         end
-                        ImGui.SameLine(ctx)
-                        ImGui.AlignTextToFramePadding(ctx)
-                        ImGui.Text(ctx, filter.itemName)
-                        ImGui.SameLine(ctx)
-                        if app.widgets.tinyIcon(filter.key, ICONS.CLOSE) then
+                        if (filterW > ImGui.GetContentRegionAvail(ctx)) then
+                            ImGui.SetCursorPosX(ctx, x)
+                            lines = lines + 1
+                        end
+                        ImGui.SetCursorPosY(ctx, y + (filterH + spacingY) * (lines - 1))
+                        local x1, y1 = ImGui.GetCursorScreenPos(ctx)
+                        local x2, y2 = x1 + filterW, y1 + filterH
+                        if ImGui.BeginChild(ctx, 'activeFilterNode' .. filter.key, filterW, filterH, nil, ImGui.WindowFlags_NoScrollbar) then
+                            ImGui.AlignTextToFramePadding(ctx)
+                            ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), x1, y1, x2, y2,
+                                ImGui.GetColor(ctx, ImGui.Col_Button),
+                                ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
+                            ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX) --, ImGui.GetCursorPosY(ctx) + paddingY)
                             if filter.type == 'filter' then
-                                app.filterResults(filter.allQuery)
+                                ImGui.TextColored(ctx, app.gui.st.basecolors.textDark, filter.key)
                             elseif filter.type == 'tag' then
-                                app.filterResults({ removeTags = { filter.item.id } })
+                                app.widgets.tinyIcon(filter.key, filter.value and ICONS.PLUS or ICONS.MINUS, true, true)
                             end
+                            ImGui.SameLine(ctx)
+                            ImGui.AlignTextToFramePadding(ctx)
+                            ImGui.Text(ctx, filter.itemName)
+                            ImGui.SameLine(ctx)
+                            if app.widgets.tinyIcon(filter.key, ICONS.CLOSE) then
+                                if filter.type == 'filter' then
+                                    app.filterResults(filter.allQuery)
+                                elseif filter.type == 'tag' then
+                                    app.filterResults({ removeTags = { filter.item.id } })
+                                end
+                            end
+                            ImGui.SetCursorScreenPos(ctx, x2, y2)
+                            ImGui.Dummy(ctx, 0, 0)
+                            ImGui.EndChild(ctx)
                         end
-                        ImGui.SetCursorScreenPos(ctx, x2, y2)
-                        ImGui.Dummy(ctx, 0, 0)
-                        ImGui.EndGroup(ctx)
                     end
                     ImGui.EndChild(ctx)
                 end
                 app.gui:popStyles(app.gui.st.vars.topBarActiveFiltersArea)
                 app.gui:popColors(app.gui.st.col.topBarActiveFiltersArea)
-                height = lines * ImGui.GetTextLineHeight(ctx) + spacingY * 2 + paddingY * 2
+                height = lines * filterH + spacingY * (lines + 1)
                 ImGui.SetCursorPosY(ctx, y + height)
             end
             ImGui.PopFont(ctx)
@@ -896,20 +893,34 @@ if OD_PrereqsOK({
                         -- local triangleW = tag.hasDescendants and triangleW or 0
                         local tagW, tagH = ImGui.CalcTextSize(ctx, tag.name) + paddingX * 2 + triangleW,
                             ImGui.GetTextLineHeight(ctx) + paddingY * 2
-                        local iconsWidth = app.widgets.calcTinyIconSize(ICONS.MINUS) +
-                            app.widgets.calcTinyIconSize(ICONS.PLUS) --+app.widgets.calcTinyIconSize(ICONS.PENCIL)
+                        --+app.widgets.calcTinyIconSize(ICONS.PENCIL)
                         local col = app.gui.st.col.tag[ImGui.Col_FrameBg]
+                        local tagStatus = app.temp.filter.tags[tag.id]
                         local hovering = false
                         if not dragged and ImGui.IsMouseHoveringRect(ctx, globalX, globalY, globalX + w, globalY + tagH) then
                             --- TODO: show edit button
                             hovering = true
-                            tagW = tagW + iconsWidth + spacingX * 3
+
                             if ImGui.IsMouseDown(ctx, ImGui.MouseButton_Left) then
                                 -- col = app.gui.st.col.tag[ImGui.Col_FrameBgActive]
                                 if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
                                     tag:toggleOpen(not tag.open)
                                 end
                             end
+                        end
+                        if hovering or tagStatus ~= nil then
+                            local iconsWidth = 0
+                            if hovering then
+                                iconsWidth = iconsWidth + app.widgets.calcTinyIconSize(ICONS.MINUS) +
+                                    app.widgets.calcTinyIconSize(ICONS.PLUS)
+                                tagW = tagW + spacingX * 3
+                            end
+                            if tagStatus ~= nil then
+                                iconsWidth = iconsWidth +
+                                    (tagStatus ~= nil and app.widgets.calcTinyIconSize(ICONS.CLOSE) or 0)
+                                tagW = tagW + spacingX * 2
+                            end
+                            tagW = tagW + iconsWidth
                         end
                         ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), globalX, globalY, globalX + tagW,
                             globalY + tagH, col, 100)
@@ -947,16 +958,25 @@ if OD_PrereqsOK({
                         end
                         ImGui.SetCursorPos(ctx, x + paddingX + triangleW, y + paddingY)
                         ImGui.Text(ctx, tag.name)
-                        if hovering then
-                            ImGui.SameLine(ctx)
-                            ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                            if app.widgets.tinyIcon('addTag' .. tag.id, ICONS.PLUS) then
-                                app.filterResults({ addTags = { [tag.id] = true } })
+                        if hovering or tagStatus ~= nil then
+                            if tagStatus ~= nil then
+                                ImGui.SameLine(ctx)
+                                ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
+                                if app.widgets.tinyIcon('removeTag' .. tag.id, ICONS.CLOSE) then
+                                    app.filterResults({ removeTags = { tag.id } })
+                                end
                             end
-                            ImGui.SameLine(ctx)
-                            ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                            if app.widgets.tinyIcon('removeTag' .. tag.id, ICONS.MINUS) then
-                                app.filterResults({ addTags = { [tag.id] = false } })
+                            if hovering then
+                                ImGui.SameLine(ctx)
+                                ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
+                                if app.widgets.tinyIcon('addPositiveTag' .. tag.id, ICONS.PLUS, tagStatus,tagStatus) then
+                                    app.filterResults({ addTags = { [tag.id] = true } })
+                                end
+                                ImGui.SameLine(ctx)
+                                ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
+                                if app.widgets.tinyIcon('addNegative' .. tag.id, ICONS.MINUS, tagStatus==false,tagStatus==false) then
+                                    app.filterResults({ addTags = { [tag.id] = false } })
+                                end
                             end
                         end
                         app.gui:popColors(app.gui.st.col.tag)
