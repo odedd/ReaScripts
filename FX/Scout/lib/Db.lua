@@ -665,7 +665,7 @@ DB.getTags = function(self)
         if visited[tagId] then return true end
         visited[tagId] = true
         local parentId = self.tags[tagId] and self.tags[tagId].parentId
-        if parentId and self.tags[parentId] then
+        if parentId and parentId ~= -1 and self.tags[parentId] then
             return hasCycle(parentId, visited)
         end
         return false
@@ -673,20 +673,20 @@ DB.getTags = function(self)
 
     for id, tagInfo in pairs(self.app.tags.current.tagInfo) do
         -- Remove illegal parentId if it would cause a stack overflow (cycle)
-        if tagInfo.parentId and (tagInfo.parentId == id or hasCycle(id)) then
+        if tagInfo.parentId and tagInfo.parentId ~= -1 and (tagInfo.parentId == id or hasCycle(id)) then
             self.app.logger:logError('Cycle detected for tag "' ..
                 (self.tags[id] and self.tags[id].name or tostring(id)) .. '", removing parentId')
-            self.tags[id].parentId = nil
-            tagInfo.parentId = nil
+            self.tags[id].parentId = -1
+            tagInfo.parentId = -1
         end
 
-        if tagInfo.parentId and self.tags[tagInfo.parentId] and tagInfo.parentId ~= id then
+        if tagInfo.parentId and tagInfo.parentId ~= -1 and self.tags[tagInfo.parentId] and tagInfo.parentId ~= id then
             self.tags[id].parent = self.tags[tagInfo.parentId]
             self.app.logger:logDebug('Added "' ..
                 self.tags[id].name .. '" (parent: "' .. self.tags[id].parent.name .. '")')
         elseif tagInfo.parentId and tagInfo.parentId == id then
             self.app.logger:logError('Illegal parent ID for tag "' .. self.tags[id].name .. '" (parent=own ID)')
-        elseif tagInfo.parentId then
+        elseif tagInfo.parentId and tagInfo.parentId ~= -1 then
             self.app.logger:logError('Illegal parent ID for tag "' .. self.tags[id].name .. '"')
         else
             self.app.logger:logDebug('Added "' .. self.tags[id].name .. '"')
@@ -734,7 +734,7 @@ DB.getTags = function(self)
         self.tags[id].addSiblings = function(self)
             if self.siblings == nil then
                 self.siblings = {}
-                if self.parentId then
+                if self.parentId and self.parentId ~= -1 then
                     for candidateId, candidate in pairs(self.allTags) do
                         if candidate.parentId == self.parentId and candidate.id ~= self.id then
                             table.insert(self.siblings, candidate)
@@ -760,18 +760,17 @@ DB.getTags = function(self)
             local oldParentId = self.parentId
             local oldOrder = self.order
             local newParentId
-            local newOrder
 
             self.app.logger:logDebug('move tag "' ..
                 self.name .. '" to ' .. tostring(position) .. ' "' .. targetTag.name .. '"')
+
+            -- Determine new parent
             if position == "inside" then
                 newParentId = targetTag.id
-                newOrder = 1
                 targetTag:toggleOpen(true, false)
                 self.app.logger:logDebug('open "' .. targetTag.name .. '"')
             elseif position == "before" or position == "after" then
                 newParentId = targetTag.parentId
-                newOrder = (targetTag.order or 1) + ((position == "after") and 1 or 0)
                 if targetTag.parent then
                     targetTag.parent:toggleOpen(true, false)
                     self.app.logger:logDebug('open "' .. targetTag.name .. '"')
@@ -797,15 +796,32 @@ DB.getTags = function(self)
                 end
             end
 
-            -- Clamp newOrder to valid range
-            if newOrder < 1 then newOrder = 1 end
-            if newOrder > #filteredSiblings + 1 then newOrder = #filteredSiblings + 1 end
+            -- Find the target index in the filteredSiblings list
+            local targetIndex = nil
+            for i, sibId in ipairs(filteredSiblings) do
+                if sibId == targetTag.id then
+                    targetIndex = i
+                    break
+                end
+            end
 
             -- Insert self at the correct position
             if position == "inside" then
                 table.insert(filteredSiblings, 1, self.id)
-            elseif position == "before" or position == "after" then
-                table.insert(filteredSiblings, newOrder, self.id)
+            elseif position == "before" then
+                -- If targetIndex is nil, insert at end (shouldn't happen, but fallback)
+                table.insert(filteredSiblings, targetIndex or (#filteredSiblings + 1), self.id)
+            elseif position == "after" then
+                if targetIndex == nil then
+                    -- fallback: append at end
+                    table.insert(filteredSiblings, self.id)
+                elseif targetIndex == #filteredSiblings then
+                    -- after the last: append
+                    table.insert(filteredSiblings, self.id)
+                else
+                    -- after: insert after targetIndex
+                    table.insert(filteredSiblings, targetIndex + 1, self.id)
+                end
             end
 
             -- Reorder all siblings (including self)
