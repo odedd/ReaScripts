@@ -231,7 +231,7 @@ PB_Gui.init = function(self, fonts)
             },
             tag = {
                 [ImGui.StyleVar_FrameRounding] = { 20 * scale, nil },
-                [ImGui.StyleVar_FramePadding] = { 8 * scale, 2 * scale },
+                [ImGui.StyleVar_FramePadding] = { 8 * scale, 0 },
             },
             tagButtons = {
                 [ImGui.StyleVar_FrameRounding] = { 100 * scale, nil },

@@ -62,7 +62,8 @@ T.FILTER_MENU = {
     FX_TYPE = 'FX Type',
     FOLDER = 'Folder',
     CATEGORY = 'Category',
-    DEVELOPER = 'Developer'
+    DEVELOPER = 'Developer',
+    TAGS = 'Tag'
 }
 T.ERROR = {
     NO_DOCK = ([[
