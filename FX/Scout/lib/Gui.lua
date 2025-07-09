@@ -213,6 +213,8 @@ PB_Gui.init = function(self, fonts)
                 -- [ImGui.StyleVar_Wind] = { 10 * scale, 30 },
             },
             topBarActiveFiltersArea = {
+                [ImGui.StyleVar_FrameRounding] = { 12 * scale, nil },
+                [ImGui.StyleVar_ChildRounding] = { 12 * scale, nil },
                 [ImGui.StyleVar_ItemSpacing] = { select(1, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_ItemSpacing)), 0 },
                 [ImGui.StyleVar_FramePadding] = { self.st.windowPadding * scale, 3 * scale },
                 -- [ImGui.StyleVar_Wind] = { 10 * scale, 30 },
