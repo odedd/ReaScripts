@@ -696,16 +696,16 @@ DB.getTags = function(self)
         self.tags[id].allTags = self.tags
         self.tags[id].db = self
 
-        local col = self.tags[id].color
-        local hoveredCol = OD_OffsetRgbaByHSL(col, 0, 0, 0.06)
-        local activeCol = OD_OffsetRgbaByHSL(col, 0, 0, 0.1)
-        local textCol = OD_ColorIsBright(col) and 0x000000ff or 0xffffffff
-        self.tags[id].colors = {
-            [ImGui.Col_Button] = col,
-            [ImGui.Col_ButtonHovered] = hoveredCol,
-            [ImGui.Col_ButtonActive] = activeCol,
-            [ImGui.Col_Text] = textCol
-        }
+        -- local col = self.tags[id].color
+        -- local hoveredCol = OD_OffsetRgbaByHSL(col, 0, 0, 0.06)
+        -- local activeCol = OD_OffsetRgbaByHSL(col, 0, 0, 0.1)
+        -- local textCol = OD_ColorIsBright(col) and 0x000000ff or 0xffffffff
+        -- self.tags[id].colors = {
+        --     [ImGui.Col_Button] = col,
+        --     [ImGui.Col_ButtonHovered] = hoveredCol,
+        --     [ImGui.Col_ButtonActive] = activeCol,
+        --     [ImGui.Col_Text] = textCol
+        -- }
         self.tags[id].toggleOpen = function(self, state, persist)
             persist = (persist == nil) and true or persist
             self.open = state

@@ -94,15 +94,19 @@ PB_Gui.init = function(self, fonts)
             [ImGui.Col_ButtonActive] = self.st.basecolors.mainDark
             -- [ImGui.Col_Border] = 0x00000000
         },
-        activeTagButton = {
-            [ImGui.Col_Text] = self.st.basecolors.mainBrightest,
-            --     [ImGui.Col_Button] = 0x00000000,
-            --     [ImGui.Col_ButtonHovered] = self.st.basecolors.mainDarkest,
-            --     [ImGui.Col_ButtonActive] = self.st.basecolors.mainDarker
-            --     -- [ImGui.Col_Border] = 0x00000000
+        tag = {
+            [ImGui.Col_Text] = self.st.basecolors.textBright,
+            [ImGui.Col_FrameBg] = self.st.basecolors.darkBG,
+            [ImGui.Col_FrameBgHovered] = self.st.basecolors.mainDark,
+            [ImGui.Col_FrameBgActive] = self.st.basecolors.main
+        },
+        activeFilterButton = {
+            -- [ImGui.Col_Text] = self.st.basecolors.mainBrightest,
+            [ImGui.Col_Button] = self.st.basecolors.main,
+            [ImGui.Col_ButtonActive] = self.st.basecolors.mainBrighter,
+            [ImGui.Col_ButtonHovered] = self.st.basecolors.mainBright,
         },
         searchWindow = {
-            -- [ImGui.Col_ChildBg] = 0x44000044,
             [ImGui.Col_TableBorderStrong] = 0x00000000,
             [ImGui.Col_TextSelectedBg] = self.st.basecolors.main,
             [ImGui.Col_Header] = self.st.basecolors.mainDark,
@@ -146,9 +150,9 @@ PB_Gui.init = function(self, fonts)
         main = {
             [ImGui.Col_Tab] = self.st.basecolors.darkHovered,
             [ImGui.Col_TabHovered] = self.st.basecolors.darkActive,
-            [ImGui.Col_TabActive] = self.st.basecolors.darkActive,
-            [ImGui.Col_TabUnfocused] = self.st.basecolors.darkBG,
-            [ImGui.Col_TabUnfocusedActive] = self.st.basecolors.darkBG,
+            -- [ImGui.Col_TabActive] = self.st.basecolors.darkActive,
+            -- [ImGui.Col_TabUnfocused] = self.st.basecolors.darkBG,
+            -- [ImGui.Col_TabUnfocusedActive] = self.st.basecolors.darkBG,
             [ImGui.Col_FrameBg] = self.st.basecolors.darkBG,
             [ImGui.Col_FrameBgHovered] = self.st.basecolors.darkHovered,
             [ImGui.Col_FrameBgActive] = self.st.basecolors.darkActive,
@@ -231,9 +235,6 @@ PB_Gui.init = function(self, fonts)
                 [ImGui.StyleVar_ItemSpacing] = { 0, 0 }
                 -- [ImGui.StyleVar_FrameBorderSize] = {2, nil },
             },
-            -- activeTagButton = {
-            --     [ImGui.StyleVar_FrameBorderSize] = {2, nil },
-            -- },
             tagList = {
                 [ImGui.StyleVar_IndentSpacing] = { 12 * scale, nil },
             },
