@@ -993,63 +993,6 @@ if OD_PrereqsOK({
                             ImGui.EndDragDropSource(ctx)
                         end
 
-                        -- TAG BUTTONS
-                        -- if hovering or tag.status ~= nil then
-                        --     local nextLineY = ImGui.GetCursorPosY(ctx)
-                        --     ImGui.PushID(ctx, tag.id)
-                        --     ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
-                        --     app.gui:pushColors(app.gui.st.col.tagButtons)
-                        --     app.gui:pushStyles(app.gui.st.vars.tagButtons)
-                        --     local btnW = (select(1, ImGui.CalcTextSize(ctx, "+")) + app.gui.st.vars.tagButtons[ImGui.StyleVar_FramePadding][1])
-                        --     local function drawCloseButton(tag)
-                        --         -- app.gui:pushColors(app.gui.st.col.activeTagButton)
-                        --         local btnX, btnY = ImGui.GetCursorScreenPos(ctx)
-                        --         local icon = tag.status and ICONS.PLUS or ICONS.MINUS
-                        --         if ImGui.IsMouseHoveringRect(ctx, btnX, btnY, btnX + btnW, btnY + btnW) then
-                        --             icon = ICONS
-                        --                 .CLOSE
-                        --         end
-                        --         if ImGui.Button(ctx, icon) then
-                        --             tag.status = nil
-                        --             app.filterResults({ removeTags = { tag.id } })
-                        --         end
-                        --         -- app.gui:popColors(app.gui.st.col.activeTagButton)
-                        --     end
-                        --     if tag.status ~= nil then
-                        --         ImGui.SetCursorScreenPos(ctx,
-                        --             tagAreaScreenX + tagAreaW - btnW * (tag.status and 1 or 2),
-                        --             globalY)
-                        --         drawCloseButton(tag)
-                        --     end
-                        --     if hovering then
-                        --         ImGui.SetCursorScreenPos(ctx,
-                        --             tagAreaScreenX + tagAreaW -
-                        --             btnW *
-                        --             3, globalY)
-                        --         ImGui.Button(ctx, ICONS.PENCIL)
-                        --         ImGui.SameLine(ctx)
-                        --         if tag.status ~= false and ImGui.Button(ctx, ICONS.MINUS) then
-                        --             tag.status = false
-                        --             app.filterResults({ addTags = { [tag.id] = false } })
-                        --         end
-                        --         ImGui.SameLine(ctx)
-                        --         if tag.status ~= true then
-                        --             ImGui.SetCursorScreenPos(ctx,
-                        --                 tagAreaScreenX + tagAreaW -
-                        --                 btnW, globalY)
-                        --             if ImGui.Button(ctx, ICONS.PLUS) then
-                        --                 tag.status = true
-                        --                 app.filterResults({ addTags = { [tag.id] = true } })
-                        --             end
-                        --         end
-                        --     end
-                        --     app.gui:popColors(app.gui.st.col.tagButtons)
-                        --     app.gui:popStyles(app.gui.st.vars.tagButtons)
-                        --     ImGui.PopFont(ctx)
-                        --     ImGui.PopID(ctx)
-                        --     ImGui.SetCursorPosY(ctx, nextLineY) -- DON'T DELETE! this is for maintaining the Y position when a tag.status is not nil
-                        -- end
-
                         if not dragged then
                             local open = (tag.hasDescendants and tag.open)
                             drawDropTarget(tag, tagH + (open and spacingY or 0), 'inside', (open and 0 or spacingY),
