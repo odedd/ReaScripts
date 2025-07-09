@@ -52,6 +52,7 @@ PB_Gui.init = function(self, fonts)
         mainBrightest = 0xd75869ff,
         textBright = 0xd7d7d7ff,
         textDark = 0x7c7c7cff,
+        textDarker = 0x444444ff,
     }
     self.st.colpresets = {
         darkButton = {
@@ -128,6 +129,9 @@ PB_Gui.init = function(self, fonts)
             },
             secondaryResult = {
                 [ImGui.Col_Text] = self.st.basecolors.textDark,
+            },
+            thirdResult = {
+                [ImGui.Col_Text] = self.st.basecolors.textDarker,
             },
             highlight = {
                 [ImGui.Col_Text] = self.st.basecolors.mainBright,

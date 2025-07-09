@@ -597,12 +597,15 @@ if OD_PrereqsOK({
                                         end
                                     end
                                     ImGui.PopStyleVar(ctx)
-                                    for t = 1, #(result.tags or {}) do
-                                        local tag = tagInfo[result.tags[t]]
-                                        ImGui.PushStyleColor(ctx, ImGui.Col_Button, tag.color)
-                                        ImGui.SmallButton(ctx, tag.name)
-                                        ImGui.PopStyleColor(ctx)
-                                        ImGui.SameLine(ctx)
+                                    if #result.tags > 0 then
+                                        app.gui:pushColors(app.gui.st.col.search.thirdResult)
+                                        local text = '|'
+                                        for t = 1, #(result.tags or {}) do
+                                            local tag = tagInfo[result.tags[t]]
+                                            text = text .. tag.name .. '|'
+                                        end
+                                        ImGui.Text(ctx, text)
+                                        app.gui:popColors(app.gui.st.col.search.thirdResult)
                                     end
                                     ImGui.PopID(ctx)
                                 end
