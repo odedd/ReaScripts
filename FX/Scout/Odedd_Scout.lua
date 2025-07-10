@@ -362,7 +362,7 @@ if OD_PrereqsOK({
             local x, y = ImGui.GetCursorPos(ctx)
             ImGui.SetCursorPosY(ctx, y + paddingY + (textH - iconH) / 2)
             -- ImGui.AlignTextToFramePadding(ctx)
-            if ImGui.InvisibleButton(ctx, 'x##' .. id .. 'All', iconW, iconH) then
+            if ImGui.InvisibleButton(ctx, 'x##' .. id, iconW, iconH) then
                 clicked = true
             end
             local col = highlighted and app.gui.st.basecolors.textDark or
@@ -482,7 +482,8 @@ if OD_PrereqsOK({
                         ImGui.SetCursorPosY(ctx, y + (filterH + spacingY) * (lines - 1))
                         local x1, y1 = ImGui.GetCursorScreenPos(ctx)
                         local x2, y2 = x1 + filterW, y1 + filterH
-                        if ImGui.BeginChild(ctx, 'activeFilterNode' .. filter.key, filterW, filterH, nil, ImGui.WindowFlags_NoScrollbar) then
+                        ImGui.PushID(ctx, 'activeFilter' .. filter.key)
+                        if ImGui.BeginChild(ctx, 'node', filterW, filterH, nil, ImGui.WindowFlags_NoScrollbar) then
                             ImGui.AlignTextToFramePadding(ctx)
                             ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), x1, y1, x2, y2,
                                 ImGui.GetColor(ctx, ImGui.Col_Button),
@@ -491,13 +492,13 @@ if OD_PrereqsOK({
                             if filter.type == 'filter' then
                                 ImGui.TextColored(ctx, app.gui.st.basecolors.textDark, filter.key)
                             elseif filter.type == 'tag' then
-                                app.widgets.tinyIcon(filter.key, filter.value and ICONS.PLUS or ICONS.MINUS, true, true)
+                                app.widgets.tinyIcon('tagType', filter.value and ICONS.PLUS or ICONS.MINUS, true, true)
                             end
                             ImGui.SameLine(ctx)
                             ImGui.AlignTextToFramePadding(ctx)
                             ImGui.Text(ctx, filter.itemName)
                             ImGui.SameLine(ctx)
-                            if app.widgets.tinyIcon(filter.key, ICONS.CLOSE) then
+                            if app.widgets.tinyIcon('removeFilter', ICONS.CLOSE) then
                                 if filter.type == 'filter' then
                                     app.filterResults(filter.allQuery)
                                 elseif filter.type == 'tag' then
@@ -508,6 +509,7 @@ if OD_PrereqsOK({
                             ImGui.Dummy(ctx, 0, 0)
                             ImGui.EndChild(ctx)
                         end
+                        ImGui.PopID(ctx)
                     end
                     ImGui.EndChild(ctx)
                 end
@@ -922,6 +924,7 @@ if OD_PrereqsOK({
                             end
                             tagW = tagW + iconsWidth
                         end
+                        ImGui.PushID(ctx, tag.id)
                         ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), globalX, globalY, globalX + tagW,
                             globalY + tagH, col, 100)
                         if tag.hasDescendants then
@@ -951,7 +954,7 @@ if OD_PrereqsOK({
                                     app.gui.st.col.tag[ImGui.Col_Text]
                                 )
                             end
-                            if ImGui.InvisibleButton(ctx, tag.id, triangleW + paddingX, tagH) then
+                            if ImGui.InvisibleButton(ctx, 'showHideDescendants', triangleW + paddingX, tagH) then
                                 tag:toggleOpen(not tag.open)
                             end
                             ImGui.SameLine(ctx)
@@ -959,31 +962,33 @@ if OD_PrereqsOK({
                         ImGui.SetCursorPos(ctx, x + paddingX + triangleW, y + paddingY)
                         ImGui.Text(ctx, tag.name)
                         if hovering or tagStatus ~= nil then
+                            ImGui.PushID(ctx, 'tagEditButtons')
                             if tagStatus ~= nil then
                                 ImGui.SameLine(ctx)
                                 ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                                if app.widgets.tinyIcon('removeTag' .. tag.id, ICONS.CLOSE) then
+                                if app.widgets.tinyIcon('removeTag', ICONS.CLOSE) then
                                     app.filterResults({ removeTags = { tag.id } })
                                 end
                             end
                             if hovering then
                                 ImGui.SameLine(ctx)
                                 ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                                if app.widgets.tinyIcon('addPositiveTag' .. tag.id, ICONS.PLUS, tagStatus,tagStatus) then
+                                if app.widgets.tinyIcon('addPositiveTag', ICONS.PLUS, tagStatus, tagStatus) then
                                     app.filterResults({ addTags = { [tag.id] = true } })
                                 end
                                 ImGui.SameLine(ctx)
                                 ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                                if app.widgets.tinyIcon('addNegative' .. tag.id, ICONS.MINUS, tagStatus==false,tagStatus==false) then
+                                if app.widgets.tinyIcon('addNegative', ICONS.MINUS, tagStatus == false, tagStatus == false) then
                                     app.filterResults({ addTags = { [tag.id] = false } })
                                 end
                             end
+                            ImGui.PopID(ctx)
                         end
                         app.gui:popColors(app.gui.st.col.tag)
                         app.gui:popStyles(app.gui.st.vars.tag)
 
                         ImGui.SetCursorScreenPos(ctx, globalX, globalY)
-                        ImGui.InvisibleButton(ctx, 'drag' .. tag.id, tagW, tagH)
+                        ImGui.InvisibleButton(ctx, 'drag', tagW, tagH)
                         if ImGui.BeginDragDropSource(ctx) then
                             ImGui.SetDragDropPayload(ctx, 'TAG', tostring(tag.id))
                             -- ImGui.Text(ctx, tag.name)
@@ -1015,6 +1020,7 @@ if OD_PrereqsOK({
                         end
                         -- end
                         if indent then ImGui.Unindent(ctx) end
+                        ImGui.PopID(ctx)
                     end
 
                     app.gui:pushStyles(app.gui.st.vars.tagList)
@@ -1044,7 +1050,8 @@ if OD_PrereqsOK({
                 end
                 local function drawFilterMenu(menu, menuId)
                     for k, menuInfo in OD_PairsByOrder(menu) do
-                        if ImGui.BeginMenu(ctx, k .. '##filterMenu' .. menuId) then
+                        ImGui.PushID(ctx, menuId .. '/' .. k)
+                        if ImGui.BeginMenu(ctx, k .. '##filterMenu') then
                             if menuInfo.allQuery then
                                 local selected = true
                                 for k, v in pairs(menuInfo.allQuery) do
@@ -1053,7 +1060,7 @@ if OD_PrereqsOK({
                                     end
                                 end
 
-                                if ImGui.MenuItem(ctx, 'All' .. "##filterMenu" .. menuId .. "-All", nil, selected) then
+                                if ImGui.MenuItem(ctx, 'All' .. "##filterMenu-All", nil, selected) then
                                     app.filterResults(menuInfo.allQuery)
                                 end
                                 ImGui.Separator(ctx)
@@ -1076,6 +1083,7 @@ if OD_PrereqsOK({
                             end
                             ImGui.EndMenu(ctx)
                         end
+                        ImGui.PopID(ctx)
                     end
                 end
 
@@ -1386,7 +1394,11 @@ if OD_PrereqsOK({
 
     function app.drawMainWindow()
         local ctx = app.gui.ctx
-
+        if app.logger.level == app.logger.LOG_LEVEL.DEBUG then
+            ImGui.ShowMetricsWindow(ctx)
+            ImGui.ShowDebugLogWindow(ctx)
+            ImGui.ShowIDStackToolWindow(ctx)
+        end
         if app.refreshWindowSizeOnNextFrame then
             app.refreshWindowSize()
         end
