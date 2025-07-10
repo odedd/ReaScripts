@@ -420,41 +420,79 @@ if OD_PrereqsOK({
             local x, y = ImGui.GetCursorPos(ctx)
             local lines = 1
             local height = 0
-            local activeFilters = {}
-            for i, filterKey in ipairs(FILTER_CAPSULE_ORDER) do
+            local activeFilters = app.temp.activeFilters ~= nil and app.temp.activeFilters or {}
+
+            local currentActiveKeys = {}
+            -- local numFilters = 0
+            for i, filterKey in ipairs(FILTER_CAPSULE_TYPES) do
                 local filterItem = nil
                 local selectedItemName
                 if filterKey ~= T.FILTER_MENU.TAGS then
                     for itemName, item in pairs(FILTER_MENU[filterKey].items) do
                         for queryKey, queryValue in pairs(item.query) do
                             if app.temp.filter[queryKey] == queryValue then
-                                local filter = {
-                                    key = filterKey,
-                                    type = 'filter',
-                                    item = item,
-                                    itemName = itemName,
-                                    allQuery = FILTER_MENU[filterKey].allQuery
-                                }
-                                table.insert(activeFilters, filter)
+                                local key = filterKey
+                                table.insert(currentActiveKeys, key)
+                                activeFilters[key] = activeFilters[key] or {}
+                                activeFilters[key].key = key
+                                activeFilters[key].type = 'filter'
+                                activeFilters[key].item = item
+                                activeFilters[key].itemName = itemName
+                                activeFilters[key].allQuery = FILTER_MENU[filterKey].allQuery
+                                if activeFilters[key].order == nil then
+                                    activeFilters[key].order = OD_Tablelength(
+                                        activeFilters)
+                                end
                                 break
                             end
                         end
                     end
                 else
                     for tagKey, tagValue in pairs(app.temp.filter.tags) do
-                        local filter = {
-                            key = filterKey .. tagKey,
-                            value = tagValue,
-                            type = 'tag',
-                            item = app.db.tags[tagKey],
-                            itemName = app.db.tags[tagKey].name
-                        }
-                        table.insert(activeFilters, filter)
+                        local key = filterKey .. tagKey
+                        table.insert(currentActiveKeys, key)
+                        activeFilters[key] = activeFilters[key] or {}
+                        activeFilters[key].key = key
+                        activeFilters[key].type = 'tag'
+                        activeFilters[key].value = tagValue
+                        activeFilters[key].item = app.db.tags[tagKey]
+                        activeFilters[key].itemName = app.db.tags[tagKey].name
+
+                        if activeFilters[key].order == nil then
+                            activeFilters[key].order = OD_Tablelength(
+                                activeFilters)
+                        end
                     end
                 end
             end
+            local removed = false
+            -- Remove inactive filters from activeFilters
+            for key, filter in pairs(activeFilters) do
+                local found = false
+                for _, activeKey in ipairs(currentActiveKeys) do
+                    if key == activeKey then
+                        found = true
+                        break
+                    end
+                end
+                if not found then
+                    removed = true
+                    activeFilters[key] = nil
+                end
+            end
+            if removed then
+                -- Renumber activeFilters order using OD_PairsByOrder
+                local order = 1
+                for key, filter in OD_PairsByOrder(activeFilters) do
+                    filter.order = order
+                    order = order + 1
+                end
+            end
+
+            app.temp.activeFilters = activeFilters
+
             ImGui.PushFont(ctx, app.gui.st.fonts.small)
-            if #activeFilters > 0 then
+            if OD_Tablelength(activeFilters) > 0 then
                 app.gui:pushStyles(app.gui.st.vars.topBarActiveFiltersArea)
                 app.gui:pushColors(app.gui.st.col.topBarActiveFiltersArea)
                 ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
@@ -462,7 +500,9 @@ if OD_PrereqsOK({
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
                 local filterH = ImGui.GetTextLineHeight(ctx) + paddingY * 2
                 if ImGui.BeginChild(ctx, 'activeFilterArea', nil, nil, ImGui.ChildFlags_AutoResizeY) then
-                    for i, filter in ipairs(activeFilters) do
+                    local i = 0
+                    for filterKey, filter in OD_PairsByOrder(activeFilters) do
+                        i = i + 1
                         local text = filter.key .. ' ' .. filter.itemName
                         local textW, textH = ImGui.CalcTextSize(ctx, text)
                         if filter.type == 'tag' then
