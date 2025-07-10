@@ -788,15 +788,6 @@ if OD_PrereqsOK({
                     app:setHint('main', '')
                 end
 
-
-                -- Keyboard navigation
-
-                if selectedResult and app.page == APP_PAGE.SEARCH_FX then
-                    local tracks = app.db:getSelectedTracks()
-                    for i = 1, #tracks do
-                        tracks[i]:addInsert(selectedResult.load)
-                    end
-                end
                 ImGui.EndChild(ctx)
             end
         end
@@ -1098,7 +1089,14 @@ if OD_PrereqsOK({
                 ImGui.EndChild(ctx)
             end
         end
-
+        local handleSelectedResult = function()
+            if selectedResult and app.page == APP_PAGE.SEARCH_FX then
+                local tracks = app.db:getSelectedTracks()
+                for i = 1, #tracks do
+                    tracks[i]:addInsert(selectedResult.load)
+                end
+            end
+        end
         if ImGui.BeginChild(ctx, 'rightArea', w - tagAreaW - spacingX) then
             drawActiveFilters()
             drawResultsTable()
@@ -1108,6 +1106,7 @@ if OD_PrereqsOK({
         drawTagSeparator()
         ImGui.SameLine(ctx)
         drawFilterArea()
+        handleSelectedResult()
 
         app.gui:popColors(app.gui.st.col.searchWindow)
         app.gui:popStyles(app.gui.st.vars.searchWindow)
