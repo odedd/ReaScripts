@@ -144,6 +144,90 @@ if OD_PrereqsOK({
         return text, false
     end
 
+    app.widgets = {
+        calcTinyIconSize = function(icon)
+            local ctx = app.gui.ctx
+            app.temp.iconSizes = app.temp.iconSizes or {}
+            if app.temp.iconSizes[icon] then
+                return table.unpack(app.temp.iconSizes[icon])
+            else
+                ImGui.PushFont(ctx, app.gui.st.fonts.icons_tiny)
+                local iconW, iconH = ImGui.CalcTextSize(ctx, icon)
+                app.temp.iconSizes[icon] = table.pack(iconW, iconH)
+                ImGui.PopFont(ctx)
+                return table.unpack(app.temp.iconSizes[icon])
+            end
+        end,
+
+        tinyIcon = function(id, icon, highlighted, disabled)
+            local ctx = app.gui.ctx
+            local clicked = false
+            local textW, textH = ImGui.CalcTextSize(ctx, 'I')
+            local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
+            local iconW, iconH = app.widgets.calcTinyIconSize(icon) --ImGui.CalcTextSize(ctx, icon)
+
+            local x, y = ImGui.GetCursorPos(ctx)
+            ImGui.SetCursorPosY(ctx, y + paddingY + (textH - iconH) / 2)
+            -- ImGui.AlignTextToFramePadding(ctx)
+            if ImGui.InvisibleButton(ctx, 'x##' .. id, iconW, iconH) then
+                clicked = true
+            end
+            local col = highlighted and app.gui.st.basecolors.textDark or
+                (disabled and app.gui.st.basecolors.textDark or app.gui.st.col.activeFilterButton[ImGui.Col_Button])
+            if not disabled and ImGui.IsItemHovered(ctx) then
+                ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                if ImGui.IsItemActive(ctx) then
+                    col = app.gui.st.col.activeFilterButton[ImGui.Col_ButtonActive]
+                else
+                    col = app.gui.st.col.activeFilterButton[ImGui.Col_ButtonHovered]
+                end
+            end
+            -- ImGui.SetCursorPosY(ctx, y + paddingY + (textH - closeButtonSizeH) / 2)
+            ImGui.SetCursorPos(ctx, x, y + paddingY + (textH - iconH) / 2)
+            ImGui.PushFont(ctx, app.gui.st.fonts.icons_tiny)
+            ImGui.TextColored(ctx, col, icon)
+            ImGui.PopFont(ctx)
+            ImGui.SetCursorPos(ctx, x + iconW, y)
+            ImGui.Dummy(ctx, 0, 0)
+            if not disabled then return clicked end
+        end
+    }
+    app.selection = {
+        items = {},
+        empty = function(self)
+            self.items = {};
+        end,
+        add = function(self, item)
+            if not self:has(item) then
+                table.insert(self.items, item)
+            end
+        end,
+        remove = function(self, item)
+            OD_RemoveValue(self.items, item)
+        end,
+        has = function(self, item)
+            return OD_HasValue(self.items, item)
+        end,
+        selectOnly = function(self, item)
+            self:empty();
+            table.insert(self.items, item)
+        end,
+        toggle = function(self, item)
+            if self:has(item) then
+                self:remove(item)
+            else
+                table.insert(self.items, item)
+            end
+        end,
+        results = function(self, searchResults)
+            local results = {}
+            for _, resultIndex in pairs(self.items) do
+                table.insert(results, searchResults[resultIndex])
+            end
+            return results
+        end
+    }
+
     ---------------------------------------
     -- UI ---------------------------------
     ---------------------------------------
@@ -334,58 +418,10 @@ if OD_PrereqsOK({
         end
 
         app.temp.highlightedResult = (#app.temp.searchResults > 0) and 1 or nil
+        app.selection:empty()
+        if #app.temp.searchResults > 0 then app.selection:add(1) end
         app.temp.lastInvisibleGroup = nil
     end
-
-    app.widgets = {
-        calcTinyIconSize = function(icon)
-            local ctx = app.gui.ctx
-            app.temp.iconSizes = app.temp.iconSizes or {}
-            if app.temp.iconSizes[icon] then
-                return table.unpack(app.temp.iconSizes[icon])
-            else
-                ImGui.PushFont(ctx, app.gui.st.fonts.icons_tiny)
-                local iconW, iconH = ImGui.CalcTextSize(ctx, icon)
-                app.temp.iconSizes[icon] = table.pack(iconW, iconH)
-                ImGui.PopFont(ctx)
-                return table.unpack(app.temp.iconSizes[icon])
-            end
-        end,
-
-        tinyIcon = function(id, icon, highlighted, disabled)
-            local ctx = app.gui.ctx
-            local clicked = false
-            local textW, textH = ImGui.CalcTextSize(ctx, 'I')
-            local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
-            local iconW, iconH = app.widgets.calcTinyIconSize(icon) --ImGui.CalcTextSize(ctx, icon)
-
-            local x, y = ImGui.GetCursorPos(ctx)
-            ImGui.SetCursorPosY(ctx, y + paddingY + (textH - iconH) / 2)
-            -- ImGui.AlignTextToFramePadding(ctx)
-            if ImGui.InvisibleButton(ctx, 'x##' .. id, iconW, iconH) then
-                clicked = true
-            end
-            local col = highlighted and app.gui.st.basecolors.textDark or
-                (disabled and app.gui.st.basecolors.textDark or app.gui.st.col.activeFilterButton[ImGui.Col_Button])
-            if not disabled and ImGui.IsItemHovered(ctx) then
-                ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
-                if ImGui.IsItemActive(ctx) then
-                    col = app.gui.st.col.activeFilterButton[ImGui.Col_ButtonActive]
-                else
-                    col = app.gui.st.col.activeFilterButton[ImGui.Col_ButtonHovered]
-                end
-            end
-            -- ImGui.SetCursorPosY(ctx, y + paddingY + (textH - closeButtonSizeH) / 2)
-            ImGui.SetCursorPos(ctx, x, y + paddingY + (textH - iconH) / 2)
-            ImGui.PushFont(ctx, app.gui.st.fonts.icons_tiny)
-            ImGui.TextColored(ctx, col, icon)
-            ImGui.PopFont(ctx)
-            ImGui.SetCursorPos(ctx, x + iconW, y)
-            ImGui.Dummy(ctx, 0, 0)
-            if not disabled then return clicked end
-        end
-    }
-
 
     function app.drawSearch()
         local ctx = app.gui.ctx
@@ -564,7 +600,16 @@ if OD_PrereqsOK({
             local searchResultsH = select(2, ImGui.GetContentRegionAvail(ctx)) -
                 fontLineHeight                                                   -- Height available for search results
             local maxSearchResults = math.floor(searchResultsH / fontLineHeight) -- Max results in available space
-
+            local handleSelectedResults = function()
+                -- if app.page == APP_PAGE.SEARCH_FX then
+                local tracks = app.db:getSelectedTracks()
+                for i = 1, #tracks do
+                    for _, result in pairs(app.selection:results(searchResults)) do
+                        tracks[i]:addInsert(result.load)
+                    end
+                end
+                -- end
+            end
             local handleKeyboardEvents = function()
                 if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
                     -- handle escape
@@ -573,6 +618,11 @@ if OD_PrereqsOK({
                     hintContext = 'Enter'
                     if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) and app.temp.highlightedResult < #searchResults then
                         app.temp.highlightedResult = app.temp.highlightedResult + 1
+                        if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) or OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
+                            app.selection:add(app.temp.highlightedResult)
+                        else
+                            app.selection:selectOnly(app.temp.highlightedResult)
+                        end
                         app.temp.checkScrollDown = true
                     elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageDown) then
                         local newIdx = math.min(app.temp.highlightedResult + maxSearchResults - 1, #searchResults)
@@ -580,17 +630,24 @@ if OD_PrereqsOK({
                             app.temp.highlightedResult = newIdx
                             app.temp.checkScrollDown = true
                         end
+                        app.selection:selectOnly(app.temp.highlightedResult)
                     elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageUp) then
                         local newIdx = math.max(app.temp.highlightedResult - maxSearchResults - 3, 1)
                         if app.temp.highlightedResult ~= newIdx then
                             app.temp.highlightedResult = newIdx
                             app.temp.checkScrollUp = true
                         end
+                        app.selection:selectOnly(app.temp.highlightedResult)
                     elseif ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) and app.temp.highlightedResult > 1 then
                         app.temp.highlightedResult = app.temp.highlightedResult - 1
+                        if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) or OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
+                            app.selection:add(app.temp.highlightedResult)
+                        else
+                            app.selection:selectOnly(app.temp.highlightedResult)
+                        end
                         app.temp.checkScrollUp = true
                     elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
-                        selectedResult = searchResults[app.temp.highlightedResult]
+                        handleSelectedResults()
                     elseif app.isShortcutPressed('markFavorite') and app.temp.highlightedResult then
                         local result = searchResults[app.temp.highlightedResult]
                         local fav = result:toggleFavorite()
@@ -599,6 +656,8 @@ if OD_PrereqsOK({
                             for i = 1, #app.temp.searchResults do
                                 if app.temp.searchResults[i] == result then
                                     app.temp.highlightedResult = i
+                                    app.selection:selectOnly(app.temp.highlightedResult)
+                                    app.temp.checkScrollUp = true
                                     break
                                 end
                             end
@@ -661,7 +720,7 @@ if OD_PrereqsOK({
                 end
             end
 
-            if ImGui.BeginChild(ctx, 'searchArea', w - tagAreaW - spacingX) then
+            if ImGui.BeginChild(ctx, 'resultsArea', w - tagAreaW - spacingX) then
                 if app.pageSwitched then
                     app.filterResults({ text = '' })
                 end
@@ -726,8 +785,14 @@ if OD_PrereqsOK({
                                     ImGui.PushID(ctx, 'result' .. row.index)
                                     ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
                                     ImGui.TableSetColumnIndex(ctx, 0)
-                                    if ImGui.Selectable(ctx, '', row.index == app.temp.highlightedResult, selectableFlags, 0, 0) then
-                                        selectedResult = result
+                                    -- local highlight = (row.index == app.temp.highlightedResult) or
+                                    --     app.selection:has(row.index)
+                                    if ImGui.Selectable(ctx, '', app.selection:has(row.index), selectableFlags, 0, 0) then
+                                        if OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
+                                            app.selection:toggle(row.index)
+                                        else
+                                            app.selection:selectOnly(row.index)
+                                        end
                                     end
                                     if ImGui.IsItemHovered(ctx) then
                                         hintResult = result
@@ -1129,14 +1194,7 @@ if OD_PrereqsOK({
                 ImGui.EndChild(ctx)
             end
         end
-        local handleSelectedResult = function()
-            if selectedResult and app.page == APP_PAGE.SEARCH_FX then
-                local tracks = app.db:getSelectedTracks()
-                for i = 1, #tracks do
-                    tracks[i]:addInsert(selectedResult.load)
-                end
-            end
-        end
+
         if ImGui.BeginChild(ctx, 'rightArea', w - tagAreaW - spacingX) then
             drawActiveFilters()
             drawResultsTable()
@@ -1146,7 +1204,7 @@ if OD_PrereqsOK({
         drawTagSeparator()
         ImGui.SameLine(ctx)
         drawFilterArea()
-        handleSelectedResult()
+        -- handleSelectedResult()
 
         app.gui:popColors(app.gui.st.col.searchWindow)
         app.gui:popStyles(app.gui.st.vars.searchWindow)
