@@ -633,14 +633,14 @@ if OD_PrereqsOK({
                         end
                         app.temp.checkScrollDown = true
                     elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageDown) then
-                        local newIdx = math.min(app.temp.highlightedResult + maxSearchResults - 1, #searchResults)
+                        local newIdx = math.min(app.temp.highlightedResult + maxSearchResults, #searchResults)
                         if app.temp.highlightedResult ~= newIdx then
                             app.temp.highlightedResult = newIdx
                             app.temp.checkScrollDown = true
                         end
                         app.selection:selectOnly(app.temp.highlightedResult)
                     elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageUp) then
-                        local newIdx = math.max(app.temp.highlightedResult - maxSearchResults - 3, 1)
+                        local newIdx = math.max(app.temp.highlightedResult - maxSearchResults, 1)
                         if app.temp.highlightedResult ~= newIdx then
                             app.temp.highlightedResult = newIdx
                             app.temp.checkScrollUp = true
