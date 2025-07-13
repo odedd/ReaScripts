@@ -220,6 +220,7 @@ if OD_PrereqsOK({
     }
     app.selection = {
         items = {},
+        count = function(self) return #self.items end,
         empty = function(self)
             self.items = {};
         end,
@@ -253,10 +254,10 @@ if OD_PrereqsOK({
                 self:add(i)
             end
         end,
-        results = function(self, searchResults)
+        results = function(self)
             local results = {}
             for _, resultIndex in pairs(self.items) do
-                table.insert(results, searchResults[resultIndex])
+                table.insert(results, app.temp.searchResults[resultIndex])
             end
             return results
         end
@@ -475,12 +476,14 @@ if OD_PrereqsOK({
 
         local tagInfo = app.tags.current.tagInfo
         local searchResults = app.temp.searchResults or {} -- Current search results
-        local selectedResult, hintResult, hintContext = nil, nil, nil
+        local hintResult, hintContext = nil, nil, nil
         local flatRows = {}
 
-        local tableFlags = ImGui.TableFlags_ScrollY                                                           -- Table flags for vertical scrolling
+        local tableFlags = ImGui
+            .TableFlags_ScrollY -- Table flags for vertical scrolling
         local selectableFlags = ImGui.SelectableFlags_SpanAllColumns |
-        ImGui.SelectableFlags_AllowDoubleClick                                                                -- Selectable flags for ImGui
+            ImGui
+            .SelectableFlags_AllowDoubleClick -- Selectable flags for ImGui
 
         if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG then
             ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),
@@ -636,14 +639,12 @@ if OD_PrereqsOK({
                 fontLineHeight                                                   -- Height available for search results
             local maxSearchResults = math.floor(searchResultsH / fontLineHeight) -- Max results in available space
             local handleSelectedResults = function()
-                -- if app.page == APP_PAGE.SEARCH_FX then
                 local tracks = app.db:getSelectedTracks()
                 for i = 1, #tracks do
-                    for _, result in pairs(app.selection:results(searchResults)) do
+                    for _, result in pairs(app.selection:results()) do
                         tracks[i]:addInsert(result.load)
                     end
                 end
-                -- end
             end
             local handleKeyboardEvents = function()
                 if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
@@ -838,6 +839,28 @@ if OD_PrereqsOK({
                                             end
                                         end
                                     end
+                                    if ImGui.BeginDragDropSource(ctx) then
+                                        if not ImGui.GetDragDropPayload(ctx) and not app.selection:has(row.index) then
+                                            app.selection:selectOnly(row.index)
+                                            app.temp.highlightedResult = row.index
+                                        end
+                                        local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
+                                        ImGui.SetDragDropPayload(ctx, 'ASSET', remove and 'remove' or 'add')
+                                        if app.temp.dragDropTagTargetName then
+                                            ImGui.Text(ctx,
+                                                (remove and 'Remove' or 'Add') ..
+                                                ' tag \'' .. app.temp.dragDropTagTargetName .. '\' ' .. (remove and 'from:' or 'to:'))
+                                            ImGui.Separator(ctx)
+                                        end
+                                        for _, i in pairs(app.selection.items) do
+                                            ImGui.Text(ctx, app.temp.searchResults[i].searchText[1].text)
+                                        end
+                                        if app.temp.dragDropTagTargetName and not remove then
+                                            ImGui.Separator(ctx)
+                                            ImGui.Text(ctx, 'Hold Alt to remove tag')
+                                        end
+                                        ImGui.EndDragDropSource(ctx)
+                                    end
                                     if ImGui.IsItemHovered(ctx) then
                                         hintResult = result
                                         hintContext = 'Click'
@@ -975,7 +998,11 @@ if OD_PrereqsOK({
                         local scrX, scrY = ImGui.GetCursorScreenPos(ctx)
                         local offsetY = offsetY or 0
                         local dragTargetLineOffsetY = dragTargetLineOffsetY or 0
-                        local w, h = ImGui.GetContentRegionAvail(ctx)  -- * app.settings.current.uiScale
+                        local w, h = ImGui.GetContentRegionAvail(ctx) -- * app.settings.current.uiScale
+                        local triangleW = tag.hasDescendants and
+                            app.gui.st.vars.tagList[ImGui.StyleVar_IndentSpacing]
+                            [1] or 0
+                        local tagW = ImGui.CalcTextSize(ctx, tag.name) + paddingX * 4 + triangleW
                         ImGui.SetCursorPosY(ctx, y - height - offsetY) --'#dropTargetBefore'+tag.id,w, y-spacing)
                         if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG then
                             ImGui.PushStyleVar(ctx, ImGui.StyleVar_FrameBorderSize, 2)
@@ -993,15 +1020,19 @@ if OD_PrereqsOK({
                         ImGui.SetCursorPos(ctx, x, y) --'#dropTargetBefore'+tag.id,w, y-spacing)
 
                         if ImGui.BeginDragDropTarget(ctx) then
-                            local rv, payload
-                            rv, payload = ImGui.AcceptDragDropPayload(ctx, 'TAG', nil,
+                            app.temp.dragDropTagTargetName = nil
+                            local tagDropped, tagPayload
+                            local assetDropped, assetPayload
+                            tagDropped, tagPayload = ImGui.AcceptDragDropPayload(ctx, 'TAG', nil,
                                 ImGui.DragDropFlags_AcceptBeforeDelivery | ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
-                            if rv then
-                                local payloadTag = app.db.tags[tonumber(payload)]
-                                -- ImGui.SetCursorPos(ctx, x, y)
+                            assetDropped, assetPayload = ImGui.AcceptDragDropPayload(ctx, 'ASSET', nil,
+                                ImGui.DragDropFlags_AcceptBeforeDelivery | ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
+                            if tagDropped then
+                                local payloadTag = app.db.tags[tonumber(tagPayload)]
+
                                 if position == 'inside' then
                                     ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX, scrY - height - offsetY,
-                                        scrX + w, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
+                                        scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
                                         app.gui.st.basecolors.mainBright,
                                         app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
                                         nil, 1.5 * app.settings.current.uiScale)
@@ -1015,13 +1046,34 @@ if OD_PrereqsOK({
                                     payloadTag:moveTo(tag, position)
                                 end
                             end
+                            if assetDropped then
+                                app.temp.dragDropTagTargetName = tag.name
+                                if position == 'inside' then
+                                    ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX, scrY - height - offsetY,
+                                        scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
+                                        app.gui.st.basecolors.mainBright,
+                                        app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
+                                        nil, 1.5 * app.settings.current.uiScale)
+                                end
+                                if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
+                                    local remove = (assetPayload == 'remove')
+                                    for i, result in ipairs(app.selection:results()) do
+                                        if remove then
+                                            result:removeTag(tag, false)
+                                        else
+                                            result:addTag(tag, false)
+                                        end
+                                    end
+                                    app.tags:save()
+                                end
+                            end
                             ImGui.EndDragDropTarget(ctx)
                         end
                     end
                     function drawTagNode(tag, indent, parentsDragged)
                         if indent then ImGui.Indent(ctx) end
                         local dragged = parentsDragged or
-                            select(3, ImGui.GetDragDropPayload(ctx, 'TAG')) == tostring(tag.id)
+                            select(3, ImGui.GetDragDropPayload(ctx)) == tostring(tag.id)
                         if not dragged then drawDropTarget(tag, spacingY, 'before', 0, 0) end
                         app.gui:pushColors(app.gui.st.col.tag)
                         app.gui:pushStyles(app.gui.st.vars.tag)
@@ -1039,7 +1091,7 @@ if OD_PrereqsOK({
                         local col = app.gui.st.col.tag[ImGui.Col_FrameBg]
                         local tagStatus = app.temp.filter.tags[tag.id]
                         local hovering = false
-                        if not dragged and ImGui.IsMouseHoveringRect(ctx, globalX, globalY, globalX + w, globalY + tagH) then
+                        if not dragged and not ImGui.GetDragDropPayload(ctx) and ImGui.IsMouseHoveringRect(ctx, globalX, globalY, globalX + w, globalY + tagH) then
                             --- TODO: show edit button
                             hovering = true
 

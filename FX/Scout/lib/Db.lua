@@ -895,6 +895,37 @@ DB.assembleAssets = function(self)
         self.db:sortAssets()
         return self.group == FAVORITE_GROUP
     end
+
+    local addTag = function(self, tag, saveToDB)
+        local save
+        if save == nil then
+            save = true
+        else
+            save = saveToDB
+        end
+        if not OD_HasValue(self.tags, tag.id) then
+            table.insert(self.tags, tag.id)
+            self.db.app.tags.current.taggedAssets[self.id] = self.db.app.tags.current.taggedAssets[self.id] or {}
+            table.insert(self.db.app.tags.current.taggedAssets[self.id], tag.id)
+            if save then self.db.app.tags:save() end
+        end
+    end
+
+    local removeTag = function(self, tag, saveToDB)
+        local save
+        if save == nil then
+            save = true
+        else
+            save = saveToDB
+        end
+        if OD_HasValue(self.tags, tag.id) then
+            OD_RemoveValue(self.tags, tag.id)
+            OD_RemoveValue(self.db.app.tags.current.taggedAssets[self.id], tag.id)
+            if not next(self.db.app.tags.current.taggedAssets[self.id]) then self.db.app.tags.current.taggedAssets[self.id] = nil end
+            if save then self.db.app.tags:save() end
+        end
+    end
+
     local count = 0
     for _, chain in ipairs(self.fxChains) do
         table.insert(self.assets, {
@@ -936,7 +967,7 @@ DB.assembleAssets = function(self)
         table.insert(self.assets, {
             db = self,
             type = ASSETS.ACTION,
-            searchText = { { text = action.name}, { text = action.prefix or ''  }},
+            searchText = { { text = action.name }, { text = action.prefix or '' } },
             load = action.id,
             -- group = track.hasReceives and RECEIVES_GROUP or TRACKS_GROUP,
             group = ACTIONS_GROUP,
@@ -951,7 +982,7 @@ DB.assembleAssets = function(self)
                 db = self,
                 type = ASSETS.PLUGIN,
                 -- searchText = { { text = plugin.name }, { text = plugin.vendor or '' }, { text = plugin.fx_type, hide = true } },
-                searchText = { { text = plugin.name }, { text = plugin.vendor or '' }},
+                searchText = { { text = plugin.name }, { text = plugin.vendor or '' } },
                 load = plugin.ident,
                 -- categoryPluginID = categoryPluginID,
                 group = plugin.group,
@@ -997,6 +1028,8 @@ DB.assembleAssets = function(self)
     for _, asset in ipairs(self.assets) do
         asset.id = asset.type .. ' ' .. asset.load
         asset.tags = self.app.tags.current.taggedAssets[asset.id] or {}
+        asset.addTag = addTag
+        asset.removeTag = removeTag
     end
 
     self:markFavorites()
