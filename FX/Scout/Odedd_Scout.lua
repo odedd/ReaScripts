@@ -190,6 +190,32 @@ if OD_PrereqsOK({
             ImGui.SetCursorPos(ctx, x + iconW, y)
             ImGui.Dummy(ctx, 0, 0)
             if not disabled then return clicked end
+        end,
+        iconButton = function(icon, colClass, font)
+            local ctx = app.gui.ctx
+            local font = font or app.gui.st.fonts.icons_large
+            ImGui.PushFont(ctx, font)
+            local x, y = ImGui.GetCursorPos(ctx)
+            local w = select(1, ImGui.CalcTextSize(ctx, ICONS[(icon):upper()])) +
+                ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding) * 2
+            local clicked
+            if ImGui.InvisibleButton(ctx, '##menuBtn' .. icon, w, ImGui.GetTextLineHeightWithSpacing(ctx)) then
+                clicked = true
+            end
+            if ImGui.IsItemHovered(ctx) and not ImGui.IsItemActive(ctx) then
+                app.gui:pushColors(colClass.hovered)
+            elseif ImGui.IsItemActive(ctx) then
+                app.gui:pushColors(colClass.active)
+            else
+                app.gui:pushColors(colClass.default)
+            end
+            ImGui.SetCursorPos(ctx, x + ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding),
+                y + select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding)))
+            ImGui.Text(ctx, tostring(ICONS[icon:upper()]))
+            app.gui:popColors(colClass.default)
+            ImGui.PopFont(ctx)
+            ImGui.SetCursorPos(ctx, x + w, y)
+            return clicked
         end
     }
     app.selection = {
@@ -452,8 +478,9 @@ if OD_PrereqsOK({
         local selectedResult, hintResult, hintContext = nil, nil, nil
         local flatRows = {}
 
-        local tableFlags = ImGui.TableFlags_ScrollY                  -- Table flags for vertical scrolling
-        local selectableFlags = ImGui.SelectableFlags_SpanAllColumns | ImGui.SelectableFlags_AllowDoubleClick -- Selectable flags for ImGui
+        local tableFlags = ImGui.TableFlags_ScrollY                                                           -- Table flags for vertical scrolling
+        local selectableFlags = ImGui.SelectableFlags_SpanAllColumns |
+        ImGui.SelectableFlags_AllowDoubleClick                                                                -- Selectable flags for ImGui
 
         if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG then
             ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),
@@ -1227,32 +1254,6 @@ if OD_PrereqsOK({
         app.gui:popStyles(app.gui.st.vars.searchWindow)
     end
 
-    function app.iconButton(ctx, icon, colClass, font)
-        local font = font or app.gui.st.fonts.icons_large
-        ImGui.PushFont(ctx, font)
-        local x, y = ImGui.GetCursorPos(ctx)
-        local w = select(1, ImGui.CalcTextSize(ctx, ICONS[(icon):upper()])) +
-            ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding) * 2
-        local clicked
-        if ImGui.InvisibleButton(ctx, '##menuBtn' .. icon, w, ImGui.GetTextLineHeightWithSpacing(ctx)) then
-            clicked = true
-        end
-        if ImGui.IsItemHovered(ctx) and not ImGui.IsItemActive(ctx) then
-            app.gui:pushColors(colClass.hovered)
-        elseif ImGui.IsItemActive(ctx) then
-            app.gui:pushColors(colClass.active)
-        else
-            app.gui:pushColors(colClass.default)
-        end
-        ImGui.SetCursorPos(ctx, x + ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding),
-            y + select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding)))
-        ImGui.Text(ctx, tostring(ICONS[icon:upper()]))
-        app.gui:popColors(colClass.default)
-        ImGui.PopFont(ctx)
-        ImGui.SetCursorPos(ctx, x + w, y)
-        return clicked
-    end
-
     function app.drawSettings()
         local ctx = app.gui.ctx
         local w = 700 * app.settings.current.uiScale
@@ -1423,19 +1424,10 @@ if OD_PrereqsOK({
             end
         end
         local drawIconMenu = function(ctx, buttons)
-            -- local windowEnd = app.gui.mainWindow.size[1] - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) -
-            --     ((ImGui.GetScrollMaxY(app.gui.ctx) > 0) and ImGui.GetStyleVar(ctx, ImGui.StyleVar_ScrollbarSize) or 0)
-            -- ImGui.SameLine(ctx, windowEnd)
             ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
             local clicked = nil
-            -- local prevX = ImGui.GetCursorPosX(ctx) - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
             for i, btn in ipairs(buttons) do
-                -- local w = select(1, ImGui.CalcTextSize(ctx, ICONS[(btn.icon):upper()])) +
-                -- ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
-                -- local x = prevX - w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
-                -- prevX = x
-                -- ImGui.SetCursorPosX(ctx, x)
-                if app.iconButton(ctx, btn.icon, app.gui.st.col.buttons.topBarIcon) then clicked = btn.icon end
+                if app.widgets.iconButton(btn.icon, app.gui.st.col.buttons.topBarIcon) then clicked = btn.icon end
                 app:setHoveredHint('main', btn.hint)
             end
             ImGui.PopFont(ctx)
