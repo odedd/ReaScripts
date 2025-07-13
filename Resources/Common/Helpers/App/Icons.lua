@@ -20,5 +20,6 @@ ICONS = {
     ['ARROW_RIGHT'] = 'W',
     ['CLOSE'] = 'X',
     ['STEREO'] = 'Y',
-    ['MONO'] = 'Z'
+    ['MONO'] = 'Z',
+    ['SEARCH'] = '*'
 }
