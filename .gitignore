@@ -22,4 +22,4 @@ Rendering/Stem Manager/*
 !Rendering/Stem Manager/lib
 !Rendering/Stem Manager/lib/*
 
-Private/*
+Resources/Fonts/*.glyphs
