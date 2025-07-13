@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.8.2
+-- @version 0.8.3
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -14,6 +14,7 @@
 --   [nomain] lib/**
 -- @changelog
 --   Internal changes
+--   Fixed a bug while checking for backup destination folder contents
 
 ---------------------------------------
 -- SETUP ------------------------------
