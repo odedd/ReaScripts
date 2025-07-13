@@ -1,4 +1,7 @@
 -- @noindex
+package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
+ImGui = require 'imgui' '0.9.1'
+
 -- ! OD_App
 OD_App = {
     logLevel = OD_Logger.LOG_LEVEL.NONE,
@@ -9,8 +12,8 @@ OD_App = {
                 error('OD_App:connect: object with name ' .. objectname .. ' already exists')
             end
         end
-        self[objectname] = o
-        o.app = self
+        self[objectname] = OD_DeepCopy(o)
+        self[objectname].app = self
     end
 }
 
@@ -35,7 +38,8 @@ function OD_Gui_App:init()
     if self.gui == nil then error('OD_App:new: gui is a required param') end
 end
 
-function OD_Gui_App:setHint(window, text, color, ctx)
+function OD_Gui_App:setHint(window, text, color, ctx, level)
+    local level = level or 0
     local ctx = ctx or self.gui.ctx
     color = color or 'hint'
     if (self.error or self.coPerform) and not (text == '') and text then
@@ -50,17 +54,21 @@ function OD_Gui_App:setHint(window, text, color, ctx)
             r.ImGui_PopStyleColor(ctx)
         end
     else
-        self.hint[window] = {
-            text = text,
-            color = color
-        }
+        if not self.hint[window].lastFrame or (self.hint[window].lastFrame ~= ImGui.GetFrameCount(ctx)) or (level >= (self.hint[window].lastLevel or 0)) then
+            self.hint[window] = {
+                text = text,
+                color = color,
+                lastLevel = level,
+                lastFrame = ImGui.GetFrameCount(ctx)
+            }
+        end
     end
 end
 
-function OD_Gui_App:setHoveredHint(window, text, color, ctx)
+function OD_Gui_App:setHoveredHint(window, text, color, ctx, level)
     local ctx = ctx or self.gui.ctx
     if r.ImGui_IsItemHovered(ctx, r.ImGui_HoveredFlags_AllowWhenDisabled()) then
-        self:setHint(window, text, color, ctx)
+        self:setHint(window, text, color, ctx, level)
     end
 end
 
