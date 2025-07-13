@@ -215,8 +215,16 @@ if OD_PrereqsOK({
         toggle = function(self, item)
             if self:has(item) then
                 self:remove(item)
+                return false
             else
                 table.insert(self.items, item)
+                return true
+            end
+        end,
+        selectRange = function(self, fromIdx, toIdx)
+            local from, to = math.min(fromIdx, toIdx), math.max(fromIdx, toIdx)
+            for i = from, to do
+                self:add(i)
             end
         end,
         results = function(self, searchResults)
@@ -445,7 +453,7 @@ if OD_PrereqsOK({
         local flatRows = {}
 
         local tableFlags = ImGui.TableFlags_ScrollY                  -- Table flags for vertical scrolling
-        local selectableFlags = ImGui.SelectableFlags_SpanAllColumns -- Selectable flags for ImGui
+        local selectableFlags = ImGui.SelectableFlags_SpanAllColumns | ImGui.SelectableFlags_AllowDoubleClick -- Selectable flags for ImGui
 
         if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG then
             ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),
@@ -788,10 +796,19 @@ if OD_PrereqsOK({
                                     -- local highlight = (row.index == app.temp.highlightedResult) or
                                     --     app.selection:has(row.index)
                                     if ImGui.Selectable(ctx, '', app.selection:has(row.index), selectableFlags, 0, 0) then
-                                        if OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
-                                            app.selection:toggle(row.index)
+                                        if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
+                                            app.selection:selectRange(app.temp.highlightedResult, row.index)
+                                            app.temp.highlightedResult = row.index
+                                        elseif OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
+                                            if app.selection:toggle(row.index) then
+                                                app.temp.highlightedResult = row.index
+                                            end
                                         else
                                             app.selection:selectOnly(row.index)
+                                            app.temp.highlightedResult = row.index
+                                            if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
+                                                handleSelectedResults()
+                                            end
                                         end
                                     end
                                     if ImGui.IsItemHovered(ctx) then
