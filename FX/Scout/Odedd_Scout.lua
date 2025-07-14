@@ -476,7 +476,7 @@ if OD_PrereqsOK({
 
         local tagInfo = app.tags.current.tagInfo
         local searchResults = app.temp.searchResults or
-        {}                                                 -- Current search results -- clear drop target hint on every frame
+            {} -- Current search results -- clear drop target hint on every frame
         local hintResult, hintContext = nil, nil, nil
         local flatRows = {}
 
@@ -702,6 +702,59 @@ if OD_PrereqsOK({
                     end
                 end
             end
+
+            local handleResultDragDrop = function(row)
+                if ImGui.BeginDragDropSource(ctx) then
+                    if not ImGui.GetDragDropPayload(ctx) and not app.selection:has(row.index) then
+                        app.selection:selectOnly(row.index)
+                        app.temp.highlightedResult = row.index
+                    end
+                    local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
+                    ImGui.SetDragDropPayload(ctx, 'ASSET', remove and 'remove' or 'add')
+                    if app.temp.dragDropTagTargetName then
+                        ImGui.Text(ctx,
+                            (remove and 'Remove' or 'Add') ..
+                            ' tag \'' ..
+                            app.temp.dragDropTagTargetName .. '\' ' .. (remove and 'from:' or 'to:'))
+                        ImGui.Separator(ctx)
+                    end
+                    local winX, winY = table.unpack(app.gui.mainWindow.pos)
+                    local winW, winH = table.unpack(app.gui.mainWindow.size)
+                    local x, y = ImGui.GetCursorScreenPos(ctx)
+                    if not (x >= winX and x <= winX + winW and y >= winY and y <= winY + winH) then
+                        local track, context, position = r.BR_TrackAtMouseCursor()
+                        if track then
+                            ImGui.Text(ctx,
+                                'Add to track ' .. select(2, r.GetTrackName(track)) .. ':\n')
+                            app.temp.dragToTrack = track
+                        else
+                            ImGui.Text(ctx, 'Create new track with:\n')
+                            app.temp.dragToTrack = -1
+                        end
+                    end
+                    for i, itemIndex in pairs(app.selection.items) do
+                        ImGui.Text(ctx, app.temp.searchResults[itemIndex].searchText[1].text)
+                        if i >= 8 then
+                            ImGui.Text(ctx, '+ ' .. app.selection:count() - i .. ' more...')
+                            break
+                        end
+                    end
+                    if app.temp.dragDropTagTargetName and not remove then
+                        ImGui.Separator(ctx)
+                        ImGui.Text(ctx, 'Hold Alt to remove tag')
+                    end
+                    app.temp.dragDropTagTargetName = nil
+                    ImGui.EndDragDropSource(ctx)
+                end
+                if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragToTrack then
+                    if app.temp.dragToTrack == -1 then
+                        app.logger.logDebug('Will create a new track with ' .. app.selection:count() ..' plugin(s)\n')
+                    else
+                        app.logger.logDebug('Will add ' .. app.selection:count() ..' plugins to track '..select(2, r.GetTrackName(app.temp.dragToTrack))..'\n')
+                    end
+                    app.temp.dragToTrack = nil
+                end
+            end
             local handleScrolling = function()
                 local selectedRow = nil
                 if app.temp.checkScrollDown or app.temp.checkScrollUp then
@@ -807,23 +860,17 @@ if OD_PrereqsOK({
                             while rowIdx <= display_end do
                                 local row = flatRows[rowIdx]
                                 if row.type == "group" then
-                                    -- if absIndex ~= 1 then
                                     ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
                                     ImGui.TableSetColumnIndex(ctx, 0)
                                     ImGui.SeparatorText(ctx, row.group)
                                 elseif row.type == "result" then
                                     local result = row.result
                                     if firstGroup == nil and select(2, ImGui.GetCursorScreenPos(ctx)) >= upperRowScreenY then
-                                        -- screenCursorPos required to solve a case where the first row always determines the group, even when invisible,
-                                        -- due to the way ListClipper_Step works
                                         firstGroup = result.group
                                     end
-                                    -- if not foundInvisibleGroup then app.temp.lastInvisibleGroup = nil end
                                     ImGui.PushID(ctx, 'result' .. row.index)
                                     ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
                                     ImGui.TableSetColumnIndex(ctx, 0)
-                                    -- local highlight = (row.index == app.temp.highlightedResult) or
-                                    --     app.selection:has(row.index)
                                     if ImGui.Selectable(ctx, '', app.selection:has(row.index), selectableFlags, 0, 0) then
                                         if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
                                             app.selection:selectRange(app.temp.highlightedResult, row.index)
@@ -840,34 +887,7 @@ if OD_PrereqsOK({
                                             end
                                         end
                                     end
-                                    if ImGui.BeginDragDropSource(ctx) then
-                                        if not ImGui.GetDragDropPayload(ctx) and not app.selection:has(row.index) then
-                                            app.selection:selectOnly(row.index)
-                                            app.temp.highlightedResult = row.index
-                                        end
-                                        local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
-                                        ImGui.SetDragDropPayload(ctx, 'ASSET', remove and 'remove' or 'add')
-                                        if app.temp.dragDropTagTargetName then
-                                            ImGui.Text(ctx,
-                                                (remove and 'Remove' or 'Add') ..
-                                                ' tag \'' ..
-                                                app.temp.dragDropTagTargetName .. '\' ' .. (remove and 'from:' or 'to:'))
-                                            ImGui.Separator(ctx)
-                                        end
-                                        for i, itemIndex in pairs(app.selection.items) do
-                                            ImGui.Text(ctx, app.temp.searchResults[itemIndex].searchText[1].text)
-                                            if i >= 8 then
-                                                ImGui.Text(ctx, '+ ' .. app.selection:count() - i .. ' more...')
-                                                break
-                                            end
-                                        end
-                                        if app.temp.dragDropTagTargetName and not remove then
-                                            ImGui.Separator(ctx)
-                                            ImGui.Text(ctx, 'Hold Alt to remove tag')
-                                        end
-                                        app.temp.dragDropTagTargetName = nil
-                                        ImGui.EndDragDropSource(ctx)
-                                    end
+                                    handleResultDragDrop(row)
                                     if ImGui.IsItemHovered(ctx) then
                                         hintResult = result
                                         hintContext = 'Click'
