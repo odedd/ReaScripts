@@ -639,7 +639,7 @@ if OD_PrereqsOK({
             local searchResultsH = select(2, ImGui.GetContentRegionAvail(ctx)) -
                 fontLineHeight                                                   -- Height available for search results
             local maxSearchResults = math.floor(searchResultsH / fontLineHeight) -- Max results in available space
-            local handleSelectedResults = function()
+            local handleSelectedResults = function(resultContext, contextData)
                 local tracks = app.db:getSelectedTracks()
                 for i = 1, #tracks do
                     for _, result in pairs(app.selection:results()) do
@@ -684,7 +684,11 @@ if OD_PrereqsOK({
                         end
                         app.temp.checkScrollUp = true
                     elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
-                        handleSelectedResults()
+                        if ImGui.IsKeyPressed(ctx, ImGui.Mod_Alt) then
+                            handleSelectedResults(RESULT_CONTEXT.ALTERNATIVE)
+                        else
+                            handleSelectedResults(RESULT_CONTEXT.MAIN)
+                        end
                     elseif app.isShortcutPressed('markFavorite') and app.temp.highlightedResult then
                         local result = searchResults[app.temp.highlightedResult]
                         local fav = result:toggleFavorite()
@@ -748,9 +752,13 @@ if OD_PrereqsOK({
                 end
                 if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragToTrack then
                     if app.temp.dragToTrack == -1 then
-                        app.logger.logDebug('Will create a new track with ' .. app.selection:count() ..' plugin(s)\n')
+                        handleSelectedResults(RESULT_CONTEXT.DRAGGED_TO_BLANK)
+                        app.logger.logDebug('Will create a new track with ' .. app.selection:count() .. ' plugin(s)\n')
                     else
-                        app.logger.logDebug('Will add ' .. app.selection:count() ..' plugins to track '..select(2, r.GetTrackName(app.temp.dragToTrack))..'\n')
+                        app.logger.logDebug('Will add ' ..
+                            app.selection:count() ..
+                            ' plugins to track ' .. select(2, r.GetTrackName(app.temp.dragToTrack)) .. '\n')
+                        handleSelectedResults(RESULT_CONTEXT.DRAGGED_TO_TRACK, app.temp.dragToTrack)
                     end
                     app.temp.dragToTrack = nil
                 end
@@ -883,7 +891,11 @@ if OD_PrereqsOK({
                                             app.selection:selectOnly(row.index)
                                             app.temp.highlightedResult = row.index
                                             if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
-                                                handleSelectedResults()
+                                                if ImGui.IsKeyPressed(ctx, ImGui.Mod_Alt) then
+                                                    handleSelectedResults(RESULT_CONTEXT.ALTERNATIVE)
+                                                else
+                                                    handleSelectedResults(RESULT_CONTEXT.MAIN)
+                                                end
                                             end
                                         end
                                     end

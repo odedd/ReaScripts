@@ -33,6 +33,13 @@ FX_TYPE =
     "LV2i"
 }
 
+RESULT_CONTEXT = {
+    ['MAIN'] = 0,
+    ['ALTERNATIVE'] = 1,
+    ['DRAGGED_TO_TRACK'] = 2,
+    ['DRAGGED_TO_BLANK'] = 3,
+}
+
 MINIMIZATION_STYLE = {
     ['PT'] = 0,
     ['TRIM'] = 1,
