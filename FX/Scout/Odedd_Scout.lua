@@ -475,7 +475,8 @@ if OD_PrereqsOK({
         local filterAreaH = select(2, ImGui.GetContentRegionAvail(ctx))                -- Height available for search results
 
         local tagInfo = app.tags.current.tagInfo
-        local searchResults = app.temp.searchResults or {} -- Current search results
+        local searchResults = app.temp.searchResults or
+        {}                                                 -- Current search results -- clear drop target hint on every frame
         local hintResult, hintContext = nil, nil, nil
         local flatRows = {}
 
@@ -849,16 +850,22 @@ if OD_PrereqsOK({
                                         if app.temp.dragDropTagTargetName then
                                             ImGui.Text(ctx,
                                                 (remove and 'Remove' or 'Add') ..
-                                                ' tag \'' .. app.temp.dragDropTagTargetName .. '\' ' .. (remove and 'from:' or 'to:'))
+                                                ' tag \'' ..
+                                                app.temp.dragDropTagTargetName .. '\' ' .. (remove and 'from:' or 'to:'))
                                             ImGui.Separator(ctx)
                                         end
-                                        for _, i in pairs(app.selection.items) do
-                                            ImGui.Text(ctx, app.temp.searchResults[i].searchText[1].text)
+                                        for i, itemIndex in pairs(app.selection.items) do
+                                            ImGui.Text(ctx, app.temp.searchResults[itemIndex].searchText[1].text)
+                                            if i >= 8 then
+                                                ImGui.Text(ctx, '+ ' .. app.selection:count() - i .. ' more...')
+                                                break
+                                            end
                                         end
                                         if app.temp.dragDropTagTargetName and not remove then
                                             ImGui.Separator(ctx)
                                             ImGui.Text(ctx, 'Hold Alt to remove tag')
                                         end
+                                        app.temp.dragDropTagTargetName = nil
                                         ImGui.EndDragDropSource(ctx)
                                     end
                                     if ImGui.IsItemHovered(ctx) then
@@ -1020,13 +1027,15 @@ if OD_PrereqsOK({
                         ImGui.SetCursorPos(ctx, x, y) --'#dropTargetBefore'+tag.id,w, y-spacing)
 
                         if ImGui.BeginDragDropTarget(ctx) then
-                            app.temp.dragDropTagTargetName = nil
                             local tagDropped, tagPayload
                             local assetDropped, assetPayload
                             tagDropped, tagPayload = ImGui.AcceptDragDropPayload(ctx, 'TAG', nil,
                                 ImGui.DragDropFlags_AcceptBeforeDelivery | ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
-                            assetDropped, assetPayload = ImGui.AcceptDragDropPayload(ctx, 'ASSET', nil,
-                                ImGui.DragDropFlags_AcceptBeforeDelivery | ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
+                            if position == 'inside' then
+                                assetDropped, assetPayload = ImGui.AcceptDragDropPayload(ctx, 'ASSET', nil,
+                                    ImGui.DragDropFlags_AcceptBeforeDelivery |
+                                    ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
+                            end
                             if tagDropped then
                                 local payloadTag = app.db.tags[tonumber(tagPayload)]
 
@@ -1048,13 +1057,11 @@ if OD_PrereqsOK({
                             end
                             if assetDropped then
                                 app.temp.dragDropTagTargetName = tag.name
-                                if position == 'inside' then
-                                    ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX, scrY - height - offsetY,
-                                        scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
-                                        app.gui.st.basecolors.mainBright,
-                                        app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
-                                        nil, 1.5 * app.settings.current.uiScale)
-                                end
+                                ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX, scrY - height - offsetY,
+                                    scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
+                                    app.gui.st.basecolors.mainBright,
+                                    app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
+                                    nil, 1.5 * app.settings.current.uiScale)
                                 if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
                                     local remove = (assetPayload == 'remove')
                                     for i, result in ipairs(app.selection:results()) do
