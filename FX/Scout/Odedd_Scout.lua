@@ -753,9 +753,9 @@ if OD_PrereqsOK({
                 if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragToTrack then
                     if app.temp.dragToTrack == -1 then
                         handleSelectedResults(RESULT_CONTEXT.DRAGGED_TO_BLANK)
-                        app.logger.logDebug('Will create a new track with ' .. app.selection:count() .. ' plugin(s)\n')
+                        app.logger:logDebug('Will create a new track with ' .. app.selection:count() .. ' plugin(s)\n')
                     else
-                        app.logger.logDebug('Will add ' ..
+                        app.logger:logDebug('Will add ' ..
                             app.selection:count() ..
                             ' plugins to track ' .. select(2, r.GetTrackName(app.temp.dragToTrack)) .. '\n')
                         handleSelectedResults(RESULT_CONTEXT.DRAGGED_TO_TRACK, app.temp.dragToTrack)
@@ -1043,7 +1043,7 @@ if OD_PrereqsOK({
                             [1] or 0
                         local tagW = ImGui.CalcTextSize(ctx, tag.name) + paddingX * 4 + triangleW
                         ImGui.SetCursorPosY(ctx, y - height - offsetY) --'#dropTargetBefore'+tag.id,w, y-spacing)
-                        if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG then
+                        if app.logger.level == app.logger.LOG_LEVEL.DEBUG then
                             ImGui.PushStyleVar(ctx, ImGui.StyleVar_FrameBorderSize, 2)
                             ImGui.PushStyleColor(ctx, ImGui.Col_Button, 0xffffff11)
                             ImGui.Button(ctx, '##dropTarget' .. position .. tag.id, w, height)
@@ -1052,7 +1052,7 @@ if OD_PrereqsOK({
                         else
                             ImGui.InvisibleButton(ctx, 'dropTarget' .. position .. tag.id, w, height)
                         end
-                        if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG and ImGui.IsItemHovered(ctx) then
+                        if app.logger.level == app.logger.LOG_LEVEL.DEBUG and ImGui.IsItemHovered(ctx) then
                             app.logger:logDebug('Hover over target: ' .. position .. ' ' .. tag.name)
                         end
 
