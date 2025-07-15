@@ -1133,7 +1133,7 @@ if OD_PrereqsOK({
                         local hovering = false
                         ImGui.PushID(ctx, tag.id)
 
-                        if not dragged and not ImGui.GetDragDropPayload(ctx) and ImGui.IsMouseHoveringRect(ctx, globalX, globalY, globalX + w, globalY + tagH) then
+                        if not dragged and not ImGui.GetDragDropPayload(ctx) and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and ImGui.IsMouseHoveringRect(ctx, globalX, globalY, globalX + w, globalY + tagH) then
                             --- TODO: show edit button
                             hovering = true
 
@@ -1146,16 +1146,36 @@ if OD_PrereqsOK({
                                 app.temp.tagRenameBuffer = tag.name
                             end
                             if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Right) then
+                                app.temp.showDeleteTagConfirmation = nil
                                 ImGui.OpenPopup(ctx, 'Tag Context Menu')
                             end
                         end
                         if ImGui.BeginPopup(ctx, 'Tag Context Menu') then
+                            ImGui.Text(ctx, tag.name)
+                            ImGui.Separator(ctx)
+                            if ImGui.MenuItem(ctx, 'Rename') then
+                                app.temp.tagRename = tag.id
+                                app.temp.tagRenameBuffer = tag.name
+                            end
                             if ImGui.MenuItem(ctx, 'Create Nested Tag') then
                                 tag:toggleOpen(true)
-                                app.db:createTag('New Tag', tag)
+                                local newTag = app.db:createTag('New Tag', tag)
+                                app.temp.tagRename = newTag.id
+                                app.temp.tagRenameBuffer = newTag.name
                             end
-                            if ImGui.MenuItem(ctx, 'Delete Tag') then
-                                tag:delete()
+                            ImGui.Separator(ctx)
+                            if app.temp.showDeleteTagConfirmation then
+                                if r.time_precise() - app.temp.showDeleteTagConfirmation > 3 then
+                                    app.temp.showDeleteTagConfirmation = nil
+                                end
+                                if ImGui.MenuItem(ctx, 'Click to confirm') then
+                                    app.temp.showDeleteTagConfirmation = nil
+                                    tag:delete()
+                                end
+                            else
+                                if ImGui.Selectable(ctx, 'Delete', false, ImGui.SelectableFlags_DontClosePopups) then
+                                    app.temp.showDeleteTagConfirmation = r.time_precise()
+                                end
                             end
                             ImGui.EndPopup(ctx)
                         end
@@ -1215,11 +1235,14 @@ if OD_PrereqsOK({
                             app.temp.ignoreEscapeKey = true
                             ImGui.SetNextItemWidth(ctx, tagW)
                             rv, app.temp.tagRenameBuffer = ImGui.InputText(ctx, '##EditTagName', app.temp
-                                .tagRenameBuffer)
+                                .tagRenameBuffer, ImGui.InputTextFlags_AutoSelectAll)
+                            if ImGui.IsItemActivated then
+                                ImGui.SetKeyboardFocusHere(ctx, -1)
+                            end
                             if ImGui.IsItemDeactivatedAfterEdit(ctx) then
                                 tag:rename(app.temp.tagRenameBuffer)
                             end
-                            if not ImGui.IsItemActive(ctx) then
+                            if ImGui.IsItemDeactivated(ctx) then
                                 app.temp.tagRename = nil
                                 app.temp.tagRenameBuffer = nil
                             end
@@ -1360,7 +1383,7 @@ if OD_PrereqsOK({
                 ImGui.SameLine(ctx)
                 ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
                 ImGui.SetCursorPosX(ctx,
-                ImGui.GetCursorPosX(ctx) + ImGui.GetContentRegionAvail(ctx) - spacingX - paddingX * 2 -
+                    ImGui.GetCursorPosX(ctx) + ImGui.GetContentRegionAvail(ctx) - spacingX - paddingX * 2 -
                     ImGui.CalcTextSize(ctx, ICONS.PLUS))
                 -- ImGui.AlignTextToFramePadding(ctx)
                 if ImGui.Button(ctx, ICONS.PLUS .. '##CreateTag') then
