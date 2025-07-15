@@ -713,6 +713,7 @@ if OD_PrereqsOK({
                         app.selection:selectOnly(row.index)
                         app.temp.highlightedResult = row.index
                     end
+                    local listTracks = false
                     local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
                     ImGui.SetDragDropPayload(ctx, 'ASSET', remove and 'remove' or 'add')
                     if app.temp.dragDropTagTargetName then
@@ -721,6 +722,7 @@ if OD_PrereqsOK({
                             ' tag \'' ..
                             app.temp.dragDropTagTargetName .. '\' ' .. (remove and 'from:' or 'to:'))
                         ImGui.Separator(ctx)
+                        listTracks = true
                     end
                     local winX, winY = table.unpack(app.gui.mainWindow.pos)
                     local winW, winH = table.unpack(app.gui.mainWindow.size)
@@ -735,13 +737,22 @@ if OD_PrereqsOK({
                             ImGui.Text(ctx, 'Create new track with:\n')
                             app.temp.dragToTrack = -1
                         end
+                        ImGui.Separator(ctx)
+                        listTracks = true
+                    else
+                        app.temp.dragToTrack = nil
+                        -- listTracks = false
                     end
-                    for i, itemIndex in pairs(app.selection.items) do
-                        ImGui.Text(ctx, app.temp.searchResults[itemIndex].searchText[1].text)
-                        if i >= 8 then
-                            ImGui.Text(ctx, '+ ' .. app.selection:count() - i .. ' more...')
-                            break
+                    if listTracks then
+                        for i, itemIndex in pairs(app.selection.items) do
+                            ImGui.Text(ctx, app.temp.searchResults[itemIndex].searchText[1].text)
+                            if i >= 8 then
+                                ImGui.Text(ctx, '+ ' .. app.selection:count() - i .. ' more...')
+                                break
+                            end
                         end
+                    else
+                        ImGui.Text(ctx, 'Drag to a track, to an empty area or to a tag')
                     end
                     if app.temp.dragDropTagTargetName and not remove then
                         ImGui.Separator(ctx)
@@ -753,7 +764,8 @@ if OD_PrereqsOK({
                 if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragToTrack then
                     if app.temp.dragToTrack == -1 then
                         handleSelectedResults(RESULT_CONTEXT.DRAGGED_TO_BLANK)
-                        app.logger:logDebug('Will create a new track with ' .. app.selection:count() .. ' plugin(s)\n')
+                        app.logger:logDebug('Will create a new track with ' ..
+                            app.selection:count() .. ' plugin(s)\n')
                     else
                         app.logger:logDebug('Will add ' ..
                             app.selection:count() ..
@@ -879,7 +891,11 @@ if OD_PrereqsOK({
                                     ImGui.PushID(ctx, 'result' .. row.index)
                                     ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
                                     ImGui.TableSetColumnIndex(ctx, 0)
-                                    if ImGui.Selectable(ctx, '', app.selection:has(row.index), selectableFlags, 0, 0) then
+                                    if app.temp.highlightDropAreaForAllSelectedResults and app.temp.highlightDropAreaForAllSelectedResults < ImGui.GetFrameCount(ctx) or app.temp.highlightDropAreaFor == row.index then
+                                        ImGui.PushStyleColor(ctx, ImGui.Col_Header,
+                                            ImGui.GetStyleColor(ctx, ImGui.Col_HeaderActive))
+                                    end
+                                    if ImGui.Selectable(ctx, '', app.selection:has(row.index) or app.temp.highlightDropAreaFor == row.index, selectableFlags, 0, 0) then
                                         if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
                                             app.selection:selectRange(app.temp.highlightedResult, row.index)
                                             app.temp.highlightedResult = row.index
@@ -898,6 +914,47 @@ if OD_PrereqsOK({
                                                 end
                                             end
                                         end
+                                    end
+                                    if app.temp.highlightDropAreaForAllSelectedResults and app.temp.highlightDropAreaForAllSelectedResults < ImGui.GetFrameCount(ctx) or app.temp.highlightDropAreaFor == row.index then
+                                        ImGui.PopStyleColor(ctx)
+                                    end
+                                    if ImGui.BeginDragDropTarget(ctx) then
+                                        local tagDropped, tagPayload = ImGui.AcceptDragDropPayload(ctx, 'TAG', nil,
+                                            ImGui.DragDropFlags_AcceptBeforeDelivery |
+                                            ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
+                                        if tagDropped then
+                                            if app.selection:has(row.index) and not app.temp.highlightDropAreaForAllSelectedResults then
+                                                app.temp.highlightDropAreaForAllSelectedResults = ImGui.GetFrameCount(
+                                                    ctx)
+                                                app.temp.highlightDropAreaFor = nil
+                                            elseif not app.selection:has(row.index) then
+                                                app.temp.highlightDropAreaForAllSelectedResults = nil
+                                                app.temp.highlightDropAreaFor = row.index
+                                            end
+                                            if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
+                                                local payloadTag = app.db.tags[tonumber(tagPayload)]
+
+                                                local results
+                                                local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
+
+                                                if app.temp.highlightDropAreaForAllSelectedResults then
+                                                    results = app.selection:results()
+                                                elseif app.temp.highlightDropAreaFor then
+                                                    results = { searchResults[app.temp.highlightDropAreaFor] }
+                                                end
+                                                for _, result in pairs(results) do
+                                                    if remove then
+                                                        result:removeTag(payloadTag, false)
+                                                    else
+                                                        result:addTag(payloadTag, false)
+                                                    end
+                                                end
+                                                app.tags:save()
+                                                app.temp.highlightDropAreaForAllSelectedResults = nil
+                                                app.temp.highlightDropAreaFor = nil
+                                            end
+                                        end
+                                        ImGui.EndDragDropTarget(ctx)
                                     end
                                     handleResultDragDrop(row)
                                     if ImGui.IsItemHovered(ctx) then
@@ -982,6 +1039,10 @@ if OD_PrereqsOK({
                         ImGui.ListClipper_End(app.gui.searchResultsClipper)
                         ImGui.EndTable(ctx)
                     end
+                    if not ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_AllowWhenBlockedByActiveItem) then
+                        app.temp.highlightDropAreaForAllSelectedResults = nil
+                        app.temp.highlightDropAreaFor = nil
+                    end
                     ImGui.SetCursorPosY(ctx, upperRowY)
                     ImGui.SeparatorText(ctx, firstGroup or '')
                 else
@@ -1033,80 +1094,84 @@ if OD_PrereqsOK({
                 local function drawTagsOfParent(parentId, indent, parentsDragged)
                     local drawTagNode
                     local function drawDropTarget(tag, height, position, offsetY, dragTargetLineOffsetY)
-                        local x, y = ImGui.GetCursorPos(ctx)
-                        local scrX, scrY = ImGui.GetCursorScreenPos(ctx)
-                        local offsetY = offsetY or 0
-                        local dragTargetLineOffsetY = dragTargetLineOffsetY or 0
-                        local w, h = ImGui.GetContentRegionAvail(ctx) -- * app.settings.current.uiScale
-                        local triangleW = tag.hasDescendants and
-                            app.gui.st.vars.tagList[ImGui.StyleVar_IndentSpacing]
-                            [1] or 0
-                        local tagW = ImGui.CalcTextSize(ctx, tag.name) + paddingX * 4 + triangleW
-                        ImGui.SetCursorPosY(ctx, y - height - offsetY) --'#dropTargetBefore'+tag.id,w, y-spacing)
-                        if app.logger.level == app.logger.LOG_LEVEL.DEBUG then
-                            ImGui.PushStyleVar(ctx, ImGui.StyleVar_FrameBorderSize, 2)
-                            ImGui.PushStyleColor(ctx, ImGui.Col_Button, 0xffffff11)
-                            ImGui.Button(ctx, '##dropTarget' .. position .. tag.id, w, height)
-                            ImGui.PopStyleColor(ctx)
-                            ImGui.PopStyleVar(ctx)
-                        else
-                            ImGui.InvisibleButton(ctx, 'dropTarget' .. position .. tag.id, w, height)
-                        end
-                        if app.logger.level == app.logger.LOG_LEVEL.DEBUG and ImGui.IsItemHovered(ctx) then
-                            app.logger:logDebug('Hover over target: ' .. position .. ' ' .. tag.name)
-                        end
+                        if height > 0 then
+                            local x, y = ImGui.GetCursorPos(ctx)
+                            local scrX, scrY = ImGui.GetCursorScreenPos(ctx)
+                            local offsetY = offsetY or 0
+                            local dragTargetLineOffsetY = dragTargetLineOffsetY or 0
+                            local w, h = ImGui.GetContentRegionAvail(ctx) -- * app.settings.current.uiScale
+                            local triangleW = tag.hasDescendants and
+                                app.gui.st.vars.tagList[ImGui.StyleVar_IndentSpacing]
+                                [1] or 0
+                            local tagW = ImGui.CalcTextSize(ctx, tag.name) + paddingX * 4 + triangleW
+                            ImGui.SetCursorPosY(ctx, y - height - offsetY) --'#dropTargetBefore'+tag.id,w, y-spacing)
+                            if app.logger.level == app.logger.LOG_LEVEL.DEBUG then
+                                ImGui.PushStyleVar(ctx, ImGui.StyleVar_FrameBorderSize, 2)
+                                ImGui.PushStyleColor(ctx, ImGui.Col_Button, 0xffffff11)
+                                ImGui.Button(ctx, '##dropTarget' .. position .. tag.id, w, height)
+                                ImGui.PopStyleColor(ctx)
+                                ImGui.PopStyleVar(ctx)
+                            else
+                                ImGui.InvisibleButton(ctx, 'dropTarget' .. position .. tag.id, w, height)
+                            end
+                            if app.logger.level == app.logger.LOG_LEVEL.DEBUG and ImGui.IsItemHovered(ctx) then
+                                app.logger:logDebug('Hover over target: ' .. position .. ' ' .. tag.name)
+                            end
 
-                        ImGui.SetCursorPos(ctx, x, y) --'#dropTargetBefore'+tag.id,w, y-spacing)
+                            ImGui.SetCursorPos(ctx, x, y) --'#dropTargetBefore'+tag.id,w, y-spacing)
 
-                        if ImGui.BeginDragDropTarget(ctx) then
-                            local tagDropped, tagPayload
-                            local assetDropped, assetPayload
-                            tagDropped, tagPayload = ImGui.AcceptDragDropPayload(ctx, 'TAG', nil,
-                                ImGui.DragDropFlags_AcceptBeforeDelivery | ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
-                            if position == 'inside' then
-                                assetDropped, assetPayload = ImGui.AcceptDragDropPayload(ctx, 'ASSET', nil,
+                            if ImGui.BeginDragDropTarget(ctx) then
+                                local tagDropped, tagPayload
+                                local assetDropped, assetPayload
+                                tagDropped, tagPayload = ImGui.AcceptDragDropPayload(ctx, 'TAG', nil,
                                     ImGui.DragDropFlags_AcceptBeforeDelivery |
                                     ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
-                            end
-                            if tagDropped then
-                                local payloadTag = app.db.tags[tonumber(tagPayload)]
-
                                 if position == 'inside' then
+                                    assetDropped, assetPayload = ImGui.AcceptDragDropPayload(ctx, 'ASSET', nil,
+                                        ImGui.DragDropFlags_AcceptBeforeDelivery |
+                                        ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
+                                end
+                                if tagDropped then
+                                    local payloadTag = app.db.tags[tonumber(tagPayload)]
+
+                                    if position == 'inside' then
+                                        ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX,
+                                            scrY - height - offsetY,
+                                            scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
+                                            app.gui.st.basecolors.mainBright,
+                                            app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
+                                            nil, 1.5 * app.settings.current.uiScale)
+                                    else
+                                        ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX,
+                                            scrY - height - offsetY + dragTargetLineOffsetY, scrX + w,
+                                            scrY - height - offsetY + dragTargetLineOffsetY, app.gui.st.basecolors
+                                            .mainBright, 15, nil, 1.5 * app.settings.current.uiScale)
+                                    end
+                                    if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
+                                        payloadTag:moveTo(tag, position)
+                                    end
+                                end
+                                if assetDropped then
+                                    app.temp.dragDropTagTargetName = tag.name
                                     ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX, scrY - height - offsetY,
                                         scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
                                         app.gui.st.basecolors.mainBright,
                                         app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
                                         nil, 1.5 * app.settings.current.uiScale)
-                                else
-                                    ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX,
-                                        scrY - height - offsetY + dragTargetLineOffsetY, scrX + w,
-                                        scrY - height - offsetY + dragTargetLineOffsetY, app.gui.st.basecolors
-                                        .mainBright, 15, nil, 1.5 * app.settings.current.uiScale)
-                                end
-                                if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
-                                    payloadTag:moveTo(tag, position)
-                                end
-                            end
-                            if assetDropped then
-                                app.temp.dragDropTagTargetName = tag.name
-                                ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX, scrY - height - offsetY,
-                                    scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
-                                    app.gui.st.basecolors.mainBright,
-                                    app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
-                                    nil, 1.5 * app.settings.current.uiScale)
-                                if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
-                                    local remove = (assetPayload == 'remove')
-                                    for i, result in ipairs(app.selection:results()) do
-                                        if remove then
-                                            result:removeTag(tag, false)
-                                        else
-                                            result:addTag(tag, false)
+                                    if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
+                                        local remove = (assetPayload == 'remove')
+                                        for i, result in ipairs(app.selection:results()) do
+                                            if remove then
+                                                result:removeTag(tag, false)
+                                            else
+                                                result:addTag(tag, false)
+                                            end
                                         end
+                                        app.tags:save()
                                     end
-                                    app.tags:save()
                                 end
+                                ImGui.EndDragDropTarget(ctx)
                             end
-                            ImGui.EndDragDropTarget(ctx)
                         end
                     end
                     function drawTagNode(tag, indent, parentsDragged)
@@ -1141,7 +1206,7 @@ if OD_PrereqsOK({
                                 col = app.gui.st.col.tag[ImGui.Col_FrameBgActive]
                             end
                             if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
-                                if ImGui.IsMouseHoveringRect(ctx, globalX + triangleW + paddingX, globalY, globalX + tagNameWidth + paddingX * 2 + spacingX,  globalY + tagH) then
+                                if ImGui.IsMouseHoveringRect(ctx, globalX + triangleW + paddingX, globalY, globalX + tagNameWidth + paddingX * 2 + spacingX, globalY + tagH) then
                                     app.temp.tagRename = tag.id
                                     app.temp.tagRenameBuffer = tag.name
                                 end
@@ -1281,7 +1346,38 @@ if OD_PrereqsOK({
                         if ImGui.BeginDragDropSource(ctx) then
                             ImGui.SetDragDropPayload(ctx, 'TAG', tostring(tag.id))
                             -- ImGui.Text(ctx, tag.name)
-                            drawTagNode(tag, false, false, true)
+                            if app.temp.highlightDropAreaForAllSelectedResults or app.temp.highlightDropAreaFor then
+                                if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
+                                    ImGui.Text(ctx,
+                                        'Remove tag \'' ..
+                                        tag.name ..
+                                        '\' from' ..
+                                        (app.temp.highlightDropAreaFor and (' ' .. searchResults[app.temp.highlightDropAreaFor].searchText[1].text) or
+                                            ':'))
+                                else
+                                    ImGui.Text(ctx,
+                                        'Add tag \'' ..
+                                        tag.name ..
+                                        '\' to' ..
+                                        (app.temp.highlightDropAreaFor and (' ' .. searchResults[app.temp.highlightDropAreaFor].searchText[1].text) or ':'))
+                                end
+                                if app.temp.highlightDropAreaForAllSelectedResults then
+                                    ImGui.Separator(ctx)
+                                    for i, result in pairs(app.selection:results()) do
+                                        ImGui.Text(ctx, result.searchText[1].text)
+                                        if i >= 8 then
+                                            ImGui.Text(ctx, '+ ' .. app.selection:count() - i .. ' more...')
+                                            break
+                                        end
+                                    end
+                                end
+                                if not ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
+                                    ImGui.Separator(ctx)
+                                    ImGui.Text(ctx, 'Hold alt to remove tag')
+                                end
+                            else
+                                drawTagNode(tag, false, false, true)
+                            end
                             ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY * 2)
                             ImGui.Dummy(ctx, 0, 0)
                             ImGui.EndDragDropSource(ctx)
@@ -1394,8 +1490,12 @@ if OD_PrereqsOK({
                 end
                 app:setHoveredHint('main', 'Create new tag', nil, nil, 1)
                 ImGui.PopFont(ctx)
-                -- ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
-                drawTagsOfParent(TAGS_ROOT_PARENT, false, false)
+                ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
+                if ImGui.BeginChild(ctx, 'TagScrollArea', tagAreaW - paddingX * 2, select(2, ImGui.GetContentRegionAvail(ctx)) - spacingY, nil) then
+                    ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
+                    drawTagsOfParent(TAGS_ROOT_PARENT, false, false)
+                    ImGui.EndChild(ctx)
+                end
                 ImGui.Dummy(ctx, 0, 0)
                 ImGui.EndChild(ctx)
             end
