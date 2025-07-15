@@ -2,7 +2,8 @@
 -- ! OD_Settings
 OD_Settings = {
     current = {},
-    default = {},
+    default = {},  -- values to be merged with and overwritten by those the user changes. Merge happens ON EACH LOAD.
+    initial = nil, -- should contain settings that only need to be set to new instances, but unlike default - they won't get copied on each load - only when reset to factory or when there's no settings file saved yet.
     dfsetfile = nil
 }
 
@@ -18,12 +19,15 @@ function OD_Settings:init()
         error('OD_Settings: dfsetfile not set')
     end
 end
+
 function OD_Settings:getDefault(factory)
     if factory == nil then factory = false end
     local st = {
         default = OD_DeepCopy(self.default)
     }
-
+    if (factory or not OD_FileExists(self.dfsetfile)) and self.initial then
+        st.default = OD_MergeTables(st.default, self.initial)
+    end
     if not factory then
         local loaded_ext_settings = table.load(self.dfsetfile) or {}
         st.default = OD_MergeTables(st.default, loaded_ext_settings)
@@ -36,7 +40,6 @@ function OD_Settings:getDefault(factory)
         --     end
         -- end
     end
-
     return st
 end
 

@@ -40,6 +40,8 @@ RESULT_CONTEXT = {
     ['DRAGGED_TO_BLANK'] = 3,
 }
 
+TAGS_ROOT_PARENT = -1
+
 MINIMIZATION_STYLE = {
     ['PT'] = 0,
     ['TRIM'] = 1,

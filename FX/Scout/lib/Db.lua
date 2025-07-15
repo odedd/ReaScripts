@@ -657,15 +657,16 @@ DB.getPlugins = function(self)
     self.app.logger:logInfo('Found ' .. i .. ' plugins')
 end
 
+
+-- TAGS AND FAVORITES
 DB.getTags = function(self)
     self.tags = OD_DeepCopy(self.app.tags.current.tagInfo)
-    -- Detect and fix cycles (self-parenting or circular references)
     local function hasCycle(tagId, visited)
         visited = visited or {}
         if visited[tagId] then return true end
         visited[tagId] = true
         local parentId = self.tags[tagId] and self.tags[tagId].parentId
-        if parentId and parentId ~= -1 and self.tags[parentId] then
+        if parentId and parentId ~= TAGS_ROOT_PARENT and self.tags[parentId] then
             return hasCycle(parentId, visited)
         end
         return false
@@ -673,20 +674,20 @@ DB.getTags = function(self)
 
     for id, tagInfo in pairs(self.app.tags.current.tagInfo) do
         -- Remove illegal parentId if it would cause a stack overflow (cycle)
-        if tagInfo.parentId and tagInfo.parentId ~= -1 and (tagInfo.parentId == id or hasCycle(id)) then
+        if tagInfo.parentId and tagInfo.parentId ~= TAGS_ROOT_PARENT and (tagInfo.parentId == id or hasCycle(id)) then
             self.app.logger:logError('Cycle detected for tag "' ..
                 (self.tags[id] and self.tags[id].name or tostring(id)) .. '", removing parentId')
-            self.tags[id].parentId = -1
-            tagInfo.parentId = -1
+            self.tags[id].parentId = TAGS_ROOT_PARENT
+            tagInfo.parentId = TAGS_ROOT_PARENT
         end
 
-        if tagInfo.parentId and tagInfo.parentId ~= -1 and self.tags[tagInfo.parentId] and tagInfo.parentId ~= id then
+        if tagInfo.parentId and tagInfo.parentId ~= TAGS_ROOT_PARENT and self.tags[tagInfo.parentId] and tagInfo.parentId ~= id then
             self.tags[id].parent = self.tags[tagInfo.parentId]
             self.app.logger:logDebug('Added "' ..
                 self.tags[id].name .. '" (parent: "' .. self.tags[id].parent.name .. '")')
         elseif tagInfo.parentId and tagInfo.parentId == id then
             self.app.logger:logError('Illegal parent ID for tag "' .. self.tags[id].name .. '" (parent=own ID)')
-        elseif tagInfo.parentId and tagInfo.parentId ~= -1 then
+        elseif tagInfo.parentId and tagInfo.parentId ~= TAGS_ROOT_PARENT then
             self.app.logger:logError('Illegal parent ID for tag "' .. self.tags[id].name .. '"')
         else
             self.app.logger:logDebug('Added "' .. self.tags[id].name .. '"')
@@ -696,22 +697,38 @@ DB.getTags = function(self)
         self.tags[id].allTags = self.tags
         self.tags[id].db = self
 
-        -- local col = self.tags[id].color
-        -- local hoveredCol = OD_OffsetRgbaByHSL(col, 0, 0, 0.06)
-        -- local activeCol = OD_OffsetRgbaByHSL(col, 0, 0, 0.1)
-        -- local textCol = OD_ColorIsBright(col) and 0x000000ff or 0xffffffff
-        -- self.tags[id].colors = {
-        --     [ImGui.Col_Button] = col,
-        --     [ImGui.Col_ButtonHovered] = hoveredCol,
-        --     [ImGui.Col_ButtonActive] = activeCol,
-        --     [ImGui.Col_Text] = textCol
-        -- }
         self.tags[id].toggleOpen = function(self, state, persist)
             persist = (persist == nil) and true or persist
             self.open = state
             self.app.tags.current.tagInfo[self.id].open = state
             if persist then self.app.tags:save() end
         end
+        self.tags[id].rename = function(self, name, persist)
+            persist = (persist == nil) and true or persist
+            self.name = name
+            self.app.tags.current.tagInfo[self.id].name = name
+            if persist then self.app.tags:save() end
+        end
+        self.tags[id].delete = function(self, persistAndReload)
+            local assetsToRemoveTag = self.db:assetsWithTag(self)
+            for _, asset in pairs(assetsToRemoveTag) do
+                asset:removeTag(self, false)
+            end
+            for _, tag in pairs(self.descendants) do
+                tag:delete(false)
+            end
+            self.app.tags.current.tagInfo[self.id] = nil
+            for _, sib in pairs(self.siblings) do
+                if sib.order > self.order then
+                    self.app.tags.current.tagInfo[sib.id].order = self.app.tags.current.tagInfo[sib.id].order - 1
+                end
+            end
+            if persistAndReload ~= false then
+                self.app.tags:save()
+                self.db:getTags()
+            end
+        end
+
         self.tags[id].addDescendants = function(self)
             if self.descendants == nil then
                 self.descendants = {}
@@ -734,7 +751,7 @@ DB.getTags = function(self)
         self.tags[id].addSiblings = function(self)
             if self.siblings == nil then
                 self.siblings = {}
-                if self.parentId and self.parentId ~= -1 then
+                if self.parentId and self.parentId ~= TAGS_ROOT_PARENT then
                     for candidateId, candidate in pairs(self.allTags) do
                         if candidate.parentId == self.parentId and candidate.id ~= self.id then
                             table.insert(self.siblings, candidate)
@@ -858,11 +875,37 @@ DB.getTags = function(self)
     for id, tag in pairs(self.tags) do
         tag:addDescendants()
     end
+
     for id, tag in pairs(self.tags) do
         tag:addSiblings()
     end
+
     for id, tag in pairs(self.tags) do
         tag.hasDescendants = tag.descendants ~= nil and next(tag.descendants)
+    end
+end
+
+DB.createTag = function(self, name, parent)
+    local parentId = (parent == TAGS_ROOT_PARENT) and TAGS_ROOT_PARENT or parent.id
+    local levelCount = 0
+    local lastId = 1
+    for id, tagInfo in pairs(self.app.tags.current.tagInfo) do
+        if tagInfo.parentId == parentId then
+            levelCount = levelCount + 1
+        end
+        lastId = id
+    end
+    local newTag = {
+        name = name,
+        parentId = parentId,
+        order = levelCount + 1
+    }
+    self.app.tags.current.tagInfo[lastId + 1] = newTag
+    self:getTags()
+    for _, tag in pairs(self.tags) do
+        if tag.id == lastId + 1 then
+            return tag
+        end
     end
 end
 DB.markFavorites = function(self)
@@ -878,6 +921,15 @@ end
 DB.assembleAssets = function(self)
     self.app.logger:logDebug('-- DB.assembleAssets()')
     self.assets = {}
+    self.assetsWithTag = function(self, tag)
+        local assetsWithTag = {}
+        for _, asset in ipairs(self.assets) do
+            if OD_HasValue(asset.tags, tag.id) then
+                table.insert(assetsWithTag, asset)
+            end
+        end
+        return assetsWithTag
+    end
 
     local toggleFavorite = function(self)
         local favorite = self.db.app.tags.current.favorites
@@ -1027,7 +1079,7 @@ DB.assembleAssets = function(self)
     end
     for _, asset in ipairs(self.assets) do
         asset.id = asset.type .. ' ' .. asset.load
-        asset.tags = self.app.tags.current.taggedAssets[asset.id] or {}
+        asset.tags = OD_DeepCopy(self.app.tags.current.taggedAssets[asset.id]) or {}
         asset.addTag = addTag
         asset.removeTag = removeTag
     end

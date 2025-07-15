@@ -3,13 +3,17 @@ PB_Tags = OD_Settings:new({
     default = {
         -- Defineable in GUI
         favorites = {},
+        tagInfo = {},
+        taggedAssets = {}
+    },
+    initial = {
         tagInfo = {
-            [1] = { name = 'EQ', synonyms = { 'Equaliser' }, order = 1, parentId = -1 },
+            [1] = { name = 'EQ', synonyms = { 'Equaliser' }, order = 1, parentId = TAGS_ROOT_PARENT },
             [2] = { name = 'Compressor', parentId = 4, order = 2 },
             [3] = { name = 'Spectral Processor', synonyms = { 'Resonance Surpressor' }, parentId = 1, order = 1 },
-            [4] = { name = 'Dynamics', order = 2, parentId = -1 },
+            [4] = { name = 'Dynamics', order = 2, parentId = TAGS_ROOT_PARENT },
             [5] = { name = 'Gate', parentId = 4, order = 1 },
-            [6] = { name = 'Instruments', order = 3, parentId = -1 },
+            [6] = { name = 'Instruments', order = 3, parentId = TAGS_ROOT_PARENT },
             [7] = { name = 'Multiband', parentId = 2, order = 1 }
         },
         taggedAssets = {

@@ -1124,24 +1124,43 @@ if OD_PrereqsOK({
                         local triangleW = tag.hasDescendants and app.gui.st.vars.tagList[ImGui.StyleVar_IndentSpacing]
                             [1] or 0
                         -- local triangleW = tag.hasDescendants and triangleW or 0
-                        local tagW, tagH = ImGui.CalcTextSize(ctx, tag.name) + paddingX * 2 + triangleW,
+                        local tagName = (app.temp.tagRename == tag.id) and app.temp.tagRenameBuffer or tag.name
+                        local tagW, tagH = ImGui.CalcTextSize(ctx, tagName) + paddingX * 2 + triangleW,
                             ImGui.GetTextLineHeight(ctx) + paddingY * 2
                         --+app.widgets.calcTinyIconSize(ICONS.PENCIL)
                         local col = app.gui.st.col.tag[ImGui.Col_FrameBg]
                         local tagStatus = app.temp.filter.tags[tag.id]
                         local hovering = false
+                        ImGui.PushID(ctx, tag.id)
+
                         if not dragged and not ImGui.GetDragDropPayload(ctx) and ImGui.IsMouseHoveringRect(ctx, globalX, globalY, globalX + w, globalY + tagH) then
                             --- TODO: show edit button
                             hovering = true
 
+                            col = app.gui.st.col.tag[ImGui.Col_FrameBgHovered]
                             if ImGui.IsMouseDown(ctx, ImGui.MouseButton_Left) then
-                                -- col = app.gui.st.col.tag[ImGui.Col_FrameBgActive]
-                                if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
-                                    tag:toggleOpen(not tag.open)
-                                end
+                                col = app.gui.st.col.tag[ImGui.Col_FrameBgActive]
+                            end
+                            if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
+                                app.temp.tagRename = tag.id
+                                app.temp.tagRenameBuffer = tag.name
+                            end
+                            if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Right) then
+                                ImGui.OpenPopup(ctx, 'Tag Context Menu')
                             end
                         end
-                        if hovering or tagStatus ~= nil then
+                        if ImGui.BeginPopup(ctx, 'Tag Context Menu') then
+                            if ImGui.MenuItem(ctx, 'Create Nested Tag') then
+                                tag:toggleOpen(true)
+                                app.db:createTag('New Tag', tag)
+                            end
+                            if ImGui.MenuItem(ctx, 'Delete Tag') then
+                                tag:delete()
+                            end
+                            ImGui.EndPopup(ctx)
+                        end
+                        -- end
+                        if app.temp.tagRename ~= tag.id and (hovering or tagStatus ~= nil) then
                             local iconsWidth = 0
                             if hovering then
                                 iconsWidth = iconsWidth + app.widgets.calcTinyIconSize(ICONS.MINUS) +
@@ -1155,7 +1174,7 @@ if OD_PrereqsOK({
                             end
                             tagW = tagW + iconsWidth
                         end
-                        ImGui.PushID(ctx, tag.id)
+
                         ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), globalX, globalY, globalX + tagW,
                             globalY + tagH, col, 100)
                         if tag.hasDescendants then
@@ -1191,8 +1210,23 @@ if OD_PrereqsOK({
                             ImGui.SameLine(ctx)
                         end
                         ImGui.SetCursorPos(ctx, x + paddingX + triangleW, y + paddingY)
-                        ImGui.Text(ctx, tag.name)
-                        if hovering or tagStatus ~= nil then
+                        if app.temp.tagRename == tag.id then
+                            local rv
+                            app.temp.ignoreEscapeKey = true
+                            ImGui.SetNextItemWidth(ctx, tagW)
+                            rv, app.temp.tagRenameBuffer = ImGui.InputText(ctx, '##EditTagName', app.temp
+                                .tagRenameBuffer)
+                            if ImGui.IsItemDeactivatedAfterEdit(ctx) then
+                                tag:rename(app.temp.tagRenameBuffer)
+                            end
+                            if not ImGui.IsItemActive(ctx) then
+                                app.temp.tagRename = nil
+                                app.temp.tagRenameBuffer = nil
+                            end
+                        else
+                            ImGui.Text(ctx, tag.name)
+                        end
+                        if app.temp.tagRename ~= tag.id and (hovering or tagStatus ~= nil) then
                             ImGui.PushID(ctx, 'tagEditButtons')
                             if tagStatus ~= nil then
                                 ImGui.SameLine(ctx)
@@ -1261,7 +1295,7 @@ if OD_PrereqsOK({
                     local firstTag = nil
                     for id, tag in OD_PairsByOrder(app.db.tags) do
                         if tag.parentId == parentId then
-                            if firstTag == nil and parentId == -1 then
+                            if firstTag == nil and parentId == TAGS_ROOT_PARENT then
                                 local availH = ImGui.GetCursorPosY(ctx)
                                 drawDropTarget(tag, availH, 'before', spacingY, 0)
                                 firstTag = tag
@@ -1271,7 +1305,7 @@ if OD_PrereqsOK({
                         end
                     end
 
-                    if parentId == -1 then
+                    if parentId == TAGS_ROOT_PARENT then
                         local availH = select(2, ImGui.GetContentRegionAvail(ctx))
                         ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + availH)
                         drawDropTarget(lastTag, spacingY + availH, 'after', 0, 0)
@@ -1323,8 +1357,21 @@ if OD_PrereqsOK({
                 drawFilterMenu(FILTER_MENU, 'root')
 
                 ImGui.SeparatorText(ctx, "Tags")
-                ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
-                drawTagsOfParent(-1, false, false)
+                ImGui.SameLine(ctx)
+                ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                ImGui.SetCursorPosX(ctx,
+                ImGui.GetCursorPosX(ctx) + ImGui.GetContentRegionAvail(ctx) - spacingX - paddingX * 2 -
+                    ImGui.CalcTextSize(ctx, ICONS.PLUS))
+                -- ImGui.AlignTextToFramePadding(ctx)
+                if ImGui.Button(ctx, ICONS.PLUS .. '##CreateTag') then
+                    local newTag = app.db:createTag('New Tag', TAGS_ROOT_PARENT)
+                    app.temp.tagRename = newTag.id
+                    app.temp.tagRenameBuffer = newTag.name
+                end
+                app:setHoveredHint('main', 'Create new tag', nil, nil, 1)
+                ImGui.PopFont(ctx)
+                -- ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
+                drawTagsOfParent(TAGS_ROOT_PARENT, false, false)
                 ImGui.Dummy(ctx, 0, 0)
                 ImGui.EndChild(ctx)
             end
