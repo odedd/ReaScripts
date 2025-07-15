@@ -1125,7 +1125,8 @@ if OD_PrereqsOK({
                             [1] or 0
                         -- local triangleW = tag.hasDescendants and triangleW or 0
                         local tagName = (app.temp.tagRename == tag.id) and app.temp.tagRenameBuffer or tag.name
-                        local tagW, tagH = ImGui.CalcTextSize(ctx, tagName) + paddingX * 2 + triangleW,
+                        local tagNameWidth = ImGui.CalcTextSize(ctx, tagName)
+                        local tagW, tagH = tagNameWidth + paddingX * 2 + triangleW,
                             ImGui.GetTextLineHeight(ctx) + paddingY * 2
                         --+app.widgets.calcTinyIconSize(ICONS.PENCIL)
                         local col = app.gui.st.col.tag[ImGui.Col_FrameBg]
@@ -1134,16 +1135,16 @@ if OD_PrereqsOK({
                         ImGui.PushID(ctx, tag.id)
 
                         if not dragged and not ImGui.GetDragDropPayload(ctx) and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and ImGui.IsMouseHoveringRect(ctx, globalX, globalY, globalX + w, globalY + tagH) then
-                            --- TODO: show edit button
                             hovering = true
-
                             col = app.gui.st.col.tag[ImGui.Col_FrameBgHovered]
                             if ImGui.IsMouseDown(ctx, ImGui.MouseButton_Left) then
                                 col = app.gui.st.col.tag[ImGui.Col_FrameBgActive]
                             end
                             if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
-                                app.temp.tagRename = tag.id
-                                app.temp.tagRenameBuffer = tag.name
+                                if ImGui.IsMouseHoveringRect(ctx, globalX + triangleW + paddingX, globalY, globalX + tagNameWidth + paddingX * 2 + spacingX,  globalY + tagH) then
+                                    app.temp.tagRename = tag.id
+                                    app.temp.tagRenameBuffer = tag.name
+                                end
                             end
                             if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Right) then
                                 app.temp.showDeleteTagConfirmation = nil
