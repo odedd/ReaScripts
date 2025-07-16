@@ -58,17 +58,17 @@ T.SETTINGS.LISTS = {
 }
 T.SEARCH_WINDOW = {
     SEARCH_HINT = {
-        [SEARCH_MODE.MAIN] = 'Searching items. Press TAB to search filters',
-        [SEARCH_MODE.FILTERS] = 'Searching filters. Press TAB to search items',
+        [SEARCH_MODE.MAIN] = 'Searching items. Press Tab to search filters',
+        [SEARCH_MODE.FILTERS] = 'Searching filters. Press Tab to search items',
     }
 }
-T.FILTER_MENU = {
-    TYPE = 'Search For',
-    FX_TYPE = 'FX Type',
-    FOLDER = 'Folder',
-    CATEGORY = 'Category',
-    DEVELOPER = 'Developer',
-    TAGS = 'Tag'
+T.FILTER_NAMES = {
+    [FILTER_TYPES.TYPE] = 'Result Type',
+    [FILTER_TYPES.FX_TYPE] = 'FX Type',
+    [FILTER_TYPES.FOLDER] = 'Folder',
+    [FILTER_TYPES.CATEGORY] = 'Category',
+    [FILTER_TYPES.DEVELOPER] = 'Developer',
+    [FILTER_TYPES.TAG] = 'Tag'
 }
 T.ERROR = {
     NO_DOCK = ([[

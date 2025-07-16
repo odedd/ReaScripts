@@ -40,6 +40,7 @@ DB = {
         self:getTags()
         self:assembleAssets()
         self:updateDevelopersFilterMenu()
+        self:assembleFilterAssets()
     end,
     sync = function(self, refresh)                             -- not sure this is needed
         self.refresh = refresh or false
@@ -529,9 +530,9 @@ DB.getFXFolders = function(self)
     self.app.logger:logInfo('Found ' .. folderCount .. ' FX folders')
 
     -- Update FILTER_MENU
-    FILTER_MENU[T.FILTER_MENU.FOLDER].items = {}
+    FILTER_MENU[FILTER_TYPES.FOLDER].items = {}
     for id, fxFolder in OD_PairsByOrder(self.fxFolders) do
-        FILTER_MENU[T.FILTER_MENU.FOLDER].items[fxFolder.name] = {
+        FILTER_MENU[FILTER_TYPES.FOLDER].items[fxFolder.name] = {
             order = tonumber(fxFolder.order),
             query = { fxFolderId = id }
         }
@@ -584,7 +585,7 @@ DB.getFXCategories = function(self)
     end
 
     -- Update FILTER_MENU
-    FILTER_MENU[T.FILTER_MENU.CATEGORY].items = {}
+    FILTER_MENU[FILTER_TYPES.CATEGORY].items = {}
 
     local categoryNames = {}
     for name in pairs(self.fxCategories) do
@@ -593,7 +594,7 @@ DB.getFXCategories = function(self)
     table.sort(categoryNames)
 
     for index, categoryName in ipairs(categoryNames) do
-        FILTER_MENU[T.FILTER_MENU.CATEGORY].items[categoryName] = {
+        FILTER_MENU[FILTER_TYPES.CATEGORY].items[categoryName] = {
             order = index,
             query = { fxCategory = categoryName }
         }
@@ -601,7 +602,7 @@ DB.getFXCategories = function(self)
 end
 
 DB.updateDevelopersFilterMenu = function(self)
-    FILTER_MENU[T.FILTER_MENU.DEVELOPER].items = {}
+    FILTER_MENU[FILTER_TYPES.DEVELOPER].items = {}
 
     local developerNames = {}
     for s, c in pairs(self.fxDevelopers) do
@@ -610,7 +611,7 @@ DB.updateDevelopersFilterMenu = function(self)
     table.sort(developerNames)
 
     for index, developerName in ipairs(developerNames) do
-        FILTER_MENU[T.FILTER_MENU.DEVELOPER].items[developerName] = {
+        FILTER_MENU[FILTER_TYPES.DEVELOPER].items[developerName] = {
             order = index,
             query = { fxDeveloper = developerName }
         }
@@ -907,9 +908,9 @@ DB.createTag = function(self, name, parent)
     self.app.tags.current.idCount = newId
     self.app.tags.current.tagInfo[newId] = newTag
     self.app.logger:logInfo('Created a new tag \'' ..
-    name ..
-    '\' with id ' ..
-    newId .. (parentId ~= TAGS_ROOT_PARENT and ' (parent Id: ' .. parentId .. ')' or ''))
+        name ..
+        '\' with id ' ..
+        newId .. (parentId ~= TAGS_ROOT_PARENT and ' (parent Id: ' .. parentId .. ')' or ''))
     self.app.tags:save()
     self:getTags()
     for _, tag in pairs(self.tags) do
@@ -927,21 +928,8 @@ DB.markFavorites = function(self)
     end
 end
 -- ASSETS
-
-DB.assembleAssets = function(self)
-    self.app.logger:logDebug('-- DB.assembleAssets()')
-    self.assets = {}
-    self.assetsWithTag = function(self, tag)
-        local assetsWithTag = {}
-        for _, asset in ipairs(self.assets) do
-            if OD_HasValue(asset.tags, tag.id) then
-                table.insert(assetsWithTag, asset)
-            end
-        end
-        return assetsWithTag
-    end
-
-    local toggleFavorite = function(self)
+local assetActions = {
+    toggleFavorite = function(self)
         local favorite = self.db.app.tags.current.favorites
         local key = self.type .. ' ' .. self.load
         if OD_HasValue(favorite, key) then
@@ -956,9 +944,8 @@ DB.assembleAssets = function(self)
         self.db.app.tags:save()
         self.db:sortAssets()
         return self.group == FAVORITE_GROUP
-    end
-
-    local addTag = function(self, tag, saveToDB)
+    end,
+    addTag = function(self, tag, saveToDB)
         local save
         if save == nil then
             save = true
@@ -971,9 +958,8 @@ DB.assembleAssets = function(self)
             table.insert(self.db.app.tags.current.taggedAssets[self.id], tag.id)
             if save then self.db.app.tags:save() end
         end
-    end
-
-    local removeTag = function(self, tag, saveToDB)
+    end,
+    removeTag = function(self, tag, saveToDB)
         local save
         if save == nil then
             save = true
@@ -986,7 +972,34 @@ DB.assembleAssets = function(self)
             if not next(self.db.app.tags.current.taggedAssets[self.id]) then self.db.app.tags.current.taggedAssets[self.id] = nil end
             if save then self.db.app.tags:save() end
         end
+    end,
+    executeFilter = function(self, context)
+        self.db.app.filterResults(self.load)
+    end,
+    executePlugin = function(self, context, contextData)
+        if context == RESULT_CONTEXT.MAIN then
+            local tracks = self.db:getSelectedTracks()
+            for i = 1, #tracks do
+                tracks[i]:addInsert(self.load)
+            end
+        end
     end
+}
+
+DB.assembleAssets = function(self)
+    self.app.logger:logDebug('-- DB.assembleAssets()')
+    self.assets = {}
+    self.assetsWithTag = function(self, tag)
+        local assetsWithTag = {}
+        for _, asset in ipairs(self.assets) do
+            if OD_HasValue(asset.tags, tag.id) then
+                table.insert(assetsWithTag, asset)
+            end
+        end
+        return assetsWithTag
+    end
+
+
 
     local count = 0
     for _, chain in ipairs(self.fxChains) do
@@ -996,7 +1009,7 @@ DB.assembleAssets = function(self)
             searchText = { { text = chain.file }, { text = chain.path }, { text = chain.ext, hide = true } },
             load = chain.load,
             group = FX_CHAINS_GROUP,
-            toggleFavorite = toggleFavorite
+            toggleFavorite = assetActions.toggleFavorite
         })
         count = count + 1
     end
@@ -1007,7 +1020,7 @@ DB.assembleAssets = function(self)
             searchText = { { text = tt.file }, { text = tt.path }, { text = tt.ext, hide = true } },
             load = tt.load,
             group = TRACK_TEMPLATES_GROUP,
-            toggleFavorite = toggleFavorite
+            toggleFavorite = assetActions.toggleFavorite
         })
         count = count + 1
     end
@@ -1021,7 +1034,7 @@ DB.assembleAssets = function(self)
             group = TRACKS_GROUP,
             order = track.order,
             color = track.color,
-            toggleFavorite = toggleFavorite
+            toggleFavorite = assetActions.toggleFavorite
         })
         count = count + 1
     end
@@ -1034,7 +1047,7 @@ DB.assembleAssets = function(self)
             -- group = track.hasReceives and RECEIVES_GROUP or TRACKS_GROUP,
             group = ACTIONS_GROUP,
             order = action.order,
-            toggleFavorite = toggleFavorite
+            toggleFavorite = assetActions.toggleFavorite
         })
         count = count + 1
     end
@@ -1082,7 +1095,8 @@ DB.assembleAssets = function(self)
                     end
                     return self.folders[folderId]
                 end,
-                toggleFavorite = toggleFavorite
+                toggleFavorite = assetActions.toggleFavorite,
+                execute = assetActions.executePlugin
             })
             count = count + 1
         end
@@ -1090,15 +1104,36 @@ DB.assembleAssets = function(self)
     for _, asset in ipairs(self.assets) do
         asset.id = asset.type .. ' ' .. asset.load
         asset.tags = OD_DeepCopy(self.app.tags.current.taggedAssets[asset.id]) or {}
-        asset.addTag = addTag
-        asset.removeTag = removeTag
+        asset.addTag = assetActions.addTag
+        asset.removeTag = assetActions.removeTag
     end
 
     self:markFavorites()
     self:sortAssets()
     self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
 end
+DB.assembleFilterAssets = function(self)
+    self.app.logger:logDebug('-- DB.assembleFilterAssets()')
+    self.filterAssets = {}
 
+    local count = 0
+
+    for group, filter in pairs(FILTER_MENU) do
+        for itemName, item in pairs(filter.items) do
+            table.insert(self.filterAssets, {
+                db = self,
+                type = group,
+                searchText = { { text = itemName } },
+                order = item.order,
+                load = item.query,
+                group = T.FILTER_NAMES[group],
+                execute = assetActions.executeFilter
+            })
+        end
+    end
+
+    self.app.logger:logInfo('A total of ' .. count .. ' filter assets were added to the database')
+end
 DB.sortAssets = function(self)
     local groupPriority = {}
     local prioritiesCount = 0

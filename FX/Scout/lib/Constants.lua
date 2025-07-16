@@ -42,8 +42,8 @@ RESULT_CONTEXT = {
     ['MAIN'] = 0,
     ['ALT'] = 1,
     ['SHIFT'] = 2,
-    ['DRAGGED_TO_TRACK'] = 2,
-    ['DRAGGED_TO_BLANK'] = 3,
+    ['DRAGGED_TO_TRACK'] = 3,
+    ['DRAGGED_TO_BLANK'] = 4,
 }
 
 TAGS_ROOT_PARENT = -1
@@ -63,18 +63,17 @@ FX_CHAINS_GROUP = 'FX Chains'
 ACTIONS_GROUP = 'Actions'
 ALL_TRACKS_GROUP = 'All tracks'
 
-FILTER_MENU_TITLES = {
-    TYPE = 'Search For',
-    FX_TYPE = 'FX Type',
-    FOLDER = 'Folder',
-    CATEGORY = 'Category',
-    DEVELOPER = 'Developer',
-    TAGS = 'Tag'
+FILTER_TYPES = {
+    TYPE = 1,
+    FX_TYPE = 2,
+    CATEGORY = 3,
+    FOLDER = 4,
+    DEVELOPER = 5,
+    TAG = 6,
 }
 
-
 FILTER_MENU = {
-    [FILTER_MENU_TITLES.TYPE] = {
+    [FILTER_TYPES.TYPE] = {
         order = 1,
         allQuery = { type = 'all' },
         items = {
@@ -83,29 +82,29 @@ FILTER_MENU = {
             ['FX'] = { order = 1, query = { type = ASSETS.PLUGIN } },
         }
     },
-    [FILTER_MENU_TITLES.FX_TYPE] = {
+    [FILTER_TYPES.FX_TYPE] = {
         order = 2,
         allQuery = { fx_type = 'all' },
         items = {}
     },
-    [FILTER_MENU_TITLES.FOLDER] = {
+    [FILTER_TYPES.FOLDER] = {
         order = 3,
         allQuery = { fxFolderId = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     },
-    [FILTER_MENU_TITLES.CATEGORY] = {
+    [FILTER_TYPES.CATEGORY] = {
         order = 4,
         allQuery = { fxCategory = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     },
-    [FILTER_MENU_TITLES.DEVELOPER] = {
+    [FILTER_TYPES.DEVELOPER] = {
         order = 5,
         allQuery = { fxDeveloper = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     }
 }
 for i, fx_type_name in ipairs(FX_TYPE) do
-    FILTER_MENU[FILTER_MENU_TITLES.FX_TYPE].items[fx_type_name] = {
+    FILTER_MENU[FILTER_TYPES.FX_TYPE].items[fx_type_name] = {
         order = i,
         query = {
             fx_type = fx_type_name
@@ -113,11 +112,3 @@ for i, fx_type_name in ipairs(FX_TYPE) do
     }
 end
 
-FILTER_CAPSULE_TYPES = {
-    FILTER_MENU_TITLES.TYPE,
-    FILTER_MENU_TITLES.FX_TYPE,
-    FILTER_MENU_TITLES.CATEGORY,
-    FILTER_MENU_TITLES.FOLDER,
-    FILTER_MENU_TITLES.DEVELOPER,
-    FILTER_MENU_TITLES.TAGS,
-}

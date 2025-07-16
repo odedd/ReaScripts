@@ -375,43 +375,43 @@ if OD_PrereqsOK({
         app.temp.filter = filter
 
         -- Filtering assets
-        local assets = app.db.assets
+        local assets = app.temp.searchMode == SEARCH_MODE.MAIN and app.db.assets or app.db.filterAssets
         local tagsTable = app.db.tags
         local filterTags = filter.tags
         local filterText = filter.text:lower()
 
         for i = 1, #assets do
             local asset = assets[i]
+            if app.temp.searchMode == SEARCH_MODE.MAIN then
+                -- Type filters
+                if (filter.type and asset.type ~= filter.type)
+                    or (filter.fx_type and asset.fx_type ~= filter.fx_type)
+                    or (filter.fxDeveloper and (not asset.vendor or asset.vendor ~= filter.fxDeveloper))
+                    or (filter.fxFolderId and (asset.type ~= ASSETS.PLUGIN or not asset:isInFolder(filter.fxFolderId)))
+                    or (filter.fxCategory and (asset.type ~= ASSETS.PLUGIN or not asset:isInCategory(filter.fxCategory)))
+                then
+                    goto skip
+                end
 
-            -- Type filters
-            if (filter.type and asset.type ~= filter.type)
-                or (filter.fx_type and asset.fx_type ~= filter.fx_type)
-                or (filter.fxDeveloper and (not asset.vendor or asset.vendor ~= filter.fxDeveloper))
-                or (filter.fxFolderId and (asset.type ~= ASSETS.PLUGIN or not asset:isInFolder(filter.fxFolderId)))
-                or (filter.fxCategory and (asset.type ~= ASSETS.PLUGIN or not asset:isInCategory(filter.fxCategory)))
-            then
-                goto skip
-            end
-
-            -- Tag filters
-            for tagId, positive in pairs(filterTags) do
-                local hasValue = OD_HasValue(asset.tags, tagId)
-                if not hasValue then
-                    local tag = tagsTable[tagId]
-                    if tag and tag.descendants then
-                        for d = 1, #tag.descendants do
-                            if OD_HasValue(asset.tags, tag.descendants[d].id) then
-                                hasValue = true
-                                break
+                -- Tag filters
+                for tagId, positive in pairs(filterTags) do
+                    local hasValue = OD_HasValue(asset.tags, tagId)
+                    if not hasValue then
+                        local tag = tagsTable[tagId]
+                        if tag and tag.descendants then
+                            for d = 1, #tag.descendants do
+                                if OD_HasValue(asset.tags, tag.descendants[d].id) then
+                                    hasValue = true
+                                    break
+                                end
                             end
                         end
                     end
-                end
-                if (positive and not hasValue) or (not positive and hasValue) then
-                    goto skip
+                    if (positive and not hasValue) or (not positive and hasValue) then
+                        goto skip
+                    end
                 end
             end
-
             -- Text filter
             local foundIndexes = {}
             local allWordsFound = true
@@ -500,10 +500,10 @@ if OD_PrereqsOK({
 
             local currentActiveKeys = {}
             -- local numFilters = 0
-            for i, filterKey in ipairs(FILTER_CAPSULE_TYPES) do
+            for i, filterKey in pairs(FILTER_TYPES) do
                 local filterItem = nil
                 local selectedItemName
-                if filterKey ~= T.FILTER_MENU.TAGS then
+                if filterKey ~= FILTER_TYPES.TAG then
                     for itemName, item in pairs(FILTER_MENU[filterKey].items) do
                         for queryKey, queryValue in pairs(item.query) do
                             if app.temp.filter[queryKey] == queryValue then
@@ -511,7 +511,7 @@ if OD_PrereqsOK({
                                 table.insert(currentActiveKeys, key)
                                 activeFilters[key] = activeFilters[key] or {}
                                 activeFilters[key].key = key
-                                activeFilters[key].type = 'filter'
+                                activeFilters[key].type = filterKey
                                 activeFilters[key].item = item
                                 activeFilters[key].itemName = itemName
                                 activeFilters[key].allQuery = FILTER_MENU[filterKey].allQuery
@@ -529,7 +529,7 @@ if OD_PrereqsOK({
                         table.insert(currentActiveKeys, key)
                         activeFilters[key] = activeFilters[key] or {}
                         activeFilters[key].key = key
-                        activeFilters[key].type = 'tag'
+                        activeFilters[key].type = FILTER_TYPES.TAG
                         activeFilters[key].value = tagValue
                         activeFilters[key].item = app.db.tags[tagKey]
                         activeFilters[key].itemName = app.db.tags[tagKey].name
@@ -579,9 +579,10 @@ if OD_PrereqsOK({
                     local i = 0
                     for filterKey, filter in OD_PairsByOrder(activeFilters) do
                         i = i + 1
-                        local text = filter.key .. ' ' .. filter.itemName
+                        local text = (filter.type == FILTER_TYPES.TAG and filter.key or T.FILTER_NAMES[filter.key]) ..
+                            ' ' .. filter.itemName
                         local textW, textH = ImGui.CalcTextSize(ctx, text)
-                        if filter.type == 'tag' then
+                        if filter.type == FILTER_TYPES.TAG then
                             text = filter.itemName
                             textW = app.widgets.calcTinyIconSize(filter.value and ICONS.PLUS or ICONS.MINUS) + spacingX *
                                 2 +
@@ -605,20 +606,20 @@ if OD_PrereqsOK({
                                 ImGui.GetColor(ctx, ImGui.Col_Button),
                                 ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
                             ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX) --, ImGui.GetCursorPosY(ctx) + paddingY)
-                            if filter.type == 'filter' then
-                                ImGui.TextColored(ctx, app.gui.st.basecolors.textDark, filter.key)
-                            elseif filter.type == 'tag' then
+                            if filter.type == FILTER_TYPES.TAG then
                                 app.widgets.tinyIcon('tagType', filter.value and ICONS.PLUS or ICONS.MINUS, true, true)
+                            else
+                                ImGui.TextColored(ctx, app.gui.st.basecolors.textDark, T.FILTER_NAMES[filter.key])
                             end
                             ImGui.SameLine(ctx)
                             ImGui.AlignTextToFramePadding(ctx)
                             ImGui.Text(ctx, filter.itemName)
                             ImGui.SameLine(ctx)
                             if app.widgets.tinyIcon('removeFilter', ICONS.CLOSE) then
-                                if filter.type == 'filter' then
-                                    app.filterResults(filter.allQuery)
-                                elseif filter.type == 'tag' then
+                                if filter.type == FILTER_TYPES.TAG then
                                     app.filterResults({ removeTags = { filter.item.id } })
+                                else
+                                    app.filterResults(filter.allQuery)
                                 end
                             end
                             ImGui.SetCursorScreenPos(ctx, x2, y2)
@@ -641,10 +642,9 @@ if OD_PrereqsOK({
                 fontLineHeight                                                   -- Height available for search results
             local maxSearchResults = math.floor(searchResultsH / fontLineHeight) -- Max results in available space
             local handleSelectedResults = function(resultContext, contextData)
-                local tracks = app.db:getSelectedTracks()
-                for i = 1, #tracks do
-                    for _, result in pairs(app.selection:results()) do
-                        tracks[i]:addInsert(result.load)
+                for _, result in pairs(app.selection:results()) do
+                    if result.execute then
+                        result:execute(resultContext)
                     end
                 end
             end
@@ -685,14 +685,14 @@ if OD_PrereqsOK({
                         end
                         app.temp.checkScrollUp = true
                     elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
-                        if ImGui.IsKeyPressed(ctx, ImGui.Mod_Alt) then
+                        if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
                             handleSelectedResults(RESULT_CONTEXT.ALT)
-                        elseif ImGui.IsKeyPressed(ctx, ImGui.Mod_Shift) then
+                        elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
                             handleSelectedResults(RESULT_CONTEXT.SHIFT)
                         else
                             handleSelectedResults(RESULT_CONTEXT.MAIN)
                         end
-                    elseif app.isShortcutPressed('markFavorite') and app.temp.resultAtKeyboardPos then
+                    elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.isShortcutPressed('markFavorite') and app.temp.resultAtKeyboardPos then
                         local result = searchResults[app.temp.resultAtKeyboardPos]
                         local fav = result:toggleFavorite()
                         app.filterResults()
@@ -711,6 +711,44 @@ if OD_PrereqsOK({
             end
 
             local handleResultDragDrop = function(row)
+                if ImGui.BeginDragDropTarget(ctx) then
+                    local tagDropped, tagPayload = ImGui.AcceptDragDropPayload(ctx, 'TAG', nil,
+                        ImGui.DragDropFlags_AcceptBeforeDelivery |
+                        ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
+                    if tagDropped then
+                        if app.selection:has(row.index) and not app.temp.highlightDropAreaForAllSelectedResults then
+                            app.temp.highlightDropAreaForAllSelectedResults = ImGui.GetFrameCount(
+                                ctx)
+                            app.temp.highlightDropAreaFor = nil
+                        elseif not app.selection:has(row.index) then
+                            app.temp.highlightDropAreaForAllSelectedResults = nil
+                            app.temp.highlightDropAreaFor = row.index
+                        end
+                        if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
+                            local payloadTag = app.db.tags[tonumber(tagPayload)]
+
+                            local results
+                            local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
+
+                            if app.temp.highlightDropAreaForAllSelectedResults then
+                                results = app.selection:results()
+                            elseif app.temp.highlightDropAreaFor then
+                                results = { searchResults[app.temp.highlightDropAreaFor] }
+                            end
+                            for _, result in pairs(results) do
+                                if remove then
+                                    result:removeTag(payloadTag, false)
+                                else
+                                    result:addTag(payloadTag, false)
+                                end
+                            end
+                            app.tags:save()
+                            app.temp.highlightDropAreaForAllSelectedResults = nil
+                            app.temp.highlightDropAreaFor = nil
+                        end
+                    end
+                    ImGui.EndDragDropTarget(ctx)
+                end
                 if ImGui.BeginDragDropSource(ctx) then
                     if not ImGui.GetDragDropPayload(ctx) and not app.selection:has(row.index) then
                         app.selection:selectOnly(row.index)
@@ -910,9 +948,9 @@ if OD_PrereqsOK({
                                             app.selection:selectOnly(row.index)
                                             app.temp.resultAtKeyboardPos = row.index
                                             if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
-                                                if ImGui.IsKeyPressed(ctx, ImGui.Mod_Alt) then
+                                                if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
                                                     handleSelectedResults(RESULT_CONTEXT.ALT)
-                                                elseif ImGui.IsKeyPressed(ctx, ImGui.Mod_Shift) then
+                                                elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
                                                     handleSelectedResults(RESULT_CONTEXT.SHIFT)
                                                 else
                                                     handleSelectedResults(RESULT_CONTEXT.MAIN)
@@ -923,45 +961,9 @@ if OD_PrereqsOK({
                                     if app.temp.highlightDropAreaForAllSelectedResults and app.temp.highlightDropAreaForAllSelectedResults < ImGui.GetFrameCount(ctx) or app.temp.highlightDropAreaFor == row.index then
                                         ImGui.PopStyleColor(ctx)
                                     end
-                                    if ImGui.BeginDragDropTarget(ctx) then
-                                        local tagDropped, tagPayload = ImGui.AcceptDragDropPayload(ctx, 'TAG', nil,
-                                            ImGui.DragDropFlags_AcceptBeforeDelivery |
-                                            ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
-                                        if tagDropped then
-                                            if app.selection:has(row.index) and not app.temp.highlightDropAreaForAllSelectedResults then
-                                                app.temp.highlightDropAreaForAllSelectedResults = ImGui.GetFrameCount(
-                                                    ctx)
-                                                app.temp.highlightDropAreaFor = nil
-                                            elseif not app.selection:has(row.index) then
-                                                app.temp.highlightDropAreaForAllSelectedResults = nil
-                                                app.temp.highlightDropAreaFor = row.index
-                                            end
-                                            if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
-                                                local payloadTag = app.db.tags[tonumber(tagPayload)]
-
-                                                local results
-                                                local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
-
-                                                if app.temp.highlightDropAreaForAllSelectedResults then
-                                                    results = app.selection:results()
-                                                elseif app.temp.highlightDropAreaFor then
-                                                    results = { searchResults[app.temp.highlightDropAreaFor] }
-                                                end
-                                                for _, result in pairs(results) do
-                                                    if remove then
-                                                        result:removeTag(payloadTag, false)
-                                                    else
-                                                        result:addTag(payloadTag, false)
-                                                    end
-                                                end
-                                                app.tags:save()
-                                                app.temp.highlightDropAreaForAllSelectedResults = nil
-                                                app.temp.highlightDropAreaFor = nil
-                                            end
-                                        end
-                                        ImGui.EndDragDropTarget(ctx)
+                                    if app.temp.searchMode == SEARCH_MODE.MAIN then
+                                        handleResultDragDrop(row)
                                     end
-                                    handleResultDragDrop(row)
                                     if ImGui.IsItemHovered(ctx) then
                                         hintResult = result
                                         hintContext = 'Click'
@@ -1026,7 +1028,7 @@ if OD_PrereqsOK({
                                         end
                                     end
                                     ImGui.PopStyleVar(ctx)
-                                    if #result.tags > 0 then
+                                    if result.tags and #result.tags > 0 then
                                         app.gui:pushColors(app.gui.st.col.search.thirdResult)
                                         local text = '|'
                                         for t = 1, #(result.tags or {}) do
@@ -1055,12 +1057,16 @@ if OD_PrereqsOK({
                 end
 
                 if hintResult then
+                    -- TODO: ADDRESS THE VARIOUS POSSIBLE ACTION TYPES
                     local action = (hintResult.type == ASSETS.TRACK and 'add a send to track %s' or 'add %s to selected track(s)')
                         :format(hintResult.searchText[1].text)
-                    app:setHint('main',
-                        ('%s to %s.'):format(hintContext, action) ..
+                    local hint = ('%s to %s.'):format(hintContext, action)
+                    if app.temp.searchMode == SEARCH_MODE.MAIN then
+                        hint = hint ..
                         (app.getShortcutDescription('markFavorite') ~= '' and (' Press %s to %s.'):format(app.getShortcutDescription('markFavorite'),
-                            hintResult.group == FAVORITE_GROUP and 'unfavorite' or 'favorite') or ''))
+                            hintResult.group == FAVORITE_GROUP and 'unfavorite' or 'favorite') or '')
+                    end
+                    app:setHint('main', hint)
                 else
                     app:setHint('main', '')
                 end
@@ -1441,7 +1447,7 @@ if OD_PrereqsOK({
                 local function drawFilterMenu(menu, menuId)
                     for k, menuInfo in OD_PairsByOrder(menu) do
                         ImGui.PushID(ctx, menuId .. '/' .. k)
-                        if ImGui.BeginMenu(ctx, k .. '##filterMenu') then
+                        if ImGui.BeginMenu(ctx, T.FILTER_NAMES[k] .. '##filterMenu') then
                             if menuInfo.allQuery then
                                 local selected = true
                                 for k, v in pairs(menuInfo.allQuery) do
@@ -1685,10 +1691,10 @@ if OD_PrereqsOK({
             ImGui.SetNextItemWidth(ctx, w)
             local rv
 
-            rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput"..app.temp.searchMode,
+            rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput" .. app.temp.searchMode,
                 T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput)
             if app.temp.lastSearchMode ~= app.temp.searchMode then
-                ImGui.SetKeyboardFocusHere(ctx,-1)
+                ImGui.SetKeyboardFocusHere(ctx, -1)
                 app.temp.lastSearchMode = app.temp.searchMode
             end
             if ImGui.IsItemFocused(ctx) then
@@ -1698,7 +1704,8 @@ if OD_PrereqsOK({
                     else
                         app.temp.searchMode = SEARCH_MODE.MAIN
                     end
-                    app.filterResults({ clear = true })
+                    app.temp.searchInput = ''
+                    app.filterResults({ text = '' })
                 end
             end
             if rv then
