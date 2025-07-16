@@ -33,9 +33,15 @@ FX_TYPE =
     "LV2i"
 }
 
+SEARCH_MODE = {
+    MAIN = 0,
+    FILTERS = 1
+}
+
 RESULT_CONTEXT = {
     ['MAIN'] = 0,
-    ['ALTERNATIVE'] = 1,
+    ['ALT'] = 1,
+    ['SHIFT'] = 2,
     ['DRAGGED_TO_TRACK'] = 2,
     ['DRAGGED_TO_BLANK'] = 3,
 }
@@ -57,8 +63,18 @@ FX_CHAINS_GROUP = 'FX Chains'
 ACTIONS_GROUP = 'Actions'
 ALL_TRACKS_GROUP = 'All tracks'
 
+FILTER_MENU_TITLES = {
+    TYPE = 'Search For',
+    FX_TYPE = 'FX Type',
+    FOLDER = 'Folder',
+    CATEGORY = 'Category',
+    DEVELOPER = 'Developer',
+    TAGS = 'Tag'
+}
+
+
 FILTER_MENU = {
-    [T.FILTER_MENU.TYPE] = {
+    [FILTER_MENU_TITLES.TYPE] = {
         order = 1,
         allQuery = { type = 'all' },
         items = {
@@ -67,29 +83,29 @@ FILTER_MENU = {
             ['FX'] = { order = 1, query = { type = ASSETS.PLUGIN } },
         }
     },
-    [T.FILTER_MENU.FX_TYPE] = {
+    [FILTER_MENU_TITLES.FX_TYPE] = {
         order = 2,
         allQuery = { fx_type = 'all' },
         items = {}
     },
-    [T.FILTER_MENU.FOLDER] = {
+    [FILTER_MENU_TITLES.FOLDER] = {
         order = 3,
         allQuery = { fxFolderId = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     },
-    [T.FILTER_MENU.CATEGORY] = {
+    [FILTER_MENU_TITLES.CATEGORY] = {
         order = 4,
         allQuery = { fxCategory = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     },
-    [T.FILTER_MENU.DEVELOPER] = {
+    [FILTER_MENU_TITLES.DEVELOPER] = {
         order = 5,
         allQuery = { fxDeveloper = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     }
 }
 for i, fx_type_name in ipairs(FX_TYPE) do
-    FILTER_MENU[T.FILTER_MENU.FX_TYPE].items[fx_type_name] = {
+    FILTER_MENU[FILTER_MENU_TITLES.FX_TYPE].items[fx_type_name] = {
         order = i,
         query = {
             fx_type = fx_type_name
@@ -98,10 +114,10 @@ for i, fx_type_name in ipairs(FX_TYPE) do
 end
 
 FILTER_CAPSULE_TYPES = {
-    T.FILTER_MENU.TYPE,
-    T.FILTER_MENU.FX_TYPE,
-    T.FILTER_MENU.CATEGORY,
-    T.FILTER_MENU.FOLDER,
-    T.FILTER_MENU.DEVELOPER,
-    T.FILTER_MENU.TAGS,
+    FILTER_MENU_TITLES.TYPE,
+    FILTER_MENU_TITLES.FX_TYPE,
+    FILTER_MENU_TITLES.CATEGORY,
+    FILTER_MENU_TITLES.FOLDER,
+    FILTER_MENU_TITLES.DEVELOPER,
+    FILTER_MENU_TITLES.TAGS,
 }

@@ -56,7 +56,12 @@ T.SETTINGS.LISTS = {
         TRIM = 'Trim text to length',
     },
 }
-
+T.SEARCH_WINDOW = {
+    SEARCH_HINT = {
+        [SEARCH_MODE.MAIN] = 'Searching items. Press TAB to search filters',
+        [SEARCH_MODE.FILTERS] = 'Searching filters. Press TAB to search items',
+    }
+}
 T.FILTER_MENU = {
     TYPE = 'Search For',
     FX_TYPE = 'FX Type',

@@ -4,7 +4,8 @@ PB_Tags = OD_Settings:new({
         -- Defineable in GUI
         favorites = {},
         tagInfo = {},
-        taggedAssets = {}
+        taggedAssets = {},
+        idCount = 7,
     },
     initial = {
         tagInfo = {

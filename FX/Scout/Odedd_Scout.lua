@@ -44,8 +44,8 @@ if OD_PrereqsOK({
     package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
     ImGui = require 'imgui' '0.9.1'
 
-    dofile(p .. 'lib/Texts.lua')
     dofile(p .. 'lib/Constants.lua')
+    dofile(p .. 'lib/Texts.lua')
     dofile(p .. 'lib/Settings.lua')
     dofile(p .. 'lib/Tags.lua')
     dofile(p .. 'lib/Gui.lua')
@@ -294,6 +294,7 @@ if OD_PrereqsOK({
 
     function app.resetTemp()
         app.temp.confirmation = {}
+        app.temp.searchMode = SEARCH_MODE.MAIN
     end
 
     function app.handlePageSwitch()
@@ -345,8 +346,7 @@ if OD_PrereqsOK({
             app.temp.searchInput = ''
             app.temp.filter = {}
         end
-        query.text = query.text or app.temp.searchInput
-        app.temp.searchInput = query.text
+        query.text = query.text or app.temp.filter.text or ''
         app.temp.searchResults = {}
 
         -- Prepare filter
@@ -452,7 +452,8 @@ if OD_PrereqsOK({
             ::skip::
         end
 
-        app.temp.highlightedResult = (#app.temp.searchResults > 0) and 1 or nil
+        -- make the first result selected and set the keyboard position to it
+        app.temp.resultAtKeyboardPos = (#app.temp.searchResults > 0) and 1 or nil
         app.selection:empty()
         if #app.temp.searchResults > 0 then app.selection:add(1) end
         app.temp.lastInvisibleGroup = nil
@@ -650,54 +651,56 @@ if OD_PrereqsOK({
             local handleKeyboardEvents = function()
                 if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
                     -- handle escape
-                elseif app.temp.highlightedResult then
-                    hintResult = searchResults[app.temp.highlightedResult]
+                elseif app.temp.resultAtKeyboardPos then
+                    hintResult = searchResults[app.temp.resultAtKeyboardPos]
                     hintContext = 'Enter'
-                    if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) and app.temp.highlightedResult < #searchResults then
-                        app.temp.highlightedResult = app.temp.highlightedResult + 1
+                    if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) and app.temp.resultAtKeyboardPos < #searchResults then
+                        app.temp.resultAtKeyboardPos = app.temp.resultAtKeyboardPos + 1
                         if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) or OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
-                            app.selection:add(app.temp.highlightedResult)
+                            app.selection:add(app.temp.resultAtKeyboardPos)
                         else
-                            app.selection:selectOnly(app.temp.highlightedResult)
+                            app.selection:selectOnly(app.temp.resultAtKeyboardPos)
                         end
                         app.temp.checkScrollDown = true
                     elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageDown) then
-                        local newIdx = math.min(app.temp.highlightedResult + maxSearchResults, #searchResults)
-                        if app.temp.highlightedResult ~= newIdx then
-                            app.temp.highlightedResult = newIdx
+                        local newIdx = math.min(app.temp.resultAtKeyboardPos + maxSearchResults, #searchResults)
+                        if app.temp.resultAtKeyboardPos ~= newIdx then
+                            app.temp.resultAtKeyboardPos = newIdx
                             app.temp.checkScrollDown = true
                         end
-                        app.selection:selectOnly(app.temp.highlightedResult)
+                        app.selection:selectOnly(app.temp.resultAtKeyboardPos)
                     elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageUp) then
-                        local newIdx = math.max(app.temp.highlightedResult - maxSearchResults, 1)
-                        if app.temp.highlightedResult ~= newIdx then
-                            app.temp.highlightedResult = newIdx
+                        local newIdx = math.max(app.temp.resultAtKeyboardPos - maxSearchResults, 1)
+                        if app.temp.resultAtKeyboardPos ~= newIdx then
+                            app.temp.resultAtKeyboardPos = newIdx
                             app.temp.checkScrollUp = true
                         end
-                        app.selection:selectOnly(app.temp.highlightedResult)
-                    elseif ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) and app.temp.highlightedResult > 1 then
-                        app.temp.highlightedResult = app.temp.highlightedResult - 1
+                        app.selection:selectOnly(app.temp.resultAtKeyboardPos)
+                    elseif ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) and app.temp.resultAtKeyboardPos > 1 then
+                        app.temp.resultAtKeyboardPos = app.temp.resultAtKeyboardPos - 1
                         if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) or OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
-                            app.selection:add(app.temp.highlightedResult)
+                            app.selection:add(app.temp.resultAtKeyboardPos)
                         else
-                            app.selection:selectOnly(app.temp.highlightedResult)
+                            app.selection:selectOnly(app.temp.resultAtKeyboardPos)
                         end
                         app.temp.checkScrollUp = true
                     elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
                         if ImGui.IsKeyPressed(ctx, ImGui.Mod_Alt) then
-                            handleSelectedResults(RESULT_CONTEXT.ALTERNATIVE)
+                            handleSelectedResults(RESULT_CONTEXT.ALT)
+                        elseif ImGui.IsKeyPressed(ctx, ImGui.Mod_Shift) then
+                            handleSelectedResults(RESULT_CONTEXT.SHIFT)
                         else
                             handleSelectedResults(RESULT_CONTEXT.MAIN)
                         end
-                    elseif app.isShortcutPressed('markFavorite') and app.temp.highlightedResult then
-                        local result = searchResults[app.temp.highlightedResult]
+                    elseif app.isShortcutPressed('markFavorite') and app.temp.resultAtKeyboardPos then
+                        local result = searchResults[app.temp.resultAtKeyboardPos]
                         local fav = result:toggleFavorite()
-                        app.filterResults({ text = app.temp.searchInput })
+                        app.filterResults()
                         if fav then
                             for i = 1, #app.temp.searchResults do
                                 if app.temp.searchResults[i] == result then
-                                    app.temp.highlightedResult = i
-                                    app.selection:selectOnly(app.temp.highlightedResult)
+                                    app.temp.resultAtKeyboardPos = i
+                                    app.selection:selectOnly(app.temp.resultAtKeyboardPos)
                                     app.temp.checkScrollUp = true
                                     break
                                 end
@@ -711,7 +714,7 @@ if OD_PrereqsOK({
                 if ImGui.BeginDragDropSource(ctx) then
                     if not ImGui.GetDragDropPayload(ctx) and not app.selection:has(row.index) then
                         app.selection:selectOnly(row.index)
-                        app.temp.highlightedResult = row.index
+                        app.temp.resultAtKeyboardPos = row.index
                     end
                     local listTracks = false
                     local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
@@ -779,7 +782,7 @@ if OD_PrereqsOK({
                 local selectedRow = nil
                 if app.temp.checkScrollDown or app.temp.checkScrollUp then
                     for i, row in ipairs(flatRows) do
-                        if row.index == app.temp.highlightedResult then
+                        if row.index == app.temp.resultAtKeyboardPos then
                             selectedRow = row
                             break
                         end
@@ -897,18 +900,20 @@ if OD_PrereqsOK({
                                     end
                                     if ImGui.Selectable(ctx, '', app.selection:has(row.index) or app.temp.highlightDropAreaFor == row.index, selectableFlags, 0, 0) then
                                         if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
-                                            app.selection:selectRange(app.temp.highlightedResult, row.index)
-                                            app.temp.highlightedResult = row.index
+                                            app.selection:selectRange(app.temp.resultAtKeyboardPos, row.index)
+                                            app.temp.resultAtKeyboardPos = row.index
                                         elseif OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
                                             if app.selection:toggle(row.index) then
-                                                app.temp.highlightedResult = row.index
+                                                app.temp.resultAtKeyboardPos = row.index
                                             end
                                         else
                                             app.selection:selectOnly(row.index)
-                                            app.temp.highlightedResult = row.index
+                                            app.temp.resultAtKeyboardPos = row.index
                                             if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
                                                 if ImGui.IsKeyPressed(ctx, ImGui.Mod_Alt) then
-                                                    handleSelectedResults(RESULT_CONTEXT.ALTERNATIVE)
+                                                    handleSelectedResults(RESULT_CONTEXT.ALT)
+                                                elseif ImGui.IsKeyPressed(ctx, ImGui.Mod_Shift) then
+                                                    handleSelectedResults(RESULT_CONTEXT.SHIFT)
                                                 else
                                                     handleSelectedResults(RESULT_CONTEXT.MAIN)
                                                 end
@@ -1212,6 +1217,8 @@ if OD_PrereqsOK({
                                 end
                             end
                             if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Right) then
+                                app.temp.tagRename = nil
+                                app.temp.tagRenameBuffer = nil
                                 app.temp.showDeleteTagConfirmation = nil
                                 ImGui.OpenPopup(ctx, 'Tag Context Menu')
                             end
@@ -1248,12 +1255,11 @@ if OD_PrereqsOK({
                         -- end
                         if app.temp.tagRename ~= tag.id and (hovering or tagStatus ~= nil) then
                             local iconsWidth = 0
-                            if hovering then
+                            if hovering and tagStatus == nil then
                                 iconsWidth = iconsWidth + app.widgets.calcTinyIconSize(ICONS.MINUS) +
                                     app.widgets.calcTinyIconSize(ICONS.PLUS)
                                 tagW = tagW + spacingX * 3
-                            end
-                            if tagStatus ~= nil then
+                            elseif tagStatus ~= nil then
                                 iconsWidth = iconsWidth +
                                     (tagStatus ~= nil and app.widgets.calcTinyIconSize(ICONS.CLOSE) or 0)
                                 tagW = tagW + spacingX * 2
@@ -1320,19 +1326,18 @@ if OD_PrereqsOK({
                             if tagStatus ~= nil then
                                 ImGui.SameLine(ctx)
                                 ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                                if app.widgets.tinyIcon('removeTag', ICONS.CLOSE) then
+                                if app.widgets.tinyIcon('removeTag', hovering and ICONS.CLOSE or (tagStatus and ICONS.PLUS or ICONS.MINUS)) then
                                     app.filterResults({ removeTags = { tag.id } })
                                 end
-                            end
-                            if hovering then
+                            elseif hovering then
                                 ImGui.SameLine(ctx)
                                 ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                                if app.widgets.tinyIcon('addPositiveTag', ICONS.PLUS, tagStatus, tagStatus) then
+                                if app.widgets.tinyIcon('addPositiveTag', ICONS.PLUS) then
                                     app.filterResults({ addTags = { [tag.id] = true } })
                                 end
                                 ImGui.SameLine(ctx)
                                 ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                                if app.widgets.tinyIcon('addNegative', ICONS.MINUS, tagStatus == false, tagStatus == false) then
+                                if app.widgets.tinyIcon('addNegative', ICONS.MINUS) then
                                     app.filterResults({ addTags = { [tag.id] = false } })
                                 end
                             end
@@ -1669,7 +1674,6 @@ if OD_PrereqsOK({
 
         local drawTextSearchInput = function()
             if app.pageSwitched then
-                -- app.db:init()
                 app.filterResults({ text = '' })
                 ImGui.SetKeyboardFocusHere(ctx, 0)
             end
@@ -1679,9 +1683,26 @@ if OD_PrereqsOK({
                 ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
 
             ImGui.SetNextItemWidth(ctx, w)
-            local rv, searchInput = ImGui.InputText(ctx, "##searchInput", app.temp.searchInput)
+            local rv
+
+            rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput"..app.temp.searchMode,
+                T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput)
+            if app.temp.lastSearchMode ~= app.temp.searchMode then
+                ImGui.SetKeyboardFocusHere(ctx,-1)
+                app.temp.lastSearchMode = app.temp.searchMode
+            end
+            if ImGui.IsItemFocused(ctx) then
+                if ImGui.IsKeyReleased(ctx, ImGui.Key_Tab) then
+                    if app.temp.searchMode == SEARCH_MODE.MAIN then
+                        app.temp.searchMode = SEARCH_MODE.FILTERS
+                    else
+                        app.temp.searchMode = SEARCH_MODE.MAIN
+                    end
+                    app.filterResults({ clear = true })
+                end
+            end
             if rv then
-                app.filterResults({ text = searchInput })
+                app.filterResults({ text = app.temp.searchInput })
                 app.temp.scrollToTop = true
             end
         end

@@ -711,6 +711,9 @@ DB.getTags = function(self)
         end
         self.tags[id].delete = function(self, persistAndReload)
             local assetsToRemoveTag = self.db:assetsWithTag(self)
+            if self.app.temp.filter.tags then
+                self.app.filterResults({ removeTags = { self.id } })
+            end
             for _, asset in pairs(assetsToRemoveTag) do
                 asset:removeTag(self, false)
             end
@@ -718,9 +721,9 @@ DB.getTags = function(self)
                 tag:delete(false)
             end
             self.app.tags.current.tagInfo[self.id] = nil
-            for _, sib in pairs(self.siblings) do
+            for sibId, sib in pairs(self.siblings) do
                 if sib.order > self.order then
-                    self.app.tags.current.tagInfo[sib.id].order = self.app.tags.current.tagInfo[sib.id].order - 1
+                    self.app.tags.current.tagInfo[sibId].order = self.app.tags.current.tagInfo[sibId].order - 1
                 end
             end
             if persistAndReload ~= false then
@@ -753,7 +756,7 @@ DB.getTags = function(self)
                 self.siblings = {}
                 if self.parentId and self.parentId ~= TAGS_ROOT_PARENT then
                     for candidateId, candidate in pairs(self.allTags) do
-                        if candidate.parentId == self.parentId and candidate.id ~= self.id then
+                        if candidate.parentId == self.parentId and candidateId ~= self.id then
                             table.insert(self.siblings, candidate)
                         end
                     end
@@ -807,7 +810,7 @@ DB.getTags = function(self)
 
             -- Remove self from siblings if present (for move)
             local filteredSiblings = {}
-            for _, sibId in ipairs(siblings) do
+            for _, sibId in pairs(siblings) do
                 if sibId ~= self.id then
                     table.insert(filteredSiblings, sibId)
                 end
@@ -900,10 +903,17 @@ DB.createTag = function(self, name, parent)
         parentId = parentId,
         order = levelCount + 1
     }
-    self.app.tags.current.tagInfo[lastId + 1] = newTag
+    local newId = self.app.tags.current.idCount + 1
+    self.app.tags.current.idCount = newId
+    self.app.tags.current.tagInfo[newId] = newTag
+    self.app.logger:logInfo('Created a new tag \'' ..
+    name ..
+    '\' with id ' ..
+    newId .. (parentId ~= TAGS_ROOT_PARENT and ' (parent Id: ' .. parentId .. ')' or ''))
+    self.app.tags:save()
     self:getTags()
     for _, tag in pairs(self.tags) do
-        if tag.id == lastId + 1 then
+        if tag.id == newId then
             return tag
         end
     end
