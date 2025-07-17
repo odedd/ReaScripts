@@ -932,7 +932,7 @@ DB.createTag = function(self, name, parent)
         '\' with id ' ..
         newId .. (parentId ~= TAGS_ROOT_PARENT and ' (parent Id: ' .. parentId .. ')' or ''))
     self.app.tags:save()
-    self.db:getTags(true)
+    self:getTags(true)
 
     for _, tag in pairs(self.tags) do
         if tag.id == newId then
