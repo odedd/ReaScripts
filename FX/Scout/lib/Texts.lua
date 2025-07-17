@@ -58,8 +58,8 @@ T.SETTINGS.LISTS = {
 }
 T.SEARCH_WINDOW = {
     SEARCH_HINT = {
-        [SEARCH_MODE.MAIN] = 'Searching items. Press Tab to search filters',
-        [SEARCH_MODE.FILTERS] = 'Searching filters. Press Tab to search items',
+        [SEARCH_MODE.MAIN] = 'Item search | Press Tab to search filters',
+        [SEARCH_MODE.FILTERS] = 'Filter search | Press Tab to search items',
     }
 }
 T.FILTER_NAMES = {
