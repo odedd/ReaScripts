@@ -1557,6 +1557,7 @@ else
                     if ImGui.BeginChild(ctx, 'TagScrollArea', tagAreaW - paddingX * 2, select(2, ImGui.GetContentRegionAvail(ctx)) - spacingY, nil) then
                         ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
                         drawTagsOfParent(TAGS_ROOT_PARENT, false, false)
+                        ImGui.Dummy(ctx, 0, 0)
                         ImGui.EndChild(ctx)
                     end
                     ImGui.Dummy(ctx, 0, 0)
