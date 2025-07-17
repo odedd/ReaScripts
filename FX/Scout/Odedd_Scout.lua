@@ -1097,12 +1097,12 @@ else
                                             ImGui.Text(ctx, text)
                                             app.gui:popColors(app.gui.st.col.search.thirdResult)
                                         end
-                                        if (result.descendants and #result.descendants > 0) then
+                                        if (result.parents and #result.parents > 0) then
                                             app.gui:pushColors(app.gui.st.col.search.thirdResult)
-                                            local text = ' > '
-                                            for i = #result.descendants, 1, -1 do
-                                                local parent = result.descendants[i]
-                                                text = text .. parent.name .. ' > '
+                                            local text = ' < '
+                                            for i = #result.parents, 1, -1 do
+                                                local parent = result.parents[i]
+                                                text = text .. parent.name .. ' < '
                                             end
                                             ImGui.Text(ctx, text:sub(1, -3))
                                             app.gui:popColors(app.gui.st.col.search.thirdResult)

@@ -1239,7 +1239,7 @@ DB.assembleFilterAssets = function(self, whichFilters)
                     db = self,
                     type = FILTER_TYPES.TAG,
                     searchText = { { text = tag.name } },
-                    descendants = tag.descendants,
+                    parents = tag.parents,
                     order = tag.order,
                     load = tag.id,
                     group = T.FILTER_NAMES[FILTER_TYPES.TAG],
