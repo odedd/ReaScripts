@@ -111,7 +111,7 @@ else
 
 
         function app.minimizeText(text, maxWidth)
-            local key = app.settings.current.uiScale .. maxWidth
+            local key = app.gui.scale .. maxWidth
             app.maxTextLen = app.maxTextLen or {}
             if app.maxTextLen[key] == nil then
                 local i = 0
@@ -304,13 +304,13 @@ else
         function app.refreshWindowSize()
             if app.page then
                 local width = app.page.width
-                local minHeight = app.page.minHeight or 0
-                app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.page.width * app.settings.current.uiScale,
-                    ((minHeight or app.page.minHeight or 0) or 0)
+                local minHeight = (app.page.minHeight * app.gui.scale) or 0
+                app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.page.width * app.gui.scale,
+                    ((minHeight or (app.page.minHeight * app.gui.scale) or 0) or 0)
                 ImGui.SetNextWindowSize(app.gui.ctx,
-                    math.max(app.settings.current.lastWindowWidth or 0, app.page.width * app.settings.current.uiScale),
+                    math.max(app.settings.current.lastWindowWidth or 0, app.page.width * app.gui.scale),
                     math.max(app.settings.current.lastWindowHeight or 0,
-                        (app.page.height or 0) * app.settings.current.uiScale))
+                        (app.page.height or 0) * app.gui.scale))
                 app.refreshWindowSizeOnNextFrame = false
             end
         end
@@ -373,7 +373,8 @@ else
             return desc
         end
 
-        function app.filterResults(query)
+        function app.filterResults(query, reset)
+            local reset = (reset == nil) and true or reset
             query = OD_DeepCopy(query) or {}
             if query.clear then
                 app.temp.searchInput = ''
@@ -488,12 +489,12 @@ else
                 end
                 ::skip::
             end
-
+            -- if reset then
             -- make the first result selected and set the keyboard position to it
             app.temp.resultAtKeyboardPos = (#app.temp.searchResults > 0) and 1 or nil
             app.selection:empty()
             if #app.temp.searchResults > 0 then app.selection:add(1) end
-            app.temp.lastInvisibleGroup = nil
+            -- end
         end
 
         function app.drawSearch()
@@ -503,7 +504,7 @@ else
 
             -- Inline variable explanations for layout/UI parameters:
             local w, h = ImGui.GetContentRegionAvail(ctx)
-            local tagAreaW = app.settings.current.filterPanelWidth * app.settings.current.uiScale
+            local tagAreaW = app.settings.current.filterPanelWidth * app.gui.scale
             local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
             local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
             local tagAreaScreenX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - tagAreaW -- X position for tag area
@@ -785,6 +786,7 @@ else
                                     end
                                 end
                                 app.tags:save()
+                                app.filterResults(nil, true)
                                 app.temp.highlightDropAreaForAllSelectedResults = nil
                                 app.temp.highlightDropAreaFor = nil
                             end
@@ -867,28 +869,33 @@ else
                                 break
                             end
                         end
-
-                        if selectedRow and app.temp.checkScrollDown then
-                            if selectedRow.totalIndex * fontLineHeight >= app.temp.tableScrollY + searchResultsH then
-                                local skip = flatRows[selectedRow.totalIndex].type == 'group'
-                                ImGui.SetNextWindowScroll(ctx, 0,
-                                    (selectedRow.totalIndex) * fontLineHeight - searchResultsH +
-                                    (skip and fontLineHeight or 0))
-                            end
-                            app.temp.checkScrollDown = false
-                        elseif selectedRow and app.temp.checkScrollUp then
-                            if selectedRow.totalIndex * fontLineHeight <= app.temp.tableScrollY + fontLineHeight then
-                                local skip
-                                if selectedRow.totalIndex == 1 then
-                                    skip = false
-                                else
-                                    skip = (flatRows[selectedRow.totalIndex - 1].type == 'group')
+                        if selectedRow then
+                            local tooLow = selectedRow.totalIndex * fontLineHeight >=
+                            app.temp.tableScrollY + searchResultsH
+                            local tooHigh = selectedRow.totalIndex * fontLineHeight <=
+                            app.temp.tableScrollY + fontLineHeight
+                            if app.temp.checkScrollDown then
+                                if tooLow or tooHigh then
+                                    local skip = flatRows[selectedRow.totalIndex].type == 'group'
+                                    ImGui.SetNextWindowScroll(ctx, 0,
+                                        (selectedRow.totalIndex) * fontLineHeight - searchResultsH +
+                                        (skip and fontLineHeight or 0))
                                 end
-                                ImGui.SetNextWindowScroll(ctx, 0,
-                                    (selectedRow.totalIndex - 1) * fontLineHeight -
-                                    (skip and fontLineHeight or 0))
+                                app.temp.checkScrollDown = false
+                            elseif app.temp.checkScrollUp then
+                                if tooHigh or tooLow then
+                                    local skip
+                                    if selectedRow.totalIndex == 1 then
+                                        skip = false
+                                    else
+                                        skip = (flatRows[selectedRow.totalIndex - 1].type == 'group')
+                                    end
+                                    ImGui.SetNextWindowScroll(ctx, 0,
+                                        (selectedRow.totalIndex - 1) * fontLineHeight -
+                                        (skip and fontLineHeight or 0))
+                                end
+                                app.temp.checkScrollUp = false
                             end
-                            app.temp.checkScrollUp = false
                         end
                     end
                 end
@@ -1159,7 +1166,7 @@ else
                     ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
                     local mouseDeltaX = select(1, ImGui.GetMouseDragDelta(ctx, nil, nil, ImGui.MouseButton_Left))
                     if mouseDeltaX ~= 0 then
-                        local newWidth = (tagAreaW - mouseDeltaX) / app.settings.current.uiScale
+                        local newWidth = (tagAreaW - mouseDeltaX) / app.gui.scale
                         if newWidth > app.settings.current.minFilterPanelWidth then
                             app.settings.current.filterPanelWidth = newWidth
                             ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
@@ -1179,7 +1186,7 @@ else
                                 local scrX, scrY = ImGui.GetCursorScreenPos(ctx)
                                 local offsetY = offsetY or 0
                                 local dragTargetLineOffsetY = dragTargetLineOffsetY or 0
-                                local w, h = ImGui.GetContentRegionAvail(ctx) -- * app.settings.current.uiScale
+                                local w, h = ImGui.GetContentRegionAvail(ctx) -- * app.gui.scale
                                 local triangleW = tag.hasDescendants and
                                     app.gui.st.vars.tagList[ImGui.StyleVar_IndentSpacing]
                                     [1] or 0
@@ -1220,12 +1227,12 @@ else
                                                 scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
                                                 app.gui.st.basecolors.mainBright,
                                                 app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
-                                                nil, 1.5 * app.settings.current.uiScale)
+                                                nil, 1.5 * app.gui.scale)
                                         else
                                             ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX,
                                                 scrY - height - offsetY + dragTargetLineOffsetY, scrX + w,
                                                 scrY - height - offsetY + dragTargetLineOffsetY, app.gui.st.basecolors
-                                                .mainBright, 15, nil, 1.5 * app.settings.current.uiScale)
+                                                .mainBright, 15, nil, 1.5 * app.gui.scale)
                                         end
                                         if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
                                             payloadTag:moveTo(tag, position)
@@ -1238,7 +1245,7 @@ else
                                             scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
                                             app.gui.st.basecolors.mainBright,
                                             app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
-                                            nil, 1.5 * app.settings.current.uiScale)
+                                            nil, 1.5 * app.gui.scale)
                                         if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
                                             local remove = (assetPayload == 'remove')
                                             for i, result in ipairs(app.selection:results()) do
@@ -1249,6 +1256,7 @@ else
                                                 end
                                             end
                                             app.tags:save()
+                                            app.filterResults(nil, true)
                                         end
                                     end
                                     ImGui.EndDragDropTarget(ctx)
@@ -1367,9 +1375,9 @@ else
                                     local cy = globalY + tagH / 2
                                     ImGui.DrawList_AddTriangleFilled(
                                         ImGui.GetWindowDrawList(ctx),
-                                        cx - triH / 3, cy - triW / 2 + .5 * app.settings.current.uiScale,
-                                        cx - triH / 3, cy + triW / 2 - .5 * app.settings.current.uiScale,
-                                        cx + triH * 2 / 3 - app.settings.current.uiScale, cy,
+                                        cx - triH / 3, cy - triW / 2 + .5 * app.gui.scale,
+                                        cx - triH / 3, cy + triW / 2 - .5 * app.gui.scale,
+                                        cx + triH * 2 / 3 - app.gui.scale, cy,
                                         app.gui.st.col.tag[ImGui.Col_Text]
                                     )
                                 end
@@ -1602,7 +1610,7 @@ else
 
         function app.drawSettings()
             local ctx = app.gui.ctx
-            local w = 700 * app.settings.current.uiScale
+            local w = 700 * app.gui.scale
             -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger
             -- closing this window. So we increment a counter which will be reset if the shortcut is
             -- being captured, so that we can know to ignore the captured key unless some frames have passed.
@@ -1843,7 +1851,7 @@ else
                 ImGui.PopStyleColor(ctx)
                 ImGui.SameLine(ctx)
                 local x, y = ImGui.GetCursorScreenPos(ctx)
-                local width = 2 * app.settings.current.uiScale
+                local width = 2 * app.gui.scale
                 ImGui.DrawList_AddLine(ImGui.GetWindowDrawList(ctx), x + width / 2, y - paddingY, x + width / 2,
                     y + h - paddingY * 2 - winPaddingY, col, width)
                 ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + width + spacingX)

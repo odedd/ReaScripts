@@ -39,6 +39,11 @@ function OD_Gui:addFont(key, file, size, recalculation)
     self.st.fonts[key] = r.ImGui_CreateFont(OD_LocalOrCommon(file, self.app.scr.dir), math.floor(size * scale))
 end
 
+-- function OD_Gui:getNormalizedScale(scale, font)
+--     local size = self.originalFonts.default.size
+--     return scale * (math.floor(size * scale) / (size * scale))
+-- end
+
 function OD_Gui:reAddFonts()
     for key, font in pairs(self.originalFonts) do
         r.ImGui_Detach(self.ctx, self.st.fonts[key])

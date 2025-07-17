@@ -274,7 +274,7 @@ DB.getTracks = function(self)
                             ImGui.PushFont(self.db.app.gui.ctx, self.db.app.gui.st.fonts.small)
                             self.shortName, self.shortened = self.db.app.minimizeText(
                                 self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''):gsub("^%s+", ''):gsub("%s+$", ''),
-                                math.floor(self.db.app.settings.current.sendWidth * self.db.app.settings.current.uiScale) -
+                                math.floor(self.db.app.settings.current.sendWidth * self.db.app.gui.scale) -
                                 r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 4)
                             ImGui.PopFont(self.db.app.gui.ctx)
                         end,

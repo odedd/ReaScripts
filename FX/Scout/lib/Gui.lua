@@ -201,11 +201,11 @@ PB_Gui.init = function(self, fonts)
     }
 
     self.updateVarsToScale = function(self)
-        local scale = self.app.settings.current.uiScale
+        local scale = self.scale
         self.st.vars = {
             main = {
                 [ImGui.StyleVar_FrameRounding] = { self.st.rounding * scale, nil },
-                [ImGui.StyleVar_ItemSpacing] = { 4 * scale, 4 * scale },
+                [ImGui.StyleVar_ItemSpacing] = { math.floor(4 * scale), math.floor(4 * scale) },
                 [ImGui.StyleVar_WindowRounding] = { 12 * scale, nil },
                 -- [ImGui.StyleVar_WindowPadding] = { 0 * scale, 0 * scale },
                 [ImGui.StyleVar_WindowPadding] = { self.st.windowPadding * scale, self.st.windowPadding * scale },
@@ -278,9 +278,9 @@ PB_Gui.init = function(self, fonts)
         ImGui.PushFont(self.ctx, self.st.fonts.default) -- hint font! important!
         self.st.sizes = {
             sendTypeSeparatorWidth = self.TEXT_BASE_HEIGHT,
-            sendTypeSeparatorHeight = 95 * self.app.settings.current.uiScale,
-            minFaderHeight = 100 * self.app.settings.current.uiScale,
-            mixerSeparatorWidth = 4 * self.app.settings.current.uiScale,
+            sendTypeSeparatorHeight = 95 * self.scale,
+            minFaderHeight = 100 * self.scale,
+            mixerSeparatorWidth = 4 * self.scale,
             hintHeight = ImGui.GetTextLineHeightWithSpacing(self.ctx) +
                 select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_ItemSpacing)) +
                 select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_FramePadding)) * 2
@@ -288,6 +288,7 @@ PB_Gui.init = function(self, fonts)
         ImGui.PopFont(self.ctx)
     end
     self.recalculateZoom = function(self, scale)
+        -- local scale = self:getNormalizedScale(scale, self.st.fonts.default)
         if self.scale ~= scale then
             local change = scale /
                 (self.scale or scale) -- return change to allow for scaling of other elements (eg. Resize window)
@@ -312,7 +313,7 @@ PB_Gui.init = function(self, fonts)
     self.drawSadFace = function(self, sizeFactor, color)
         local x, y = ImGui.GetCursorScreenPos(self.ctx)
         local sz = self.TEXT_BASE_WIDTH * sizeFactor
-        -- local sz = 20 * sizeFactor * self.app.settings.current.uiScale
+        -- local sz = 20 * sizeFactor * self.scale
         ImGui.DrawList_AddCircleFilled(self.draw_list, x, y, sz, color, 36)
         ImGui.DrawList_AddCircleFilled(self.draw_list, x - sz / 3.5, y - sz / 5, sz / 9, 0x000000ff, 36)
         ImGui.DrawList_AddCircleFilled(self.draw_list, x + sz / 3.5, y - sz / 5, sz / 9, 0x000000ff, 36)
