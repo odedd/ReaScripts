@@ -1024,6 +1024,10 @@ local assetActions = {
                     tracks[i]:addInsert(self.load)
                 end
             end
+        elseif self.type == ASSETS.ACTION then
+            r.Main_OnCommand(self.load, 0)
+        elseif self.type == ASSETS.TRACK then
+            -- r.SetOnlyTrackSelected(self.load)
         end
         self.db.app.setFocusToSearchInput(true)
     end
