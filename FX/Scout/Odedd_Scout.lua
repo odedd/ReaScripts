@@ -288,6 +288,19 @@ else
             return false, value
         end
 
+        function app.initFrame()
+            local change = app.gui:recalculateZoom(app.settings.current.uiScale)
+            if change ~= 1 then
+                app.settings.current.lastWindowWidth = app.settings.current.lastWindowWidth * change
+                app.settings.current.lastWindowHeight = app.settings.current.lastWindowHeight * change
+                app.refreshWindowSizeOnNextFrame = true
+            end
+            app:checkProjectChange()
+            if app.temp.waitingForDoubleClick and (r.time_precise() - app.temp.waitingForDoubleClick) > 0.5 then
+                app.temp.waitingForDoubleClick = nil
+            end
+        end
+
         function app.refreshWindowSize()
             if app.page then
                 local width = app.page.width
@@ -710,14 +723,16 @@ else
                             end
                             app.temp.checkScrollUp = true
                         elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
-                            if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
-                                handleSelectedResults(RESULT_CONTEXT.ALT)
-                            elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
-                                handleSelectedResults(RESULT_CONTEXT.SHIFT)
-                            elseif OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
-                                handleSelectedResults(RESULT_CONTEXT.CTRL)
-                            else
-                                handleSelectedResults(RESULT_CONTEXT.MAIN)
+                            if not app.temp.tagRename then
+                                if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
+                                    handleSelectedResults(RESULT_CONTEXT.ALT)
+                                elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
+                                    handleSelectedResults(RESULT_CONTEXT.SHIFT)
+                                elseif OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
+                                    handleSelectedResults(RESULT_CONTEXT.CTRL)
+                                else
+                                    handleSelectedResults(RESULT_CONTEXT.MAIN)
+                                end
                             end
                         elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.isShortcutPressed('markFavorite') and app.temp.resultAtKeyboardPos then
                             local result = searchResults[app.temp.resultAtKeyboardPos]
@@ -975,6 +990,10 @@ else
                                             else
                                                 app.selection:selectOnly(row.index)
                                                 app.temp.resultAtKeyboardPos = row.index
+                                                if not app.temp.waitingForDoubleClick then
+                                                    app.temp.waitingForDoubleClick =
+                                                        r.time_precise()
+                                                end
                                                 if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
                                                     if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
                                                         handleSelectedResults(RESULT_CONTEXT.ALT)
@@ -1766,7 +1785,7 @@ else
 
                 ImGui.SetNextItemWidth(ctx, w)
                 local rv
-                if not ImGui.IsAnyItemActive(ctx) and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.tagRename and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows) then
+                if not ImGui.IsAnyItemActive(ctx) and not app.temp.waitingForDoubleClick and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.tagRename and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows) then
                     ImGui.SetKeyboardFocusHere(ctx, 0)
                 end
                 rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput" .. app.temp.searchMode,
@@ -1985,13 +2004,7 @@ else
 
         function app.loop()
             app.open = true
-            local change = app.gui:recalculateZoom(app.settings.current.uiScale)
-            if change ~= 1 then
-                app.settings.current.lastWindowWidth = app.settings.current.lastWindowWidth * change
-                app.settings.current.lastWindowHeight = app.settings.current.lastWindowHeight * change
-                app.refreshWindowSizeOnNextFrame = true
-            end
-            app:checkProjectChange()
+            app.initFrame()
             local ctx = app.gui.ctx
             app.gui:pushColors(app.gui.st.col.main)
             app.gui:pushStyles(app.gui.st.vars.main)
