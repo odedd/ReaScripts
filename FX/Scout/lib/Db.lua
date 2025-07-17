@@ -974,13 +974,29 @@ local assetActions = {
         end
     end,
     executeFilter = function(self, context)
-        self.db.app.filterResults(self.load)
+        if self.type ~= FILTER_TYPES.TAG then
+            if context == RESULT_CONTEXT.ALT then
+                self.db.app.filterResults(self.loadAll)
+            else
+                self.db.app.filterResults(self.load)
+            end
+        else
+            if context == RESULT_CONTEXT.ALT then
+                self.db.app.filterResults({ removeTags = { self.load } })
+            elseif context == RESULT_CONTEXT.SHIFT then
+                self.db.app.filterResults({ addTags = { [self.load] = false } })
+            else
+                self.db.app.filterResults({ addTags = { [self.load] = true } })
+            end
+        end
     end,
-    executePlugin = function(self, context, contextData)
-        if context == RESULT_CONTEXT.MAIN then
-            local tracks = self.db:getSelectedTracks()
-            for i = 1, #tracks do
-                tracks[i]:addInsert(self.load)
+    execute = function(self, context, contextData)
+        if self.type == ASSETS.PLUGIN then
+            if context == RESULT_CONTEXT.MAIN then
+                local tracks = self.db:getSelectedTracks()
+                for i = 1, #tracks do
+                    tracks[i]:addInsert(self.load)
+                end
             end
         end
     end
@@ -1009,7 +1025,6 @@ DB.assembleAssets = function(self)
             searchText = { { text = chain.file }, { text = chain.path }, { text = chain.ext, hide = true } },
             load = chain.load,
             group = FX_CHAINS_GROUP,
-            toggleFavorite = assetActions.toggleFavorite
         })
         count = count + 1
     end
@@ -1020,7 +1035,6 @@ DB.assembleAssets = function(self)
             searchText = { { text = tt.file }, { text = tt.path }, { text = tt.ext, hide = true } },
             load = tt.load,
             group = TRACK_TEMPLATES_GROUP,
-            toggleFavorite = assetActions.toggleFavorite
         })
         count = count + 1
     end
@@ -1034,7 +1048,6 @@ DB.assembleAssets = function(self)
             group = TRACKS_GROUP,
             order = track.order,
             color = track.color,
-            toggleFavorite = assetActions.toggleFavorite
         })
         count = count + 1
     end
@@ -1047,7 +1060,6 @@ DB.assembleAssets = function(self)
             -- group = track.hasReceives and RECEIVES_GROUP or TRACKS_GROUP,
             group = ACTIONS_GROUP,
             order = action.order,
-            toggleFavorite = assetActions.toggleFavorite
         })
         count = count + 1
     end
@@ -1095,8 +1107,6 @@ DB.assembleAssets = function(self)
                     end
                     return self.folders[folderId]
                 end,
-                toggleFavorite = assetActions.toggleFavorite,
-                execute = assetActions.executePlugin
             })
             count = count + 1
         end
@@ -1106,32 +1116,90 @@ DB.assembleAssets = function(self)
         asset.tags = OD_DeepCopy(self.app.tags.current.taggedAssets[asset.id]) or {}
         asset.addTag = assetActions.addTag
         asset.removeTag = assetActions.removeTag
+        asset.execute = assetActions.execute
+        asset.toggleFavorite = assetActions.toggleFavorite
     end
 
     self:markFavorites()
     self:sortAssets()
     self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
 end
-DB.assembleFilterAssets = function(self)
+-- whichFilter example: {filters = {FILTER_TYPES.CATEGORY, FILTER_TYPES.DEVELOPER}, tags = true}
+DB.assembleFilterAssets = function(self, whichFilters)
     self.app.logger:logDebug('-- DB.assembleFilterAssets()')
-    self.filterAssets = {}
+    local scanAll = whichFilters == nil and true or false
+    local whichFilters = whichFilters or {}
 
-    local count = 0
-
-    for group, filter in pairs(FILTER_MENU) do
-        for itemName, item in pairs(filter.items) do
-            table.insert(self.filterAssets, {
-                db = self,
-                type = group,
-                searchText = { { text = itemName } },
-                order = item.order,
-                load = item.query,
-                group = T.FILTER_NAMES[group],
-                execute = assetActions.executeFilter
-            })
+    if scanAll then
+        self.filterAssets = {}
+    else
+        for i, filterAsset in ipairs(self.filterItems) do
+            if whichFilters.filters then
+                for _, filterType in ipairs(whichFilters.filters) do
+                    if filterAsset.type ~= FILTER_TYPES.TAG and filterAsset.filter_type == filterType then
+                        table.remove(self.filterItems, i)
+                    end
+                end
+            end
+            if whichFilters.tags then
+                if filterAsset.type == FILTER_TYPES.TAG then
+                    table.remove(self.filterItems, i)
+                end
+            end
         end
     end
 
+    local count = 0
+
+    if scanAll or whichFilters.filters then
+        for filterType, filter in pairs(FILTER_MENU) do
+            if scanAll or (whichFilters.filters and OD_HasValue(whichFilters.filters, filterType)) then
+                for itemName, item in pairs(filter.items) do
+                    table.insert(self.filterAssets, {
+                        db = self,
+                        type = filterType,
+                        searchText = { { text = itemName } },
+                        order = item.order,
+                        load = item.query,
+                        loadAll = filter.allQuery,
+                        group = T.FILTER_NAMES[filterType],
+                        execute = assetActions.executeFilter
+                    })
+                end
+            end
+        end
+    end
+    if scanAll or whichFilters.tags then
+        if scanAll or whichFilters.tags then
+            local count = 0
+            local flatTags = {}
+            -- flatten tags
+            local function flattenTagsOfParent(parentId)
+                for tagId, tag in OD_PairsByOrder(self.tags) do
+                    if tag.parentId == parentId then
+                        table.insert(flatTags, tag)
+                        tag.order = count
+                        count = count + 1
+                        flattenTagsOfParent(tagId)
+                    end
+                end
+            end
+
+            flattenTagsOfParent(TAGS_ROOT_PARENT)
+
+            for tagId, tag in pairs(flatTags) do
+                table.insert(self.filterAssets, {
+                    db = self,
+                    type = FILTER_TYPES.TAG,
+                    searchText = { { text = tag.name } },
+                    order = tag.order,
+                    load = tag.id,
+                    group = T.FILTER_NAMES[FILTER_TYPES.TAG],
+                    execute = assetActions.executeFilter
+                })
+            end
+        end
+    end
     self.app.logger:logInfo('A total of ' .. count .. ' filter assets were added to the database')
 end
 DB.sortAssets = function(self)
