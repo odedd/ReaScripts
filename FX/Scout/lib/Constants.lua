@@ -81,7 +81,7 @@ FILTER_MENU = {
             ['Track Templates'] = { order = 2, query = { type = ASSETS.TRACK_TEMPLATE } },
             ['FX Chains'] = { order = 3, query = { type = ASSETS.FX_CHAIN } },
             ['FX'] = { order = 1, query = { type = ASSETS.PLUGIN } },
-            ['TRACKS'] = { order = 1, query = { type = ASSETS.TRACK } },
+            ['Tracks'] = { order = 4, query = { type = ASSETS.TRACK } },
         }
     },
     [FILTER_TYPES.FX_TYPE] = {
