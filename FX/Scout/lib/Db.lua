@@ -1261,11 +1261,11 @@ DB.sortAssets = function(self)
     for i, group in ipairs(self.app.settings.current.fxTypeOrder) do
         groupPriority[group] = i
     end
-    groupPriority[FX_CHAINS_GROUP] = -3
-    groupPriority[TRACKS_GROUP] = -2
-    groupPriority[TRACK_TEMPLATES_GROUP] = -1
-    groupPriority[FAVORITE_GROUP] = -4
-    groupPriority[ACTIONS_GROUP] = 10
+    groupPriority[FX_CHAINS_GROUP] = 101
+    groupPriority[TRACKS_GROUP] = 102
+    groupPriority[TRACK_TEMPLATES_GROUP] = 103
+    groupPriority[FAVORITE_GROUP] = -1
+    groupPriority[ACTIONS_GROUP] = 104
 
     table.sort(self.assets, function(a, b)
         local aPriority = groupPriority[a.group] or 100
