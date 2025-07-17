@@ -318,6 +318,19 @@ if OD_PrereqsOK({
         end
     end
 
+    function app.setSearchMode(mode)
+        app.temp.searchMode = mode
+        app.temp.searchInput = ''
+        app.filterResults({ text = '' })
+    end
+
+    function app.setFocusToSearchInput(select)
+        app.temp.setFocusToSearchInput = true
+        if select then
+            app.temp.selectSearchInputText = true
+        end
+    end
+
     function app.isShortcutPressed(key)
         if app.settings.current.shortcuts[key] and app.settings.current.shortcuts[key].key == -1 then return false end
         return app.settings.current.shortcuts[key] and OD_IsGlobalKeyPressed(app.settings.current.shortcuts[key].key) and
@@ -689,6 +702,8 @@ if OD_PrereqsOK({
                             handleSelectedResults(RESULT_CONTEXT.ALT)
                         elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
                             handleSelectedResults(RESULT_CONTEXT.SHIFT)
+                        elseif OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
+                            handleSelectedResults(RESULT_CONTEXT.CTRL)
                         else
                             handleSelectedResults(RESULT_CONTEXT.MAIN)
                         end
@@ -952,6 +967,8 @@ if OD_PrereqsOK({
                                                     handleSelectedResults(RESULT_CONTEXT.ALT)
                                                 elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
                                                     handleSelectedResults(RESULT_CONTEXT.SHIFT)
+                                                elseif OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
+                                                    handleSelectedResults(RESULT_CONTEXT.CTRL)
                                                 else
                                                     handleSelectedResults(RESULT_CONTEXT.MAIN)
                                                 end
@@ -1028,7 +1045,7 @@ if OD_PrereqsOK({
                                         end
                                     end
                                     ImGui.PopStyleVar(ctx)
-                                    if result.tags and #result.tags > 0 then
+                                    if (result.tags and #result.tags > 0) then
                                         app.gui:pushColors(app.gui.st.col.search.thirdResult)
                                         local text = '|'
                                         for t = 1, #(result.tags or {}) do
@@ -1036,6 +1053,16 @@ if OD_PrereqsOK({
                                             text = text .. tag.name .. '|'
                                         end
                                         ImGui.Text(ctx, text)
+                                        app.gui:popColors(app.gui.st.col.search.thirdResult)
+                                    end
+                                    if (result.descendants and #result.descendants > 0) then
+                                        app.gui:pushColors(app.gui.st.col.search.thirdResult)
+                                        local text = ' > '
+                                        for i = #result.descendants, 1, -1 do
+                                            local parent = result.descendants[i]
+                                            text = text .. parent.name .. ' > '
+                                        end
+                                        ImGui.Text(ctx, text:sub(1, -3))
                                         app.gui:popColors(app.gui.st.col.search.thirdResult)
                                     end
                                     ImGui.PopID(ctx)
@@ -1063,8 +1090,8 @@ if OD_PrereqsOK({
                     local hint = ('%s to %s.'):format(hintContext, action)
                     if app.temp.searchMode == SEARCH_MODE.MAIN then
                         hint = hint ..
-                        (app.getShortcutDescription('markFavorite') ~= '' and (' Press %s to %s.'):format(app.getShortcutDescription('markFavorite'),
-                            hintResult.group == FAVORITE_GROUP and 'unfavorite' or 'favorite') or '')
+                            (app.getShortcutDescription('markFavorite') ~= '' and (' Press %s to %s.'):format(app.getShortcutDescription('markFavorite'),
+                                hintResult.group == FAVORITE_GROUP and 'unfavorite' or 'favorite') or '')
                     end
                     app:setHint('main', hint)
                 else
@@ -1690,22 +1717,26 @@ if OD_PrereqsOK({
 
             ImGui.SetNextItemWidth(ctx, w)
             local rv
-
             rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput" .. app.temp.searchMode,
-                T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput)
-            if app.temp.lastSearchMode ~= app.temp.searchMode then
-                ImGui.SetKeyboardFocusHere(ctx, -1)
-                app.temp.lastSearchMode = app.temp.searchMode
+                T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput,
+                (app.temp.selectSearchInputTextOnNextFrame and ImGui.InputTextFlags_AutoSelectAll or ImGui.InputTextFlags_None))
+            if app.temp.setFocusToSearchInput or app.temp.lastSearchMode ~= app.temp.searchMode then
+                if not app.temp.selectSearchInputText then -- wait 1 frame for selection to work
+                    ImGui.SetKeyboardFocusHere(ctx, -1)
+                    app.temp.lastSearchMode = app.temp.searchMode
+                    app.temp.setFocusToSearchInput = nil
+                    app.temp.selectSearchInputTextOnNextFrame = nil
+                end
+                app.temp.selectSearchInputText = nil
+                app.temp.selectSearchInputTextOnNextFrame = true
             end
             if ImGui.IsItemFocused(ctx) then
                 if ImGui.IsKeyReleased(ctx, ImGui.Key_Tab) then
                     if app.temp.searchMode == SEARCH_MODE.MAIN then
-                        app.temp.searchMode = SEARCH_MODE.FILTERS
+                        app.setSearchMode(SEARCH_MODE.FILTERS)
                     else
-                        app.temp.searchMode = SEARCH_MODE.MAIN
+                        app.setSearchMode(SEARCH_MODE.MAIN)
                     end
-                    app.temp.searchInput = ''
-                    app.filterResults({ text = '' })
                 end
             end
             if rv then

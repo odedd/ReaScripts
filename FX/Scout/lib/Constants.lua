@@ -42,8 +42,9 @@ RESULT_CONTEXT = {
     ['MAIN'] = 0,
     ['ALT'] = 1,
     ['SHIFT'] = 2,
-    ['DRAGGED_TO_TRACK'] = 3,
-    ['DRAGGED_TO_BLANK'] = 4,
+    ['CTRL'] = 3,
+    ['DRAGGED_TO_TRACK'] = 4,
+    ['DRAGGED_TO_BLANK'] = 5,
 }
 
 TAGS_ROOT_PARENT = -1
@@ -80,6 +81,7 @@ FILTER_MENU = {
             ['Track Templates'] = { order = 2, query = { type = ASSETS.TRACK_TEMPLATE } },
             ['FX Chains'] = { order = 3, query = { type = ASSETS.FX_CHAIN } },
             ['FX'] = { order = 1, query = { type = ASSETS.PLUGIN } },
+            ['TRACKS'] = { order = 1, query = { type = ASSETS.TRACK } },
         }
     },
     [FILTER_TYPES.FX_TYPE] = {

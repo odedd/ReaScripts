@@ -755,6 +755,16 @@ DB.getTags = function(self, reassembleTagFilterAssets)
                 collectAllDescendants(self)
             end
         end
+        self.tags[id].addParents = function(self)
+            if self.parents == nil then
+                self.parents = {}
+                local current = self
+                while current.parent do
+                    table.insert(self.parents, 1, current.parent)
+                    current = current.parent
+                end
+            end
+        end
         self.tags[id].addSiblings = function(self)
             if self.siblings == nil then
                 self.siblings = {}
@@ -881,6 +891,7 @@ DB.getTags = function(self, reassembleTagFilterAssets)
 
     for id, tag in pairs(self.tags) do
         tag:addDescendants()
+        tag:addParents()
     end
 
     for id, tag in pairs(self.tags) do
@@ -989,11 +1000,16 @@ local assetActions = {
         else
             if context == RESULT_CONTEXT.ALT then
                 self.db.app.filterResults({ removeTags = { self.load } })
-            elseif context == RESULT_CONTEXT.SHIFT then
+            elseif context == RESULT_CONTEXT.CTRL then
                 self.db.app.filterResults({ addTags = { [self.load] = false } })
             else
                 self.db.app.filterResults({ addTags = { [self.load] = true } })
             end
+        end
+        if context ~= RESULT_CONTEXT.SHIFT then
+            self.db.app.setSearchMode(SEARCH_MODE.MAIN)
+        else
+            self.db.app.setFocusToSearchInput(true)
         end
     end,
     execute = function(self, context, contextData)
@@ -1005,6 +1021,7 @@ local assetActions = {
                 end
             end
         end
+        self.db.app.setFocusToSearchInput(true)
     end
 }
 
@@ -1139,24 +1156,31 @@ DB.assembleFilterAssets = function(self, whichFilters)
     if scanAll then
         self.filterAssets = {}
     else
-        for i, filterAsset in ipairs(self.filterAssets) do
-            if whichFilters.filters then
-                for _, filterType in ipairs(whichFilters.filters) do
-                    if filterAsset.type ~= FILTER_TYPES.TAG and filterAsset.filter_type == filterType then
-                        table.remove(self.filterAssets, i)
+        local i = 0 
+        for j = 1, #self.filterAssets do
+            i = i + 1
+            if self.filterAssets[i] then
+                local filterAsset = self.filterAssets[i]
+                if whichFilters.filters then
+                    for _, filterType in ipairs(whichFilters.filters) do
+                        if filterAsset.type ~= FILTER_TYPES.TAG and filterAsset.filter_type == filterType then
+                            table.remove(self.filterAssets, i)
+                            i = i - 1
+                        end
                     end
                 end
-            end
-            if whichFilters.tags then
-                if filterAsset.type == FILTER_TYPES.TAG then
-                    table.remove(self.filterAssets, i)
+                if whichFilters.tags then
+                    if filterAsset.type == FILTER_TYPES.TAG then
+                        table.remove(self.filterAssets, i)
+                        i = i - 1
+                    end
                 end
             end
         end
     end
-    
+
     local assetCount = 0
-    
+
     if scanAll or whichFilters.filters then
         for filterType, filter in pairs(FILTER_MENU) do
             if scanAll or (whichFilters.filters and OD_HasValue(whichFilters.filters, filterType)) then
@@ -1199,6 +1223,7 @@ DB.assembleFilterAssets = function(self, whichFilters)
                     db = self,
                     type = FILTER_TYPES.TAG,
                     searchText = { { text = tag.name } },
+                    descendants = tag.descendants,
                     order = tag.order,
                     load = tag.id,
                     group = T.FILTER_NAMES[FILTER_TYPES.TAG],
@@ -1208,14 +1233,17 @@ DB.assembleFilterAssets = function(self, whichFilters)
             end
         end
     end
-    self.app.logger:logInfo('A total of ' .. assetCount .. ' filter assets were '.. (scanAll and 'added to ' or 'updated in ').. 'the database')
+    self:sortFilterAssets()
+    if not scanAll and self.app.temp.searchMode == SEARCH_MODE.FILTERS then
+        self.app.filterResults()
+    end
+    self.app.logger:logInfo('A total of ' ..
+        assetCount .. ' filter assets were ' .. (scanAll and 'added to ' or 'updated in ') .. 'the database')
 end
 DB.sortAssets = function(self)
     local groupPriority = {}
-    local prioritiesCount = 0
     for i, group in ipairs(self.app.settings.current.fxTypeOrder) do
         groupPriority[group] = i
-        prioritiesCount = prioritiesCount
     end
     groupPriority[FX_CHAINS_GROUP] = -3
     groupPriority[TRACKS_GROUP] = -2
@@ -1227,6 +1255,26 @@ DB.sortAssets = function(self)
         local aPriority = groupPriority[a.group] or 100
         local bPriority = groupPriority[b.group] or 100
         if a.type == ASSETS['TRACK'] and b.type == ASSETS['TRACK'] and aPriority == bPriority then
+            return a.order < b.order
+        elseif aPriority == bPriority then
+            return a.searchText[1].text < b.searchText[1].text
+        else
+            return aPriority < bPriority
+        end
+    end)
+end
+
+DB.sortFilterAssets = function(self)
+    local groupPriority = {}
+    for filterType, filterMenu in pairs(FILTER_MENU) do
+        groupPriority[filterType] = filterMenu.order
+    end
+    groupPriority[FILTER_TYPES.TAG] = -1
+
+    table.sort(self.filterAssets, function(a, b)
+        local aPriority = groupPriority[a.type] or 100
+        local bPriority = groupPriority[b.type] or 100
+        if a.order and aPriority == bPriority then
             return a.order < b.order
         elseif aPriority == bPriority then
             return a.searchText[1].text < b.searchText[1].text
