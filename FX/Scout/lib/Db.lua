@@ -1208,7 +1208,7 @@ DB.assembleFilterAssets = function(self, whichFilters)
             end
         end
     end
-    self.app.logger:logInfo('A total of ' .. assetCount .. ' filter assets were '.. scanAll and 'added to ' or 'updated in '.. 'the database')
+    self.app.logger:logInfo('A total of ' .. assetCount .. ' filter assets were '.. (scanAll and 'added to ' or 'updated in ').. 'the database')
 end
 DB.sortAssets = function(self)
     local groupPriority = {}
