@@ -444,7 +444,7 @@ DB.getAllActions = function(self, section)
         local shortcuts = {}
         local shortcutCount = reaper.CountActionShortcuts(section, cmdId)
         for sc = 0, shortcutCount - 1 do
-            local desc = reaper.GetActionShortcutDesc(section, cmdId, sc)
+            local rv, desc = reaper.GetActionShortcutDesc(section, cmdId, sc)
             if desc and desc ~= "" then
                 table.insert(shortcuts, desc)
             end
@@ -1085,6 +1085,7 @@ DB.assembleAssets = function(self)
             type = ASSETS.ACTION,
             searchText = { { text = action.name }, { text = action.prefix or '' } },
             load = action.id,
+            shortcuts = action.shortcuts,
             -- group = track.hasReceives and RECEIVES_GROUP or TRACKS_GROUP,
             group = ACTIONS_GROUP,
             order = action.order,
@@ -1161,7 +1162,7 @@ DB.assembleFilterAssets = function(self, whichFilters)
     if scanAll then
         self.filterAssets = {}
     else
-        local i = 0 
+        local i = 0
         for j = 1, #self.filterAssets do
             i = i + 1
             if self.filterAssets[i] then

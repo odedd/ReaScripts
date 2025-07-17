@@ -1050,7 +1050,16 @@ if OD_PrereqsOK({
                                         end
                                     end
                                     ImGui.PopStyleVar(ctx)
+                                    if (result.shortcuts and #result.shortcuts > 0) then
+                                        app.gui:pushColors(app.gui.st.col.search.thirdResult)
+                                        local text = ' ' .. table.concat(result.shortcuts,', ')
+                                        ImGui.Text(ctx, text)
+                                        app.gui:popColors(app.gui.st.col.search.thirdResult)
+                                    end
                                     if (result.tags and #result.tags > 0) then
+                                        if (result.shortcuts and #result.shortcuts > 0) then
+                                            ImGui.SameLine(ctx)
+                                        end
                                         app.gui:pushColors(app.gui.st.col.search.thirdResult)
                                         local text = '|'
                                         for t = 1, #(result.tags or {}) do
