@@ -145,7 +145,8 @@ PB_Gui.init = function(self, fonts)
         },
         topBar = {
             [ImGui.Col_ChildBg] = self.st.basecolors.darkBG,
-            [ImGui.Col_FrameBg] = self.st.basecolors.darkBG
+            [ImGui.Col_FrameBg] = self.st.basecolors.darkBG,
+            [ImGui.Col_TextDisabled] = self.st.basecolors.midBG
         },
         topBarActiveFiltersArea = {
             -- [ImGui.Col_ChildBg] = self.st.basecolors.darkestBG,
@@ -189,6 +190,10 @@ PB_Gui.init = function(self, fonts)
         title = {
             [ImGui.Col_Text] = self.st.basecolors.mainBright,
         },
+        titleUnfocused = {
+            [ImGui.Col_Text] = self.st.basecolors.textDark,
+        },
+
         zoomSlider = {
             [ImGui.Col_SliderGrab] = self.st.basecolors.main,
             [ImGui.Col_SliderGrabActive] = self.st.basecolors.mainBright,
@@ -285,7 +290,7 @@ PB_Gui.init = function(self, fonts)
     self.recalculateZoom = function(self, scale)
         if self.scale ~= scale then
             local change = scale /
-            (self.scale or scale)                        -- return change to allow for scaling of other elements (eg. Resize window)
+                (self.scale or scale) -- return change to allow for scaling of other elements (eg. Resize window)
             self.scale = scale
 
             self:reAddFonts()

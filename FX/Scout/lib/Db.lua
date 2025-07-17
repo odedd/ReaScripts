@@ -1013,7 +1013,7 @@ local assetActions = {
         if context ~= RESULT_CONTEXT.SHIFT then
             self.db.app.setSearchMode(SEARCH_MODE.MAIN)
         else
-            self.db.app.filterResults({ clearText = true})
+            self.db.app.filterResults({ clearText = true })
         end
     end,
     execute = function(self, context, contextData)
@@ -1022,6 +1022,15 @@ local assetActions = {
                 local tracks = self.db:getSelectedTracks()
                 for i = 1, #tracks do
                     tracks[i]:addInsert(self.load)
+                end
+            elseif context == RESULT_CONTEXT.ALT then
+                local numItems = r.CountMediaItems(0)
+                for i = 0, numItems - 1 do
+                    local item = r.GetMediaItem(0, i)
+                    if r.IsMediaItemSelected(item) then
+                        local take = r.GetActiveTake(item)
+                        r.TakeFX_AddByName(take, self.load, 1)
+                    end
                 end
             end
         elseif self.type == ASSETS.ACTION then

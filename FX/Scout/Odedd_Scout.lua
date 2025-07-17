@@ -1766,7 +1766,7 @@ else
 
                 ImGui.SetNextItemWidth(ctx, w)
                 local rv
-                if not ImGui.IsAnyItemActive(ctx) and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.tagRename then
+                if not ImGui.IsAnyItemActive(ctx) and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.tagRename and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows) then
                     ImGui.SetKeyboardFocusHere(ctx, 0)
                 end
                 rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput" .. app.temp.searchMode,
@@ -1805,7 +1805,13 @@ else
                 return clicked ~= nil, clicked
             end
             local drawLogo = function()
-                app.gui:pushColors(app.gui.st.col.title)
+                local col
+                if ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows) then
+                    col = app.gui.st.col.title[ImGui.Col_Text]
+                else
+                    col = app.gui.st.col.titleUnfocused[ImGui.Col_Text]
+                end
+                ImGui.PushStyleColor(ctx, ImGui.Col_Text, col)
                 ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
                 ImGui.AlignTextToFramePadding(ctx)
                 ImGui.Text(ctx, ICONS.SEARCH)
@@ -1815,12 +1821,12 @@ else
                 ImGui.AlignTextToFramePadding(ctx)
                 ImGui.Text(ctx, app.scr.name)
                 app:setHoveredHint('main', app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
-                app.gui:popColors(app.gui.st.col.title)
+                ImGui.PopStyleColor(ctx)
                 ImGui.SameLine(ctx)
                 local x, y = ImGui.GetCursorScreenPos(ctx)
                 local width = 2 * app.settings.current.uiScale
                 ImGui.DrawList_AddLine(ImGui.GetWindowDrawList(ctx), x + width / 2, y - paddingY, x + width / 2,
-                    y + h - paddingY * 2 - winPaddingY, app.gui.st.basecolors.main, width)
+                    y + h - paddingY * 2 - winPaddingY, col, width)
                 ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + width + spacingX)
             end
             local function handleMenuButtons(rv, btn)
@@ -1923,8 +1929,6 @@ else
             app.gui.screen = { size = { OD_GetScreenSize() } }
             app.settings.current.lastWindowWidth, app.settings.current.lastWindowHeight = app.gui.mainWindow.size[1],
                 app.gui.mainWindow.size[2]
-
-
 
             if ImGui.GetWindowDockID(ctx) ~= app.gui.mainWindow.dockId then
                 app.refreshWindowSizeOnNextFrame = true
