@@ -1072,7 +1072,6 @@ DB.assembleAssets = function(self)
             type = ASSETS.TRACK,
             searchText = { { text = track.name } },
             load = track.guid,
-            -- group = track.hasReceives and RECEIVES_GROUP or TRACKS_GROUP,
             group = TRACKS_GROUP,
             order = track.order,
             color = track.color,
@@ -1086,7 +1085,6 @@ DB.assembleAssets = function(self)
             searchText = { { text = action.name }, { text = action.prefix or '' } },
             load = action.id,
             shortcuts = action.shortcuts,
-            -- group = track.hasReceives and RECEIVES_GROUP or TRACKS_GROUP,
             group = ACTIONS_GROUP,
             order = action.order,
         })
