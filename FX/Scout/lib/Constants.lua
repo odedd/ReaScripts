@@ -6,7 +6,7 @@ ImGui = require 'imgui' '0.9.1'
 FLT_MIN, FLT_MAX = ImGui.NumericLimits_Float()
 
 APP_PAGE = {
-    ['SEARCH_FX'] = { width = 900, height = 409, minHeight = 409, windowFlags = ImGui.WindowFlags_None }
+    ['SEARCH'] = { width = 900, height = 409, minHeight = 409, windowFlags = ImGui.WindowFlags_None }
 }
 
 

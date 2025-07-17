@@ -57,7 +57,7 @@ DB = {
         end
 
         if self.refresh then
-            self.app.setPage(APP_PAGE.SEARCH_FX)
+            self.app.setPage(APP_PAGE.SEARCH)
         end
     end
 }
@@ -240,7 +240,6 @@ DB.getTracks = function(self)
                     return false
                 end
                 self.db:sync(true)
-                self.db.app.focusMainReaperWindow = false
                 return true
             end,
             _refreshColor = function(self)

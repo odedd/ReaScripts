@@ -7,6 +7,7 @@ PB_Settings = OD_Settings:new({
         followSelectedTrack = true,
         createInsideFolder = true,
         sendFolderName = 'FX Return Tracks',
+        persistantMode = true,
         textMinimizationStyle = MINIMIZATION_STYLE.PT,
         shortcuts = {
             addSend = {
@@ -42,6 +43,13 @@ PB_Settings = OD_Settings:new({
                 ctrl = false,
                 shift = false,
                 alt = false,
+                macCtrl = false
+            },
+            hardCloseScript = {
+                key = OD_KEYCODES.Q,
+                ctrl = false,
+                shift = false,
+                alt = true,
                 macCtrl = false
             }
         },
