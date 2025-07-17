@@ -660,7 +660,7 @@ end
 
 
 -- TAGS AND FAVORITES
-DB.getTags = function(self)
+DB.getTags = function(self, reassembleTagFilterAssets)
     self.tags = OD_DeepCopy(self.app.tags.current.tagInfo)
     local function hasCycle(tagId, visited)
         visited = visited or {}
@@ -708,7 +708,10 @@ DB.getTags = function(self)
             persist = (persist == nil) and true or persist
             self.name = name
             self.app.tags.current.tagInfo[self.id].name = name
-            if persist then self.app.tags:save() end
+            if persist then
+                self.app.tags:save()
+                self.db:getTags(true)
+            end
         end
         self.tags[id].delete = function(self, persistAndReload)
             local assetsToRemoveTag = self.db:assetsWithTag(self)
@@ -729,7 +732,7 @@ DB.getTags = function(self)
             end
             if persistAndReload ~= false then
                 self.app.tags:save()
-                self.db:getTags()
+                self.db:getTags(true)
             end
         end
 
@@ -872,7 +875,7 @@ DB.getTags = function(self)
 
             self.app.tags:save()
             -- Rescan tags into the DB after move
-            self.db:getTags()
+            self.db:getTags(true)
         end
     end
 
@@ -887,6 +890,8 @@ DB.getTags = function(self)
     for id, tag in pairs(self.tags) do
         tag.hasDescendants = tag.descendants ~= nil and next(tag.descendants)
     end
+
+    if reassembleTagFilterAssets then self:assembleFilterAssets({ tags = true }) end
 end
 
 DB.createTag = function(self, name, parent)
@@ -912,7 +917,8 @@ DB.createTag = function(self, name, parent)
         '\' with id ' ..
         newId .. (parentId ~= TAGS_ROOT_PARENT and ' (parent Id: ' .. parentId .. ')' or ''))
     self.app.tags:save()
-    self:getTags()
+    self.db:getTags(true)
+
     for _, tag in pairs(self.tags) do
         if tag.id == newId then
             return tag
@@ -1133,24 +1139,24 @@ DB.assembleFilterAssets = function(self, whichFilters)
     if scanAll then
         self.filterAssets = {}
     else
-        for i, filterAsset in ipairs(self.filterItems) do
+        for i, filterAsset in ipairs(self.filterAssets) do
             if whichFilters.filters then
                 for _, filterType in ipairs(whichFilters.filters) do
                     if filterAsset.type ~= FILTER_TYPES.TAG and filterAsset.filter_type == filterType then
-                        table.remove(self.filterItems, i)
+                        table.remove(self.filterAssets, i)
                     end
                 end
             end
             if whichFilters.tags then
                 if filterAsset.type == FILTER_TYPES.TAG then
-                    table.remove(self.filterItems, i)
+                    table.remove(self.filterAssets, i)
                 end
             end
         end
     end
-
-    local count = 0
-
+    
+    local assetCount = 0
+    
     if scanAll or whichFilters.filters then
         for filterType, filter in pairs(FILTER_MENU) do
             if scanAll or (whichFilters.filters and OD_HasValue(whichFilters.filters, filterType)) then
@@ -1165,6 +1171,7 @@ DB.assembleFilterAssets = function(self, whichFilters)
                         group = T.FILTER_NAMES[filterType],
                         execute = assetActions.executeFilter
                     })
+                    assetCount = assetCount + 1
                 end
             end
         end
@@ -1197,10 +1204,11 @@ DB.assembleFilterAssets = function(self, whichFilters)
                     group = T.FILTER_NAMES[FILTER_TYPES.TAG],
                     execute = assetActions.executeFilter
                 })
+                assetCount = assetCount + 1
             end
         end
     end
-    self.app.logger:logInfo('A total of ' .. count .. ' filter assets were added to the database')
+    self.app.logger:logInfo('A total of ' .. assetCount .. ' filter assets were '.. scanAll and 'added to ' or 'updated in '.. 'the database')
 end
 DB.sortAssets = function(self)
     local groupPriority = {}
