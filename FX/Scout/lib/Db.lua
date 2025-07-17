@@ -1013,7 +1013,7 @@ local assetActions = {
         if context ~= RESULT_CONTEXT.SHIFT then
             self.db.app.setSearchMode(SEARCH_MODE.MAIN)
         else
-            self.db.app.setFocusToSearchInput(true)
+            self.db.app.filterResults({ clearText = true})
         end
     end,
     execute = function(self, context, contextData)
@@ -1029,7 +1029,7 @@ local assetActions = {
         elseif self.type == ASSETS.TRACK then
             -- r.SetOnlyTrackSelected(self.load)
         end
-        self.db.app.setFocusToSearchInput(true)
+        self.db.app.selectSearchInputText()
     end
 }
 

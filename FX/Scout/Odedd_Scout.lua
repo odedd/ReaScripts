@@ -334,11 +334,8 @@ else
             app.filterResults(filter or { text = '' })
         end
 
-        function app.setFocusToSearchInput(select)
-            app.temp.setFocusToSearchInput = true
-            if select then
-                app.temp.selectSearchInputText = true
-            end
+        function app.selectSearchInputText()
+            app.temp.selectSearchInputText = true
         end
 
         function app.isShortcutPressed(key)
@@ -368,6 +365,10 @@ else
             if query.clear then
                 app.temp.searchInput = ''
                 app.temp.filter = {}
+            end
+            if query.clearText then
+                app.temp.searchInput = ''
+                app.temp.filter.text = ''
             end
             query.text = query.text or app.temp.filter.text or ''
             app.temp.searchResults = {}
@@ -674,9 +675,8 @@ else
                     end
                 end
                 local handleKeyboardEvents = function()
-                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
-                        -- handle escape
-                    elseif app.temp.resultAtKeyboardPos then
+                    -- handle escape
+                    if app.temp.resultAtKeyboardPos then
                         hintResult = searchResults[app.temp.resultAtKeyboardPos]
                         hintContext = 'Enter'
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) and app.temp.resultAtKeyboardPos < #searchResults then
@@ -1375,6 +1375,7 @@ else
                                 if ImGui.IsItemDeactivated(ctx) then
                                     app.temp.tagRename = nil
                                     app.temp.tagRenameBuffer = nil
+                                    app.temp.ignoreEscapeKey = nil
                                 end
                             else
                                 ImGui.Text(ctx, tag.name)
@@ -1735,28 +1736,47 @@ else
             menu = createMenu()
             local menuW, h = calculateDimensions()
 
+            local handleSpecialKeys = function()
+                local pressed = false
+                if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+                    if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.ignoreEscapeKey then
+                        if app.temp.searchInput == '' then
+                            app.open = false
+                            pressed = true
+                        end
+                    end
+                    app.temp.ignoreEscapeKey = nil
+                elseif app.isShortcutPressed('resetFilters') then
+                    app.filterResults({ clear = true })
+                    pressed = true
+                elseif app.isShortcutPressed('hardCloseScript') then
+                    app.hardExit = true
+                    pressed = true
+                end
+                return pressed
+            end
             local drawTextSearchInput = function()
+                local pressed = handleSpecialKeys()
                 if app.pageSwitched then
                     app.filterResults({ text = '' })
-                    ImGui.SetKeyboardFocusHere(ctx, 0)
                 end
 
-                -- app.gui:pushColors(app.gui.st.col.topBar.background)
                 local w = select(1, ImGui.GetContentRegionAvail(ctx)) - menuW +
                     ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
 
                 ImGui.SetNextItemWidth(ctx, w)
                 local rv
+                if not ImGui.IsAnyItemActive(ctx) and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.tagRename then
+                    ImGui.SetKeyboardFocusHere(ctx, 0)
+                end
                 rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput" .. app.temp.searchMode,
                     T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput,
-                    (app.temp.selectSearchInputTextOnNextFrame and ImGui.InputTextFlags_AutoSelectAll or ImGui.InputTextFlags_None))
-                if app.temp.setFocusToSearchInput or app.temp.lastSearchMode ~= app.temp.searchMode then
-                    if not app.temp.selectSearchInputText then -- wait 1 frame for selection to work
-                        ImGui.SetKeyboardFocusHere(ctx, -1)
-                        app.temp.lastSearchMode = app.temp.searchMode
-                        app.temp.setFocusToSearchInput = nil
-                        app.temp.selectSearchInputTextOnNextFrame = nil
-                    end
+                    (app.temp.selectSearchInputTextOnNextFrame and ImGui.InputTextFlags_AutoSelectAll or ImGui.InputTextFlags_EscapeClearsAll) |
+                    (pressed and ImGui.InputTextFlags_ReadOnly or ImGui.InputTextFlags_None))
+                if not app.temp.selectSearchInputText then -- wait 1 frame for selection to work
+                    app.temp.lastSearchMode = app.temp.searchMode
+                    app.temp.selectSearchInputTextOnNextFrame = nil
+                else
                     app.temp.selectSearchInputText = nil
                     app.temp.selectSearchInputTextOnNextFrame = true
                 end
@@ -1822,8 +1842,9 @@ else
                     end
                 end
             end
-            if ImGui.BeginChild(ctx, 'topBar', nil, h, ImGui.ChildFlags_AlwaysUseWindowPadding) then
+            if ImGui.BeginChild(ctx, 'topBar', nil, h, ImGui.ChildFlags_AlwaysUseWindowPadding, ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoScrollWithMouse) then
                 drawLogo()
+
                 drawTextSearchInput()
                 ImGui.SameLine(ctx)
                 ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
@@ -1931,16 +1952,7 @@ else
                 app.drawTopBar()
 
                 if ImGui.BeginChild(ctx, '##body', 0.0, -app.gui.st.sizes.hintHeight) then
-                    if app.page == APP_PAGE.SEARCH then
-                        app.drawSearch()
-                        if app.isShortcutPressed('closeScript') and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.ignoreEscapeKey then
-                            open = false
-                        end
-                        if app.isShortcutPressed('hardCloseScript') and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then
-                            app.exit = true
-                        end
-                        app.temp.ignoreEscapeKey = false
-                    end
+                    app.drawSearch()
                     ImGui.EndChild(ctx)
                 end
                 app.drawHint('main')
@@ -1950,14 +1962,12 @@ else
 
                 ImGui.End(ctx)
             end
-            return open
         end
 
         function app.waitForWakeup()
             local cmd = r.GetExtState(Scr.ext_name, 'WAKEUP')
             if cmd ~= 'WAITING' and cmd ~= '' and cmd ~= nil then
                 r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
-                app.setFocusToSearchInput(true)
                 app.setSearchMode(SEARCH_MODE.MAIN, { clear = true })
                 r.defer(app.loop)
             else
@@ -1970,6 +1980,7 @@ else
         end
 
         function app.loop()
+            app.open = true
             local change = app.gui:recalculateZoom(app.settings.current.uiScale)
             if change ~= 1 then
                 app.settings.current.lastWindowWidth = app.settings.current.lastWindowWidth * change
@@ -1983,15 +1994,15 @@ else
             ImGui.PushFont(ctx, app.gui.st.fonts.default)
 
             app.handlePageSwitch()
-            app.open = app.drawMainWindow()
+            app.drawMainWindow()
             ImGui.PopFont(ctx)
 
             app.gui:popColors(app.gui.st.col.main)
             app.gui:popStyles(app.gui.st.vars.main)
 
-            if app.open and not app.exit then
+            if app.open and not app.hardExit then
                 r.defer(app.loop)
-            elseif not app.exit and app.settings.current.persistantMode then
+            elseif not app.hardExit and app.settings.current.persistantMode then
                 if app and app.settings then app.settings:save() end
                 r.SetExtState(Scr.ext_name, 'WAKEUP', 'WAITING', false)
                 r.defer(app.waitForWakeup)

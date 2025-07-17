@@ -10,32 +10,18 @@ PB_Settings = OD_Settings:new({
         persistantMode = true,
         textMinimizationStyle = MINIMIZATION_STYLE.PT,
         shortcuts = {
-            addSend = {
-                key = OD_KEYCODES.S,
-                ctrl = false,
-                shift = true,
-                alt = true,
-                macCtrl = false
-            },
-            addRecv = {
-                key = OD_KEYCODES.R,
-                ctrl = false,
-                shift = true,
-                alt = true,
-                macCtrl = false
-            },
-            addHW = {
-                key = OD_KEYCODES.H,
-                ctrl = false,
-                shift = true,
-                alt = true,
-                macCtrl = false
-            },
             markFavorite = {
                 key = OD_KEYCODES.F,
                 ctrl = true,
                 shift = true,
                 alt = false,
+                macCtrl = false
+            },
+            resetFilters = {
+                key = OD_KEYCODES.R,
+                ctrl = false,
+                shift = false,
+                alt = true,
                 macCtrl = false
             },
             closeScript = {
