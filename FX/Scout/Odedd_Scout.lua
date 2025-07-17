@@ -69,6 +69,7 @@ if OD_PrereqsOK({
         output = OD_Logger.LOG_OUTPUT.CONSOLE,
         filename = projPath .. Scr.name .. '_' .. projFileName .. '.log'
     })
+    local profile = false
 
     local gui = PB_Gui:new({})
 
@@ -78,6 +79,10 @@ if OD_PrereqsOK({
     app:connect('db', DB)
     app:init()
     app.logger:init()
+
+    if profile then
+        Profile = dofile(p .. '../../Resources/Common/Helpers/Lua/Profiler.lua')
+    end
     function app:checkProjectChange(force)
         if force or OD_DidProjectGUIDChange() then
             local projPath, projFileName = OD_GetProjectPaths()

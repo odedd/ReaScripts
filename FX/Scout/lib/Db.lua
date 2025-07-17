@@ -30,6 +30,7 @@ DB = {
         self.plugins = {}
         self.tracks = {}
         self.masterTrack = reaper.GetMasterTrack(0)
+        if Profile then Profile.start() end
         self:getPlugins()
         self:getFXChains()
         self:getFXFolders()
@@ -41,6 +42,10 @@ DB = {
         self:assembleAssets()
         self:updateDevelopersFilterMenu()
         self:assembleFilterAssets()
+        if Profile then
+            Profile.stop()
+            r.ShowConsoleMsg(Profile.report(10))
+        end
     end,
     sync = function(self, refresh)                             -- not sure this is needed
         self.refresh = refresh or false
