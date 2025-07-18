@@ -497,6 +497,14 @@ else
             -- end
         end
 
+        function app.handleSelectedResults(resultContext, contextData)
+            for _, result in pairs(app.selection:results()) do
+                if result.execute then
+                    result:execute(resultContext)
+                end
+            end
+        end
+
         function app.drawSearch()
             local ctx = app.gui.ctx
             app.gui:pushStyles(app.gui.st.vars.searchWindow)
@@ -681,14 +689,8 @@ else
                 local searchResultsH = select(2, ImGui.GetContentRegionAvail(ctx)) -
                     fontLineHeight                                                   -- Height available for search results
                 local maxSearchResults = math.floor(searchResultsH / fontLineHeight) -- Max results in available space
-                local handleSelectedResults = function(resultContext, contextData)
-                    for _, result in pairs(app.selection:results()) do
-                        if result.execute then
-                            result:execute(resultContext)
-                        end
-                    end
-                end
-                local handleKeyboardEvents = function()
+
+                local handleKeyboardNavigation = function()
                     -- handle escape
                     if app.temp.resultAtKeyboardPos then
                         hintResult = searchResults[app.temp.resultAtKeyboardPos]
@@ -723,32 +725,6 @@ else
                                 app.selection:selectOnly(app.temp.resultAtKeyboardPos)
                             end
                             app.temp.checkScrollUp = true
-                        elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
-                            if not app.temp.tagRename then
-                                if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
-                                    handleSelectedResults(RESULT_CONTEXT.ALT)
-                                elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
-                                    handleSelectedResults(RESULT_CONTEXT.SHIFT)
-                                elseif OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
-                                    handleSelectedResults(RESULT_CONTEXT.CTRL)
-                                else
-                                    handleSelectedResults(RESULT_CONTEXT.MAIN)
-                                end
-                            end
-                        elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.isShortcutPressed('markFavorite') and app.temp.resultAtKeyboardPos then
-                            local result = searchResults[app.temp.resultAtKeyboardPos]
-                            local fav = result:toggleFavorite()
-                            app.filterResults()
-                            if fav then
-                                for i = 1, #app.temp.searchResults do
-                                    if app.temp.searchResults[i] == result then
-                                        app.temp.resultAtKeyboardPos = i
-                                        app.selection:selectOnly(app.temp.resultAtKeyboardPos)
-                                        app.temp.checkScrollUp = true
-                                        break
-                                    end
-                                end
-                            end
                         end
                     end
                 end
@@ -848,14 +824,14 @@ else
                     end
                     if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragToTrack then
                         if app.temp.dragToTrack == -1 then
-                            handleSelectedResults(RESULT_CONTEXT.DRAGGED_TO_BLANK)
+                            app.handleSelectedResults(RESULT_CONTEXT.DRAGGED_TO_BLANK)
                             app.logger:logDebug('Will create a new track with ' ..
                                 app.selection:count() .. ' plugin(s)\n')
                         else
                             app.logger:logDebug('Will add ' ..
                                 app.selection:count() ..
                                 ' plugins to track ' .. select(2, r.GetTrackName(app.temp.dragToTrack)) .. '\n')
-                            handleSelectedResults(RESULT_CONTEXT.DRAGGED_TO_TRACK, app.temp.dragToTrack)
+                            app.handleSelectedResults(RESULT_CONTEXT.DRAGGED_TO_TRACK, app.temp.dragToTrack)
                         end
                         app.temp.dragToTrack = nil
                     end
@@ -871,9 +847,9 @@ else
                         end
                         if selectedRow then
                             local tooLow = selectedRow.totalIndex * fontLineHeight >=
-                            app.temp.tableScrollY + searchResultsH
+                                app.temp.tableScrollY + searchResultsH
                             local tooHigh = selectedRow.totalIndex * fontLineHeight <=
-                            app.temp.tableScrollY + fontLineHeight
+                                app.temp.tableScrollY + fontLineHeight
                             if app.temp.checkScrollDown then
                                 if tooLow or tooHigh then
                                     local skip = flatRows[selectedRow.totalIndex].type == 'group'
@@ -926,7 +902,7 @@ else
                         app.filterResults({ text = '' })
                     end
 
-                    handleKeyboardEvents()
+                    handleKeyboardNavigation()
                     ImGui.SetCursorPosY(ctx, upperRowY + fontLineHeight)
 
                     local firstGroup = nil
@@ -1003,13 +979,13 @@ else
                                                 end
                                                 if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
                                                     if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
-                                                        handleSelectedResults(RESULT_CONTEXT.ALT)
+                                                        app.handleSelectedResults(RESULT_CONTEXT.ALT)
                                                     elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
-                                                        handleSelectedResults(RESULT_CONTEXT.SHIFT)
+                                                        app.handleSelectedResults(RESULT_CONTEXT.SHIFT)
                                                     elseif OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
-                                                        handleSelectedResults(RESULT_CONTEXT.CTRL)
+                                                        app.handleSelectedResults(RESULT_CONTEXT.CTRL)
                                                     else
-                                                        handleSelectedResults(RESULT_CONTEXT.MAIN)
+                                                        app.handleSelectedResults(RESULT_CONTEXT.MAIN)
                                                     end
                                                 end
                                             end
@@ -1765,25 +1741,59 @@ else
 
             local handleSpecialKeys = function()
                 local pressed = false
-                if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
-                    if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.ignoreEscapeKey then
-                        if app.temp.searchInput == '' then
-                            app.open = false
+                if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then
+                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+                        if not app.temp.ignoreEscapeKey then
+                            if app.temp.searchInput == '' then
+                                app.open = false
+                                pressed = true
+                            end
+                        end
+                        app.temp.ignoreEscapeKey = nil
+                    elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
+                        if not app.temp.tagRename then
+                            if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
+                                app.handleSelectedResults(RESULT_CONTEXT.ALT)
+                            elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
+                                app.handleSelectedResults(RESULT_CONTEXT.SHIFT)
+                            elseif OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
+                                app.handleSelectedResults(RESULT_CONTEXT.CTRL)
+                            else
+                                app.handleSelectedResults(RESULT_CONTEXT.MAIN)
+                            end
                             pressed = true
                         end
+                    elseif app.isShortcutPressed('selectAllResults') then
+                        app.selection:selectRange(1, #app.temp.searchResults)
+                        pressed = true
+                    elseif app.isShortcutPressed('resetFilters') then
+                        app.filterResults({ clear = true })
+                        pressed = true
+                    elseif app.isShortcutPressed('hardCloseScript') then
+                        app.hardExit = true
+                        pressed = true
+                    elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.isShortcutPressed('markFavorite') and app.temp.resultAtKeyboardPos then
+                        -- TODO allow favorites for multiple selections
+                        local result = app.temp.searchResults[app.temp.resultAtKeyboardPos]
+                        local fav = result:toggleFavorite()
+                        app.filterResults()
+                        if fav then
+                            for i = 1, #app.temp.searchResults do
+                                if app.temp.searchResults[i] == result then
+                                    app.temp.resultAtKeyboardPos = i
+                                    app.selection:selectOnly(app.temp.resultAtKeyboardPos)
+                                    app.temp.checkScrollUp = true
+                                    break
+                                end
+                            end
+                        end
+                        pressed = true
                     end
-                    app.temp.ignoreEscapeKey = nil
-                elseif app.isShortcutPressed('resetFilters') then
-                    app.filterResults({ clear = true })
-                    pressed = true
-                elseif app.isShortcutPressed('hardCloseScript') then
-                    app.hardExit = true
-                    pressed = true
                 end
                 return pressed
             end
             local drawTextSearchInput = function()
-                local pressed = handleSpecialKeys()
+                local pressed = handleSpecialKeys() -- pressed is used to prevent keys from being entered into the search box
                 if app.pageSwitched then
                     app.filterResults({ text = '' })
                 end
