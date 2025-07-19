@@ -1139,7 +1139,6 @@ else
                     end
 
                     if hintResult then
-                        -- TODO: ADDRESS THE VARIOUS POSSIBLE ACTION TYPES
                         local action = (hintResult.type == ASSETS.TRACK and 'add a send to track %s' or 'add %s to selected track(s)')
                             :format(hintResult.searchText[1].text)
                         local hint = ('%s to %s.'):format(hintContext, action)
@@ -1554,7 +1553,7 @@ else
                                     elseif value.query then
                                         local selected = true
                                         for k, v in pairs(value.query) do
-                                            if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then --TODO: this always results to value.query[k]
+                                            if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then --BUG: this always results to value.query[k]
                                                 selected = false
                                             end
                                         end
@@ -1803,7 +1802,6 @@ else
                         app.hardExit = true
                         pressed = true
                     elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.isShortcutPressed('markFavorite') and app.selection.keyboardPos then
-                        -- TODO allow favorites for multiple selections
                         local result = app.temp.searchResults[app.selection.keyboardPos]
                         local fav = result:toggleFavorite()
                         app.filterResults()
