@@ -48,15 +48,18 @@ DB = {
         end
     end,
     sync = function(self, refresh)                             -- not sure this is needed
+        self.app.logger:logDebug('-- DB.sync()')
         self.refresh = refresh or false
         self.current_project = r.GetProjectStateChangeCount(0) -- if project changed, force full sync
         if self.current_project ~= self.previous_project then
+            self.app.logger:logDebug('Project changed, forcing full sync')
             self:getTracks()
             self.previous_project = self.current_project
             self.refresh = true
         end
 
         if self.refresh then
+            self.app.logger:logDebug('Refreshing to search page')
             self.app.setPage(APP_PAGE.SEARCH)
         end
     end
@@ -65,6 +68,8 @@ DB = {
 --- Sends
 
 DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
+    self.app.logger:logDebug('-- DB.createNewSend()')
+    self.app.logger:logDebug('Creating send - type: ' .. tostring(sendType) .. ', assetType: ' .. tostring(assetType) .. ', trackName: ' .. tostring(trackName))
     self:beginUndoBlock()
     -- if sendType == SEND_TYPE.HW then
     --     local sndIdx = reaper.CreateTrackSend(self.track.object, nil)
@@ -73,6 +78,7 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
     --     return
     -- end
     if assetType == ASSETS.TRACK_TEMPLATE then
+        self.app.logger:logDebug('Processing track template send creation')
         -- since track templates are loaded under the last selected track,
         -- and as root folders, I need to create a new dummy track inside the folder,
         -- calculate its depth, insert the tracktemplate, move it after the dummy track,
@@ -113,6 +119,7 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
         end
 
         reaper.Main_openProject(assetLoad)
+        self.app.logger:logDebug('Track template loaded')
 
         if dummyTrack then
             dummyTrackFolderDepth = r.GetMediaTrackInfo_Value(dummyTrack, 'I_FOLDERDEPTH')
@@ -139,22 +146,31 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
         for _, addedTrack in ipairs(addedTracks) do
             reaper.CreateTrackSend(self.track.object, addedTrack.object)
         end
+        
+        self.app.logger:logInfo('Track template send created with ' .. #addedTracks .. ' tracks')
 
         r.SetOnlyTrackSelected(self.track.object)
         r.Main_OnCommand(40913, 0)
         self:sync(true)
     elseif assetType == ASSETS.TRACK then
+        self.app.logger:logDebug('Processing track send creation')
         -- local sendTrackIndex = asset.load
         local targetTrack = OD_GetTrackFromGuid(0, assetLoad)
         if targetTrack then
             if sendType == SEND_TYPE.SEND then
+                self.app.logger:logDebug('Creating send to target track')
                 reaper.CreateTrackSend(self.track.object, targetTrack)
             elseif sendType == SEND_TYPE.RECV then
+                self.app.logger:logDebug('Creating receive from target track')
                 reaper.CreateTrackSend(targetTrack, self.track.object)
             end
+            self.app.logger:logInfo('Track send/receive created successfully')
+        else
+            self.app.logger:logError('Target track not found for GUID: ' .. tostring(assetLoad))
         end
         self:sync(true)
     elseif assetType == ASSETS.PLUGIN or assetType == ASSETS.FX_CHAIN then
+        self.app.logger:logDebug('Processing plugin/FX chain send creation')
         local newTrack = nil
         local numTracks = r.CountTracks(0)
         if self.app.settings.current.createInsideFolder then
@@ -182,14 +198,19 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
         if newTrack then
             reaper.GetSetMediaTrackInfo_String(newTrack, "P_NAME", trackName, true)
             local rv = reaper.CreateTrackSend(self.track.object, newTrack)
+            self.app.logger:logDebug('Created new track and send')
             self:getTracks()
             r.SetOnlyTrackSelected(self.track.object)
             self:sync(true)
             for _, send in ipairs(self.sends) do
                 if send.destTrack ~= nil and (send.destTrack.object == newTrack) then
+                    self.app.logger:logDebug('Adding insert to new track')
                     send:addInsert(assetLoad)
                 end
             end
+            self.app.logger:logInfo('Plugin/FX chain send created successfully')
+        else
+            self.app.logger:logError('Failed to create new track for plugin/FX chain')
         end
     end
     self:endUndoBlock('Create new send', 1)
@@ -200,9 +221,11 @@ end
 -- get project tracks into self.tracks, keeping the track's GUID, name and color, and wheather it has receives or not
 
 DB.getSelectedTracks = function(self)
+    self.app.logger:logDebug('-- DB.getSelectedTracks()')
     self:getTracks()
     local numTracks = r.CountSelectedTracks(0);
     local tracks = {};
+    self.app.logger:logDebug('Found selected tracks', numTracks)
     for i = 0, numTracks - 1 do
         local track = r.GetSelectedTrack(0, i)
 
@@ -321,23 +344,30 @@ DB.getTracks = function(self)
 end
 
 DB._getTrack = function(self, track)
+    self.app.logger:logDebug('-- DB._getTrack()')
     for i, trk in ipairs(self.tracks) do
         if track == trk.object then
             return trk
         end
     end
+    self.app.logger:logDebug('Track not found in database')
+    return nil
 end
 
 --- INSERTS
 DB.recalculateShortNames = function(self)
+    self.app.logger:logDebug('-- DB.recalculateShortNames()')
+    local sendCount = 0
     for _, send in ipairs(self.sends) do
         if send.destTrack then
             for _, insert in ipairs(send.destTrack.inserts) do
                 insert:calculateShortName()
             end
             send:calculateShortName()
+            sendCount = sendCount + 1
         end
     end
+    self.app.logger:logDebug('Recalculated short names for sends', sendCount)
 end
 
 --- PLUGINS
@@ -606,6 +636,7 @@ DB.getFXCategories = function(self)
 end
 
 DB.updateDevelopersFilterMenu = function(self)
+    self.app.logger:logDebug('-- DB.updateDevelopersFilterMenu()')
     FILTER_MENU[FILTER_TYPES.DEVELOPER].items = {}
 
     local developerNames = {}
@@ -620,6 +651,8 @@ DB.updateDevelopersFilterMenu = function(self)
             query = { fxDeveloper = developerName }
         }
     end
+    
+    self.app.logger:logDebug('Updated developers filter menu with developers', #developerNames)
 end
 
 DB.getTrackTemplates = function(self)
@@ -910,6 +943,8 @@ DB.getTags = function(self, reassembleTagFilterAssets)
 end
 
 DB.createTag = function(self, name, parent)
+    self.app.logger:logDebug('-- DB.createTag()')
+    self.app.logger:logDebug('Creating tag "' .. name .. '"')
     local parentId = (parent == TAGS_ROOT_PARENT) and TAGS_ROOT_PARENT or parent.id
     local levelCount = 0
     local lastId = 1
@@ -941,12 +976,16 @@ DB.createTag = function(self, name, parent)
     end
 end
 DB.markFavorites = function(self)
+    self.app.logger:logDebug('-- DB.markFavorites()')
+    local favoriteCount = 0
     for _, asset in ipairs(self.assets) do
         if OD_HasValue(self.app.tags.current.favorites, asset.id) then
             asset.originalGroup = asset.group
             asset.group = FAVORITE_GROUP
+            favoriteCount = favoriteCount + 1
         end
     end
+    self.app.logger:logDebug('Marked favorites', favoriteCount)
 end
 -- ASSETS
 local assetActions = {
@@ -1257,6 +1296,7 @@ DB.assembleFilterAssets = function(self, whichFilters)
         assetCount .. ' filter assets were ' .. (scanAll and 'added to ' or 'updated in ') .. 'the database')
 end
 DB.sortAssets = function(self)
+    self.app.logger:logDebug('-- DB.sortAssets()')
     local groupPriority = {}
     for i, group in ipairs(self.app.settings.current.fxTypeOrder) do
         groupPriority[group] = i
@@ -1278,9 +1318,12 @@ DB.sortAssets = function(self)
             return aPriority < bPriority
         end
     end)
+    
+    self.app.logger:logDebug('Sorted assets', #self.assets)
 end
 
 DB.sortFilterAssets = function(self)
+    self.app.logger:logDebug('-- DB.sortFilterAssets()')
     local groupPriority = {}
     for filterType, filterMenu in pairs(FILTER_MENU) do
         groupPriority[filterType] = filterMenu.order
@@ -1298,4 +1341,6 @@ DB.sortFilterAssets = function(self)
             return aPriority < bPriority
         end
     end)
+    
+    self.app.logger:logDebug('Sorted filter assets', #self.filterAssets)
 end
