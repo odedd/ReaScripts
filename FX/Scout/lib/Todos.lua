@@ -9,6 +9,6 @@
 -- TODO: Keyboard shortcuts for presets/filters
 -- TODO: Create actions for presets/filters
 -- TODO: Settings window
--- TODO: Export/Import tags
+-- TODO: Export/Import tags (Chceck agent work)
 -- TODO: Fix Hints
 -- TODO: Allow favorite multiple results
