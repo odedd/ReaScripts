@@ -234,12 +234,28 @@ else
             count = function(self) return OD_TableLength(self.items) end,
             empty = function(self)
                 self.items = {};
+                -- self:setKeyboardPos(nil);
             end,
             add = function(self, itemIdx)
                 self.items[itemIdx] = true
             end,
             remove = function(self, itemIdx)
-                self.items[itemIdx] = nil
+                if not (self.keyboardPos == itemIdx and self:count() == 1) then
+                    self.items[itemIdx] = nil
+                    if self.keyboardPos == itemIdx then
+                        local closest = nil
+                        for i, _ in pairs(self.items) do
+                            if i < itemIdx then closest = i end
+                            if i > itemIdx then
+                                if (closest == nil) or ((i - itemIdx) < (itemIdx - closest)) then
+                                    closest = i
+                                end
+                                -- break
+                            end
+                        end
+                        self:setKeyboardPos(closest, false)
+                    end
+                end
             end,
             has = function(self, itemIdx)
                 return self.items[itemIdx] ~= nil
@@ -265,13 +281,14 @@ else
                 end
                 self:setKeyboardPos(toIdx)
             end,
-            setKeyboardPos = function(self, itemIdx)
+            setKeyboardPos = function(self, itemIdx, scroll)
+                local scroll = (scroll == nil) and true or scroll
                 self.keyboardPos = itemIdx
-                app.temp.scrollIfNeeded = true
+                if scroll then app.temp.scrollIfNeeded = true end
             end,
             results = function(self)
                 local results = {}
-                for resultIndex, _  in pairs(self.items) do
+                for resultIndex, _ in pairs(self.items) do
                     table.insert(results, app.temp.searchResults[resultIndex])
                 end
                 return results
@@ -378,8 +395,13 @@ else
             return desc
         end
 
-        function app.filterResults(query, reset)
-            local reset = (reset == nil) and true or reset
+        function app.filterResults(query, skipReset)
+            local reset = (skipReset == nil) and true or (not skipReset)
+            local oldResults, oldKeyboardPosResult
+            if not reset then
+                oldResults = app.selection:results()
+                oldKeyboardPosResult = oldResults[app.selection.keyboardPos]
+            end
             query = OD_DeepCopy(query) or {}
             if query.clear then
                 app.temp.searchInput = ''
@@ -494,12 +516,24 @@ else
                 end
                 ::skip::
             end
-            -- if reset then
-            -- make the first result selected and set the keyboard position to it
-            if #app.temp.searchResults > 0 then
-                app.selection:selectOnly(1)
+            if reset then
+                -- make the first result selected and set the keyboard position to it
+                if #app.temp.searchResults > 0 then
+                    app.selection:selectOnly(1)
+                else
+                    app.selection:empty()
+                end
             else
                 app.selection:empty()
+                for i, result in ipairs(app.temp.searchResults) do
+                    for j, oldResult in ipairs(oldResults) do
+                        if oldResult == result then
+                            app.selection:add(i)
+                            if oldKeyboardPosResult == result then app.selection:setKeyboardPos(i) end
+                            break
+                        end
+                    end
+                end
             end
         end
 
@@ -808,7 +842,7 @@ else
                             for itemIndex, _ in pairs(app.selection.items) do
                                 count = count + 1
                                 if count > 5 then
-                                    ImGui.Text(ctx, '+ ' .. (app.selection:count() - count + 1).. ' more...')
+                                    ImGui.Text(ctx, '+ ' .. (app.selection:count() - count + 1) .. ' more...')
                                     break
                                 end
                                 ImGui.Text(ctx, app.temp.searchResults[itemIndex].searchText[1].text)
