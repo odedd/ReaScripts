@@ -230,31 +230,31 @@ else
         }
         app.selection = {
             items = {},
-            count = function(self) return #self.items end,
+            keyboardPos = 1,
+            count = function(self) return OD_TableLength(self.items) end,
             empty = function(self)
                 self.items = {};
             end,
-            add = function(self, item)
-                if not self:has(item) then
-                    table.insert(self.items, item)
-                end
+            add = function(self, itemIdx)
+                self.items[itemIdx] = true
             end,
-            remove = function(self, item)
-                OD_RemoveValue(self.items, item)
+            remove = function(self, itemIdx)
+                self.items[itemIdx] = nil
             end,
-            has = function(self, item)
-                return OD_HasValue(self.items, item)
+            has = function(self, itemIdx)
+                return self.items[itemIdx] ~= nil
             end,
-            selectOnly = function(self, item)
-                self:empty();
-                table.insert(self.items, item)
+            selectOnly = function(self, itemIdx)
+                self:empty()
+                self:add(itemIdx)
+                self:setKeyboardPos(itemIdx)
             end,
-            toggle = function(self, item)
-                if self:has(item) then
-                    self:remove(item)
+            toggle = function(self, itemIdx)
+                if self:has(itemIdx) then
+                    self:remove(itemIdx)
                     return false
                 else
-                    table.insert(self.items, item)
+                    self:add(itemIdx)
                     return true
                 end
             end,
@@ -263,10 +263,15 @@ else
                 for i = from, to do
                     self:add(i)
                 end
+                self:setKeyboardPos(toIdx)
+            end,
+            setKeyboardPos = function(self, itemIdx)
+                self.keyboardPos = itemIdx
+                app.temp.scrollIfNeeded = true
             end,
             results = function(self)
                 local results = {}
-                for _, resultIndex in pairs(self.items) do
+                for resultIndex, _  in pairs(self.items) do
                     table.insert(results, app.temp.searchResults[resultIndex])
                 end
                 return results
@@ -491,10 +496,11 @@ else
             end
             -- if reset then
             -- make the first result selected and set the keyboard position to it
-            app.temp.resultAtKeyboardPos = (#app.temp.searchResults > 0) and 1 or nil
-            app.selection:empty()
-            if #app.temp.searchResults > 0 then app.selection:add(1) end
-            -- end
+            if #app.temp.searchResults > 0 then
+                app.selection:selectOnly(1)
+            else
+                app.selection:empty()
+            end
         end
 
         function app.handleSelectedResults(resultContext, contextData)
@@ -692,39 +698,32 @@ else
 
                 local handleKeyboardNavigation = function()
                     -- handle escape
-                    if app.temp.resultAtKeyboardPos then
-                        hintResult = searchResults[app.temp.resultAtKeyboardPos]
+                    if app.selection.keyboardPos then
+                        hintResult = searchResults[app.selection.keyboardPos]
                         hintContext = 'Enter'
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) and app.temp.resultAtKeyboardPos < #searchResults then
-                            app.temp.resultAtKeyboardPos = app.temp.resultAtKeyboardPos + 1
+                        local newIdx = nil
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) and app.selection.keyboardPos < #searchResults then
+                            newIdx =
+                                app.selection.keyboardPos + 1
+                        end
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) and app.selection.keyboardPos > 1 then
+                            newIdx = app
+                                .selection.keyboardPos - 1
+                        end
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_PageDown) then
+                            newIdx = math.min(
+                                app.selection.keyboardPos + maxSearchResults, #searchResults)
+                        end
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_PageUp) then
+                            newIdx = math.max(
+                                app.selection.keyboardPos - maxSearchResults, 1)
+                        end
+                        if newIdx then
                             if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) or OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
-                                app.selection:add(app.temp.resultAtKeyboardPos)
+                                app.selection:selectRange(app.selection.keyboardPos, newIdx)
                             else
-                                app.selection:selectOnly(app.temp.resultAtKeyboardPos)
+                                app.selection:selectOnly(newIdx)
                             end
-                            app.temp.checkScrollDown = true
-                        elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageDown) then
-                            local newIdx = math.min(app.temp.resultAtKeyboardPos + maxSearchResults, #searchResults)
-                            if app.temp.resultAtKeyboardPos ~= newIdx then
-                                app.temp.resultAtKeyboardPos = newIdx
-                                app.temp.checkScrollDown = true
-                            end
-                            app.selection:selectOnly(app.temp.resultAtKeyboardPos)
-                        elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageUp) then
-                            local newIdx = math.max(app.temp.resultAtKeyboardPos - maxSearchResults, 1)
-                            if app.temp.resultAtKeyboardPos ~= newIdx then
-                                app.temp.resultAtKeyboardPos = newIdx
-                                app.temp.checkScrollUp = true
-                            end
-                            app.selection:selectOnly(app.temp.resultAtKeyboardPos)
-                        elseif ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) and app.temp.resultAtKeyboardPos > 1 then
-                            app.temp.resultAtKeyboardPos = app.temp.resultAtKeyboardPos - 1
-                            if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) or OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
-                                app.selection:add(app.temp.resultAtKeyboardPos)
-                            else
-                                app.selection:selectOnly(app.temp.resultAtKeyboardPos)
-                            end
-                            app.temp.checkScrollUp = true
                         end
                     end
                 end
@@ -772,7 +771,7 @@ else
                     if ImGui.BeginDragDropSource(ctx) then
                         if not ImGui.GetDragDropPayload(ctx) and not app.selection:has(row.index) then
                             app.selection:selectOnly(row.index)
-                            app.temp.resultAtKeyboardPos = row.index
+                            -- app.selection.keyboardPos = row.index
                         end
                         local listTracks = false
                         local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
@@ -805,12 +804,14 @@ else
                             -- listTracks = false
                         end
                         if listTracks then
-                            for i, itemIndex in pairs(app.selection.items) do
-                                ImGui.Text(ctx, app.temp.searchResults[itemIndex].searchText[1].text)
-                                if i >= 8 then
-                                    ImGui.Text(ctx, '+ ' .. app.selection:count() - i .. ' more...')
+                            local count = 0
+                            for itemIndex, _ in pairs(app.selection.items) do
+                                count = count + 1
+                                if count > 5 then
+                                    ImGui.Text(ctx, '+ ' .. (app.selection:count() - count + 1).. ' more...')
                                     break
                                 end
+                                ImGui.Text(ctx, app.temp.searchResults[itemIndex].searchText[1].text)
                             end
                         else
                             ImGui.Text(ctx, 'Drag to a track, to an empty area or to a tag')
@@ -838,39 +839,35 @@ else
                 end
                 local handleScrolling = function()
                     local selectedRow = nil
-                    if app.temp.checkScrollDown or app.temp.checkScrollUp then
+                    if app.temp.scrollIfNeeded then
                         for i, row in ipairs(flatRows) do
-                            if row.index == app.temp.resultAtKeyboardPos then
+                            if row.index == app.selection.keyboardPos then
                                 selectedRow = row
                                 break
                             end
                         end
                         if selectedRow then
-                            local tooLow = selectedRow.totalIndex * fontLineHeight >=
-                                app.temp.tableScrollY + searchResultsH
-                            local tooHigh = selectedRow.totalIndex * fontLineHeight <=
-                                app.temp.tableScrollY + fontLineHeight
-                            if app.temp.checkScrollDown then
-                                if tooLow or tooHigh then
-                                    local skip = flatRows[selectedRow.totalIndex].type == 'group'
-                                    ImGui.SetNextWindowScroll(ctx, 0,
-                                        (selectedRow.totalIndex) * fontLineHeight - searchResultsH +
-                                        (skip and fontLineHeight or 0))
+                            app.temp.scrollIfNeeded = false
+                            app.temp.tableScrollY = app.temp.tableScrollY or 0
+                            -- if below current view
+                            if selectedRow.totalIndex * fontLineHeight >=
+                                app.temp.tableScrollY + searchResultsH then
+                                local skip = flatRows[selectedRow.totalIndex].type == 'group'
+                                ImGui.SetNextWindowScroll(ctx, 0,
+                                    (selectedRow.totalIndex) * fontLineHeight - searchResultsH +
+                                    (skip and fontLineHeight or 0))
+                                -- if above current view
+                            elseif selectedRow.totalIndex * fontLineHeight <=
+                                app.temp.tableScrollY + fontLineHeight then
+                                local skip
+                                if selectedRow.totalIndex == 1 then
+                                    skip = false
+                                else
+                                    skip = (flatRows[selectedRow.totalIndex].type == 'group')
                                 end
-                                app.temp.checkScrollDown = false
-                            elseif app.temp.checkScrollUp then
-                                if tooHigh or tooLow then
-                                    local skip
-                                    if selectedRow.totalIndex == 1 then
-                                        skip = false
-                                    else
-                                        skip = (flatRows[selectedRow.totalIndex - 1].type == 'group')
-                                    end
-                                    ImGui.SetNextWindowScroll(ctx, 0,
-                                        (selectedRow.totalIndex - 1) * fontLineHeight -
-                                        (skip and fontLineHeight or 0))
-                                end
-                                app.temp.checkScrollUp = false
+                                ImGui.SetNextWindowScroll(ctx, 0,
+                                    (selectedRow.totalIndex - 1) * fontLineHeight -
+                                    (skip and fontLineHeight or 0))
                             end
                         end
                     end
@@ -964,15 +961,14 @@ else
                                         end
                                         if ImGui.Selectable(ctx, '', app.selection:has(row.index) or app.temp.highlightDropAreaFor == row.index, selectableFlags, 0, 0) then
                                             if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
-                                                app.selection:selectRange(app.temp.resultAtKeyboardPos, row.index)
-                                                app.temp.resultAtKeyboardPos = row.index
+                                                app.selection:selectRange(app.selection.keyboardPos, row.index)
                                             elseif OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
                                                 if app.selection:toggle(row.index) then
-                                                    app.temp.resultAtKeyboardPos = row.index
+                                                    app.selection.keyboardPos = row.index
                                                 end
                                             else
                                                 app.selection:selectOnly(row.index)
-                                                app.temp.resultAtKeyboardPos = row.index
+                                                -- app.selection.keyboardPos = row.index
                                                 if not app.temp.waitingForDoubleClick then
                                                     app.temp.waitingForDoubleClick =
                                                         r.time_precise()
@@ -1430,12 +1426,12 @@ else
                                     end
                                     if app.temp.highlightDropAreaForAllSelectedResults then
                                         ImGui.Separator(ctx)
-                                        for i, result in pairs(app.selection:results()) do
-                                            ImGui.Text(ctx, result.searchText[1].text)
-                                            if i >= 8 then
-                                                ImGui.Text(ctx, '+ ' .. app.selection:count() - i .. ' more...')
+                                        for i, result in ipairs(app.selection:results()) do
+                                            if i > 5 then
+                                                ImGui.Text(ctx, '+ ' .. (app.selection:count() - i + 1) .. ' more...')
                                                 break
                                             end
+                                            ImGui.Text(ctx, result.searchText[1].text)
                                         end
                                     end
                                     if not ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
@@ -1772,17 +1768,15 @@ else
                     elseif app.isShortcutPressed('hardCloseScript') then
                         app.hardExit = true
                         pressed = true
-                    elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.isShortcutPressed('markFavorite') and app.temp.resultAtKeyboardPos then
+                    elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.isShortcutPressed('markFavorite') and app.selection.keyboardPos then
                         -- TODO allow favorites for multiple selections
-                        local result = app.temp.searchResults[app.temp.resultAtKeyboardPos]
+                        local result = app.temp.searchResults[app.selection.keyboardPos]
                         local fav = result:toggleFavorite()
                         app.filterResults()
                         if fav then
                             for i = 1, #app.temp.searchResults do
                                 if app.temp.searchResults[i] == result then
-                                    app.temp.resultAtKeyboardPos = i
-                                    app.selection:selectOnly(app.temp.resultAtKeyboardPos)
-                                    app.temp.checkScrollUp = true
+                                    app.selection:selectOnly(app.selection.keyboardPos)
                                     break
                                 end
                             end
