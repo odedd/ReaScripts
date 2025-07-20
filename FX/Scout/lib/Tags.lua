@@ -19,10 +19,10 @@ PB_Tags = OD_Settings:new({
             [7] = { name = 'Multiband', parentId = 2, order = 1 }
         },
         taggedAssets = {
-            ["1 /Library/Audio/Plug-Ins/VST3/FabFilter Pro-Q 4.vst3"] = { 7, 3 },
-            ["1 /Library/Audio/Plug-Ins/VST3/FabFilter Pro-Q 3.vst3"] = { 1 },
-            ["1 /Library/Audio/Plug-Ins/VST3/FabFilter Pro-C 2.vst3"] = { 2 },
-            ["1 /Library/Audio/Plug-Ins/VST3/FabFilter Pro-G.vst3"] = { 5 }
+            [ASSETS.PLUGIN .. " /Library/Audio/Plug-Ins/VST3/FabFilter Pro-Q 4.vst3"] = { 7, 3 },
+            [ASSETS.PLUGIN .. " /Library/Audio/Plug-Ins/VST3/FabFilter Pro-Q 3.vst3"] = { 1 },
+            [ASSETS.PLUGIN .. " /Library/Audio/Plug-Ins/VST3/FabFilter Pro-C 2.vst3"] = { 2 },
+            [ASSETS.PLUGIN .. " /Library/Audio/Plug-Ins/VST3/FabFilter Pro-G.vst3"] = { 5 }
         }
     },
     dfsetfile = Scr.dir .. Scr.no_ext .. ' tags.ini'
@@ -117,7 +117,7 @@ function PB_Tags:import(filename, mergeMode)
     local file = io.open(filename, 'r')
     if not file then 
         self.app.logger:logError('Failed to open file for reading', filename)
-        return false 
+        return false, {}, 0, 0
     end
 
     local section = nil
@@ -151,13 +151,31 @@ function PB_Tags:import(filename, mergeMode)
         elseif section == "taggedAssets" and line ~= "" then
             local asset, tags = line:match("^(.-):(.+)$")
             if asset and tags then
-                -- Only store basename for matching
-                local imported_basename = asset:match("([^/\\]+)$")
-                local tag_ids = {}
-                for tag_id in tags:gmatch("(%d+)") do
-                    table.insert(tag_ids, tonumber(tag_id))
+                -- Extract basename for matching - different logic for different asset types
+                local imported_basename
+                local assetType = tonumber(asset:match("^(%d+)"))
+                
+                if assetType == ASSETS.PLUGIN or assetType == ASSETS.FX_CHAIN or assetType == ASSETS.TRACK_TEMPLATE then
+                    -- For file-based assets, extract basename from path
+                    imported_basename = asset:match("([^/\\]+)$")
+                elseif assetType == ASSETS.TRACK or assetType == ASSETS.ACTION then
+                    -- For tracks and actions, use the full identifier minus the asset type prefix
+                    imported_basename = asset:match("^%d+%s+(.+)$")
+                else
+                    -- Fallback: try to extract basename from path, then full identifier
+                    imported_basename = asset:match("([^/\\]+)$") or asset:match("^%d+%s+(.+)$")
                 end
-                importedTaggedAssets[imported_basename] = tag_ids
+                
+                if imported_basename then
+                    local tag_ids = {}
+                    for tag_id in tags:gmatch("(%d+)") do
+                        table.insert(tag_ids, tonumber(tag_id))
+                    end
+                    importedTaggedAssets[imported_basename] = {
+                        tagIds = tag_ids,
+                        originalAssetId = asset
+                    }
+                end
             end
         end
     end
@@ -182,10 +200,10 @@ function PB_Tags:import(filename, mergeMode)
         )
         
         self.app.logger:logError(errorMsg)
-        return false, errorMsg
+        return false, errorMsg, {}, 0, 0
     elseif fileVersion == nil then
         -- No version info found - assume legacy format
-        self.app.logger:logWarning('No version information found in tags file. Assuming legacy format.')
+        self.app.logger:logInfo('No version information found in tags file. Assuming legacy format.')
     end
 
     -- Handle tagInfo based on merge mode
@@ -241,15 +259,18 @@ function PB_Tags:import(filename, mergeMode)
         
         -- Remap tag IDs in imported tagged assets
         local remappedImportedTaggedAssets = {}
-        for basename, tagIds in pairs(importedTaggedAssets) do
+        for basename, assetData in pairs(importedTaggedAssets) do
             local remappedTagIds = {}
-            for _, tagId in ipairs(tagIds) do
+            for _, tagId in ipairs(assetData.tagIds) do
                 if idMapping[tagId] then
                     table.insert(remappedTagIds, idMapping[tagId])
                 end
             end
             if #remappedTagIds > 0 then
-                remappedImportedTaggedAssets[basename] = remappedTagIds
+                remappedImportedTaggedAssets[basename] = {
+                    tagIds = remappedTagIds,
+                    originalAssetId = assetData.originalAssetId
+                }
             end
         end
         importedTaggedAssets = remappedImportedTaggedAssets
@@ -271,36 +292,91 @@ function PB_Tags:import(filename, mergeMode)
         self.app.logger:logDebug('Replace mode: replaced all tags with ' .. tagCount .. ' imported tags')
     end
 
-    -- Get all plugins in your system using self.app.db.plugins 
+    -- Get all assets in your system using self.app.db
     local systemAssets = {}
-    self.app.logger:logDebug('Mapping plugins from system database...')
+    self.app.logger:logDebug('Mapping assets from system database...')
     
+    -- Map plugins
     for _, plugin in ipairs(self.app.db.plugins) do
-        -- Extract basename from the plugin's full_name (which contains the path)
         local basename = plugin.full_name:match("([^/\\]+)$")
         if basename then
-            -- Create the asset ID format: "1 " + plugin.ident (1 is ASSETS.PLUGIN)
-            local assetId = "1 " .. plugin.ident
+            -- Create the asset ID format: ASSETS.PLUGIN + " " + plugin.ident
+            local assetId = ASSETS.PLUGIN .. " " .. plugin.ident
             systemAssets[basename] = assetId
         end
     end
     
-    local systemPluginCount = 0
-    for _ in pairs(systemAssets) do systemPluginCount = systemPluginCount + 1 end
-    self.app.logger:logDebug('Found plugins in system database', systemPluginCount)
+    -- Map FX chains
+    for _, fxChain in ipairs(self.app.db.fxChains) do
+        local basename = fxChain.file
+        if basename then
+            -- Create the asset ID format: ASSETS.FX_CHAIN + " " + fxChain.load
+            local assetId = ASSETS.FX_CHAIN .. " " .. fxChain.load
+            systemAssets[basename] = assetId
+        end
+    end
+    
+    -- Map track templates
+    for _, trackTemplate in ipairs(self.app.db.trackTemplates) do
+        local basename = trackTemplate.file
+        if basename then
+            -- Create the asset ID format: ASSETS.TRACK_TEMPLATE + " " + trackTemplate.load
+            local assetId = ASSETS.TRACK_TEMPLATE .. " " .. trackTemplate.load
+            systemAssets[basename] = assetId
+        end
+    end
+    
+    -- Map tracks
+    for _, track in ipairs(self.app.db.tracks) do
+        local basename = track.name
+        if basename then
+            -- Create the asset ID format: ASSETS.TRACK + " " + track.guid
+            local assetId = ASSETS.TRACK .. " " .. track.guid
+            systemAssets[basename] = assetId
+        end
+    end
+    
+    -- Map actions
+    for _, action in ipairs(self.app.db.actions) do
+        local basename = action.name
+        if basename then
+            -- Create the asset ID format: ASSETS.ACTION + " " + action.id
+            local assetId = ASSETS.ACTION .. " " .. action.id
+            systemAssets[basename] = assetId
+        end
+    end
+    
+    local systemAssetCount = 0
+    for _ in pairs(systemAssets) do systemAssetCount = systemAssetCount + 1 end
+    self.app.logger:logDebug('Found total system assets', systemAssetCount)
 
     -- Remap imported taggedAssets to your system's asset IDs
     local remappedTaggedAssets = {}
     local mappedAssetsCount = 0
     local skippedAssetsCount = 0
+    local skippedAssets = {} -- Table to track unimported assets with reasons
+    local assetTypeCounts = {
+        [ASSETS.PLUGIN] = { mapped = 0, skipped = 0 },
+        [ASSETS.FX_CHAIN] = { mapped = 0, skipped = 0 },
+        [ASSETS.TRACK_TEMPLATE] = { mapped = 0, skipped = 0 },
+        [ASSETS.TRACK] = { mapped = 0, skipped = 0 },
+        [ASSETS.ACTION] = { mapped = 0, skipped = 0 }
+    }
     
-    self.app.logger:logDebug('Remapping tagged assets to system plugin IDs...')
+    self.app.logger:logDebug('Remapping tagged assets to system asset IDs...')
     
-    for imported_basename, tag_ids in pairs(importedTaggedAssets) do
+    for imported_basename, assetData in pairs(importedTaggedAssets) do
         local systemAssetId = systemAssets[imported_basename]
         if systemAssetId then
             mappedAssetsCount = mappedAssetsCount + 1
-            self.app.logger:logDebug('Mapped plugin "' .. imported_basename .. '" to system asset', systemAssetId)
+            
+            -- Determine asset type for logging
+            local assetType = tonumber(systemAssetId:match("^(%d+)"))
+            if assetType and assetTypeCounts[assetType] then
+                assetTypeCounts[assetType].mapped = assetTypeCounts[assetType].mapped + 1
+            end
+            
+            self.app.logger:logDebug('Mapped asset "' .. imported_basename .. '" to system asset', systemAssetId)
             
             if mergeMode then
                 -- In merge mode, combine with existing tags for this asset
@@ -315,7 +391,7 @@ function PB_Tags:import(filename, mergeMode)
                 end
                 
                 -- Add imported tags
-                for _, tagId in ipairs(tag_ids) do
+                for _, tagId in ipairs(assetData.tagIds) do
                     if not OD_HasValue(combinedTags, tagId) then
                         table.insert(combinedTags, tagId)
                     end
@@ -324,11 +400,39 @@ function PB_Tags:import(filename, mergeMode)
                 remappedTaggedAssets[systemAssetId] = combinedTags
             else
                 -- In replace mode, just use imported tags
-                remappedTaggedAssets[systemAssetId] = tag_ids
+                remappedTaggedAssets[systemAssetId] = assetData.tagIds
             end
         else
             skippedAssetsCount = skippedAssetsCount + 1
-            self.app.logger:logDebug('Plugin "' .. imported_basename .. '" not found in system - skipping')
+            
+            -- Try to determine what type of asset this might be based on the basename
+            -- This is for better logging of what was skipped
+            local assetTypeGuess = "unknown"
+            local skipReason = IMPORT_SKIP_REASON.ASSET_NOT_FOUND
+            
+            if imported_basename:match("%.vst3?$") or imported_basename:match("%.dll$") or imported_basename:match("%.component$") then
+                assetTypeGuess = "plugin"
+                assetTypeCounts[ASSETS.PLUGIN].skipped = assetTypeCounts[ASSETS.PLUGIN].skipped + 1
+            elseif imported_basename:match("%.rfxchain$") then
+                assetTypeGuess = "FX chain"
+                assetTypeCounts[ASSETS.FX_CHAIN].skipped = assetTypeCounts[ASSETS.FX_CHAIN].skipped + 1
+            elseif imported_basename:match("%.RTrackTemplate$") then
+                assetTypeGuess = "track template"
+                assetTypeCounts[ASSETS.TRACK_TEMPLATE].skipped = assetTypeCounts[ASSETS.TRACK_TEMPLATE].skipped + 1
+            else
+                -- Could be track or action - harder to determine from basename alone
+                assetTypeGuess = "track/action"
+            end
+            
+            -- Record the skipped asset with its reason
+            table.insert(skippedAssets, {
+                basename = imported_basename,
+                originalAssetId = assetData.originalAssetId,  -- Store the original asset ID from import
+                reason = skipReason,
+                assetTypeGuess = assetTypeGuess
+            })
+            
+            self.app.logger:logDebug('Asset "' .. imported_basename .. '" (' .. assetTypeGuess .. ') not found in system - skipping')
         end
     end
 
@@ -349,8 +453,28 @@ function PB_Tags:import(filename, mergeMode)
 
     local finalAssetCount = 0
     for _ in pairs(self.current.taggedAssets) do finalAssetCount = finalAssetCount + 1 end
+    
+    -- Log detailed breakdown by asset type
     self.app.logger:logInfo('Import successful: ' .. mappedAssetsCount .. ' assets mapped, ' .. skippedAssetsCount .. ' assets skipped, total tagged assets: ' .. finalAssetCount)
+    for assetType, counts in pairs(assetTypeCounts) do
+        if counts.mapped > 0 or counts.skipped > 0 then
+            local typeName = "unknown"
+            if assetType == ASSETS.PLUGIN then typeName = "plugins"
+            elseif assetType == ASSETS.FX_CHAIN then typeName = "FX chains"
+            elseif assetType == ASSETS.TRACK_TEMPLATE then typeName = "track templates"
+            elseif assetType == ASSETS.TRACK then typeName = "tracks"
+            elseif assetType == ASSETS.ACTION then typeName = "actions"
+            end
+            
+            if counts.mapped > 0 then
+                self.app.logger:logDebug('Mapped ' .. typeName, counts.mapped)
+            end
+            if counts.skipped > 0 then
+                self.app.logger:logDebug('Skipped ' .. typeName, counts.skipped)
+            end
+        end
+    end
 
-    return true
+    return true, skippedAssets, mappedAssetsCount, skippedAssetsCount
 end
 -- * local

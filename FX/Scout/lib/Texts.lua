@@ -80,3 +80,9 @@ the window to the dock of your choice.
 After that, %s will remember
 the dock position.]]):format(Scr.name)
 }
+
+T.IMPORT_SKIP_REASON = {
+    [IMPORT_SKIP_REASON.ASSET_NOT_FOUND] = "Asset not found in current system",
+    [IMPORT_SKIP_REASON.INCOMPATIBLE_VERSION] = "Incompatible file version",
+    [IMPORT_SKIP_REASON.INVALID_FORMAT] = "Invalid asset format"
+}

@@ -114,3 +114,10 @@ for i, fx_type_name in ipairs(FX_TYPE) do
     }
 end
 
+-- Import failure reasons
+IMPORT_SKIP_REASON = {
+    ASSET_NOT_FOUND = 1,
+    INCOMPATIBLE_VERSION = 2,
+    INVALID_FORMAT = 3,
+}
+
