@@ -76,6 +76,7 @@ PB_Settings = OD_Settings:new({
         -- Internal
         minFilterPanelWidth = 140,
         lastDockId = nil,
+        numberOfResultsThatRequireConfirmation = 10
     },
     dfsetfile = Scr.dfsetfile
 })

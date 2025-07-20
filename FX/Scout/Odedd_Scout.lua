@@ -340,10 +340,19 @@ else
                     r.defer(app.flow.waitForWakeup)
                 end
             end,
-            handleSelectedResults = function(resultContext, contextData)
-                for _, result in pairs(app.selection:results()) do
-                    if result.execute then
-                        result:execute(resultContext)
+            handleSelectedResults = function(ctx, resultContext, contextData, confirmMultiple)
+                local resultCount = app.selection:count()
+                if resultCount >= app.settings.current.numberOfResultsThatRequireConfirmation and not confirmMultiple then
+                    app.temp.confirmMultipleResults = {
+                        count = resultCount,
+                        resultContext = resultContext,
+                        contextData = contextData
+                    }
+                elseif confirmMultiple or resultCount < app.settings.current.numberOfResultsThatRequireConfirmation then
+                    for _, result in pairs(app.selection:results()) do
+                        if result.execute then
+                            result:execute(resultContext)
+                        end
                     end
                 end
             end
@@ -1946,6 +1955,75 @@ else
                 if col then app.gui:popColors(app.gui.st.col[col]) end
                 app:setHint(window, '')
             end,
+            popup = function(ctx, id, text)
+                local center = { app.gui.mainWindow.pos[1] + app.gui.mainWindow.size[1] / 2,
+                    app.gui.mainWindow.pos[2] + app.gui.mainWindow.size[2] / 2 } -- {ImGui.Viewport_GetCenter(ImGui.GetMainViewport(ctx))}
+                local okButtonLabel = 'Yes'
+                local cancelButtonLabel = 'No'
+                local okPressed = false
+                local bottom_lines = 1
+                local id = id or 'confirmationPopup'
+
+                local textWidth, textHeight = ImGui.CalcTextSize(ctx, text)
+
+                ImGui.SetNextWindowSize(ctx,
+                    math.max(220, textWidth) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 4,
+                    textHeight + 90 + ImGui.GetTextLineHeightWithSpacing(ctx))
+
+                ImGui.SetNextWindowPos(ctx, center[1], center[2], ImGui.Cond_Appearing, 0.5, 0.5)
+                ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowTitleAlign, 0.5, 0.5)
+                local open, visible = ImGui.BeginPopupModal(ctx, id, nil, ImGui.WindowFlags_NoResize)
+                if open then
+                    local width = select(1, ImGui.GetContentRegionAvail(ctx))
+                    ImGui.PushItemWidth(ctx, width)
+
+                    local windowWidth, windowHeight = ImGui.GetWindowSize(ctx);
+                    ImGui.SetCursorPos(ctx, (windowWidth - textWidth) * .5, (windowHeight - textHeight) * .5);
+                    ImGui.TextWrapped(ctx, text)
+
+                    ImGui.SetCursorPosY(ctx, ImGui.GetWindowHeight(ctx) - (ImGui.GetFrameHeight(ctx) * bottom_lines) -
+                        ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding))
+
+                    local buttonTextWidth = ImGui.CalcTextSize(ctx, okButtonLabel) +
+                        ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
+
+                    buttonTextWidth = buttonTextWidth + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) +
+                        ImGui.CalcTextSize(ctx, cancelButtonLabel) +
+                        ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
+                    ImGui.SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
+
+                    if ImGui.Button(ctx, okButtonLabel) then
+                        okPressed = true
+                        open = false
+                        ImGui.CloseCurrentPopup(ctx)
+                    end
+
+                    ImGui.SameLine(ctx)
+                    if ImGui.Button(ctx, cancelButtonLabel) then
+                        app.popup.secondWarningShown = false
+                        open = false
+                        ImGui.CloseCurrentPopup(ctx)
+                    end
+                    ImGui.EndPopup(ctx)
+                end
+                ImGui.PopStyleVar(ctx)
+                return open, okPressed
+            end,
+            confirmations = function(ctx)
+                if app.temp.confirmMultipleResults then
+                    if not ImGui.IsPopupOpen(ctx, 'Are you sure?') then
+                        ImGui.OpenPopup(ctx, 'Are you sure?')
+                    end
+                    local open, confirm = app.draw.popup(app.gui.ctx, 'Are you sure?', 'You selected '..app.temp.confirmMultipleResults.count.. ' items.\nAre you sure you want to continue?')
+                    if confirm then
+                        app.flow.handleSelectedResults(ctx, app.temp.confirmMultipleResults.resultContext,
+                        app.temp.confirmMultipleResults.contextData, true)
+                    end
+                    if not open then
+                        app.temp.confirmMultipleResults = nil
+                    end
+                end
+            end,
             mainWindow = function(ctx)
                 ImGui.SetNextWindowPos(ctx, 100, 100, ImGui.Cond_FirstUseEver)
                 ImGui.SetNextWindowSizeConstraints(app.gui.ctx, app.gui.mainWindow.min_w, app.gui.mainWindow.min_h,
@@ -1976,9 +2054,11 @@ else
 
                     if ImGui.BeginChild(ctx, '##body', 0.0, -app.gui.st.sizes.hintHeight) then
                         app.draw.search(ctx)
+
                         ImGui.EndChild(ctx)
                     end
                     app.draw.hint(ctx, 'main')
+                    app.draw.confirmations(ctx)
                     app.draw.settings(ctx)
                     app:drawMsg()
                     ImGui.End(ctx)
