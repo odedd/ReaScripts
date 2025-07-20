@@ -474,49 +474,6 @@ else
             selectSearchInputText = function()
                 app.temp.selectSearchInputText = true
             end,
-            minimizeText = function(text, maxWidth)
-                local key = app.gui.scale .. maxWidth
-                app.maxTextLen = app.maxTextLen or {}
-                if app.maxTextLen[key] == nil then
-                    local i = 0
-                    while ImGui.CalcTextSize(app.gui.ctx, string.rep('A', i)) < maxWidth do
-                        i = i + 1
-                    end
-                    app.maxTextLen[key] = i
-                end
-                if text:len() > app.maxTextLen[key] then
-                    if app.settings.current.textMinimizationStyle == MINIMIZATION_STYLE.PT then
-                        -- text = text:gsub(' ', '')
-                        text = text:len() <= app.maxTextLen[key] and text or text:gsub(' ', '')
-                        text = text:len() <= app.maxTextLen[key] and text or text:gsub('[^%a%d%/%.]', '')
-                        text = text:len() <= app.maxTextLen[key] and text or text:gsub('a', '')
-                        text = text:len() <= app.maxTextLen[key] and text or text:gsub('e', '')
-                        text = text:len() <= app.maxTextLen[key] and text or text:gsub('i', '')
-                        text = text:len() <= app.maxTextLen[key] and text or text:gsub('o', '')
-                        text = text:len() <= app.maxTextLen[key] and text or text:gsub('u', '')
-                        local lastLen = text:len()
-                        while text:len() > app.maxTextLen[key] do -- remove lowercase one by one
-                            text = text:gsub('([a-z]+)[a-z]', '%1')
-                            if lastLen == text:len() then
-                                lastLen = text:len()
-                                break
-                            else
-                                lastLen = text:len()
-                            end
-                        end
-                        while text:len() > app.maxTextLen[key] do -- remove uppercase one by one
-                            text = text:gsub('([A-Z]+)[A-Z]', '%1')
-                            if lastLen == text:len() then
-                                break
-                            else
-                                lastLen = text:len()
-                            end
-                        end
-                    end
-                    return text:sub(1, app.maxTextLen[key]):gsub("%s+$", ''), true -- trim to max length
-                end
-                return text, false
-            end,
             calcTinyIconSize = function(ctx, icon)
                 app.temp.iconSizes = app.temp.iconSizes or {}
                 if app.temp.iconSizes[icon] then
@@ -711,7 +668,8 @@ else
                                 local textW, textH = ImGui.CalcTextSize(ctx, text)
                                 if filter.type == FILTER_TYPES.TAG then
                                     text = filter.itemName
-                                    textW = app.guiHelpers.calcTinyIconSize(ctx, filter.value and ICONS.PLUS or ICONS.MINUS) +
+                                    textW = app.guiHelpers.calcTinyIconSize(ctx,
+                                            filter.value and ICONS.PLUS or ICONS.MINUS) +
                                         spacingX *
                                         2 +
                                         ImGui.CalcTextSize(ctx, text)
@@ -735,7 +693,8 @@ else
                                         ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
                                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX) --, ImGui.GetCursorPosY(ctx) + paddingY)
                                     if filter.type == FILTER_TYPES.TAG then
-                                        app.guiHelpers.tinyIcon(ctx, 'tagType', filter.value and ICONS.PLUS or ICONS.MINUS,
+                                        app.guiHelpers.tinyIcon(ctx, 'tagType',
+                                            filter.value and ICONS.PLUS or ICONS.MINUS,
                                             true,
                                             true)
                                     else
@@ -902,14 +861,15 @@ else
                         end
                         if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragToTrack then
                             if app.temp.dragToTrack == -1 then
-                                app.flow.handleSelectedResults(RESULT_CONTEXT.DRAGGED_TO_BLANK)
+                                app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.DRAGGED_TO_BLANK)
                                 app.logger:logDebug('Will create a new track with ' ..
                                     app.selection:count() .. ' plugin(s)\n')
                             else
                                 app.logger:logDebug('Will add ' ..
                                     app.selection:count() ..
                                     ' plugins to track ' .. select(2, r.GetTrackName(app.temp.dragToTrack)) .. '\n')
-                                app.flow.handleSelectedResults(RESULT_CONTEXT.DRAGGED_TO_TRACK, app.temp.dragToTrack)
+                                app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.DRAGGED_TO_TRACK, app.temp
+                                    .dragToTrack)
                             end
                             app.temp.dragToTrack = nil
                         end
@@ -1058,13 +1018,13 @@ else
                                                     end
                                                     if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
                                                         if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
-                                                            app.flow.handleSelectedResults(RESULT_CONTEXT.ALT)
+                                                            app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.ALT)
                                                         elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
-                                                            app.flow.handleSelectedResults(RESULT_CONTEXT.SHIFT)
+                                                            app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.SHIFT)
                                                         elseif OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
-                                                            app.flow.handleSelectedResults(RESULT_CONTEXT.CTRL)
+                                                            app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.CTRL)
                                                         else
-                                                            app.flow.handleSelectedResults(RESULT_CONTEXT.MAIN)
+                                                            app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.MAIN)
                                                         end
                                                     end
                                                 end
@@ -1716,13 +1676,13 @@ else
                         elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter, false) then
                             if not app.temp.tagRename then
                                 if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
-                                    app.flow.handleSelectedResults(RESULT_CONTEXT.ALT)
+                                    app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.ALT)
                                 elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
-                                    app.flow.handleSelectedResults(RESULT_CONTEXT.SHIFT)
+                                    app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.SHIFT)
                                 elseif OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
-                                    app.flow.handleSelectedResults(RESULT_CONTEXT.CTRL)
+                                    app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.CTRL)
                                 else
-                                    app.flow.handleSelectedResults(RESULT_CONTEXT.MAIN)
+                                    app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.MAIN)
                                 end
                                 pressed = true
                             end
@@ -1899,8 +1859,6 @@ else
                                 flags = (ImGui.SliderFlags_AlwaysClamp)
                             }) /
                         100
-                    app.settings.current.mouseScrollReversed = app.gui:setting('checkbox', T.SETTINGS.MW_REVERSED.LABEL,
-                        T.SETTINGS.MW_REVERSED.HINT, app.settings.current.mouseScrollReversed)
                     app.settings.current.createInsideFolder = app.gui:setting('checkbox',
                         T.SETTINGS.CREATE_INSIDE_FODLER.LABEL,
                         T.SETTINGS.CREATE_INSIDE_FODLER.HINT, app.settings.current.createInsideFolder)
@@ -1909,15 +1867,6 @@ else
                             T.SETTINGS.SEND_FOLDER_NAME.HINT, app.settings.current.sendFolderName,
                             { hint = T.SETTINGS.SEND_FOLDER_NAME.LABEL }, true)
                     end
-                    -- app.settings.current.textMinimizationStyle = app.gui:setting('combo',
-                    --     T.SETTINGS.TEXT_MINIMIZATION_STYLE.LABEL, T.SETTINGS.TEXT_MINIMIZATION_STYLE.HINT,
-                    --     app.settings.current.textMinimizationStyle,
-                    --     {
-                    --         list = T.SETTINGS.LISTS[T.SETTINGS.TEXT_MINIMIZATION_STYLE.LABEL][MINIMIZATION_STYLE.PT] ..
-                    --             '\0' ..
-                    --             T.SETTINGS.LISTS[T.SETTINGS.TEXT_MINIMIZATION_STYLE.LABEL][MINIMIZATION_STYLE.TRIM] .. '\0'
-                    --     })
-
                     ImGui.SeparatorText(ctx, 'Shortcuts')
                     local resetCounter = false
                     app.settings.current.shortcuts.closeScript, resetCounter = app.gui:setting('shortcut',
