@@ -5,19 +5,9 @@ TrackAssetType = {}
 TrackAssetType.__index = TrackAssetType
 setmetatable(TrackAssetType, BaseAssetType)
 
-function TrackAssetType.new(class, context)
-    local instance = BaseAssetType.new(class, {
-        name = "Track",
-        assetTypeId = ASSETS.TRACK,
-        group = "Tracks", -- Use display name as group
-        context = context
-    })
-    instance.tracks = {} -- Store tracks locally in the module
-    return instance
-end
+TrackAssetType.new = BaseAssetType:createStandardConstructor("Track", "Tracks")
 
 function TrackAssetType:getData()
-    self.context.logger:logDebug('-- TrackAssetType:getData()')
     -- self:sync()
     self.tracks = {} -- Clear local tracks array
     local numTracks = reaper.CountTracks(0)
@@ -56,7 +46,6 @@ function TrackAssetType:getData()
         trackData:_refreshColor()
         table.insert(self.tracks, trackData)
     end
-    self.context.logger:logDebug('Found ' .. numTracks .. ' tracks')
     return self.tracks
 end
 

@@ -5,19 +5,9 @@ TrackTemplateAssetType = {}
 TrackTemplateAssetType.__index = TrackTemplateAssetType
 setmetatable(TrackTemplateAssetType, BaseAssetType)
 
-function TrackTemplateAssetType.new(class, context)
-    local instance = BaseAssetType.new(class, {
-        name = "Track Template",
-        assetTypeId = ASSETS.TRACK_TEMPLATE,
-        group = "Track Templates", -- Use display name as group
-        context = context
-    })
-    instance.trackTemplates = {} -- Store track templates locally in the module
-    return instance
-end
+TrackTemplateAssetType.new = BaseAssetType:createStandardConstructor("Track Template", "Track Templates")
 
 function TrackTemplateAssetType:getData()
-    self.context.logger:logDebug('-- TrackTemplateAssetType:getData()')
     self.trackTemplates = {} -- Clear local track templates array
     local basePath = reaper.GetResourcePath() .. "/TrackTemplates"
     local files = OD_GetFilesInFolderAndSubfolders(basePath, 'RTrackTemplate', true)
@@ -34,7 +24,6 @@ function TrackTemplateAssetType:getData()
         })
         count = count + 1
     end
-    self.context.logger:logInfo('Found ' .. count .. ' track templates')
     return self.trackTemplates
 end
 

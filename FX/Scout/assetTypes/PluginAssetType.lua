@@ -5,10 +5,9 @@ PluginAssetType = {}
 PluginAssetType.__index = PluginAssetType
 setmetatable(PluginAssetType, BaseAssetType)
 
-PluginAssetType.new = BaseAssetType:createStandardConstructor("FX", ASSETS and ASSETS.PLUGIN or 1, nil)
+PluginAssetType.new = BaseAssetType:createStandardConstructor("FX")
 
 function PluginAssetType:getData()
-    self.context.logger:logDebug('-- PluginAssetType:getData()')
     local function addPlugin(full_name, fx_type, instrument, ident)
         -- Local implementation of plugin parsing and adding
         self.context.logger:logDebug('-- addPlugin()')
@@ -86,7 +85,6 @@ function PluginAssetType:getData()
         end
         i = i + 1
     end
-    self:logDataStats("plugins", #self.data)
     return self.data
 end
 

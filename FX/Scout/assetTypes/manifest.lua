@@ -1,13 +1,22 @@
 -- @noindex
 -- Asset Types Manifest
--- This file defines which asset types to load and their order
--- The order in this list determines the filter menu order
+-- This file defines which asset types to load and their assigned IDs
+-- 
+-- ⚠️  WARNING: DO NOT CHANGE EXISTING IDs! ⚠️
+-- Once an asset type has been assigned an ID, it should NEVER be changed
+-- as this would break existing saved data (favorites, tags, etc.)
+-- Only add new asset types with new IDs at the end.
+--
+-- Format: { id = <number>, file = '<filename>', comment = '<description>' }
 
 return {
-    'PluginAssetType.lua',
-    'FXChainAssetType.lua',
-    'TrackTemplateAssetType.lua',
-    'TrackAssetType.lua',
-    'ActionAssetType.lua',
-    'ProjectAssetType.lua'
+    { id = 0, file = 'PluginAssetType.lua',        comment = 'VST/AU/JS plugins' },
+    { id = 1, file = 'FXChainAssetType.lua',       comment = 'FX chain files' },
+    { id = 2, file = 'TrackTemplateAssetType.lua', comment = 'Track template files' },
+    { id = 3, file = 'TrackAssetType.lua',         comment = 'Project tracks' },
+    { id = 4, file = 'ActionAssetType.lua',        comment = 'Reaper actions' },
+    { id = 5, file = 'ProjectAssetType.lua',       comment = 'Project files (.rpp)' },
+    
+    -- When adding new asset types, assign the next available ID and add here:
+    -- { id = 6, file = 'NewAssetType.lua', comment = 'Description of new type' },
 }

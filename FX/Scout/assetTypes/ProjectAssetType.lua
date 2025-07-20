@@ -5,10 +5,9 @@ ProjectAssetType = {}
 ProjectAssetType.__index = ProjectAssetType
 setmetatable(ProjectAssetType, BaseAssetType)
 
-ProjectAssetType.new = BaseAssetType:createStandardConstructor("Project", ASSETS.PROJECT, "Projects")
+ProjectAssetType.new = BaseAssetType:createStandardConstructor("Project", "Projects")
 
 function ProjectAssetType:getData()
-    self.context.logger:logDebug('-- ProjectAssetType:getData()')
     self.data = {}
     
     -- Get project scan folders from settings
@@ -35,7 +34,6 @@ function ProjectAssetType:getData()
         end
     end
     
-    self:logDataStats("projects", #self.data)
     return self.data
 end
 

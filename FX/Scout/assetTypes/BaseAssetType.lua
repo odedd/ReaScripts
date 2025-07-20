@@ -33,6 +33,27 @@ function BaseAssetType:getData()
     error("BaseAssetType:getData() must be implemented by subclass")
 end
 
+function BaseAssetType:getDataWithLogging()
+    -- Wrapper that provides standard logging around getData()
+    local className = getmetatable(self).__index == self and "BaseAssetType" or nil
+    if not className then
+        for globalName, globalValue in pairs(_G) do
+            if globalValue == getmetatable(self).__index and globalName:match("AssetType$") then
+                className = globalName
+                break
+            end
+        end
+    end
+    
+    self.context.logger:logDebug('-- ' .. (className or "Unknown") .. ':getData()')
+    local data = self:getData()
+    local count = data and #data or 0
+    -- Use group name (plural) for logging instead of singular name
+    local itemType = (self.group or self.name or "items"):lower()
+    self.context.logger:logInfo('Found ' .. count .. ' ' .. itemType)
+    return data
+end
+
 function BaseAssetType:assembleAsset(assetData)
     -- Should return asset table for insertion into assets array
     error("BaseAssetType:assembleAsset() must be implemented by subclass")
@@ -45,24 +66,30 @@ end
 
 -- Common helper methods:
 
-function BaseAssetType:createStandardConstructor(name, assetTypeId, group)
+function BaseAssetType:createStandardConstructor(name, group)
     return function(class, context)
+        -- Automatically infer asset type ID from the class name
+        local inferredAssetTypeId = nil
+        -- Try to find the class name in the global namespace
+        for globalName, globalValue in pairs(_G) do
+            if globalValue == class and globalName:match("AssetType$") then
+                inferredAssetTypeId = ASSET_TYPE[globalName]
+                break
+            end
+        end
+        
         -- Use the display name as the group if no explicit group is provided
         local inferredGroup = group or name
         
         local instance = BaseAssetType.new(class, {
             name = name,
-            assetTypeId = assetTypeId,
+            assetTypeId = inferredAssetTypeId,
             group = inferredGroup,
             context = context
         })
         instance.data = {} -- Standard data storage
         return instance
     end
-end
-
-function BaseAssetType:logDataStats(typeName, count)
-    self.context.logger:logInfo('Found ' .. count .. ' ' .. typeName:lower())
 end
 
 function BaseAssetType:createAssetBase(params)

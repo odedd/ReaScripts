@@ -5,10 +5,9 @@ ActionAssetType = {}
 ActionAssetType.__index = ActionAssetType
 setmetatable(ActionAssetType, BaseAssetType)
 
-ActionAssetType.new = BaseAssetType:createStandardConstructor("Action", ASSETS.ACTION, "Actions")
+ActionAssetType.new = BaseAssetType:createStandardConstructor("Action", "Actions")
 
 function ActionAssetType:getData()
-    self.context.logger:logDebug('-- ActionAssetType:getData()')
     self.data = {}
     
     local idx = 0
@@ -43,7 +42,6 @@ function ActionAssetType:getData()
         idx = idx + 1
     end
     
-    self:logDataStats("actions", #self.data)
     return self.data
 end
 

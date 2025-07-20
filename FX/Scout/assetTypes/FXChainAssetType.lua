@@ -5,19 +5,9 @@ FXChainAssetType = {}
 FXChainAssetType.__index = FXChainAssetType
 setmetatable(FXChainAssetType, BaseAssetType)
 
-function FXChainAssetType.new(class, context)
-    local instance = BaseAssetType.new(class, {
-        name = "FX Chain",
-        assetTypeId = ASSETS.FX_CHAIN,
-        group = "FX Chains", -- Use display name as group (plural)
-        context = context
-    })
-    instance.fxChains = {} -- Store FX chains locally in the module
-    return instance
-end
+FXChainAssetType.new = BaseAssetType:createStandardConstructor("FX Chain", "FX Chains")
 
 function FXChainAssetType:getData()
-    self.context.logger:logDebug('-- FXChainAssetType:getData()')
     self.fxChains = {} -- Clear local FX chains array
     local basePath = reaper.GetResourcePath() .. "/FXChains/"
     local files = OD_GetFilesInFolderAndSubfolders(basePath, 'rfxchain', true)
@@ -34,7 +24,6 @@ function FXChainAssetType:getData()
         })
         count = count + 1
     end
-    self.context.logger:logInfo('Found ' .. count .. ' FX chains')
     return self.fxChains
 end
 
