@@ -11,6 +11,7 @@ run_scripts_www.sh
 .VSCodeCounter
 
 **/*.ini
+**/*.log
 
 FX/Visual Plugin Selector/*
 !FX/Visual Plugin Selector/Odedd_Visual Plugin Selector.lua
