@@ -60,7 +60,7 @@ DB = {
 
         if self.refresh then
             self.app.logger:logDebug('Refreshing to search page')
-            self.app.setPage(APP_PAGE.SEARCH)
+            self.app.flow.setPage(APP_PAGE.SEARCH)
         end
     end
 }
@@ -295,7 +295,7 @@ DB.getTracks = function(self)
                         shortened = false,
                         calculateShortName = function(self)
                             ImGui.PushFont(self.db.app.gui.ctx, self.db.app.gui.st.fonts.small)
-                            self.shortName, self.shortened = self.db.app.minimizeText(
+                            self.shortName, self.shortened = self.db.app.guiHelpers.minimizeText(
                                 self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''):gsub("^%s+", ''):gsub("%s+$", ''),
                                 math.floor(self.db.app.settings.current.sendWidth * self.db.app.gui.scale) -
                                 r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 4)
@@ -753,7 +753,7 @@ DB.getTags = function(self, reassembleTagFilterAssets)
         self.tags[id].delete = function(self, persistAndReload)
             local assetsToRemoveTag = self.db:assetsWithTag(self)
             if self.app.temp.filter.tags then
-                self.app.filterResults({ removeTags = { self.id } })
+                self.app.flow.filterResults({ removeTags = { self.id } })
             end
             for _, asset in pairs(assetsToRemoveTag) do
                 asset:removeTag(self, false)
@@ -1036,23 +1036,23 @@ local assetActions = {
     executeFilter = function(self, context)
         if self.type ~= FILTER_TYPES.TAG then
             if context == RESULT_CONTEXT.ALT then
-                self.db.app.filterResults(self.loadAll)
+                self.db.app.flow.filterResults(self.loadAll)
             else
-                self.db.app.filterResults(self.load)
+                self.db.app.flow.filterResults(self.load)
             end
         else
             if context == RESULT_CONTEXT.ALT then
-                self.db.app.filterResults({ removeTags = { self.load } })
+                self.db.app.flow.filterResults({ removeTags = { self.load } })
             elseif context == RESULT_CONTEXT.CTRL then
-                self.db.app.filterResults({ addTags = { [self.load] = false } })
+                self.db.app.flow.filterResults({ addTags = { [self.load] = false } })
             else
-                self.db.app.filterResults({ addTags = { [self.load] = true } })
+                self.db.app.flow.filterResults({ addTags = { [self.load] = true } })
             end
         end
         if context ~= RESULT_CONTEXT.SHIFT then
-            self.db.app.setSearchMode(SEARCH_MODE.MAIN)
+            self.db.app.flow.setSearchMode(SEARCH_MODE.MAIN)
         else
-            self.db.app.filterResults({ clearText = true })
+            self.db.app.flow.filterResults({ clearText = true })
         end
     end,
     execute = function(self, context, contextData)
@@ -1077,7 +1077,7 @@ local assetActions = {
         elseif self.type == ASSETS.TRACK then
             -- r.SetOnlyTrackSelected(self.load)
         end
-        self.db.app.selectSearchInputText()
+        self.db.app.guiHelpers.selectSearchInputText()
     end
 }
 
@@ -1290,7 +1290,7 @@ DB.assembleFilterAssets = function(self, whichFilters)
     end
     self:sortFilterAssets()
     if not scanAll and self.app.temp.searchMode == SEARCH_MODE.FILTERS then
-        self.app.filterResults()
+        self.app.flow.filterResults()
     end
     self.app.logger:logInfo('A total of ' ..
         assetCount .. ' filter assets were ' .. (scanAll and 'added to ' or 'updated in ') .. 'the database')
