@@ -5,24 +5,12 @@ BaseAssetType = {}
 BaseAssetType.__index = BaseAssetType
 
 function BaseAssetType.new(class, params)
-    -- Handle different calling patterns:
-    -- 1. BaseAssetType.new(BaseAssetType, context) - direct context
-    -- 2. BaseAssetType.new(subclass, {...}) - from subclass with params table
-    local instance
-    
-    if params and type(params) == "table" and params.context then
-        -- Called from subclass with params table: BaseAssetType.new(self, {...})
-        instance = setmetatable({}, class)
-        instance.context = params.context
-        instance.name = params.name
-        instance.assetTypeId = params.assetTypeId
-        instance.group = params.group
-    else
-        -- Called directly with context as parameter: BaseAssetType.new(BaseAssetType, context)
-        instance = setmetatable({}, class)
-        instance.context = params
-    end
-    
+    -- Create instance from subclass with params table
+    local instance = setmetatable({}, class)
+    instance.context = params.context
+    instance.name = params.name
+    instance.assetTypeId = params.assetTypeId
+    instance.group = params.group
     return instance
 end
 
@@ -87,7 +75,6 @@ function BaseAssetType:createStandardConstructor(name, group)
             group = inferredGroup,
             context = context
         })
-        instance.data = {} -- Standard data storage
         return instance
     end
 end

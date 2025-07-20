@@ -8,8 +8,7 @@ setmetatable(TrackAssetType, BaseAssetType)
 TrackAssetType.new = BaseAssetType:createStandardConstructor("Track", "Tracks")
 
 function TrackAssetType:getData()
-    -- self:sync()
-    self.tracks = {} -- Clear local tracks array
+    local data = {} -- Use consistent local variable naming
     local numTracks = reaper.CountTracks(0)
     for i = 0, numTracks - 1 do
         local track = reaper.GetTrack(0, i)
@@ -44,15 +43,15 @@ function TrackAssetType:getData()
         }
         trackData:_refreshName()
         trackData:_refreshColor()
-        table.insert(self.tracks, trackData)
+        table.insert(data, trackData)
     end
-    return self.tracks
+    return data
 end
 
 function TrackAssetType:getExecuteFunction()
     return function(self, context, contextData)
-        -- Track execution might involve selection or other track operations
-        -- Currently commented out in original: r.SetOnlyTrackSelected(self.load)
+        -- Track execution - currently no default action implemented
+        -- Could implement track selection: r.SetOnlyTrackSelected(self.load)
     end
 end
 

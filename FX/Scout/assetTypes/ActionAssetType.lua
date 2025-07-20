@@ -8,7 +8,7 @@ setmetatable(ActionAssetType, BaseAssetType)
 ActionAssetType.new = BaseAssetType:createStandardConstructor("Action", "Actions")
 
 function ActionAssetType:getData()
-    self.data = {}
+    local data = {} -- Use consistent local variable naming
     
     local idx = 0
     local section = 0 --implement different section if needed
@@ -31,7 +31,7 @@ function ActionAssetType:getData()
             end
         end
 
-        table.insert(self.data, {
+        table.insert(data, {
             id = cmdId,
             order = idx,
             name = name,
@@ -42,7 +42,7 @@ function ActionAssetType:getData()
         idx = idx + 1
     end
     
-    return self.data
+    return data
 end
 
 function ActionAssetType:getExecuteFunction()

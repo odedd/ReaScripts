@@ -9,7 +9,7 @@ PluginAssetType.new = BaseAssetType:createStandardConstructor("FX")
 
 function PluginAssetType:getData()
     local function addPlugin(full_name, fx_type, instrument, ident)
-        -- Local implementation of plugin parsing and adding
+        -- Plugin parsing and adding logic
         self.context.logger:logDebug('-- addPlugin()')
 
         local function extractNameVendor(full_name, fx_type)

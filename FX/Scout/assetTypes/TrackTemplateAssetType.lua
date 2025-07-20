@@ -8,29 +8,27 @@ setmetatable(TrackTemplateAssetType, BaseAssetType)
 TrackTemplateAssetType.new = BaseAssetType:createStandardConstructor("Track Template", "Track Templates")
 
 function TrackTemplateAssetType:getData()
-    self.trackTemplates = {} -- Clear local track templates array
+    local data = {} -- Use consistent local variable naming
     local basePath = reaper.GetResourcePath() .. "/TrackTemplates"
     local files = OD_GetFilesInFolderAndSubfolders(basePath, 'RTrackTemplate', true)
-    local count = 0
     for i, file in ipairs(files) do
         local path, baseFilename, ext = OD_DissectFilename(file)
         local ttLoad, ttPath = basePath .. OD_FolderSep() .. file, path:gsub('\\', '/'):gsub('/$', '')
         self.context.logger:logDebug('Found track template', ttLoad)
-        table.insert(self.trackTemplates, {
+        table.insert(data, {
             load = ttLoad,
             path = ttPath,
             file = baseFilename,
             ext = ext
         })
-        count = count + 1
     end
-    return self.trackTemplates
+    return data
 end
 
 function TrackTemplateAssetType:getExecuteFunction()
     return function(self, context, contextData)
-        -- Track templates can be loaded as new tracks or applied to existing tracks
-        -- Implementation would depend on the specific context and requirements
+        -- Track template execution - implementation depends on context
+        -- Could load as new track or apply to existing tracks
     end
 end
 

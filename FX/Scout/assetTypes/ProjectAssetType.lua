@@ -8,7 +8,7 @@ setmetatable(ProjectAssetType, BaseAssetType)
 ProjectAssetType.new = BaseAssetType:createStandardConstructor("Project", "Projects")
 
 function ProjectAssetType:getData()
-    self.data = {}
+    local data = {} -- Use consistent local variable naming
     
     -- Get project scan folders from settings
     local scanFolders = self.context.settings.current.projectScanFolders or {}
@@ -22,11 +22,11 @@ function ProjectAssetType:getData()
                 local fullPath = folderPath .. OD_FolderSep() .. relativePath
                 local path, name, ext = OD_DissectFilename(relativePath)
                 
-                table.insert(self.data, {
+                table.insert(data, {
                     fullPath = fullPath,
                     name = name,
                     path = folderPath..'/'..path,
-                    order = #self.data
+                    order = #data
                 })
             end
         else
@@ -34,7 +34,7 @@ function ProjectAssetType:getData()
         end
     end
     
-    return self.data
+    return data
 end
 
 function ProjectAssetType:getExecuteFunction()

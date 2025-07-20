@@ -8,23 +8,21 @@ setmetatable(FXChainAssetType, BaseAssetType)
 FXChainAssetType.new = BaseAssetType:createStandardConstructor("FX Chain", "FX Chains")
 
 function FXChainAssetType:getData()
-    self.fxChains = {} -- Clear local FX chains array
+    local data = {} -- Use consistent local variable naming
     local basePath = reaper.GetResourcePath() .. "/FXChains/"
     local files = OD_GetFilesInFolderAndSubfolders(basePath, 'rfxchain', true)
-    local count = 0
     for i, file in ipairs(files) do
         local path, baseFilename, ext = OD_DissectFilename(file)
         local chainPath = path:gsub('\\', '/'):gsub('/$', '')
         self.context.logger:logDebug('Found FX chain', file)
-        table.insert(self.fxChains, {
+        table.insert(data, {
             load = file,
             path = chainPath,
             file = baseFilename,
             ext = ext
         })
-        count = count + 1
     end
-    return self.fxChains
+    return data
 end
 
 function FXChainAssetType:getExecuteFunction()
