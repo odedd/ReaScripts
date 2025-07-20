@@ -94,20 +94,20 @@ function AssetTypeManager:loadAssetTypes()
     -- Load BaseAssetType first
     dofile(assetTypesPath .. 'BaseAssetType.lua')
     
-    -- Load manifest to get the list of modules and their order
+    -- Load manifest to get the list of modules and their IDs
     local manifestPath = assetTypesPath .. 'manifest.lua'
-    local moduleFiles = dofile(manifestPath)
+    local assetTypeDefinitions = dofile(manifestPath)
     
-    self.context.logger:logDebug('Loaded manifest with ' .. #moduleFiles .. ' asset types')
+    self.context.logger:logDebug('Loaded manifest with ' .. #assetTypeDefinitions .. ' asset types')
     
-    -- Load each module file in manifest order
-    for _, filename in ipairs(moduleFiles) do
-        self.context.logger:logDebug('Loading module: ' .. filename)
-        dofile(assetTypesPath .. filename)
+    -- Load each module file according to manifest
+    for _, definition in ipairs(assetTypeDefinitions) do
+        self.context.logger:logDebug('Loading module: ' .. definition.file .. ' (ID: ' .. definition.id .. ')')
+        dofile(assetTypesPath .. definition.file)
     end
     
-    -- Store the manifest order for filter menu ordering
-    self.manifestOrder = moduleFiles
+    -- Store the manifest definitions for ordering and reference
+    self.manifestDefinitions = assetTypeDefinitions
     
     -- Create instances of all asset types
     self:createAssetTypeInstances()
@@ -117,23 +117,23 @@ function AssetTypeManager:createAssetTypeInstances()
     -- Initialize asset type instances with focused context
     self.context.logger:logDebug('Creating asset type instances')
     
-    -- Create a mapping from filename to manifest order
+    -- Create a mapping from filename to manifest order for filter ordering
     local filenameToOrder = {}
-    for i, filename in ipairs(self.manifestOrder) do
-        filenameToOrder[filename] = i
+    for i, definition in ipairs(self.manifestDefinitions) do
+        filenameToOrder[definition.file] = i
     end
     
-    for _, filename in ipairs(self.manifestOrder) do
+    for _, definition in ipairs(self.manifestDefinitions) do
         -- Derive class name from filename: "PluginAssetType.lua" -> "PluginAssetType"
-        local className = filename:match("(.+)%.lua$")
+        local className = definition.file:match("(.+)%.lua$")
         local AssetTypeClass = _G[className]  -- Get from global namespace
         
         if AssetTypeClass then
             local instance = AssetTypeClass.new(AssetTypeClass, self.context)
             
             -- Set filterOrder based on manifest order
-            instance.filterOrder = filenameToOrder[filename]
-            self.context.logger:logDebug('Set filterOrder=' .. instance.filterOrder .. ' for ' .. className)
+            instance.filterOrder = filenameToOrder[definition.file]
+            self.context.logger:logDebug('Set filterOrder=' .. instance.filterOrder .. ' for ' .. className .. ' (ID: ' .. definition.id .. ')')
             
             table.insert(self.assetTypes, instance)
             self.context.logger:logDebug('Created instance: ' .. (instance.name or className))
@@ -146,6 +146,17 @@ end
 function AssetTypeManager:getAssetTypeById(assetTypeId)
     for _, assetType in ipairs(self.assetTypes) do
         if assetType.assetTypeId == assetTypeId then
+            return assetType
+        end
+    end
+    return nil
+end
+
+function AssetTypeManager:getAssetTypeByClassName(className)
+    for _, assetType in ipairs(self.assetTypes) do
+        -- Check if this asset type corresponds to the given class name
+        -- We can match by looking up the class name in ASSET_TYPE constant
+        if ASSET_TYPE[className] == assetType.assetTypeId then
             return assetType
         end
     end
@@ -170,7 +181,7 @@ function AssetTypeManager:assembleAllAssets()
     local count = 0
     
     for _, assetType in ipairs(self.assetTypes) do
-        local assetData = assetType:getData()
+        local assetData = assetType:getDataWithLogging()
         
         for _, data in ipairs(assetData) do
             local asset = assetType:assembleAsset(data)
