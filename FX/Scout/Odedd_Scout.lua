@@ -71,9 +71,9 @@ else
             level = OD_Logger.LOG_LEVEL.ERROR,
             output = OD_Logger.LOG_OUTPUT.CONSOLE,
             filename = projPath .. Scr.name .. '_' .. projFileName .. '.log',
-            showImGuiDebugWindows = false
+            showImGuiDebugWindows = false,
+            profile = false
         })
-        local profile = false
 
         local gui = PB_Gui:new({})
 
@@ -84,7 +84,7 @@ else
         app:init()
         app.logger:init()
 
-        if profile then
+        if app.logger.profile then
             Profile = dofile(p .. '../../Resources/Common/Helpers/Lua/Profiler.lua')
         end
 
@@ -94,8 +94,6 @@ else
         app:connect('settings', settings)
         app:connect('tags', tags)
         app.settings:load()
-
-
         app.tags:load()
         app.gui:init();
 
