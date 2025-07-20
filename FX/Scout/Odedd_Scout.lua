@@ -68,7 +68,7 @@ else
         local projPath, projFileName = OD_GetProjectPaths()
 
         local logger = OD_Logger:new({
-            level = OD_Logger.LOG_LEVEL.ERROR,
+            level = OD_Logger.LOG_LEVEL.INFO,
             output = OD_Logger.LOG_OUTPUT.CONSOLE,
             filename = projPath .. Scr.name .. '_' .. projFileName .. '.log',
             showImGuiDebugWindows = false,
@@ -242,8 +242,8 @@ else
                         if (filter.type and asset.type ~= filter.type)
                             or (filter.fx_type and asset.fx_type ~= filter.fx_type)
                             or (filter.fxDeveloper and (not asset.vendor or asset.vendor ~= filter.fxDeveloper))
-                            or (filter.fxFolderId and (asset.type ~= ASSETS.PLUGIN or not asset:isInFolder(filter.fxFolderId)))
-                            or (filter.fxCategory and (asset.type ~= ASSETS.PLUGIN or not asset:isInCategory(filter.fxCategory)))
+                            or (filter.fxFolderId and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInFolder(filter.fxFolderId)))
+                            or (filter.fxCategory and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInCategory(filter.fxCategory)))
                         then
                             goto skip
                         end
@@ -1050,7 +1050,7 @@ else
                                             end
                                             ImGui.SameLine(ctx)
 
-                                            if result.type == ASSETS.TRACK then
+                                            if result.type == ASSET_TYPE.TrackAssetType then
                                                 local size = fontLineHeight -
                                                     select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
                                                 ImGui.ColorButton(ctx, 'color', result.color,
@@ -1157,7 +1157,7 @@ else
                         end
 
                         if hintResult then
-                            local action = (hintResult.type == ASSETS.TRACK and 'add a send to track %s' or 'add %s to selected track(s)')
+                            local action = (hintResult.type == ASSET_TYPE.TrackAssetType and 'add a send to track %s' or 'add %s to selected track(s)')
                                 :format(hintResult.searchText[1].text)
                             local hint = ('%s to %s.'):format(hintContext, action)
                             if app.temp.searchMode == SEARCH_MODE.MAIN then
