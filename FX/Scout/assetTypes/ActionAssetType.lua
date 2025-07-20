@@ -11,15 +11,36 @@ function ActionAssetType:getData()
     self.context.logger:logDebug('-- ActionAssetType:getData()')
     self.data = {}
     
-    -- Simplified action enumeration - would need proper REAPER API integration
-    local placeholderActions = {
-        { id = 40001, name = "Insert new track", prefix = "Main", order = 1 },
-        { id = 40005, name = "Remove tracks", prefix = "Main", order = 2 },
-    }
-    
-    for _, action in ipairs(placeholderActions) do
-        action.shortcuts = {}
-        table.insert(self.data, action)
+    local idx = 0
+    local section = 0 --implement different section if needed
+    while true do
+        local cmdId, name = reaper.kbd_enumerateActions(section, idx)
+        if cmdId == 0 then break end
+        local prefix, actionName = name:match("^(.-):%s*(.*)$")
+        if not prefix then
+            prefix = ""
+            actionName = name
+        end
+        name = actionName
+        -- Get keyboard shortcuts for this action
+        local shortcuts = {}
+        local shortcutCount = reaper.CountActionShortcuts(section, cmdId)
+        for sc = 0, shortcutCount - 1 do
+            local rv, desc = reaper.GetActionShortcutDesc(section, cmdId, sc)
+            if desc and desc ~= "" then
+                table.insert(shortcuts, desc)
+            end
+        end
+
+        table.insert(self.data, {
+            id = cmdId,
+            order = idx,
+            name = name,
+            prefix = prefix,
+            section = section,
+            shortcuts = shortcuts
+        })
+        idx = idx + 1
     end
     
     self:logDataStats("actions", #self.data)

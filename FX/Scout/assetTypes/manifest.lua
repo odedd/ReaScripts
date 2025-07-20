@@ -8,5 +8,6 @@ return {
     'FXChainAssetType.lua',
     'TrackTemplateAssetType.lua',
     'TrackAssetType.lua',
-    'ActionAssetType.lua'
+    'ActionAssetType.lua',
+    'ProjectAssetType.lua'
 }

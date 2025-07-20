@@ -6,6 +6,7 @@ PB_Settings = OD_Settings:new({
         createInsideFolder = true,
         sendFolderName = 'FX Return Tracks',
         persistantMode = true,
+        projectScanFolders = {'/Users/odeddavidov/Desktop'},
         shortcuts = {
             markFavorite = {
                 key = OD_KEYCODES.F,

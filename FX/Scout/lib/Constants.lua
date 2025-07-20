@@ -16,6 +16,7 @@ ASSETS = {
     ['FX_CHAIN'] = 2,
     ['TRACK_TEMPLATE'] = 3,
     ['ACTION'] = 4,
+    ['PROJECT'] = 5,
 }
 
 FX_TYPE =
@@ -57,6 +58,7 @@ TRACKS_GROUP = 'Tracks'
 TRACK_TEMPLATES_GROUP = 'Track Templates'
 FX_CHAINS_GROUP = 'FX Chains'
 ACTIONS_GROUP = 'Actions'
+PROJECTS_GROUP = 'Projects'
 ALL_TRACKS_GROUP = 'All tracks'
 
 FILTER_TYPES = {
