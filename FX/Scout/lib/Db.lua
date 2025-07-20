@@ -23,7 +23,7 @@ DB = {
     refreshTracks = function(self)
         -- Helper function to refresh tracks using the modular system
         if self.assetTypeManager then
-            local trackAssetType = self.assetTypeManager:getAssetTypeById(ASSETS.TRACK)
+            local trackAssetType = self.assetTypeManager:getAssetTypeById(ASSET_TYPE.TrackAssetType)
             if trackAssetType then
                 self.tracks = trackAssetType:getData()
                 self.app.logger:logDebug('Refreshed tracks using modular system')
@@ -87,6 +87,13 @@ DB = {
         end
     end
 }
+
+-- Cache management
+DB.invalidateGroupPriorityCache = function(self)
+    self._groupPriorityCache = nil
+    self._lastGroupOrder = nil
+    self.app.logger:logDebug('Group priority cache invalidated')
+end
 
 -- get project tracks into self.tracks, keeping the track's GUID, name and color, and wheather it has receives or not
 
@@ -756,39 +763,90 @@ DB.assembleFilterAssets = function(self, whichFilters)
 end
 DB.sortAssets = function(self)
     self.app.logger:logDebug('-- DB.sortAssets()')
-    local groupPriority = {}
     
-    -- Get group order - use setting if specified, otherwise build dynamically
-    local groupOrder = self.app.settings.current.groupOrder
-    if not groupOrder and self.assetTypeManager then
-        groupOrder = self.assetTypeManager:buildDynamicGroupOrder()
-    elseif not groupOrder then
-        -- Fallback if no AssetTypeManager is available
-        groupOrder = {SPECIAL_GROUPS.RECENTS, SPECIAL_GROUPS.FAVORITES, SPECIAL_GROUPS.PLUGINS}
-    end
+    -- Check if we need to rebuild the group priority cache
+    -- Simple check: compare groupOrder table directly (not perfect but good enough)
+    local currentGroupOrder = self.app.settings.current.groupOrder
+    local needsRebuild = not self._groupPriorityCache or 
+                        not self._lastGroupOrder or
+                        OD_TableLength(currentGroupOrder or {}) ~= OD_TableLength(self._lastGroupOrder)
     
-    -- Build the final group order by expanding PLUGINS_GROUP placeholder
-    local finalGroupOrder = {}
-    for i, group in ipairs(groupOrder) do
-        if group == SPECIAL_GROUPS.PLUGINS then
-            -- Insert FX types in their specified order
-            for j, fxType in ipairs(self.app.settings.current.fxTypeOrder) do
-                table.insert(finalGroupOrder, fxType)
-            end
-        else
-            table.insert(finalGroupOrder, group)
+    if needsRebuild then
+        self.app.logger:logDebug('Rebuilding group priority cache')
+        local groupPriority = {}
+        
+        -- Get group order - use setting if specified, otherwise build dynamically
+        local groupOrder = currentGroupOrder
+        if not groupOrder and self.assetTypeManager then
+            groupOrder = self.assetTypeManager:buildDynamicGroupOrder()
+        elseif not groupOrder then
+            -- Fallback if no AssetTypeManager is available
+            groupOrder = {SPECIAL_GROUPS.RECENTS, SPECIAL_GROUPS.FAVORITES, SPECIAL_GROUPS.PLUGINS}
         end
+        
+        -- Cache for resolved group names to avoid repeated lookups
+        local groupNameCache = {}
+        
+        -- Helper function to resolve asset type class names to group names (with caching)
+        local function resolveGroupName(item)
+            if groupNameCache[item] then
+                return groupNameCache[item]
+            end
+            
+            local resolvedName
+            
+            -- If it's a special group constant, return as-is
+            if item == SPECIAL_GROUPS.FAVORITES or item == SPECIAL_GROUPS.RECENTS or item == SPECIAL_GROUPS.PLUGINS then
+                resolvedName = item
+            -- If it looks like an asset type class name, resolve it to the actual group name
+            elseif item:match("AssetType$") and self.assetTypeManager then
+                local assetType = self.assetTypeManager:getAssetTypeByClassName(item)
+                resolvedName = assetType and assetType.group or item
+            else
+                -- Otherwise, assume it's already a group name
+                resolvedName = item
+            end
+            
+            -- Cache the result (except for dynamic special groups)
+            if item ~= SPECIAL_GROUPS.FAVORITES and item ~= SPECIAL_GROUPS.RECENTS then
+                groupNameCache[item] = resolvedName
+            end
+            
+            return resolvedName
+        end
+        
+        -- Build the final group order by expanding PLUGINS_GROUP placeholder and resolving class names
+        local finalGroupOrder = {}
+        for i, group in ipairs(groupOrder) do
+            if group == SPECIAL_GROUPS.PLUGINS then
+                -- Insert FX types in their specified order
+                for j, fxType in ipairs(self.app.settings.current.fxTypeOrder) do
+                    table.insert(finalGroupOrder, fxType)
+                end
+            else
+                -- Resolve asset type class names to actual group names
+                local resolvedGroup = resolveGroupName(group)
+                table.insert(finalGroupOrder, resolvedGroup)
+            end
+        end
+        
+        -- Assign priorities based on position in final order
+        for i, group in ipairs(finalGroupOrder) do
+            groupPriority[group] = i
+        end
+        
+        -- Cache the results
+        self._groupPriorityCache = groupPriority
+        self._lastGroupOrder = OD_DeepCopy(currentGroupOrder)
+        self.app.logger:logDebug('Group priority cache built with ' .. OD_TableLength(groupPriority) .. ' groups')
     end
     
-    -- Assign priorities based on position in final order
-    for i, group in ipairs(finalGroupOrder) do
-        groupPriority[group] = i
-    end
+    local groupPriority = self._groupPriorityCache
 
     table.sort(self.assets, function(a, b)
         local aPriority = groupPriority[a.group] or 1000
         local bPriority = groupPriority[b.group] or 1000
-        if a.type == ASSETS['TRACK'] and b.type == ASSETS['TRACK'] and aPriority == bPriority then
+        if a.type == ASSET_TYPE.TrackAssetType and b.type == ASSET_TYPE.TrackAssetType and aPriority == bPriority then
             return a.order < b.order
         elseif aPriority == bPriority then
             return a.searchText[1].text < b.searchText[1].text

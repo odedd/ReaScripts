@@ -19,10 +19,10 @@ PB_Tags = OD_Settings:new({
             [7] = { name = 'Multiband', parentId = 2, order = 1 }
         },
         taggedAssets = {
-            [ASSETS.PLUGIN .. " /Library/Audio/Plug-Ins/VST3/FabFilter Pro-Q 4.vst3"] = { 7, 3 },
-            [ASSETS.PLUGIN .. " /Library/Audio/Plug-Ins/VST3/FabFilter Pro-Q 3.vst3"] = { 1 },
-            [ASSETS.PLUGIN .. " /Library/Audio/Plug-Ins/VST3/FabFilter Pro-C 2.vst3"] = { 2 },
-            [ASSETS.PLUGIN .. " /Library/Audio/Plug-Ins/VST3/FabFilter Pro-G.vst3"] = { 5 }
+            [ASSET_TYPE.PluginAssetType .. " /Library/Audio/Plug-Ins/VST3/FabFilter Pro-Q 4.vst3"] = { 7, 3 },
+            [ASSET_TYPE.PluginAssetType .. " /Library/Audio/Plug-Ins/VST3/FabFilter Pro-Q 3.vst3"] = { 1 },
+            [ASSET_TYPE.PluginAssetType .. " /Library/Audio/Plug-Ins/VST3/FabFilter Pro-C 2.vst3"] = { 2 },
+            [ASSET_TYPE.PluginAssetType .. " /Library/Audio/Plug-Ins/VST3/FabFilter Pro-G.vst3"] = { 5 }
         }
     },
     dfsetfile = Scr.dir .. Scr.no_ext .. ' tags.ini'
@@ -103,13 +103,13 @@ function PB_Tags:export(filename)
         
         -- For actions, convert command ID to named command ID if possible
         local assetType = tonumber(asset:match("^(%d+)"))
-        if assetType == ASSETS.ACTION then
+        if assetType == ASSET_TYPE.ActionAssetType then
             local commandId = tonumber(asset:match("^%d+%s+(.+)$"))
             if commandId then
                 local namedCommand = r.ReverseNamedCommandLookup(commandId)
                 if namedCommand and namedCommand ~= "" then
                     -- Use named command ID (add _ prefix as per REAPER convention)
-                    exportAsset = ASSETS.ACTION .. " _" .. namedCommand
+                    exportAsset = ASSET_TYPE.ActionAssetType .. " _" .. namedCommand
                     self.app.logger:logDebug('Converted action ' .. commandId .. ' to named command _' .. namedCommand)
                 else
                     -- Keep numeric ID for native actions
@@ -202,17 +202,17 @@ function PB_Tags:import(filename, mergeMode)
                     local imported_basename
                     local assetType = tonumber(asset:match("^(%d+)"))
                     
-                    if assetType == ASSETS.PLUGIN or assetType == ASSETS.FX_CHAIN or assetType == ASSETS.TRACK_TEMPLATE then
+                    if assetType == ASSET_TYPE.PluginAssetType or assetType == ASSET_TYPE.FXChainAssetType or assetType == ASSET_TYPE.TrackTemplateAssetType then
                         -- For file-based assets, extract basename from path
                         imported_basename = asset:match("([^/\\]+)$")
                         -- For assets with <numbers (like WaveShell), remove the <numbers part
                         if imported_basename and imported_basename:find("<") then
                             imported_basename = imported_basename:match("^(.+)<")
                         end
-                    elseif assetType == ASSETS.TRACK then
+                    elseif assetType == ASSET_TYPE.TrackAssetType then
                         -- For tracks, use the full identifier minus the asset type prefix
                         imported_basename = asset:match("^%d+%s+(.+)$")
-                    elseif assetType == ASSETS.ACTION then
+                    elseif assetType == ASSET_TYPE.ActionAssetType then
                         -- For actions, extract the command identifier (could be named or numeric)
                         local commandIdentifier = asset:match("^%d+%s+(.+)$")
                         if commandIdentifier and commandIdentifier:match("^_") then
@@ -385,11 +385,11 @@ function PB_Tags:import(filename, mergeMode)
     local skippedAssetsCount = 0
     local skippedAssets = {} -- Table to track unimported assets with reasons
     local assetTypeCounts = {
-        [ASSETS.PLUGIN] = { mapped = 0, skipped = 0 },
-        [ASSETS.FX_CHAIN] = { mapped = 0, skipped = 0 },
-        [ASSETS.TRACK_TEMPLATE] = { mapped = 0, skipped = 0 },
-        [ASSETS.TRACK] = { mapped = 0, skipped = 0 },
-        [ASSETS.ACTION] = { mapped = 0, skipped = 0 }
+        [ASSET_TYPE.PluginAssetType] = { mapped = 0, skipped = 0 },
+        [ASSET_TYPE.FXChainAssetType] = { mapped = 0, skipped = 0 },
+        [ASSET_TYPE.TrackTemplateAssetType] = { mapped = 0, skipped = 0 },
+        [ASSET_TYPE.TrackAssetType] = { mapped = 0, skipped = 0 },
+        [ASSET_TYPE.ActionAssetType] = { mapped = 0, skipped = 0 }
     }
     
     self.app.logger:logDebug('Remapping tagged assets by searching all system assets...')
@@ -411,17 +411,17 @@ function PB_Tags:import(filename, mergeMode)
             if asset.type == assetType then
                 -- Extract basename from the system asset ID
                 local systemBasename = nil
-                if assetType == ASSETS.PLUGIN or assetType == ASSETS.FX_CHAIN or assetType == ASSETS.TRACK_TEMPLATE then
+                if assetType == ASSET_TYPE.PluginAssetType or assetType == ASSET_TYPE.FXChainAssetType or assetType == ASSET_TYPE.TrackTemplateAssetType then
                     -- For file-based assets, extract basename from path
                     systemBasename = asset.id:match("([^/\\]+)$")
                     -- For assets with <numbers (like WaveShell), remove the <numbers part
                     if systemBasename and systemBasename:find("<") then
                         systemBasename = systemBasename:match("^(.+)<")
                     end
-                elseif assetType == ASSETS.TRACK then
+                elseif assetType == ASSET_TYPE.TrackAssetType then
                     -- For tracks, use the full identifier minus the asset type prefix
                     systemBasename = asset.id:match("^%d+%s+(.+)$")
-                elseif assetType == ASSETS.ACTION then
+                elseif assetType == ASSET_TYPE.ActionAssetType then
                     -- For actions, use the numeric command ID directly (system assets already store numeric IDs)
                     systemBasename = asset.id:match("^%d+%s+(.+)$")
                 end
@@ -478,15 +478,15 @@ function PB_Tags:import(filename, mergeMode)
             for _, asset in ipairs(self.app.db.assets) do
                 if asset.type == assetType then
                     local systemBasename = nil
-                    if assetType == ASSETS.PLUGIN or assetType == ASSETS.FX_CHAIN or assetType == ASSETS.TRACK_TEMPLATE then
+                    if assetType == ASSET_TYPE.PluginAssetType or assetType == ASSET_TYPE.FXChainAssetType or assetType == ASSET_TYPE.TrackTemplateAssetType then
                         systemBasename = asset.id:match("([^/\\]+)$")
                         -- For assets with <numbers (like WaveShell), remove the <numbers part
                         if systemBasename and systemBasename:find("<") then
                             systemBasename = systemBasename:match("^(.+)<")
                         end
-                    elseif assetType == ASSETS.TRACK then
+                    elseif assetType == ASSET_TYPE.TrackAssetType then
                         systemBasename = asset.id:match("^%d+%s+(.+)$")
-                    elseif assetType == ASSETS.ACTION then
+                    elseif assetType == ASSET_TYPE.ActionAssetType then
                         systemBasename = asset.id:match("^%d+%s+(.+)$")
                     end
                     
@@ -506,21 +506,21 @@ function PB_Tags:import(filename, mergeMode)
             
             -- Determine asset type name for logging
             local assetTypeGuess = "unknown"
-            if assetType == ASSETS.PLUGIN then
+            if assetType == ASSET_TYPE.PluginAssetType then
                 assetTypeGuess = "plugin"
-                assetTypeCounts[ASSETS.PLUGIN].skipped = assetTypeCounts[ASSETS.PLUGIN].skipped + 1
-            elseif assetType == ASSETS.FX_CHAIN then
+                assetTypeCounts[ASSET_TYPE.PluginAssetType].skipped = assetTypeCounts[ASSET_TYPE.PluginAssetType].skipped + 1
+            elseif assetType == ASSET_TYPE.FXChainAssetType then
                 assetTypeGuess = "FX chain"
-                assetTypeCounts[ASSETS.FX_CHAIN].skipped = assetTypeCounts[ASSETS.FX_CHAIN].skipped + 1
-            elseif assetType == ASSETS.TRACK_TEMPLATE then
+                assetTypeCounts[ASSET_TYPE.FXChainAssetType].skipped = assetTypeCounts[ASSET_TYPE.FXChainAssetType].skipped + 1
+            elseif assetType == ASSET_TYPE.TrackTemplateAssetType then
                 assetTypeGuess = "track template"
-                assetTypeCounts[ASSETS.TRACK_TEMPLATE].skipped = assetTypeCounts[ASSETS.TRACK_TEMPLATE].skipped + 1
-            elseif assetType == ASSETS.TRACK then
+                assetTypeCounts[ASSET_TYPE.TrackTemplateAssetType].skipped = assetTypeCounts[ASSET_TYPE.TrackTemplateAssetType].skipped + 1
+            elseif assetType == ASSET_TYPE.TrackAssetType then
                 assetTypeGuess = "track"
-                assetTypeCounts[ASSETS.TRACK].skipped = assetTypeCounts[ASSETS.TRACK].skipped + 1
-            elseif assetType == ASSETS.ACTION then
+                assetTypeCounts[ASSET_TYPE.TrackAssetType].skipped = assetTypeCounts[ASSET_TYPE.TrackAssetType].skipped + 1
+            elseif assetType == ASSET_TYPE.ActionAssetType then
                 assetTypeGuess = "action"
-                assetTypeCounts[ASSETS.ACTION].skipped = assetTypeCounts[ASSETS.ACTION].skipped + 1
+                assetTypeCounts[ASSET_TYPE.ActionAssetType].skipped = assetTypeCounts[ASSET_TYPE.ActionAssetType].skipped + 1
             end
             
             -- Record the skipped asset with its reason
@@ -558,11 +558,11 @@ function PB_Tags:import(filename, mergeMode)
     for assetType, counts in pairs(assetTypeCounts) do
         if counts.mapped > 0 or counts.skipped > 0 then
             local typeName = "unknown"
-            if assetType == ASSETS.PLUGIN then typeName = "plugins"
-            elseif assetType == ASSETS.FX_CHAIN then typeName = "FX chains"
-            elseif assetType == ASSETS.TRACK_TEMPLATE then typeName = "track templates"
-            elseif assetType == ASSETS.TRACK then typeName = "tracks"
-            elseif assetType == ASSETS.ACTION then typeName = "actions"
+            if assetType == ASSET_TYPE.PluginAssetType then typeName = "plugins"
+            elseif assetType == ASSET_TYPE.FXChainAssetType then typeName = "FX chains"
+            elseif assetType == ASSET_TYPE.TrackTemplateAssetType then typeName = "track templates"
+            elseif assetType == ASSET_TYPE.TrackAssetType then typeName = "tracks"
+            elseif assetType == ASSET_TYPE.ActionAssetType then typeName = "actions"
             end
             
             if counts.mapped > 0 then
