@@ -72,13 +72,7 @@ FILTER_MENU = {
     [FILTER_TYPES.TYPE] = {
         order = 1,
         allQuery = { type = 'all' },
-        items = {
-            ['Track Templates'] = { order = 2, query = { type = ASSETS.TRACK_TEMPLATE } },
-            ['FX Chains'] = { order = 3, query = { type = ASSETS.FX_CHAIN } },
-            ['FX'] = { order = 1, query = { type = ASSETS.PLUGIN } },
-            ['Tracks'] = { order = 4, query = { type = ASSETS.TRACK } },
-            ['Actions'] = { order = 5, query = { type = ASSETS.ACTION } },
-        }
+        items = {} -- Will be populated dynamically by AssetTypeManager
     },
     [FILTER_TYPES.FX_TYPE] = {
         order = 2,

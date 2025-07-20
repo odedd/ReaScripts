@@ -1,10 +1,6 @@
 -- @noindex
 
 DB = {
-    plugins = {},
-    fxChains = {},
-    trackTemplates = {},
-    tracks = {},
     tags = {},
     setUndoPoint = function(self, name, type, trackparm)
         type = type or -1
@@ -24,21 +20,48 @@ DB = {
             r.Undo_EndBlock(name, type)
         end
     end,
+    refreshTracks = function(self)
+        -- Helper function to refresh tracks using the modular system
+        if self.assetTypeManager then
+            local trackAssetType = self.assetTypeManager:getAssetTypeById(ASSETS.TRACK)
+            if trackAssetType then
+                self.tracks = trackAssetType:getData()
+                self.app.logger:logDebug('Refreshed tracks using modular system')
+            else
+                self.app.logger:logError('Could not find track asset type')
+                self.tracks = {}
+            end
+        else
+            self.app.logger:logError('AssetTypeManager not available')
+            self.tracks = {}
+        end
+    end,
     lastGuids = {}, -- use to check if a track has been removed or added
     init = function(self, app)
         self.app.logger:logDebug('-- DB.init()')
-        self.plugins = {}
-        self.tracks = {}
         self.masterTrack = reaper.GetMasterTrack(0)
-        if self.app.logger.profile then Profile.start() end
-        self:getPlugins()
-        self:getFXChains()
+
+        -- Initialize fields that will be populated by asset types
+        self.fxDevelopers = {}
+        self.pluginToCategories = {}
+        self.pluginToFolders = {}
+
+        -- Functions still needed by other parts of the system
         self:getFXFolders()
         self:getFXCategories()
-        self:getAllActions()
-        self:getTrackTemplates()
-        self:getTracks()
+
+        -- Load and initialize AssetTypeManager (after FX data is ready)
+        dofile(debug.getinfo(1, "S").source:match("@(.*/)") .. "AssetTypeManager.lua")
+        self.assetTypeManager = AssetTypeManager:new(self)
+
+        -- Populate the dynamic filter menu
+        FILTER_MENU[FILTER_TYPES.TYPE].items = self.assetTypeManager:buildFilterMenu()
+
+        if self.app.logger.profile then Profile.start() end
+
         self:getTags()
+
+        -- Use the new modular assembleAssets
         self:assembleAssets()
         self:updateDevelopersFilterMenu()
         self:assembleFilterAssets()
@@ -47,13 +70,13 @@ DB = {
             r.ShowConsoleMsg(Profile.report(10))
         end
     end,
-    sync = function(self, refresh)                             -- not sure this is needed
+    sync = function(self, refresh) -- not sure this is needed
         self.app.logger:logDebug('-- DB.sync()')
         self.refresh = refresh or false
         self.current_project = r.GetProjectStateChangeCount(0) -- if project changed, force full sync
         if self.current_project ~= self.previous_project then
             self.app.logger:logDebug('Project changed, forcing full sync')
-            self:getTracks()
+            self:refreshTracks()
             self.previous_project = self.current_project
             self.refresh = true
         end
@@ -69,7 +92,8 @@ DB = {
 
 DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
     self.app.logger:logDebug('-- DB.createNewSend()')
-    self.app.logger:logDebug('Creating send - type: ' .. tostring(sendType) .. ', assetType: ' .. tostring(assetType) .. ', trackName: ' .. tostring(trackName))
+    self.app.logger:logDebug('Creating send - type: ' ..
+        tostring(sendType) .. ', assetType: ' .. tostring(assetType) .. ', trackName: ' .. tostring(trackName))
     self:beginUndoBlock()
     -- if sendType == SEND_TYPE.HW then
     --     local sndIdx = reaper.CreateTrackSend(self.track.object, nil)
@@ -108,7 +132,7 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
                 r.SetOnlyTrackSelected(dummyTrack)
                 r.Main_OnCommand(40913, 0)
             end
-            self:getTracks()
+            self:refreshTracks()
         else
             r.SetOnlyTrackSelected(r.GetTrack(0, r.CountTracks(0) - 1))
             r.Main_OnCommand(40913, 0)
@@ -126,7 +150,7 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
             r.SetMediaTrackInfo_Value(dummyTrack, 'I_FOLDERDEPTH', 0)
         end
 
-        self:getTracks()
+        self:refreshTracks()
 
         local addedTracks = {}
         local lastTrack = nil
@@ -146,7 +170,7 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
         for _, addedTrack in ipairs(addedTracks) do
             reaper.CreateTrackSend(self.track.object, addedTrack.object)
         end
-        
+
         self.app.logger:logInfo('Track template send created with ' .. #addedTracks .. ' tracks')
 
         r.SetOnlyTrackSelected(self.track.object)
@@ -199,7 +223,7 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
             reaper.GetSetMediaTrackInfo_String(newTrack, "P_NAME", trackName, true)
             local rv = reaper.CreateTrackSend(self.track.object, newTrack)
             self.app.logger:logDebug('Created new track and send')
-            self:getTracks()
+            self:refreshTracks()
             r.SetOnlyTrackSelected(self.track.object)
             self:sync(true)
             for _, send in ipairs(self.sends) do
@@ -222,7 +246,7 @@ end
 
 DB.getSelectedTracks = function(self)
     self.app.logger:logDebug('-- DB.getSelectedTracks()')
-    self:getTracks()
+    self:refreshTracks()
     local numTracks = r.CountSelectedTracks(0);
     local tracks = {};
     self.app.logger:logDebug('Found selected tracks', numTracks)
@@ -236,111 +260,6 @@ DB.getSelectedTracks = function(self)
         end
     end
     return tracks;
-end
-
-DB.getTracks = function(self)
-    self.app.logger:logDebug('-- DB.getTracks()')
-    -- self:sync()
-    self.tracks = {}
-    local numTracks = reaper.CountTracks(0)
-    for i = 0, numTracks - 1 do
-        local track = reaper.GetTrack(0, i)
-        -- if track ~= self.track then
-        local trackName = select(2, reaper.GetTrackName(track))
-        local trackGuid = reaper.GetTrackGUID(track)
-        self.app.logger:logDebug('Track added', trackName)
-        local track = {
-            object = track,
-            db = self,
-            guid = trackGuid,
-            order = i,
-            numInserts = 0,
-            inserts = {},
-            addInsert = function(self, fxName) -- undo point is created by TrackFX_AddByName
-                local fxIndex = r.TrackFX_AddByName(self.object, fxName, false, -1)
-                if fxIndex == -1 then
-                    self.db.app.logger:logError('Cannot add ' .. fxName .. ' to ' .. trackName)
-                    return false
-                end
-                self.db:sync(true)
-                return true
-            end,
-            _refreshColor = function(self)
-                local color = ImGui.ColorConvertNative(reaper.GetTrackColor(track)) * 0x100 | 0xff
-                self.color = color
-            end,
-            _refreshName = function(self)
-                self.name = select(2, reaper.GetTrackName(self.object))
-            end,
-            getInsertAtIndex = function(self, index)
-                for i, insert in ipairs(self.inserts) do
-                    if insert.order == index then
-                        return insert
-                    end
-                end
-            end,
-            getInserts = function(self)
-                self.numInserts = r.TrackFX_GetCount(self.object)
-                self.inserts = {}
-                for i = 0, self.numInserts - 1 do
-                    local _, fxName = r.TrackFX_GetFXName(self.object, i, '')
-                    local offline = r.TrackFX_GetOffline(self.object, i)
-                    local enabled = r.TrackFX_GetEnabled(self.object, i)
-                    local insert =
-                    {
-                        order = i,
-                        db = self.db,
-                        name = fxName,
-                        shortName = fxName,
-                        shortened = false,
-                        calculateShortName = function(self)
-                            ImGui.PushFont(self.db.app.gui.ctx, self.db.app.gui.st.fonts.small)
-                            self.shortName, self.shortened = self.db.app.guiHelpers.minimizeText(
-                                self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''):gsub("^%s+", ''):gsub("%s+$", ''),
-                                math.floor(self.db.app.settings.current.sendWidth * self.db.app.gui.scale) -
-                                r.ImGui_GetStyleVar(self.db.app.gui.ctx, r.ImGui_StyleVar_FramePadding()) * 4)
-                            ImGui.PopFont(self.db.app.gui.ctx)
-                        end,
-                        offline = offline,
-                        enabled = enabled,
-                        track = self,
-                        setEnabled = function(self, enabled) -- undo point created by TrackFX_SetEnabled
-                            r.TrackFX_SetEnabled(self.track.object, i, enabled)
-                            self.db:sync(true)
-                        end,
-                        setOffline = function(self, offline) -- undo point created by TrackFX_SetOffline
-                            r.TrackFX_SetOffline(self.track.object, i, offline)
-                            self.db:sync(true)
-                        end,
-                        delete = function(self) -- undo point created by TrackFX_Delete
-                            r.TrackFX_Delete(self.track.object, i)
-                            self.db:sync(true)
-                        end,
-                        toggleShow = function(self) -- showing FX does not create undo points
-                            if not r.TrackFX_GetOpen(self.track.object, i) then
-                                r.TrackFX_Show(self.track.object, i, 3)
-                                return true
-                            else
-                                r.TrackFX_Show(self.track.object, i, 2)
-                                return false
-                            end
-                        end,
-                        moveToIndex = function(self, index) -- undo point created by TrackFX_Move
-                            r.TrackFX_CopyToTrack(self.track.object, self.order, self.track.object, index, true)
-                            self.db:sync()
-                        end,
-                    }
-                    insert:calculateShortName()
-                    table.insert(self.inserts, insert)
-                end
-            end
-        }
-        track:_refreshName()
-        track:_refreshColor()
-        table.insert(self.tracks, track)
-        -- end
-    end
-    self.app.logger:logDebug('Found ' .. numTracks .. ' tracks')
 end
 
 DB._getTrack = function(self, track)
@@ -370,127 +289,6 @@ DB.recalculateShortNames = function(self)
     self.app.logger:logDebug('Recalculated short names for sends', sendCount)
 end
 
---- PLUGINS
-DB.addPlugin = function(self, full_name, fx_type, instrument, ident)
-    -- TODO: check about all plugin types
-    self.app.logger:logDebug('-- DB.addPlugin()')
-    local self = self
-
-    local function extractNameVendor(full_name, fx_type)
-        self.app.logger:logDebug('-- DB.addPlugin() -> extractNameVendor()')
-        local name, vendor
-        local t = {}
-
-        self.app.logger:logDebug('Parsing:', full_name)
-        name = (fx_type == 'Internal') and full_name or full_name:match(fx_type .. ': (.*)$')
-        if not fx_type:match('^JS') and fx_type ~= 'Internal' and fx_type ~= 'ReWire' then
-            local counter = 1
-            for w in string.gmatch(full_name, "%b()") do
-                t[counter] = w:match("%((.-)%)$")
-                counter = counter + 1
-            end
-        end
-        vendor = t[#t]
-
-        if vendor == nil and name == nil and (#t == 0) then return false end
-        if not fx_type:match('^JS') then
-            if fx_type ~= 'Internal' and fx_type ~= 'ReWire' then
-                if next(t) ~= nil and (tostring(t[#t]):match('.-%dch$') or tostring(t[#t]):match('%d*%sout$') or tostring(t[#t]) == 'mono') then
-                    vendor = t[#t - 1]
-                end
-                name = vendor and name:gsub(' %(' .. OD_EscapePattern(vendor) .. '%).-$', '') or name
-            end
-        end
-        if vendor ~= '' and vendor ~= nil then
-            self.fxDevelopers = self.fxDevelopers or {}
-            self.fxDevelopers[vendor] = true
-        end
-        return true, name, (vendor == '' and nil or vendor)
-    end
-
-    if full_name == '' then return false end
-
-    local success, name, vendor = extractNameVendor(full_name, fx_type)
-
-    if success then
-        self.app.logger:logDebug('Parsing successful')
-        self.app.logger:logDebug('Name', name)
-        self.app.logger:logDebug('Vendor', vendor)
-    else
-        self.app.logger:logError('Cannot parse plugin name', full_name)
-        return false
-    end
-
-    local plugin = {
-        full_name = full_name,
-        fx_type = fx_type,
-        name = name,
-        vendor = vendor,
-        ident = ident,
-    }
-    table.insert(self.plugins, plugin)
-    self.app.logger:logDebug('Added ' ..
-        fx_type .. (instrument and 'i' or '') .. ': ' .. name .. (vendor and (' by ' .. vendor) or ''),
-        full_name)
-    return plugin
-end
-
-DB.getFXChains = function(self)
-    self.app.logger:logDebug('-- DB.getFXChains()')
-    self.fxChains = {}
-    local basePath = reaper.GetResourcePath() .. "/FXChains/"
-    local files = OD_GetFilesInFolderAndSubfolders(basePath, 'rfxchain', true)
-    local count = 0
-    for i, file in ipairs(files) do
-        local path, baseFilename, ext = OD_DissectFilename(file)
-        local chainPath = path:gsub('\\', '/'):gsub('/$', '')
-        self.app.logger:logDebug('Found FX chain', file)
-        table.insert(self.fxChains, {
-            load = file,
-            path = chainPath,
-            file = baseFilename,
-            ext = ext
-        })
-        count = count + 1
-    end
-    self.app.logger:logInfo('Found ' .. count .. ' FX chains')
-end
-DB.getAllActions = function(self, section)
-    self.app.logger:logDebug('-- DB.getAllActions()')
-    self.actions = {}
-    local idx = 0
-    section = section or 0 -- default to main section if not provided
-    while true do
-        local cmdId, name = reaper.kbd_enumerateActions(section, idx)
-        if cmdId == 0 then break end
-        local prefix, actionName = name:match("^(.-):%s*(.*)$")
-        if not prefix then
-            prefix = ""
-            actionName = name
-        end
-        name = actionName
-        -- Get keyboard shortcuts for this action
-        local shortcuts = {}
-        local shortcutCount = reaper.CountActionShortcuts(section, cmdId)
-        for sc = 0, shortcutCount - 1 do
-            local rv, desc = reaper.GetActionShortcutDesc(section, cmdId, sc)
-            if desc and desc ~= "" then
-                table.insert(shortcuts, desc)
-            end
-        end
-
-        table.insert(self.actions, {
-            id = cmdId,
-            order = idx,
-            name = name,
-            prefix = prefix,
-            section = section,
-            shortcuts = shortcuts
-        })
-        idx = idx + 1
-    end
-    self.app.logger:logInfo('Found ' .. #self.actions .. ' actions in section ' .. tostring(section))
-end
 DB.getFXFolders = function(self)
     self.app.logger:logDebug('-- DB.getFXFolders()')
     self.fxFolders = {}
@@ -651,49 +449,10 @@ DB.updateDevelopersFilterMenu = function(self)
             query = { fxDeveloper = developerName }
         }
     end
-    
+
     self.app.logger:logDebug('Updated developers filter menu with developers', #developerNames)
 end
 
-DB.getTrackTemplates = function(self)
-    self.app.logger:logDebug('-- DB.getTrackTemplates()')
-    self.trackTemplates = {}
-    local basePath = reaper.GetResourcePath() .. "/TrackTemplates"
-    local files = OD_GetFilesInFolderAndSubfolders(basePath, 'RTrackTemplate', true)
-    local count = 0
-    for i, file in ipairs(files) do
-        local path, baseFilename, ext = OD_DissectFilename(file)
-        local ttLoad, ttPath = basePath .. OD_FolderSep() .. file, path:gsub('\\', '/'):gsub('/$', '')
-        self.app.logger:logDebug('Found track template', ttLoad)
-        table.insert(self.trackTemplates, {
-            load = ttLoad,
-            path = ttPath,
-            file = baseFilename,
-            ext = ext
-        })
-        count = count + 1
-    end
-    self.app.logger:logInfo('Found ' .. count .. ' track templates')
-end
-DB.getPlugins = function(self)
-    self.app.logger:logDebug('-- DB.getPlugins()')
-    local i = 0
-    while true do
-        local found, name, ident = reaper.EnumInstalledFX(i)
-        local fx_type = name:match('(.-):%s') or 'Internal'
-        local instrument = false
-        if fx_type:sub(-1) == 'i' then
-            instrument = true
-        end
-        local plugin = self:addPlugin(name, fx_type, instrument, ident)
-        if plugin then
-            plugin.group = plugin.fx_type
-        end
-        i = i + 1
-        if not found then break end
-    end
-    self.app.logger:logInfo('Found ' .. i .. ' plugins')
-end
 
 
 -- TAGS AND FAVORITES
@@ -987,53 +746,40 @@ DB.markFavorites = function(self)
     end
     self.app.logger:logDebug('Marked favorites', favoriteCount)
 end
--- ASSETS
-local assetActions = {
-    toggleFavorite = function(self)
-        local favorite = self.db.app.tags.current.favorites
-        local key = self.type .. ' ' .. self.load
-        if OD_HasValue(favorite, key) then
-            OD_RemoveValue(favorite, key)
-            self.group = self.originalGroup
-            self.originalGroup = nil
-        else
-            table.insert(favorite, key)
-            self.originalGroup = self.group
-            self.group = FAVORITE_GROUP
+
+DB.tagAssets = function(self)
+    for _, asset in ipairs(self.assets) do
+        asset.tags = OD_DeepCopy(self.app.tags.current.taggedAssets[asset.id]) or {}
+    end
+end
+
+DB.assetsWithTag = function(self, tag)
+    local assetsWithTag = {}
+    for _, asset in ipairs(self.assets) do
+        if OD_HasValue(asset.tags, tag.id) then
+            table.insert(assetsWithTag, asset)
         end
-        self.db.app.tags:save()
-        self.db:sortAssets()
-        return self.group == FAVORITE_GROUP
-    end,
-    addTag = function(self, tag, saveToDB)
-        local save
-        if save == nil then
-            save = true
-        else
-            save = saveToDB
-        end
-        if not OD_HasValue(self.tags, tag.id) then
-            table.insert(self.tags, tag.id)
-            self.db.app.tags.current.taggedAssets[self.id] = self.db.app.tags.current.taggedAssets[self.id] or {}
-            table.insert(self.db.app.tags.current.taggedAssets[self.id], tag.id)
-            if save then self.db.app.tags:save() end
-        end
-    end,
-    removeTag = function(self, tag, saveToDB)
-        local save
-        if save == nil then
-            save = true
-        else
-            save = saveToDB
-        end
-        if OD_HasValue(self.tags, tag.id) then
-            OD_RemoveValue(self.tags, tag.id)
-            OD_RemoveValue(self.db.app.tags.current.taggedAssets[self.id], tag.id)
-            if not next(self.db.app.tags.current.taggedAssets[self.id]) then self.db.app.tags.current.taggedAssets[self.id] = nil end
-            if save then self.db.app.tags:save() end
-        end
-    end,
-    executeFilter = function(self, context)
+    end
+    return assetsWithTag
+end
+
+DB.assembleAssets = function(self)
+    self.app.logger:logDebug('-- DB.assembleAssets()')
+
+    local assets, count = self.assetTypeManager:assembleAllAssets()
+    self.assets = assets
+
+    self:tagAssets()
+    self:markFavorites()
+    self:sortAssets()
+    self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
+end
+-- whichFilter example: {filters = {FILTER_TYPES.CATEGORY, FILTER_TYPES.DEVELOPER}, tags = true}
+DB.assembleFilterAssets = function(self, whichFilters)
+    self.app.logger:logDebug('-- DB.assembleFilterAssets()')
+    local scanAll = whichFilters == nil and true or false
+    local whichFilters = whichFilters or {}
+    local executeFilter = function(self, context)
         if self.type ~= FILTER_TYPES.TAG then
             if context == RESULT_CONTEXT.ALT then
                 self.db.app.flow.filterResults(self.loadAll)
@@ -1054,159 +800,7 @@ local assetActions = {
         else
             self.db.app.flow.filterResults({ clearText = true })
         end
-    end,
-    execute = function(self, context, contextData)
-        if self.type == ASSETS.PLUGIN then
-            if context == RESULT_CONTEXT.MAIN then
-                local tracks = self.db:getSelectedTracks()
-                for i = 1, #tracks do
-                    tracks[i]:addInsert(self.load)
-                end
-            elseif context == RESULT_CONTEXT.ALT then
-                local numItems = r.CountMediaItems(0)
-                for i = 0, numItems - 1 do
-                    local item = r.GetMediaItem(0, i)
-                    if r.IsMediaItemSelected(item) then
-                        local take = r.GetActiveTake(item)
-                        r.TakeFX_AddByName(take, self.load, 1)
-                    end
-                end
-            end
-        elseif self.type == ASSETS.ACTION then
-            r.Main_OnCommand(self.load, 0)
-        elseif self.type == ASSETS.TRACK then
-            -- r.SetOnlyTrackSelected(self.load)
-        end
-        self.db.app.guiHelpers.selectSearchInputText()
     end
-}
-
-DB.assembleAssets = function(self)
-    self.app.logger:logDebug('-- DB.assembleAssets()')
-    self.assets = {}
-    self.assetsWithTag = function(self, tag)
-        local assetsWithTag = {}
-        for _, asset in ipairs(self.assets) do
-            if OD_HasValue(asset.tags, tag.id) then
-                table.insert(assetsWithTag, asset)
-            end
-        end
-        return assetsWithTag
-    end
-
-
-
-    local count = 0
-    for _, chain in ipairs(self.fxChains) do
-        table.insert(self.assets, {
-            db = self,
-            type = ASSETS.FX_CHAIN,
-            searchText = { { text = chain.file }, { text = chain.path }, { text = chain.ext, hide = true } },
-            load = chain.load,
-            group = FX_CHAINS_GROUP,
-        })
-        count = count + 1
-    end
-    for _, tt in ipairs(self.trackTemplates) do
-        table.insert(self.assets, {
-            db = self,
-            type = ASSETS.TRACK_TEMPLATE,
-            searchText = { { text = tt.file }, { text = tt.path }, { text = tt.ext, hide = true } },
-            load = tt.load,
-            group = TRACK_TEMPLATES_GROUP,
-        })
-        count = count + 1
-    end
-    for _, track in ipairs(self.tracks) do
-        table.insert(self.assets, {
-            db = self,
-            type = ASSETS.TRACK,
-            searchText = { { text = track.name } },
-            load = track.guid,
-            group = TRACKS_GROUP,
-            order = track.order,
-            color = track.color,
-        })
-        count = count + 1
-    end
-    for _, action in ipairs(self.actions) do
-        table.insert(self.assets, {
-            db = self,
-            type = ASSETS.ACTION,
-            searchText = { { text = action.name }, { text = action.prefix or '' } },
-            load = action.id,
-            shortcuts = action.shortcuts,
-            group = ACTIONS_GROUP,
-            order = action.order,
-        })
-        count = count + 1
-    end
-    for _, plugin in ipairs(self.plugins) do
-        if self.app.settings.current.fxTypeVisibility[plugin.fx_type] then
-            table.insert(self.assets, {
-                db = self,
-                type = ASSETS.PLUGIN,
-                -- searchText = { { text = plugin.name }, { text = plugin.vendor or '' }, { text = plugin.fx_type, hide = true } },
-                searchText = { { text = plugin.name }, { text = plugin.vendor or '' } },
-                load = plugin.ident,
-                -- categoryPluginID = categoryPluginID,
-                group = plugin.group,
-                vendor = plugin.vendor,
-                fx_type = plugin.fx_type,
-                categories = {}, -- for use with caching when filtering occurs
-                folders = {},    -- for use with caching when filtering occurs
-                isInCategory = function(self, categoryName)
-                    -- caching so that time intensive search only happens on the first filtering
-                    if self.categories[categoryName] ~= nil then
-                        return self.categories[categoryName]
-                    end
-                    local path, file, ext = OD_DissectFilename(self.load)
-                    local categoryPluginID = (file .. '.' .. ext):gsub('[ -]', '_')
-
-                    if self.db.pluginToCategories[categoryPluginID] then
-                        self.categories[categoryName] = OD_HasValue(self.db.pluginToCategories[categoryPluginID],
-                            categoryName)
-                    else
-                        self.categories[categoryName] = false
-                    end
-                    return self.categories[categoryName]
-                end,
-                isInFolder = function(self, folderId)
-                    -- caching so that time intensive search only happens on the first filtering
-                    if self.folders[folderId] ~= nil then
-                        return self.folders[folderId]
-                    end
-
-                    if self.db.pluginToFolders[self.load] then
-                        self.folders[folderId] = OD_HasValue(self.db.pluginToFolders[self.load],
-                            folderId)
-                    else
-                        self.folders[folderId] = false
-                    end
-                    return self.folders[folderId]
-                end,
-            })
-            count = count + 1
-        end
-    end
-    for _, asset in ipairs(self.assets) do
-        asset.id = asset.type .. ' ' .. asset.load
-        asset.tags = OD_DeepCopy(self.app.tags.current.taggedAssets[asset.id]) or {}
-        asset.addTag = assetActions.addTag
-        asset.removeTag = assetActions.removeTag
-        asset.execute = assetActions.execute
-        asset.toggleFavorite = assetActions.toggleFavorite
-    end
-
-    self:markFavorites()
-    self:sortAssets()
-    self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
-end
--- whichFilter example: {filters = {FILTER_TYPES.CATEGORY, FILTER_TYPES.DEVELOPER}, tags = true}
-DB.assembleFilterAssets = function(self, whichFilters)
-    self.app.logger:logDebug('-- DB.assembleFilterAssets()')
-    local scanAll = whichFilters == nil and true or false
-    local whichFilters = whichFilters or {}
 
     if scanAll then
         self.filterAssets = {}
@@ -1248,7 +842,7 @@ DB.assembleFilterAssets = function(self, whichFilters)
                         load = item.query,
                         loadAll = filter.allQuery,
                         group = T.FILTER_NAMES[filterType],
-                        execute = assetActions.executeFilter
+                        execute = executeFilter
                     })
                     assetCount = assetCount + 1
                 end
@@ -1259,7 +853,7 @@ DB.assembleFilterAssets = function(self, whichFilters)
         if scanAll or whichFilters.tags then
             local count = 0
             local flatTags = {}
-            
+
             -- Build parent->children index for O(1) lookup
             local childrenByParent = {}
             for tagId, tag in pairs(self.tags) do
@@ -1269,19 +863,19 @@ DB.assembleFilterAssets = function(self, whichFilters)
                 end
                 table.insert(childrenByParent[parentId], { id = tagId, tag = tag })
             end
-            
+
             -- Sort children by order within each parent group (only once per parent)
             for parentId, children in pairs(childrenByParent) do
                 table.sort(children, function(a, b)
                     return a.tag.order < b.tag.order
                 end)
             end
-            
+
             -- Efficient recursive flatten using pre-built index
             local function flattenTagsOfParent(parentId)
                 local children = childrenByParent[parentId]
                 if not children then return end
-                
+
                 for _, child in ipairs(children) do
                     table.insert(flatTags, child.tag)
                     child.tag.order = count
@@ -1301,7 +895,7 @@ DB.assembleFilterAssets = function(self, whichFilters)
                     order = tag.order,
                     load = tag.id,
                     group = T.FILTER_NAMES[FILTER_TYPES.TAG],
-                    execute = assetActions.executeFilter
+                    execute = executeFilter
                 })
                 assetCount = assetCount + 1
             end
@@ -1337,7 +931,7 @@ DB.sortAssets = function(self)
             return aPriority < bPriority
         end
     end)
-    
+
     self.app.logger:logDebug('Sorted assets', #self.assets)
 end
 
@@ -1360,6 +954,6 @@ DB.sortFilterAssets = function(self)
             return aPriority < bPriority
         end
     end)
-    
+
     self.app.logger:logDebug('Sorted filter assets', #self.filterAssets)
 end
