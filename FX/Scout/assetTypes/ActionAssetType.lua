@@ -32,7 +32,8 @@ function ActionAssetType:getData()
         end
 
         table.insert(data, {
-            id = cmdId,
+            numericId = cmdId,
+            namedId = reaper.ReverseNamedCommandLookup(cmdId),
             order = idx,
             name = name,
             prefix = prefix,
@@ -47,18 +48,34 @@ end
 
 function ActionAssetType:getExecuteFunction()
     return function(self, context, contextData)
-        r.Main_OnCommand(self.load, 0)
+        local commandId = self.load
+        
+        -- If load is a named command ID (string), convert to numeric
+        if type(commandId) == "string" then
+            commandId = reaper.NamedCommandLookup(commandId)
+            if commandId == 0 then
+                self.context.logger:logError('Named command not found: ' .. self.load)
+                return
+            end
+        end
+        
+        r.Main_OnCommand(commandId, 0)
     end
 end
 
 function ActionAssetType:assembleAsset(action)
+    -- Use named command ID if available, otherwise use numeric ID
+    local actionId = action.namedId and action.namedId ~= "" and action.namedId or action.numericId
+    
     local asset = self:createAssetBase({
         type = self.assetTypeId,
-        load = action.id,
+        load = actionId,
         searchText = { { text = action.name }, { text = action.prefix or '' } },
         group = self.group,
         order = action.order
     })
     asset.shortcuts = action.shortcuts
+    asset.numericId = action.numericId  -- Store for reference/debugging
+    asset.namedId = action.namedId      -- Store for reference/debugging
     return asset
 end
