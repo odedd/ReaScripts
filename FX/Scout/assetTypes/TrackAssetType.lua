@@ -9,7 +9,7 @@ function TrackAssetType.new(class, context)
     local instance = BaseAssetType.new(class, {
         name = "Track",
         assetTypeId = ASSETS.TRACK,
-        group = TRACKS_GROUP,
+        group = "Tracks", -- Use display name as group
         context = context
     })
     instance.tracks = {} -- Store tracks locally in the module

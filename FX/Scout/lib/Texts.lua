@@ -74,3 +74,8 @@ T.IMPORT_SKIP_REASON = {
     [IMPORT_SKIP_REASON.INCOMPATIBLE_VERSION] = "Incompatible file version",
     [IMPORT_SKIP_REASON.INVALID_FORMAT] = "Invalid asset format"
 }
+
+T.GROUPS = {
+    FAVORITES = 'Favorites',
+    RECENTS = 'Recents'
+}

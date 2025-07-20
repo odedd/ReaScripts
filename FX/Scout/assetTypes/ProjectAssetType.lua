@@ -5,7 +5,7 @@ ProjectAssetType = {}
 ProjectAssetType.__index = ProjectAssetType
 setmetatable(ProjectAssetType, BaseAssetType)
 
-ProjectAssetType.new = BaseAssetType:createStandardConstructor("Projects", ASSETS.PROJECT, PROJECTS_GROUP)
+ProjectAssetType.new = BaseAssetType:createStandardConstructor("Project", ASSETS.PROJECT, "Projects")
 
 function ProjectAssetType:getData()
     self.context.logger:logDebug('-- ProjectAssetType:getData()')

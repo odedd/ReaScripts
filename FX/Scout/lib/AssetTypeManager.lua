@@ -13,11 +13,11 @@ local assetActions = {
         else
             table.insert(favorite, key)
             self.originalGroup = self.group
-            self.group = FAVORITE_GROUP
+            self.group = SPECIAL_GROUPS.FAVORITES
         end
         self.db.app.tags:save()
         self.db:sortAssets()
-        return self.group == FAVORITE_GROUP
+        return self.group == SPECIAL_GROUPS.FAVORITES
     end,
     addTag = function(self, tag, saveToDB)
         local save

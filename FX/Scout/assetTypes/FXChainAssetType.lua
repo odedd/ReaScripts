@@ -9,7 +9,7 @@ function FXChainAssetType.new(class, context)
     local instance = BaseAssetType.new(class, {
         name = "FX Chain",
         assetTypeId = ASSETS.FX_CHAIN,
-        group = FX_CHAINS_GROUP,
+        group = "FX Chains", -- Use display name as group (plural)
         context = context
     })
     instance.fxChains = {} -- Store FX chains locally in the module

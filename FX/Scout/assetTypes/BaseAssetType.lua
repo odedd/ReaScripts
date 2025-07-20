@@ -47,10 +47,13 @@ end
 
 function BaseAssetType:createStandardConstructor(name, assetTypeId, group)
     return function(class, context)
+        -- Use the display name as the group if no explicit group is provided
+        local inferredGroup = group or name
+        
         local instance = BaseAssetType.new(class, {
             name = name,
             assetTypeId = assetTypeId,
-            group = group,
+            group = inferredGroup,
             context = context
         })
         instance.data = {} -- Standard data storage

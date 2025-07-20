@@ -1059,7 +1059,7 @@ else
                                                 ImGui.SameLine(ctx)
                                             end
 
-                                            if result.group == FAVORITE_GROUP then
+                                            if result.group == SPECIAL_GROUPS.FAVORITES then
                                                 ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
                                                 app.gui:pushColors(app.gui.st.col.search.favorite)
                                                 ImGui.Text(ctx, ICONS.STAR)
@@ -1163,7 +1163,7 @@ else
                             if app.temp.searchMode == SEARCH_MODE.MAIN then
                                 hint = hint ..
                                     (app.guiHelpers.getShortcutDescription('markFavorite') ~= '' and (' Press %s to %s.'):format(app.guiHelpers.getShortcutDescription('markFavorite'),
-                                        hintResult.group == FAVORITE_GROUP and 'unfavorite' or 'favorite') or '')
+                                        hintResult.group == SPECIAL_GROUPS.FAVORITES and 'unfavorite' or 'favorite') or '')
                             end
                             app:setHint('main', hint)
                         else

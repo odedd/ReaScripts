@@ -740,7 +740,7 @@ DB.markFavorites = function(self)
     for _, asset in ipairs(self.assets) do
         if OD_HasValue(self.app.tags.current.favorites, asset.id) then
             asset.originalGroup = asset.group
-            asset.group = FAVORITE_GROUP
+            asset.group = SPECIAL_GROUPS.FAVORITES
             favoriteCount = favoriteCount + 1
         end
     end
@@ -911,18 +911,37 @@ end
 DB.sortAssets = function(self)
     self.app.logger:logDebug('-- DB.sortAssets()')
     local groupPriority = {}
-    for i, group in ipairs(self.app.settings.current.fxTypeOrder) do
+    
+    -- Get group order - use setting if specified, otherwise build dynamically
+    local groupOrder = self.app.settings.current.groupOrder
+    if not groupOrder and self.assetTypeManager then
+        groupOrder = self.assetTypeManager:buildDynamicGroupOrder()
+    elseif not groupOrder then
+        -- Fallback if no AssetTypeManager is available
+        groupOrder = {SPECIAL_GROUPS.RECENTS, SPECIAL_GROUPS.FAVORITES, SPECIAL_GROUPS.PLUGINS}
+    end
+    
+    -- Build the final group order by expanding PLUGINS_GROUP placeholder
+    local finalGroupOrder = {}
+    for i, group in ipairs(groupOrder) do
+        if group == SPECIAL_GROUPS.PLUGINS then
+            -- Insert FX types in their specified order
+            for j, fxType in ipairs(self.app.settings.current.fxTypeOrder) do
+                table.insert(finalGroupOrder, fxType)
+            end
+        else
+            table.insert(finalGroupOrder, group)
+        end
+    end
+    
+    -- Assign priorities based on position in final order
+    for i, group in ipairs(finalGroupOrder) do
         groupPriority[group] = i
     end
-    groupPriority[FX_CHAINS_GROUP] = 101
-    groupPriority[TRACKS_GROUP] = 102
-    groupPriority[TRACK_TEMPLATES_GROUP] = 103
-    groupPriority[FAVORITE_GROUP] = -1
-    groupPriority[ACTIONS_GROUP] = 104
 
     table.sort(self.assets, function(a, b)
-        local aPriority = groupPriority[a.group] or 100
-        local bPriority = groupPriority[b.group] or 100
+        local aPriority = groupPriority[a.group] or 1000
+        local bPriority = groupPriority[b.group] or 1000
         if a.type == ASSETS['TRACK'] and b.type == ASSETS['TRACK'] and aPriority == bPriority then
             return a.order < b.order
         elseif aPriority == bPriority then

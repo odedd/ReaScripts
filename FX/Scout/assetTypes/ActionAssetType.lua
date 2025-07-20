@@ -5,7 +5,7 @@ ActionAssetType = {}
 ActionAssetType.__index = ActionAssetType
 setmetatable(ActionAssetType, BaseAssetType)
 
-ActionAssetType.new = BaseAssetType:createStandardConstructor("Actions", ASSETS.ACTION, ACTIONS_GROUP)
+ActionAssetType.new = BaseAssetType:createStandardConstructor("Action", ASSETS.ACTION, "Actions")
 
 function ActionAssetType:getData()
     self.context.logger:logDebug('-- ActionAssetType:getData()')

@@ -53,13 +53,13 @@ TAGS_ROOT_PARENT = -1
 PLUGIN = {
     INTERNAL = { 'Video Processor', 'Container' },
 }
-FAVORITE_GROUP = 'Favorite'
-TRACKS_GROUP = 'Tracks'
-TRACK_TEMPLATES_GROUP = 'Track Templates'
-FX_CHAINS_GROUP = 'FX Chains'
-ACTIONS_GROUP = 'Actions'
-PROJECTS_GROUP = 'Projects'
-ALL_TRACKS_GROUP = 'All tracks'
+
+-- Special group constants
+SPECIAL_GROUPS = {
+    FAVORITES = 'Favorites',
+    PLUGINS = 'Plugins',  -- Placeholder for FX types in groupOrder
+    RECENTS = 'Recents'         -- For future use
+}
 
 FILTER_TYPES = {
     TYPE = 1,
