@@ -49,11 +49,6 @@ RESULT_CONTEXT = {
 
 TAGS_ROOT_PARENT = -1
 
-MINIMIZATION_STYLE = {
-    ['PT'] = 0,
-    ['TRIM'] = 1,
-}
-
 PLUGIN = {
     INTERNAL = { 'Video Processor', 'Container' },
 }
