@@ -10,10 +10,10 @@
 -- Format: { id = <number>, file = '<filename>', comment = '<description>' }
 
 return {
-    { id = 0, file = 'PluginAssetType.lua',        comment = 'VST/AU/JS plugins' },
+    { id = 0, file = 'PluginAssetType.lua',        comment = 'FX' },
     { id = 1, file = 'FXChainAssetType.lua',       comment = 'FX chain files' },
     { id = 2, file = 'TrackTemplateAssetType.lua', comment = 'Track template files' },
-    { id = 3, file = 'TrackAssetType.lua',         comment = 'Project tracks' },
+    { id = 3, file = 'TrackAssetType.lua',         comment = 'Tracks' },
     { id = 4, file = 'ActionAssetType.lua',        comment = 'Reaper actions' },
     { id = 5, file = 'ProjectAssetType.lua',       comment = 'Project files (.rpp)' },
     
