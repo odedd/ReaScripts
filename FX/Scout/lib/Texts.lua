@@ -2,10 +2,6 @@
 T = {}
 
 T.SETTINGS = {
-    MW_REVERSED = {
-        LABEL = 'Reverse mousewheel',
-        HINT = 'Mousewheel is used to control faders. Check to reverse its direction.',
-    },
     CREATE_INSIDE_FODLER = {
         LABEL = 'Create sends inside folder',
         HINT = 'New send tracks can be created inside a folder track.',
@@ -17,10 +13,6 @@ T.SETTINGS = {
     FX_TYPE_ORDER = {
         LABEL = 'FX type priority',
         HINT = 'The order in which FX are displayed in the search window.',
-    },
-    TEXT_MINIMIZATION_STYLE = {
-        LABEL = 'Text minimization style',
-        HINT = 'Minimization style for track/plugin/hw output names.',
     },
     SHORTCUTS = {
         CLOSE_SCRIPT = {
@@ -51,10 +43,6 @@ T.SETTINGS = {
 }
 
 T.SETTINGS.LISTS = {
-    [T.SETTINGS.TEXT_MINIMIZATION_STYLE.LABEL] = {
-        PT = 'Pro-Tools style',
-        TRIM = 'Trim text to length',
-    },
 }
 T.SEARCH_WINDOW = {
     SEARCH_HINT = {

@@ -3,12 +3,9 @@
 PB_Settings = OD_Settings:new({
     default = {
         -- Settings window
-        mouseScrollReversed = false,
-        followSelectedTrack = true,
         createInsideFolder = true,
         sendFolderName = 'FX Return Tracks',
         persistantMode = true,
-        textMinimizationStyle = MINIMIZATION_STYLE.PT,
         shortcuts = {
             markFavorite = {
                 key = OD_KEYCODES.F,
@@ -76,8 +73,8 @@ PB_Settings = OD_Settings:new({
 
         -- set In the UI
         filterPanelWidth = 200,
-        minFilterPanelWidth = 140,
         -- Internal
+        minFilterPanelWidth = 140,
         lastDockId = nil,
     },
     dfsetfile = Scr.dfsetfile
