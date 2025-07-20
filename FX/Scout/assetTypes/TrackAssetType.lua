@@ -5,7 +5,12 @@ TrackAssetType = {}
 TrackAssetType.__index = TrackAssetType
 setmetatable(TrackAssetType, BaseAssetType)
 
-TrackAssetType.new = BaseAssetType:createStandardConstructor("Track", "Tracks")
+function TrackAssetType.new(class, context)
+    local instance = BaseAssetType:createStandardConstructor("Track", "Tracks")(class, context)
+    -- Tracks should be imported even if they can't be mapped to existing tracks
+    instance.requiresMappingOnImport = false
+    return instance
+end
 
 function TrackAssetType:getData()
     local data = {} -- Use consistent local variable naming

@@ -75,6 +75,10 @@ function BaseAssetType:createStandardConstructor(name, group)
             group = inferredGroup,
             context = context
         })
+        
+        -- Default: require mapping during import (can be overridden by subclasses)
+        instance.requiresMappingOnImport = true
+        
         return instance
     end
 end
