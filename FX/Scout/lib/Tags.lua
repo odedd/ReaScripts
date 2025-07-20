@@ -86,7 +86,9 @@ function PB_Tags:export(filename)
     file:write('[tagInfo]\n')
     local tagCount = 0
     for id, tag in pairs(self.current.tagInfo) do
-        file:write(string.format('%d,%s,%d,%d\n', id, tag.name, tag.parentId or 0, tag.order or 0))
+        -- Sanitize tag name and write with proper escaping
+        local sanitizedName = OD_EscapeCSV(tag.name)
+        file:write(string.format('%d,%s,%d,%d\n', id, sanitizedName, tag.parentId or 0, tag.order or 0))
         tagCount = tagCount + 1
     end
     file:write('\n')
@@ -97,7 +99,9 @@ function PB_Tags:export(filename)
     file:write('[taggedAssets]\n')
     local assetCount = 0
     for asset, tags in pairs(self.current.taggedAssets) do
-        file:write(string.format('%s:%s\n', asset, table.concat(tags, ',')))
+        -- Sanitize asset ID and write with proper escaping
+        local sanitizedAsset = OD_EscapeCSV(asset)
+        file:write(string.format('%s:%s\n', sanitizedAsset, table.concat(tags, ',')))
         assetCount = assetCount + 1
     end
 
@@ -140,42 +144,70 @@ function PB_Tags:import(filename, mergeMode)
                 fileVersion = version
             end
         elseif section == "tagInfo" and line ~= "" then
-            local id, name, parentId, order = line:match("^(%d+),([^,]+),(%d+),(%d+)")
-            if id and name then
-                importedTagInfo[tonumber(id)] = {
-                    name = name,
-                    parentId = tonumber(parentId),
-                    order = tonumber(order)
-                }
+            -- Use safe CSV parsing for tag info
+            local fields = OD_ParseCSVLine(line, ",")
+            if #fields >= 4 then
+                local id, name, parentId, order = fields[1], fields[2], fields[3], fields[4]
+                if id and name and tonumber(id) then
+                    importedTagInfo[tonumber(id)] = {
+                        name = name,  -- Already unescaped by OD_ParseCSVLine
+                        parentId = tonumber(parentId) or 0,
+                        order = tonumber(order) or 0
+                    }
+                else
+                    self.app.logger:logError('Invalid tagInfo line format', line)
+                end
+            else
+                self.app.logger:logError('Insufficient fields in tagInfo line', line)
             end
         elseif section == "taggedAssets" and line ~= "" then
-            local asset, tags = line:match("^(.-):(.+)$")
-            if asset and tags then
-                -- Extract basename for matching - different logic for different asset types
-                local imported_basename
-                local assetType = tonumber(asset:match("^(%d+)"))
+            -- Use safe parsing for colon-separated asset line
+            local colonPos = OD_FindUnescapedChar(line, ":")
+            
+            if colonPos then
+                local asset = OD_UnescapeCSV(line:sub(1, colonPos - 1))
+                local tagsStr = line:sub(colonPos + 1)
                 
-                if assetType == ASSETS.PLUGIN or assetType == ASSETS.FX_CHAIN or assetType == ASSETS.TRACK_TEMPLATE then
-                    -- For file-based assets, extract basename from path
-                    imported_basename = asset:match("([^/\\]+)$")
-                elseif assetType == ASSETS.TRACK or assetType == ASSETS.ACTION then
-                    -- For tracks and actions, use the full identifier minus the asset type prefix
-                    imported_basename = asset:match("^%d+%s+(.+)$")
-                else
-                    -- Fallback: try to extract basename from path, then full identifier
-                    imported_basename = asset:match("([^/\\]+)$") or asset:match("^%d+%s+(.+)$")
-                end
-                
-                if imported_basename then
-                    local tag_ids = {}
-                    for tag_id in tags:gmatch("(%d+)") do
-                        table.insert(tag_ids, tonumber(tag_id))
+                if asset and tagsStr and asset ~= "" and tagsStr ~= "" then
+                    -- Extract basename for matching - different logic for different asset types
+                    local imported_basename
+                    local assetType = tonumber(asset:match("^(%d+)"))
+                    
+                    if assetType == ASSETS.PLUGIN or assetType == ASSETS.FX_CHAIN or assetType == ASSETS.TRACK_TEMPLATE then
+                        -- For file-based assets, extract basename from path
+                        imported_basename = asset:match("([^/\\]+)$")
+                    elseif assetType == ASSETS.TRACK or assetType == ASSETS.ACTION then
+                        -- For tracks and actions, use the full identifier minus the asset type prefix
+                        imported_basename = asset:match("^%d+%s+(.+)$")
+                    else
+                        -- Fallback: try to extract basename from path, then full identifier
+                        imported_basename = asset:match("([^/\\]+)$") or asset:match("^%d+%s+(.+)$")
                     end
-                    importedTaggedAssets[imported_basename] = {
-                        tagIds = tag_ids,
-                        originalAssetId = asset
-                    }
+                    
+                    if imported_basename then
+                        local tag_ids = {}
+                        for tag_id in tagsStr:gmatch("(%d+)") do
+                            local numericId = tonumber(tag_id)
+                            if numericId then
+                                table.insert(tag_ids, numericId)
+                            end
+                        end
+                        if #tag_ids > 0 then
+                            importedTaggedAssets[imported_basename] = {
+                                tagIds = tag_ids,
+                                originalAssetId = asset
+                            }
+                        else
+                            self.app.logger:logError('No valid tag IDs found in line', line)
+                        end
+                    else
+                        self.app.logger:logError('Could not extract basename from asset', asset)
+                    end
+                else
+                    self.app.logger:logError('Invalid taggedAssets line format', line)
                 end
+            else
+                self.app.logger:logError('No colon separator found in taggedAssets line', line)
             end
         end
     end
