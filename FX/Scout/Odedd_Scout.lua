@@ -68,7 +68,7 @@ else
         local projPath, projFileName = OD_GetProjectPaths()
 
         local logger = OD_Logger:new({
-            level = OD_Logger.LOG_LEVEL.INFO,
+            level = OD_Logger.LOG_LEVEL.ERROR,
             output = OD_Logger.LOG_OUTPUT.CONSOLE,
             filename = projPath .. Scr.name .. '_' .. projFileName .. '.log',
             showImGuiDebugWindows = false,
