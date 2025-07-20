@@ -10,14 +10,24 @@ APP_PAGE = {
 }
 
 
-ASSETS = {
-    ['TRACK'] = 0,
-    ['PLUGIN'] = 1,
-    ['FX_CHAIN'] = 2,
-    ['TRACK_TEMPLATE'] = 3,
-    ['ACTION'] = 4,
-    ['PROJECT'] = 5,
-}
+-- Load asset type IDs from manifest (with hardcoded IDs for stability)
+ASSET_TYPE = {}
+do
+    -- Get the current script path to locate the manifest
+    local info = debug.getinfo(1, "S")
+    local scriptPath = info.source:match("@(.*[/\\])") or ""
+    local assetTypesPath = scriptPath:gsub("lib[/\\]?$", "") .. "assetTypes/"
+    local manifestPath = assetTypesPath .. "manifest.lua"
+    
+    -- Load manifest and assign IDs from explicit definitions
+    local assetTypeDefinitions = dofile(manifestPath)
+    for _, definition in ipairs(assetTypeDefinitions) do
+        local className = definition.file:match("(.+)%.lua$")
+        if className and definition.id ~= nil then
+            ASSET_TYPE[className] = definition.id
+        end
+    end
+end
 
 FX_TYPE =
 {
@@ -55,6 +65,8 @@ PLUGIN = {
 }
 
 -- Special group constants
+-- Note: groupOrder in settings uses asset type class names (e.g., "ProjectAssetType") 
+-- instead of group display names (e.g., "Projects") for better maintainability
 SPECIAL_GROUPS = {
     FAVORITES = 'Favorites',
     PLUGINS = 'Plugins',  -- Placeholder for FX types in groupOrder

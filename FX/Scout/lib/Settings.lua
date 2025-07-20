@@ -70,17 +70,17 @@ PB_Settings = OD_Settings:new({
             "LV2",
             "LV2i"
         },
-        -- Default group order - can be overridden by user settings
-        -- Use SPECIAL_GROUPS.PLUGINS as placeholder for all FX types
+        -- Default group order using asset type class names (more robust than group names)
+        -- Use SPECIAL_GROUPS constants for special groups
         groupOrder = {
-            SPECIAL_GROUPS.RECENTS,   -- Recents (special group) 
-            SPECIAL_GROUPS.FAVORITES, -- Favorites (special group)
-            SPECIAL_GROUPS.PLUGINS,   -- Placeholder for all FX types (VST3, AU, etc.)
-            "FX Chains",              -- FX Chains
-            "Tracks",                 -- Tracks  
-            "Track Templates",        -- Track Templates
-            "Actions",                -- Actions
-            "Projects"                -- Projects
+            SPECIAL_GROUPS.RECENTS,      -- Recents (special group) 
+            SPECIAL_GROUPS.FAVORITES,    -- Favorites (special group)
+            SPECIAL_GROUPS.PLUGINS,      -- Placeholder for all FX types (VST3, AU, etc.)
+            "FXChainAssetType",          -- FX Chains asset type
+            "TrackAssetType",            -- Tracks asset type
+            "TrackTemplateAssetType",    -- Track Templates asset type
+            "ActionAssetType",           -- Actions asset type
+            "ProjectAssetType"           -- Projects asset type
         },
         uiScale = 1,
 
