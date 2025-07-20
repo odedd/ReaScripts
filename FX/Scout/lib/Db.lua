@@ -1259,15 +1259,34 @@ DB.assembleFilterAssets = function(self, whichFilters)
         if scanAll or whichFilters.tags then
             local count = 0
             local flatTags = {}
-            -- flatten tags
+            
+            -- Build parent->children index for O(1) lookup
+            local childrenByParent = {}
+            for tagId, tag in pairs(self.tags) do
+                local parentId = tag.parentId
+                if not childrenByParent[parentId] then
+                    childrenByParent[parentId] = {}
+                end
+                table.insert(childrenByParent[parentId], { id = tagId, tag = tag })
+            end
+            
+            -- Sort children by order within each parent group (only once per parent)
+            for parentId, children in pairs(childrenByParent) do
+                table.sort(children, function(a, b)
+                    return a.tag.order < b.tag.order
+                end)
+            end
+            
+            -- Efficient recursive flatten using pre-built index
             local function flattenTagsOfParent(parentId)
-                for tagId, tag in OD_PairsByOrder(self.tags) do
-                    if tag.parentId == parentId then
-                        table.insert(flatTags, tag)
-                        tag.order = count
-                        count = count + 1
-                        flattenTagsOfParent(tagId)
-                    end
+                local children = childrenByParent[parentId]
+                if not children then return end
+                
+                for _, child in ipairs(children) do
+                    table.insert(flatTags, child.tag)
+                    child.tag.order = count
+                    count = count + 1
+                    flattenTagsOfParent(child.id)
                 end
             end
 
