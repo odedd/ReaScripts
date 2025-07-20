@@ -1705,7 +1705,7 @@ else
                 local handleSpecialKeys = function()
                     local pressed = false
                     if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) then
                             if not app.temp.ignoreEscapeKey then
                                 if app.temp.searchInput == '' then
                                     app.hide = true
@@ -1713,7 +1713,7 @@ else
                                 end
                             end
                             app.temp.ignoreEscapeKey = nil
-                        elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
+                        elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter, false) then
                             if not app.temp.tagRename then
                                 if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
                                     app.flow.handleSelectedResults(RESULT_CONTEXT.ALT)
