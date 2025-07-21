@@ -25,10 +25,11 @@
 r = reaper
 
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
+            -- r.SetExtState('Odedd_Scout', 'RUNNING', '', false)
 
 if r.GetExtState('Odedd_Scout', 'WAKEUP') == 'WAITING' then
     r.SetExtState('Odedd_Scout', 'WAKEUP', 'GO', false)
-else
+elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
     if r.file_exists(p .. 'Resources/Common/Common.lua') then
         dofile(p .. 'Resources/Common/Common.lua')
     else
@@ -341,18 +342,18 @@ else
                     r.defer(app.flow.waitForWakeup)
                 end
             end,
-            handleSelectedResults = function(ctx, resultContext, contextData, confirmMultiple)
+            handleSelectedResults = function(ctx, resultContext, contextData, confirm)
                 local resultCount = app.selection:count()
-                if resultCount >= app.settings.current.numberOfResultsThatRequireConfirmation and not confirmMultiple then
+                if resultCount >= app.settings.current.numberOfResultsThatRequireConfirmation and not confirm then
                     app.temp.confirmMultipleResults = {
                         count = resultCount,
                         resultContext = resultContext,
                         contextData = contextData
                     }
-                elseif confirmMultiple or resultCount < app.settings.current.numberOfResultsThatRequireConfirmation then
+                elseif confirm or resultCount < app.settings.current.numberOfResultsThatRequireConfirmation then
                     for _, result in pairs(app.selection:results()) do
                         if result.execute then
-                            result:execute(resultContext)
+                            result:execute(resultContext, contextData, confirm)
                         end
                     end
                 end
@@ -472,12 +473,13 @@ else
             isShortcutPressed = function(key, global)
                 local shortcut = app.settings.current.shortcuts[key]
                 if shortcut and shortcut.key == -1 then return false end
-                local keyChord = OD_GetImGuiKeyCode(ImGui,shortcut.key)|
+                local keyChord = OD_GetImGuiKeyCode(ImGui, shortcut.key)|
                     (shortcut.shift and ImGui.Mod_Shift or 0) |
                     (shortcut.ctrl and ImGui.Mod_Ctrl or 0) |
                     (shortcut.macCtrl and ImGui.Mod_Super or 0) |
                     (shortcut.alt and ImGui.Mod_Alt or 0)
-                return ImGui.Shortcut(app.gui.ctx, keyChord, global and ImGui.InputFlags_RouteAlways or ImGui.InputFlags_None)
+                return ImGui.Shortcut(app.gui.ctx, keyChord,
+                    global and ImGui.InputFlags_RouteAlways or ImGui.InputFlags_None)
             end,
             getShortcutDescription = function(key)
                 local shortcut = app.settings.current.shortcuts[key]
@@ -1071,7 +1073,8 @@ else
                                                 ImGui.SameLine(ctx)
                                             end
 
-                                            if result.group == SPECIAL_GROUPS.FAVORITES then
+                                            if result.favorite then
+                                                -- if result.group == SPECIAL_GROUPS.FAVORITES then
                                                 ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
                                                 app.gui:pushColors(app.gui.st.col.search.favorite)
                                                 ImGui.Text(ctx, ICONS.STAR)
@@ -1708,12 +1711,12 @@ else
                             app.selection:selectRange(1, #app.temp.searchResults)
                         elseif app.guiHelpers.isShortcutPressed('resetFilters', true) then
                             app.flow.filterResults({ clear = true })
-                            elseif app.guiHelpers.isShortcutPressed('hardCloseScript', true) then
-                                app.hardExit = true
+                        elseif app.guiHelpers.isShortcutPressed('hardCloseScript', true) then
+                            app.hardExit = true
                         elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.guiHelpers.isShortcutPressed('markFavorite', true) and app.selection.keyboardPos then
                             local result = app.temp.searchResults[app.selection.keyboardPos]
                             local fav = result:toggleFavorite()
-                            app.flow.filterResults()
+                            -- app.flow.filterResults()
                             if fav then
                                 for i = 1, #app.temp.searchResults do
                                     if app.temp.searchResults[i] == result then
@@ -2078,6 +2081,21 @@ else
                         app.temp.confirmMultipleResults = nil
                     end
                 end
+                if app.temp.confirmMultipleTracks then
+                    if not ImGui.IsPopupOpen(ctx, 'Are you sure?') then
+                        ImGui.OpenPopup(ctx, 'Are you sure?')
+                    end
+                    local open, confirm = app.draw.popup(app.gui.ctx, 'Are you sure?',
+                        'There are ' ..
+                        app.temp.confirmMultipleTracks.count .. ' tracks selected.\nAre you sure you want to continue?')
+                    if confirm then
+                        app.flow.handleSelectedResults(ctx, app.temp.confirmMultipleTracks.resultContext,
+                            app.temp.confirmMultipleTracks.contextData, true)
+                    end
+                    if not open then
+                        app.temp.confirmMultipleTracks = nil
+                    end
+                end
             end,
             mainWindow = function(ctx)
                 ImGui.SetNextWindowPos(ctx, 100, 100, ImGui.Cond_FirstUseEver)
@@ -2122,6 +2140,7 @@ else
         }
 
         function app.loop()
+            r.SetExtState('Odedd_Scout', 'RUNNING', 'TRUE', false)
             local ctx = app.gui.ctx
             app.hide = false
             app.guiHelpers.initFrame(ctx)
@@ -2172,6 +2191,7 @@ else
         end
 
         function Release()
+            r.SetExtState('Odedd_Scout', 'RUNNING', '', false)
             OD_ReleaseGlobalKeys()
         end
 
@@ -2183,10 +2203,10 @@ else
 
         r.atexit(Exit)
 
+
         ---------------------------------------
         -- START ------------------------------
         ---------------------------------------
-
         -- app.settings:save()
         app.logger:logInfo('Started')
         app.logger:logAppInfo(app.logger.LOG_LEVEL.DEBUG, app)
