@@ -29,15 +29,6 @@ function TrackAssetType:getData()
             db = context.db,
             guid = trackGuid,
             order = i,
-            addInsert = function(self, fxName) -- undo point is created by TrackFX_AddByName
-                local fxIndex = r.TrackFX_AddByName(self.object, fxName, false, -1)
-                if fxIndex == -1 then
-                    context.logger:logError('Cannot add ' .. fxName .. ' to ' .. trackName)
-                    return false
-                end
-                context.db:sync(true)
-                return true
-            end,
             _refreshColor = function(self)
                 local color = ImGui.ColorConvertNative(reaper.GetTrackColor(track)) * 0x100 | 0xff
                 self.color = color

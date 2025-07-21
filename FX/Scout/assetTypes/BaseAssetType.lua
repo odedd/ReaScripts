@@ -59,19 +59,21 @@ function BaseAssetType:addToRecentsAndExecute()
         local executeFunction = assetType:getExecuteFunction()
         if executeFunction then
             -- Execute first and check if successful
-            local success, result = pcall(executeFunction, asset, ...)
+            local success, result, logMsg = pcall(executeFunction, asset, ...)
             
             if success and result == true then
                 -- Only add to recents if execution was successful AND returned true
                 if asset.addToRecents then
                     asset:addToRecents()
                 end
+                assetType.context.logger:logInfo(logMsg)
                 -- Return the actual result from the execute function
                 return result
             elseif success then
                 -- Execution didn't throw error but returned false - don't add to recents
                 assetType.context.logger:logDebug('Execution returned false for asset: ' .. 
-                    (asset.searchText and asset.searchText[1] and asset.searchText[1].text or 'Unknown'))
+                    (asset.searchText and asset.searchText[1] and asset.searchText[1].text or 'Unknown') ..'.'.. (logMsg and (' Reason: '.. logMsg) or '')) 
+                    -- BUG: when throwing an error here, like trying to print a nil, the whole "alive" extState makes the script unresponsive and unable to launch again. 
                 return result
             else
                 -- Log the error and don't add to recents

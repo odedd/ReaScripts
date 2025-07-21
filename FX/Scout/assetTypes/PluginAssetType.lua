@@ -94,22 +94,25 @@ function PluginAssetType:getExecuteFunction()
             local tracks = self.context.db:getSelectedTracks()
             if #tracks > self.context.settings.current.numberOfTracksThatRequireConfirmation and confirm ~= true then
                 self.context.temp.confirmMultipleTracks = {
-                        count = #tracks,
-                        resultContext = context,
-                        contextData = contextData
-                    }
+                    count = #tracks,
+                    resultContext = context,
+                    contextData = contextData
+                }
                 -- Return false for confirmation dialog - user hasn't confirmed yet, so don't add to recents
                 return false
             else
-                -- Conditions are good for execution, add all plugins regardless of individual success
-                for i = 1, #tracks do
-                    tracks[i]:addInsert(self.load)
+                local numTracks = r.CountSelectedTracks2(0, true);
+                if numTracks == 0 then return false, 'No tracks selected' end
+                for i = 0, numTracks - 1 do
+                    local track = r.GetSelectedTrack2(0, i, true)
+                    local fxIndex = r.TrackFX_AddByName(track, self.load, false, -1)
                 end
-                return true
+                return true, ('Added %s to %d tracks'):format(self.searchText[1].text, numTracks)
             end
         elseif context == RESULT_CONTEXT.ALT then
             local numItems = r.CountMediaItems(0)
-            
+            if numItems == 0 then return false end
+
             for i = 0, numItems - 1 do
                 local item = r.GetMediaItem(0, i)
                 if r.IsMediaItemSelected(item) then
@@ -119,12 +122,11 @@ function PluginAssetType:getExecuteFunction()
                     end
                 end
             end
-            
             -- Always return true for ALT context - user attempted to add to takes
             -- (regardless of whether there were selected items or takes)
-            return true
+            return true, ('Added %s to %d items'):format(self.searchText[1].text, numItems)
         end
-        
+
         -- Default return for other contexts
         return false
     end
