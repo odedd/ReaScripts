@@ -52,7 +52,7 @@ function BaseAssetType:getExecuteFunction()
     error("BaseAssetType:getExecuteFunction() must be implemented by subclass")
 end
 
-function BaseAssetType:addToRecentsAndExecute()
+function BaseAssetType:executeAndAddToRecents()
     local assetType = self -- Capture the asset type instance
     return function(asset, ...)
         -- Get the execute function from the asset type
@@ -274,7 +274,7 @@ function BaseAssetType:createAssetBase(params)
         db = self.context.db, -- Add db reference for backward compatibility
         addTag = self.assetActions.addTag,
         removeTag = self.assetActions.removeTag,
-        execute = self:addToRecentsAndExecute(),
+        execute = self:executeAndAddToRecents(),
         toggleFavorite = self.assetActions.toggleFavorite,
         batchToggleFavorites = self.assetActions.batchToggleFavorites,
         moveFavorite = self.assetActions.moveFavorite,
