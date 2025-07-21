@@ -32,7 +32,7 @@ function BaseAssetType:getDataWithLogging()
             end
         end
     end
-    
+
     self.context.logger:logDebug('-- ' .. (className or "Unknown") .. ':getData()')
     local data = self:getData()
     local count = data and #data or 0
@@ -52,6 +52,25 @@ function BaseAssetType:getExecuteFunction()
     error("BaseAssetType:getExecuteFunction() must be implemented by subclass")
 end
 
+function BaseAssetType:executeWrapper()
+    local assetType = self -- Capture the asset type instance
+    return function(asset, ...)
+        -- Handle addToRecents first
+        if asset.addToRecents then
+            asset:addToRecents()
+        end
+        
+        -- Get the execute function from the asset type
+        local executeFunction = assetType:getExecuteFunction()
+        if executeFunction then
+            -- Pass through all arguments (context, contextData, and any additional params)
+            return executeFunction(asset, ...)
+        else
+            assetType.context.logger:logError('No execute function available for asset type: ' .. (assetType.name or 'Unknown'))
+        end
+    end
+end
+
 -- Common helper methods:
 
 function BaseAssetType:createStandardConstructor(name, group)
@@ -65,20 +84,20 @@ function BaseAssetType:createStandardConstructor(name, group)
                 break
             end
         end
-        
+
         -- Use the display name as the group if no explicit group is provided
         local inferredGroup = group or name
-        
+
         local instance = BaseAssetType.new(class, {
             name = name,
             assetTypeId = inferredAssetTypeId,
             group = inferredGroup,
             context = context
         })
-        
+
         -- Default: require mapping during import (can be overridden by subclasses)
         instance.requiresMappingOnImport = true
-        
+
         return instance
     end
 end
@@ -92,11 +111,12 @@ function BaseAssetType:createAssetBase(params)
         group = params.group,
         order = params.order or 0,
         context = self.context,
-        db = self.context.db,  -- Add db reference for backward compatibility
+        db = self.context.db, -- Add db reference for backward compatibility
         addTag = self.context.assetActions.addTag,
         removeTag = self.context.assetActions.removeTag,
-        execute = self:getExecuteFunction(),
-        toggleFavorite = self.context.assetActions.toggleFavorite
+        execute = self:executeWrapper(),
+        toggleFavorite = self.context.assetActions.toggleFavorite,
+        addToRecents = self.context.assetActions.addToRecents
     }
 end
 
@@ -104,7 +124,7 @@ function BaseAssetType:getFilterMenuEntry()
     if not self.name then
         return {} -- Return empty table instead of erroring for now
     end
-    
+
     return {
         [self.name] = {
             order = self.filterOrder,
