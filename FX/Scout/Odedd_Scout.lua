@@ -40,12 +40,12 @@ else
     OD_Init()
 
     if OD_PrereqsOK({
-            reaimgui_version = '0.9.1',
+            reaimgui_version = '0.9.2',
             js_version = 1.310,    -- required for JS_Window_Find and JS_VKeys_GetState
             reaper_version = 7.03, -- required for set_action_options
         }) then
         package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
-        ImGui = require 'imgui' '0.9.1'
+        ImGui = require 'imgui' '0.9.2'
 
         dofile(p .. 'lib/Constants.lua')
         dofile(p .. 'lib/Texts.lua')
@@ -403,6 +403,16 @@ else
                     app.temp.waitingForDoubleClick = nil
                 end
 
+                -- reset keyboard cuttoff time when getting focus, 
+                -- to prevent keys that were pressed before coming into focus from being captured
+                app.gui.mainWindow.focused = ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow)
+                if (not app.temp.prevWindowIsFocused) and app.gui.mainWindow.focused then
+                    OD_ResetCutoff()
+                    app.temp.prevWindowIsFocused = true
+                elseif not app.gui.mainWindow.focused and app.temp.prevWindowIsFocused then
+                    app.temp.prevWindowIsFocused = false
+                end
+
                 if app.logger.showImGuiDebugWindows then
                     ImGui.ShowMetricsWindow(ctx)
                     ImGui.ShowDebugLogWindow(ctx)
@@ -460,14 +470,21 @@ else
                     end
                 end
             end,
-            isShortcutPressed = function(key)
-                if app.settings.current.shortcuts[key] and app.settings.current.shortcuts[key].key == -1 then return false end
-                return app.settings.current.shortcuts[key] and
-                    OD_IsGlobalKeyPressed(app.settings.current.shortcuts[key].key) and
-                    OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL) == app.settings.current.shortcuts[key].ctrl
-                    and OD_IsGlobalKeyDown(OD_KEYCODES.SHIFT) == app.settings.current.shortcuts[key].shift
-                    and OD_IsGlobalKeyDown(OD_KEYCODES.ALT) == app.settings.current.shortcuts[key].alt
-                    and OD_IsGlobalKeyDown(OD_KEYCODES.STARTKEY) == app.settings.current.shortcuts[key].macCtrl
+            isShortcutPressed = function(key, onlyIfFocused)
+                local shortcut = app.settings.current.shortcuts[key]
+                local focused = onlyIfFocused == nil and true or app.gui.mainWindow.focused
+                if shortcut and shortcut.key == -1 then return false end
+                local keyChord = OD_KEYCODE_IMGUI_CODES[shortcut.key] |
+                        (shortcut.shift and ImGui.Mod_Shift or 0) |
+                        (shortcut.ctrl and ImGui.Mod_Ctrl or 0) |
+                        (shortcut.macCtrl and ImGui.Mod_Super or 0) |
+                        (shortcut.alt and ImGui.Mod_Alt or 0)
+                    return shortcut and focused and 
+                        OD_IsGlobalKeyPressed(shortcut.key) and
+                        OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL) == shortcut.ctrl
+                        and OD_IsGlobalKeyDown(OD_KEYCODES.SHIFT) == shortcut.shift
+                        and OD_IsGlobalKeyDown(OD_KEYCODES.ALT) == shortcut.alt
+                        and OD_IsGlobalKeyDown(OD_KEYCODES.STARTKEY) == shortcut.macCtrl
             end,
             getShortcutDescription = function(key)
                 local shortcut = app.settings.current.shortcuts[key]
@@ -1697,16 +1714,16 @@ else
                                 end
                                 pressed = true
                             end
-                        elseif app.guiHelpers.isShortcutPressed('selectAllResults') then
+                        elseif app.guiHelpers.isShortcutPressed('selectAllResults', true) then
                             app.selection:selectRange(1, #app.temp.searchResults)
                             pressed = true
-                        elseif app.guiHelpers.isShortcutPressed('resetFilters') then
+                        elseif app.guiHelpers.isShortcutPressed('resetFilters', true) then
                             app.flow.filterResults({ clear = true })
                             pressed = true
-                        elseif app.guiHelpers.isShortcutPressed('hardCloseScript') then
+                        elseif app.guiHelpers.isShortcutPressed('hardCloseScript', true) then
                             app.hardExit = true
                             pressed = true
-                        elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.guiHelpers.isShortcutPressed('markFavorite') and app.selection.keyboardPos then
+                        elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.guiHelpers.isShortcutPressed('markFavorite', true) and app.selection.keyboardPos then
                             local result = app.temp.searchResults[app.selection.keyboardPos]
                             local fav = result:toggleFavorite()
                             app.flow.filterResults()
@@ -1887,6 +1904,13 @@ else
                             existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                                 function(k, v) return k ~= 'closeScript' end)
                         })
+                    app.settings.current.shortcuts.hardCloseScript, resetCounter = app.gui:setting('shortcut',
+                        T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.LABEL,
+                        T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.HINT, app.settings.current.shortcuts.hardCloseScript,
+                        {
+                            existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                function(k, v) return k ~= 'hardCloseScript' end)
+                        })
                     if resetCounter then app.temp.captureCounter = 0 end
                     app.settings.current.shortcuts.addSend, resetCounter = app.gui:setting('shortcut',
                         T.SETTINGS.SHORTCUTS.NEW_SEND.LABEL,
@@ -1926,12 +1950,13 @@ else
                         'orderable_list',
                         T.SETTINGS.FX_TYPE_ORDER.LABEL, T.SETTINGS.FX_TYPE_ORDER.HINT,
                         { app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility })
-                    
+
                     ImGui.SeparatorText(ctx, 'Tags and Favorites')
-                    
+
                     -- Export button
-                    if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, {label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL}) then
-                        local rv, filename = reaper.JS_Dialog_BrowseForSaveFile('Export Tags & Favorites', '', '', 'Scout Tags files (*.scout)\0*.scout\0\0')
+                    if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL }) then
+                        local rv, filename = reaper.JS_Dialog_BrowseForSaveFile('Export Tags & Favorites', '', '',
+                            'Scout Tags files (*.scout)\0*.scout\0\0')
                         if rv and filename then
                             local success, errorMsg = app.tags:export(filename)
                             if success then
@@ -1942,16 +1967,19 @@ else
                         end
                     end
                     -- app:setHoveredHint('settings', T.SETTINGS.EXPORT_TAGS.HINT)
-                    
+
                     -- Import button
-                    local mergeMode = ImGui.IsKeyDown(ctx, ImGui.Key_LeftShift) or ImGui.IsKeyDown(ctx, ImGui.Key_RightShift)
-                    local importButtonText = mergeMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE or T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL
-                    if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, {label = importButtonText}) then
+                    local mergeMode = ImGui.IsKeyDown(ctx, ImGui.Key_LeftShift) or
+                        ImGui.IsKeyDown(ctx, ImGui.Key_RightShift)
+                    local importButtonText = mergeMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE or
+                        T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL
+                    if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText }) then
                         local rv, filename = reaper.GetUserFileNameForRead('', 'Import Tags & Favorites', 'scout')
                         if rv and filename then
                             local success, skippedAssets, mappedCount, skippedCount = app.tags:import(filename, mergeMode)
                             if success then
-                                local msg = string.format('Import successful: %d assets mapped, %d assets skipped', mappedCount or 0, skippedCount or 0)
+                                local msg = string.format('Import successful: %d assets mapped, %d assets skipped',
+                                    mappedCount or 0, skippedCount or 0)
                                 if mergeMode then
                                     msg = msg .. ' (merged with existing data)'
                                 end
@@ -1962,7 +1990,7 @@ else
                         end
                     end
                     app:setHoveredHint('settings', T.SETTINGS.IMPORT_TAGS.HINT)
-                    
+
                     app.draw.hint(ctx, 'settings')
                     app:drawMsg()
                     if app.temp.captureCounter > 3 and OD_IsGlobalKeyDown(OD_KEYCODES.ESCAPE) then
@@ -2053,10 +2081,12 @@ else
                     if not ImGui.IsPopupOpen(ctx, 'Are you sure?') then
                         ImGui.OpenPopup(ctx, 'Are you sure?')
                     end
-                    local open, confirm = app.draw.popup(app.gui.ctx, 'Are you sure?', 'You selected '..app.temp.confirmMultipleResults.count.. ' items.\nAre you sure you want to continue?')
+                    local open, confirm = app.draw.popup(app.gui.ctx, 'Are you sure?',
+                        'You selected ' ..
+                        app.temp.confirmMultipleResults.count .. ' items.\nAre you sure you want to continue?')
                     if confirm then
                         app.flow.handleSelectedResults(ctx, app.temp.confirmMultipleResults.resultContext,
-                        app.temp.confirmMultipleResults.contextData, true)
+                            app.temp.confirmMultipleResults.contextData, true)
                     end
                     if not open then
                         app.temp.confirmMultipleResults = nil

@@ -19,6 +19,10 @@ T.SETTINGS = {
             LABEL = 'Close script',
             HINT = 'Shortcut to close script.',
         },
+        HARD_CLOSE_SCRIPT = {
+            LABEL = 'Hard Close script',
+            HINT = 'Shortcut to hard close script (without persistant mode).',
+        },
         NEW_SEND = {
             LABEL = 'New send',
             HINT = 'Shortcut to create a new send.',

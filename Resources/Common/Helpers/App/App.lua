@@ -1,6 +1,4 @@
 -- @noindex
-package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
-ImGui = require 'imgui' '0.9.1'
 
 -- ! OD_App
 OD_App = {

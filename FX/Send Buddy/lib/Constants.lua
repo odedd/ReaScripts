@@ -1,6 +1,4 @@
 -- @noindex
-package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
-ImGui = require 'imgui' '0.9.1'
 
 -- ! CONSTANTS
 DB_SCALE = math.log(10.0) * 0.05
