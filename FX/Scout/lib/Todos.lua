@@ -4,7 +4,6 @@
 -- THOUGHTS and TODOS -----------------
 ---------------------------------------
 
--- TODO: Include Export/Import in settings window
 -- TODO: Presets
 -- TODO: Keyboard shortcuts for presets/filters
 -- TODO: Create actions for presets/filters
