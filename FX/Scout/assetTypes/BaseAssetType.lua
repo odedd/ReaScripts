@@ -135,8 +135,36 @@ BaseAssetType.assetActions = {
         -- Use the unified special groups marking function to handle group reassignment
         self.db:markSpecialGroups()
         self.db:sortAssets()
-        self.context.flow.filterResults()
+        self.context.flow.filterResultsWithTargets(nil, {self})  -- Use multi-target to maintain selection on this asset
         return self.favorite == true
+    end,
+    -- Batch toggle favorites for multiple assets (more efficient than calling toggleFavorite multiple times)
+    batchToggleFavorites = function(self, assets, willFavorite)
+        local favorites = self.context.tags.current.favorites
+        local changed = false
+        
+        for _, asset in ipairs(assets) do
+            local key = asset.type .. ' ' .. asset.load
+            if willFavorite and not asset.favorite then
+                table.insert(favorites, 1, key)
+                asset.favorite = true
+                changed = true
+            elseif not willFavorite and asset.favorite then
+                OD_RemoveValue(favorites, key)
+                asset.favorite = false
+                changed = true
+            end
+        end
+        
+        if changed then
+            self.context.tags:save()
+            -- Use the unified special groups marking function to handle group reassignment
+            self.db:markSpecialGroups()
+            self.db:sortAssets()
+            -- Don't call filterResults here - let the caller handle it with target assets
+        end
+        
+        return changed
     end,
     moveFavorite = function(self, targetPosition)
         local favorite = self.context.tags.current.favorites
@@ -183,6 +211,7 @@ BaseAssetType.assetActions = {
         self.context.tags:save()
         self.db:markSpecialGroups()
         self.db:sortAssets()
+        self.context.flow.filterResultsWithTargets(nil, {self})  -- Use multi-target to maintain selection on this asset
 
         self.context.logger:logDebug('Moved favorite "' ..
             key .. '" from position ' .. currentPosition .. ' to position ' .. targetPosition)
@@ -200,7 +229,7 @@ BaseAssetType.assetActions = {
         -- Use the unified special groups marking function
         self.db:markSpecialGroups()
         self.db:sortAssets()
-        self.context.flow.filterResults()
+        self.context.flow.filterResultsWithTargets(nil, {self})  -- Use multi-target to maintain selection on this asset
     end,
     addTag = function(self, tag, saveToDB)
         local save
@@ -246,6 +275,8 @@ function BaseAssetType:createAssetBase(params)
         removeTag = self.assetActions.removeTag,
         execute = self:addToRecentsAndExecute(),
         toggleFavorite = self.assetActions.toggleFavorite,
+        batchToggleFavorites = self.assetActions.batchToggleFavorites,
+        moveFavorite = self.assetActions.moveFavorite,
         addToRecents = self.assetActions.addToRecents
     }
 end

@@ -14,3 +14,5 @@
 -- TODO: Reset filter button
 -- TODO: Better visual representation of search mode
 -- TODO: minimal mode (?)
+-- TODO: do something about horizontal scroll for long results
+-- TODO: Add tooltips to results with tag information

@@ -187,7 +187,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 app.temp.searchInput = ''
                 app.flow.filterResults(filter or { text = '' })
             end,
-            filterResults = function(query, skipReset)
+            filterResults = function(query, skipReset, targetAsset)
                 local reset = (skipReset == nil) and true or (not skipReset)
                 local oldResults, oldKeyboardPosResult
                 if not reset then
@@ -309,11 +309,28 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     ::skip::
                 end
                 if reset then
-                    -- make the first result selected and set the keyboard position to it
-                    if #app.temp.searchResults > 0 then
-                        app.selection:selectOnly(1)
+                    -- Handle target asset selection first
+                    if targetAsset and #app.temp.searchResults > 0 then
+                        local targetIndex = nil
+                        for i, result in ipairs(app.temp.searchResults) do
+                            if result == targetAsset then
+                                targetIndex = i
+                                break
+                            end
+                        end
+                        if targetIndex then
+                            app.selection:selectOnly(targetIndex)
+                        else
+                            -- Target asset not found in results, fall back to first result
+                            app.selection:selectOnly(1)
+                        end
                     else
-                        app.selection:empty()
+                        -- Default behavior: make the first result selected and set the keyboard position to it
+                        if #app.temp.searchResults > 0 then
+                            app.selection:selectOnly(1)
+                        else
+                            app.selection:empty()
+                        end
                     end
                 else
                     app.selection:empty()
@@ -325,6 +342,164 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                 break
                             end
                         end
+                    end
+                end
+            end,
+            -- Helper function to filter results while maintaining selection on a specific asset
+            filterResultsWithTarget = function(query, targetAsset)
+                app.flow.filterResults(query, false, targetAsset)
+            end,
+            -- Helper function to filter results while maintaining selection on multiple target assets
+            filterResultsWithTargets = function(query, targetAssets)
+                local reset = true
+                local oldResults, oldKeyboardPosResult
+                if not reset then
+                    oldResults = app.selection:results()
+                    oldKeyboardPosResult = oldResults[app.selection.keyboardPos]
+                end
+                query = OD_DeepCopy(query) or {}
+                if query.clear then
+                    app.temp.searchInput = ''
+                    app.temp.filter = {}
+                end
+                if query.clearText then
+                    app.temp.searchInput = ''
+                    app.temp.filter.text = ''
+                end
+                query.text = query.text or app.temp.filter.text or ''
+                app.temp.searchResults = {}
+
+                -- Prepare filter
+                local filter = app.temp.filter or {}
+                filter.text = query.text:gsub('%s+', ' ')
+                filter.tags = filter.tags or {}
+
+                -- Add/remove tags
+                if query.addTags then
+                    for tagId, positive in pairs(query.addTags) do
+                        filter.tags[tagId] = positive
+                    end
+                end
+                if query.removeTags then
+                    for _, tagId in ipairs(query.removeTags) do
+                        filter.tags[tagId] = nil
+                    end
+                end
+
+                -- Other filter fields
+                for queryType, queryValue in pairs(query) do
+                    if queryType ~= 'text' and queryType ~= 'addTags' and queryType ~= 'removeTags' then
+                        filter[queryType] = (queryValue ~= 'all') and queryValue or nil
+                    end
+                end
+                app.temp.filter = filter
+
+                -- Filtering assets
+                local assets = app.temp.searchMode == SEARCH_MODE.MAIN and app.db.assets or app.db.filterAssets
+                local tagsTable = app.db.tags
+                local filterTags = filter.tags
+                local filterText = filter.text:lower()
+
+                for i = 1, #assets do
+                    local asset = assets[i]
+                    if app.temp.searchMode == SEARCH_MODE.MAIN then
+                        -- Type filters
+                        if (filter.type and asset.type ~= filter.type)
+                            or (filter.fx_type and asset.fx_type ~= filter.fx_type)
+                            or (filter.fxDeveloper and (not asset.vendor or asset.vendor ~= filter.fxDeveloper))
+                            or (filter.fxFolderId and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInFolder(filter.fxFolderId)))
+                            or (filter.fxCategory and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInCategory(filter.fxCategory)))
+                        then
+                            goto skip
+                        end
+
+                        -- Tag filters
+                        for tagId, positive in pairs(filterTags) do
+                            local hasValue = OD_HasValue(asset.tags, tagId)
+                            if not hasValue then
+                                local tag = tagsTable[tagId]
+                                if tag and tag.descendants then
+                                    for d = 1, #tag.descendants do
+                                        if OD_HasValue(asset.tags, tag.descendants[d].id) then
+                                            hasValue = true
+                                            break
+                                        end
+                                    end
+                                end
+                            end
+                            if (positive and not hasValue) or (not positive and hasValue) then
+                                goto skip
+                            end
+                        end
+                    end
+                    -- Text filter
+                    local foundIndexes = {}
+                    local allWordsFound = true
+                    local filterWords = {}
+                    for word in filterText:gmatch("%S+") do
+                        table.insert(filterWords, word)
+                    end
+
+                    -- Pre-lowercase asset searchText if not already done
+                    if not asset._searchTextLower then
+                        asset._searchTextLower = {}
+                        for j = 1, #asset.searchText do
+                            asset._searchTextLower[j] = asset.searchText[j].text:lower()
+                        end
+                    end
+
+                    for _, word in ipairs(filterWords) do
+                        local wordFound = false
+                        for j = 1, #asset._searchTextLower do
+                            local assetWordLower = asset._searchTextLower[j]
+                            local pos = string.find(assetWordLower, word, 1, true)
+                            if pos then
+                                foundIndexes[j] = foundIndexes[j] or {}
+                                table.insert(foundIndexes[j], { from = pos, to = pos + #word - 1, order = pos })
+                                wordFound = true
+                            end
+                        end
+                        if not wordFound then
+                            allWordsFound = false
+                            break
+                        end
+                    end
+
+                    if allWordsFound then
+                        asset.foundIndexes = foundIndexes
+                        app.temp.searchResults[#app.temp.searchResults + 1] = asset
+                    end
+                    ::skip::
+                end
+                
+                -- Handle multiple target assets selection
+                app.selection:empty()
+                local firstTargetIndex = nil
+                if targetAssets and #targetAssets > 0 and #app.temp.searchResults > 0 then
+                    for i, result in ipairs(app.temp.searchResults) do
+                        for _, targetAsset in ipairs(targetAssets) do
+                            if result == targetAsset then
+                                app.selection:add(i)
+                                if not firstTargetIndex then
+                                    firstTargetIndex = i
+                                end
+                                break
+                            end
+                        end
+                    end
+                    
+                    if firstTargetIndex then
+                        app.selection:setKeyboardPos(firstTargetIndex)
+                    elseif #app.temp.searchResults > 0 then
+                        -- Fallback to first result if no targets found
+                        app.selection:selectOnly(1)
+                    end
+                else
+                    -- Default behavior: make the first result selected and set the keyboard position to it
+                    if #app.temp.searchResults > 0 then
+                        app.selection:selectOnly(1)
+                    else
+                        app.selection:empty()
                     end
                 end
             end,
@@ -777,7 +952,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                     app.selection.keyboardPos - maxSearchResults, 1)
                             end
                             if newIdx then
-                                if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) or OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
+                                if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) or ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl) then
                                     app.selection:selectRange(app.selection.keyboardPos, newIdx)
                                 else
                                     app.selection:selectOnly(newIdx)
@@ -1027,7 +1202,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                             if ImGui.Selectable(ctx, '', app.selection:has(row.index) or app.temp.highlightDropAreaFor == row.index, selectableFlags, 0, 0) then
                                                 if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
                                                     app.selection:selectRange(app.selection.keyboardPos, row.index)
-                                                elseif OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
+                                                elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl) then
                                                     if app.selection:toggle(row.index) then
                                                         app.selection.keyboardPos = row.index
                                                     end
@@ -1043,7 +1218,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                                             app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.ALT)
                                                         elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
                                                             app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.SHIFT)
-                                                        elseif OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
+                                                        elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl) then
                                                             app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.CTRL)
                                                         else
                                                             app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.MAIN)
@@ -1701,7 +1876,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                     app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.ALT)
                                 elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
                                     app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.SHIFT)
-                                elseif OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Super) or (not OS_is.mac and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
+                                elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl) then
                                     app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.CTRL)
                                 else
                                     app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.MAIN)
@@ -1714,15 +1889,19 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         elseif app.guiHelpers.isShortcutPressed('hardCloseScript', true) then
                             app.hardExit = true
                         elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.guiHelpers.isShortcutPressed('markFavorite', true) and app.selection.keyboardPos then
-                            local result = app.temp.searchResults[app.selection.keyboardPos]
-                            local fav = result:toggleFavorite()
-                            -- app.flow.filterResults()
-                            if fav then
-                                for i = 1, #app.temp.searchResults do
-                                    if app.temp.searchResults[i] == result then
-                                        app.selection:selectOnly(app.selection.keyboardPos)
-                                        break
-                                    end
+                            -- Toggle favorite status for all selected assets
+                            local selectedResults = app.selection:results()
+                            if #selectedResults > 0 then
+                                -- Use the first selected asset to determine the action (favorite or unfavorite)
+                                local firstResult = selectedResults[1]
+                                local willFavorite = not firstResult.favorite
+                                
+                                -- Use the batch operation for efficiency
+                                local changed = firstResult:batchToggleFavorites(selectedResults, willFavorite)
+                                
+                                if changed then
+                                    -- Use filterResultsWithTargets to maintain selection on all affected assets
+                                    app.flow.filterResultsWithTargets(nil, selectedResults)
                                 end
                             end
                         end
