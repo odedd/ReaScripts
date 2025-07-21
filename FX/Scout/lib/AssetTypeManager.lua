@@ -4,37 +4,41 @@
 -- Asset Actions - shared functions for all asset types
 local assetActions = {
     toggleFavorite = function(self)
-        local favorite = self.db.app.tags.current.favorites
+        local favorites = self.db.app.tags.current.favorites
         local key = self.type .. ' ' .. self.load
-        if OD_HasValue(favorite, key) then
-            OD_RemoveValue(favorite, key)
+        if OD_HasValue(favorites, key) then
+            OD_RemoveValue(favorites, key)
             self.group = self.originalGroup
             self.originalGroup = nil
+            self.favorite = false
         else
-            table.insert(favorite, 1, key)
+            table.insert(favorites, 1, key)
             self.originalGroup = self.group
             self.group = SPECIAL_GROUPS.FAVORITES
+            self.favorite = true
         end
         self.db.app.tags:save()
         self.db:sortAssets()
+        self.db.app.flow.filterResults()
         return self.group == SPECIAL_GROUPS.FAVORITES
     end,
     moveFavorite = function(self, targetPosition)
         local favorite = self.db.app.tags.current.favorites
         local key = self.type .. ' ' .. self.load
-        
+
         -- Check if this asset is actually a favorite
         if not OD_HasValue(favorite, key) then
             self.db.app.logger:logError('Cannot move non-favorite asset: ' .. key)
             return false
         end
-        
+
         -- Validate target position
         if targetPosition < 1 or targetPosition > #favorite then
-            self.db.app.logger:logError('Invalid target position: ' .. targetPosition .. ' (must be between 1 and ' .. #favorite .. ')')
+            self.db.app.logger:logError('Invalid target position: ' ..
+                targetPosition .. ' (must be between 1 and ' .. #favorite .. ')')
             return false
         end
-        
+
         -- Find current position
         local currentPosition = nil
         for i, favoriteId in ipairs(favorite) do
@@ -43,28 +47,56 @@ local assetActions = {
                 break
             end
         end
-        
+
         if not currentPosition then
             self.db.app.logger:logError('Could not find current position for favorite: ' .. key)
             return false
         end
-        
+
         -- If already at target position, nothing to do
         if currentPosition == targetPosition then
             return true
         end
-        
+
         -- Remove from current position
         table.remove(favorite, currentPosition)
-        
+
         -- Insert at target position
         table.insert(favorite, targetPosition, key)
-        
+
         self.db.app.tags:save()
         self.db:sortAssets()
-        
-        self.db.app.logger:logDebug('Moved favorite "' .. key .. '" from position ' .. currentPosition .. ' to position ' .. targetPosition)
+
+        self.db.app.logger:logDebug('Moved favorite "' ..
+            key .. '" from position ' .. currentPosition .. ' to position ' .. targetPosition)
         return true
+    end,
+    addToRecents = function(self)
+        local recents = self.db.app.tags.current.recents
+        local key = self.type .. ' ' .. self.load
+        if OD_HasValue(recents, key) then
+            OD_RemoveValue(recents, key)
+        end
+        table.insert(recents, 1, key)
+        self.originalGroup = self.group
+        self.group = SPECIAL_GROUPS.RECENTS
+        local recentsToDelete = {}
+        while #recents > 10 do
+            table.insert(recentsToDelete, recents[#recents])
+            table.remove(recents, #recents)
+        end
+        for _, asset in ipairs(self.db.assets) do
+            for i, recentId in ipairs(recentsToDelete) do
+                if recentId == asset.id then
+                    asset.group = asset.originalGroup
+                    asset.recentOrder = nil -- Store the position in recents array
+                end
+            end
+        end
+        self.db.app.tags:save()
+        self.db:markRecents()
+        self.db:sortAssets()
+        self.db.app.flow.filterResults()
     end,
     addTag = function(self, tag, saveToDB)
         local save
@@ -104,25 +136,28 @@ function AssetTypeManager:new(db)
     local context = {
         -- Logger access
         logger = db.app.logger,
-        
+
         -- Asset actions (shared functions)
         assetActions = assetActions,
-        
+
         -- Settings access
         settings = db.app.settings,
-        
+
+        -- temp objects access
+        temp = db.app.temp,
+
         -- GUI context for ImGui operations
         gui = db.app.gui,
-        
+
         -- FX data for plugin categorization
         fxDevelopers = db.fxDevelopers,
         pluginToCategories = db.pluginToCategories,
         pluginToFolders = db.pluginToFolders,
-        
+
         -- Reference back to full db for cases where it's still needed
         db = db
     }
-    
+
     local instance = setmetatable({}, self)
     instance.context = context
     instance.assetTypes = {}
@@ -135,27 +170,27 @@ function AssetTypeManager:loadAssetTypes()
     local info = debug.getinfo(1, "S")
     local scriptPath = info.source:match("@(.*[/\\])") or ""
     local assetTypesPath = scriptPath:gsub("lib[/\\]?$", "") .. "assetTypes/"
-    
+
     self.context.logger:logDebug('Loading asset types from: ' .. assetTypesPath)
-    
+
     -- Load BaseAssetType first
     dofile(assetTypesPath .. 'BaseAssetType.lua')
-    
+
     -- Load manifest to get the list of modules and their IDs
     local manifestPath = assetTypesPath .. 'manifest.lua'
     local assetTypeDefinitions = dofile(manifestPath)
-    
+
     self.context.logger:logDebug('Loaded manifest with ' .. #assetTypeDefinitions .. ' asset types')
-    
+
     -- Load each module file according to manifest
     for _, definition in ipairs(assetTypeDefinitions) do
         self.context.logger:logDebug('Loading module: ' .. definition.file .. ' (ID: ' .. definition.id .. ')')
         dofile(assetTypesPath .. definition.file)
     end
-    
+
     -- Store the manifest definitions for ordering and reference
     self.manifestDefinitions = assetTypeDefinitions
-    
+
     -- Create instances of all asset types
     self:createAssetTypeInstances()
 end
@@ -163,25 +198,26 @@ end
 function AssetTypeManager:createAssetTypeInstances()
     -- Initialize asset type instances with focused context
     self.context.logger:logDebug('Creating asset type instances')
-    
+
     -- Create a mapping from filename to manifest order for filter ordering
     local filenameToOrder = {}
     for i, definition in ipairs(self.manifestDefinitions) do
         filenameToOrder[definition.file] = i
     end
-    
+
     for _, definition in ipairs(self.manifestDefinitions) do
         -- Derive class name from filename: "PluginAssetType.lua" -> "PluginAssetType"
         local className = definition.file:match("(.+)%.lua$")
-        local AssetTypeClass = _G[className]  -- Get from global namespace
-        
+        local AssetTypeClass = _G[className] -- Get from global namespace
+
         if AssetTypeClass then
             local instance = AssetTypeClass.new(AssetTypeClass, self.context)
-            
+
             -- Set filterOrder based on manifest order
             instance.filterOrder = filenameToOrder[definition.file]
-            self.context.logger:logDebug('Set filterOrder=' .. instance.filterOrder .. ' for ' .. className .. ' (ID: ' .. definition.id .. ')')
-            
+            self.context.logger:logDebug('Set filterOrder=' ..
+                instance.filterOrder .. ' for ' .. className .. ' (ID: ' .. definition.id .. ')')
+
             table.insert(self.assetTypes, instance)
             self.context.logger:logDebug('Created instance: ' .. (instance.name or className))
         else
@@ -212,24 +248,24 @@ end
 
 function AssetTypeManager:buildFilterMenu()
     local filterMenu = {}
-    
+
     for _, assetType in ipairs(self.assetTypes) do
         local menuEntry = assetType:getFilterMenuEntry()
         for key, value in pairs(menuEntry) do
             filterMenu[key] = value
         end
     end
-    
+
     return filterMenu
 end
 
 function AssetTypeManager:assembleAllAssets()
     local assets = {}
     local count = 0
-    
+
     for _, assetType in ipairs(self.assetTypes) do
         local assetData = assetType:getDataWithLogging()
-        
+
         for _, data in ipairs(assetData) do
             local asset = assetType:assembleAsset(data)
             if asset then -- Asset may be nil if filtered out (e.g., plugin visibility)
@@ -238,14 +274,6 @@ function AssetTypeManager:assembleAllAssets()
             end
         end
     end
-    
-    return assets, count
-end
 
-function AssetTypeManager:executeAsset(asset, context, contextData)
-    if asset.execute then
-        asset:execute(context, contextData)
-    else
-        self.context.logger:logError('Asset has no execute function: ' .. tostring(asset.type))
-    end
+    return assets, count
 end

@@ -603,10 +603,32 @@ DB.markFavorites = function(self)
             asset.originalGroup = asset.group
             asset.group = SPECIAL_GROUPS.FAVORITES
             asset.favoriteOrder = favoriteIndex  -- Store the position in favorites array
+            asset.favorite = true
             favoriteCount = favoriteCount + 1
         end
     end
     self.app.logger:logDebug('Marked favorites', favoriteCount)
+end
+DB.markRecents = function(self)
+    self.app.logger:logDebug('-- DB.markRecents()')
+    local recentCount = 0
+    for _, asset in ipairs(self.assets) do
+        local recentIndex = nil
+        for i, recentId in ipairs(self.app.tags.current.recents) do
+            if recentId == asset.id then
+                recentIndex = i
+                break
+            end
+        end
+        
+        if recentIndex then
+            asset.originalGroup = asset.group
+            asset.group = SPECIAL_GROUPS.RECENTS
+            asset.recentOrder = recentIndex  -- Store the position in recents array
+            recentCount = recentCount + 1
+        end
+    end
+    self.app.logger:logDebug('Marked recents', recentCount)
 end
 
 DB.tagAssets = function(self)
@@ -633,6 +655,7 @@ DB.assembleAssets = function(self)
 
     self:tagAssets()
     self:markFavorites()
+    self:markRecents()
     self:sortAssets()
     self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
 end
@@ -861,6 +884,9 @@ DB.sortAssets = function(self)
             -- Special handling for favorites: sort by favoriteOrder instead of alphabetically
             if a.group == SPECIAL_GROUPS.FAVORITES and b.group == SPECIAL_GROUPS.FAVORITES then
                 return (a.favoriteOrder or 0) < (b.favoriteOrder or 0)
+            -- Special handling for recents: sort by recentOrder instead of alphabetically
+            elseif a.group == SPECIAL_GROUPS.RECENTS and b.group == SPECIAL_GROUPS.RECENTS then
+                return (a.recentOrder or 0) < (b.recentOrder or 0)
             else
                 return a.searchText[1].text < b.searchText[1].text
             end
