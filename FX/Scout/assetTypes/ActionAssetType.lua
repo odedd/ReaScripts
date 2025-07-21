@@ -52,7 +52,7 @@ function ActionAssetType:getExecuteFunction()
         
         -- If load is a named command ID (string), convert to numeric
         if type(commandId) == "string" then
-            commandId = reaper.NamedCommandLookup(commandId)
+            commandId = reaper.NamedCommandLookup('_'..commandId)
             if commandId == 0 then
                 self.context.logger:logError('Named command not found: ' .. self.load)
                 return
