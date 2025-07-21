@@ -73,13 +73,14 @@ SPECIAL_GROUPS = {
     RECENTS = 'Recents'         -- For future use
 }
 
+-- should be negative to differentiate them from regular assets
 FILTER_TYPES = {
-    TYPE = 1,
-    FX_TYPE = 2,
-    CATEGORY = 3,
-    FOLDER = 4,
-    DEVELOPER = 5,
-    TAG = 6,
+    TYPE = -1,
+    FX_TYPE = -2,
+    CATEGORY = -3,
+    FOLDER = -4,
+    DEVELOPER = -5,
+    TAG = -6,
 }
 
 FILTER_MENU = {
