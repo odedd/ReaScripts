@@ -2,131 +2,6 @@
 -- Asset Type Manager
 
 -- Asset Actions - shared functions for all asset types
-local assetActions = {
-    toggleFavorite = function(self)
-        local favorites = self.db.app.tags.current.favorites
-        local key = self.type .. ' ' .. self.load
-        if OD_HasValue(favorites, key) then
-            OD_RemoveValue(favorites, key)
-            self.group = self.originalGroup
-            self.originalGroup = nil
-            self.favorite = false
-        else
-            table.insert(favorites, 1, key)
-            self.originalGroup = self.group
-            self.group = SPECIAL_GROUPS.FAVORITES
-            self.favorite = true
-        end
-        self.db.app.tags:save()
-        self.db:sortAssets()
-        self.db.app.flow.filterResults()
-        return self.group == SPECIAL_GROUPS.FAVORITES
-    end,
-    moveFavorite = function(self, targetPosition)
-        local favorite = self.db.app.tags.current.favorites
-        local key = self.type .. ' ' .. self.load
-
-        -- Check if this asset is actually a favorite
-        if not OD_HasValue(favorite, key) then
-            self.db.app.logger:logError('Cannot move non-favorite asset: ' .. key)
-            return false
-        end
-
-        -- Validate target position
-        if targetPosition < 1 or targetPosition > #favorite then
-            self.db.app.logger:logError('Invalid target position: ' ..
-                targetPosition .. ' (must be between 1 and ' .. #favorite .. ')')
-            return false
-        end
-
-        -- Find current position
-        local currentPosition = nil
-        for i, favoriteId in ipairs(favorite) do
-            if favoriteId == key then
-                currentPosition = i
-                break
-            end
-        end
-
-        if not currentPosition then
-            self.db.app.logger:logError('Could not find current position for favorite: ' .. key)
-            return false
-        end
-
-        -- If already at target position, nothing to do
-        if currentPosition == targetPosition then
-            return true
-        end
-
-        -- Remove from current position
-        table.remove(favorite, currentPosition)
-
-        -- Insert at target position
-        table.insert(favorite, targetPosition, key)
-
-        self.db.app.tags:save()
-        self.db:sortAssets()
-
-        self.db.app.logger:logDebug('Moved favorite "' ..
-            key .. '" from position ' .. currentPosition .. ' to position ' .. targetPosition)
-        return true
-    end,
-    addToRecents = function(self)
-        local recents = self.db.app.tags.current.recents
-        local key = self.type .. ' ' .. self.load
-        if OD_HasValue(recents, key) then
-            OD_RemoveValue(recents, key)
-        end
-        table.insert(recents, 1, key)
-        self.originalGroup = self.group
-        self.group = SPECIAL_GROUPS.RECENTS
-        local recentsToDelete = {}
-        while #recents > 10 do
-            table.insert(recentsToDelete, recents[#recents])
-            table.remove(recents, #recents)
-        end
-        for _, asset in ipairs(self.db.assets) do
-            for i, recentId in ipairs(recentsToDelete) do
-                if recentId == asset.id then
-                    asset.group = asset.originalGroup
-                    asset.recentOrder = nil -- Store the position in recents array
-                end
-            end
-        end
-        self.db.app.tags:save()
-        self.db:markRecents()
-        self.db:sortAssets()
-        self.db.app.flow.filterResults()
-    end,
-    addTag = function(self, tag, saveToDB)
-        local save
-        if save == nil then
-            save = true
-        else
-            save = saveToDB
-        end
-        if not OD_HasValue(self.tags, tag.id) then
-            table.insert(self.tags, tag.id)
-            self.db.app.tags.current.taggedAssets[self.id] = self.db.app.tags.current.taggedAssets[self.id] or {}
-            table.insert(self.db.app.tags.current.taggedAssets[self.id], tag.id)
-            if save then self.db.app.tags:save() end
-        end
-    end,
-    removeTag = function(self, tag, saveToDB)
-        local save
-        if save == nil then
-            save = true
-        else
-            save = saveToDB
-        end
-        if OD_HasValue(self.tags, tag.id) then
-            OD_RemoveValue(self.tags, tag.id)
-            OD_RemoveValue(self.db.app.tags.current.taggedAssets[self.id], tag.id)
-            if not next(self.db.app.tags.current.taggedAssets[self.id]) then self.db.app.tags.current.taggedAssets[self.id] = nil end
-            if save then self.db.app.tags:save() end
-        end
-    end
-}
 
 AssetTypeManager = {}
 AssetTypeManager.__index = AssetTypeManager
@@ -137,11 +12,14 @@ function AssetTypeManager:new(db)
         -- Logger access
         logger = db.app.logger,
 
-        -- Asset actions (shared functions)
-        assetActions = assetActions,
-
         -- Settings access
         settings = db.app.settings,
+
+        -- Tags access
+        tags = db.app.tags,
+        
+        -- flow access
+        flow = db.app.flow,
 
         -- temp objects access
         temp = db.app.temp,

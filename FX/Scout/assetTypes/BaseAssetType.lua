@@ -52,21 +52,22 @@ function BaseAssetType:getExecuteFunction()
     error("BaseAssetType:getExecuteFunction() must be implemented by subclass")
 end
 
-function BaseAssetType:executeWrapper()
+function BaseAssetType:addToRecentsAndExecute()
     local assetType = self -- Capture the asset type instance
     return function(asset, ...)
         -- Handle addToRecents first
         if asset.addToRecents then
             asset:addToRecents()
         end
-        
+
         -- Get the execute function from the asset type
         local executeFunction = assetType:getExecuteFunction()
         if executeFunction then
             -- Pass through all arguments (context, contextData, and any additional params)
             return executeFunction(asset, ...)
         else
-            assetType.context.logger:logError('No execute function available for asset type: ' .. (assetType.name or 'Unknown'))
+            assetType.context.logger:logError('No execute function available for asset type: ' ..
+                (assetType.name or 'Unknown'))
         end
     end
 end
@@ -102,6 +103,137 @@ function BaseAssetType:createStandardConstructor(name, group)
     end
 end
 
+BaseAssetType.assetActions = {
+    toggleFavorite = function(self)
+        local favorites = self.context.tags.current.favorites
+        local key = self.type .. ' ' .. self.load
+        if OD_HasValue(favorites, key) then
+            OD_RemoveValue(favorites, key)
+            if self.recentOrder == nil then
+                self.group = self.originalGroup
+                self.originalGroup = nil
+            end
+            self.favorite = false
+        else
+            table.insert(favorites, 1, key)
+            if self.recentOrder == nil then
+                self.originalGroup = self.originalGroup or self.group
+                self.group = SPECIAL_GROUPS.FAVORITES
+            end
+            self.favorite = true
+        end
+        self.context.tags:save()
+        self.db:sortAssets()
+        self.context.flow.filterResults()
+        return self.group == SPECIAL_GROUPS.FAVORITES
+    end,
+    moveFavorite = function(self, targetPosition)
+        local favorite = self.context.tags.current.favorites
+        local key = self.type .. ' ' .. self.load
+
+        -- Check if this asset is actually a favorite
+        if not OD_HasValue(favorite, key) then
+            self.context.logger:logError('Cannot move non-favorite asset: ' .. key)
+            return false
+        end
+
+        -- Validate target position
+        if targetPosition < 1 or targetPosition > #favorite then
+            self.context.logger:logError('Invalid target position: ' ..
+                targetPosition .. ' (must be between 1 and ' .. #favorite .. ')')
+            return false
+        end
+
+        -- Find current position
+        local currentPosition = nil
+        for i, favoriteId in ipairs(favorite) do
+            if favoriteId == key then
+                currentPosition = i
+                break
+            end
+        end
+
+        if not currentPosition then
+            self.context.logger:logError('Could not find current position for favorite: ' .. key)
+            return false
+        end
+
+        -- If already at target position, nothing to do
+        if currentPosition == targetPosition then
+            return true
+        end
+
+        -- Remove from current position
+        table.remove(favorite, currentPosition)
+
+        -- Insert at target position
+        table.insert(favorite, targetPosition, key)
+
+        self.context.tags:save()
+        self.db:sortAssets()
+
+        self.context.logger:logDebug('Moved favorite "' ..
+            key .. '" from position ' .. currentPosition .. ' to position ' .. targetPosition)
+        return true
+    end,
+    addToRecents = function(self)
+        local recents = self.context.tags.current.recents
+        local key = self.type .. ' ' .. self.load
+        if OD_HasValue(recents, key) then
+            OD_RemoveValue(recents, key)
+        end
+        table.insert(recents, 1, key)
+        self.originalGroup = self.originalGroup or self.group
+        self.group = SPECIAL_GROUPS.RECENTS
+        local recentsToDelete = {}
+        while #recents > 10 do
+            table.insert(recentsToDelete, recents[#recents])
+            table.remove(recents, #recents)
+        end
+        for _, asset in ipairs(self.db.assets) do
+            for i, recentId in ipairs(recentsToDelete) do
+                if recentId == asset.id then
+                    asset.group = asset.originalGroup
+                    asset.originalGroup = nil
+                    asset.recentOrder = nil -- Store the position in recents array
+                end
+            end
+        end
+        self.context.tags:save()
+        self.db:markRecents()
+        self.db:sortAssets()
+        self.context.flow.filterResults()
+    end,
+    addTag = function(self, tag, saveToDB)
+        local save
+        if save == nil then
+            save = true
+        else
+            save = saveToDB
+        end
+        if not OD_HasValue(self.tags, tag.id) then
+            table.insert(self.tags, tag.id)
+            self.context.tags.current.taggedAssets[self.id] = self.context.tags.current.taggedAssets[self.id] or {}
+            table.insert(self.context.tags.current.taggedAssets[self.id], tag.id)
+            if save then self.context.tags:save() end
+        end
+    end,
+    removeTag = function(self, tag, saveToDB)
+        local save
+        if save == nil then
+            save = true
+        else
+            save = saveToDB
+        end
+        if OD_HasValue(self.tags, tag.id) then
+            OD_RemoveValue(self.tags, tag.id)
+            OD_RemoveValue(self.context.tags.current.taggedAssets[self.id], tag.id)
+            if not next(self.context.tags.current.taggedAssets[self.id]) then self.context.tags.current.taggedAssets[self.id] = nil end
+            if save then self.context.tags:save() end
+        end
+    end
+}
+
 function BaseAssetType:createAssetBase(params)
     return {
         id = tostring(params.type) .. ' ' .. tostring(params.load),
@@ -112,11 +244,11 @@ function BaseAssetType:createAssetBase(params)
         order = params.order or 0,
         context = self.context,
         db = self.context.db, -- Add db reference for backward compatibility
-        addTag = self.context.assetActions.addTag,
-        removeTag = self.context.assetActions.removeTag,
-        execute = self:executeWrapper(),
-        toggleFavorite = self.context.assetActions.toggleFavorite,
-        addToRecents = self.context.assetActions.addToRecents
+        addTag = self.assetActions.addTag,
+        removeTag = self.assetActions.removeTag,
+        execute = self:addToRecentsAndExecute(),
+        toggleFavorite = self.assetActions.toggleFavorite,
+        addToRecents = self.assetActions.addToRecents
     }
 end
 

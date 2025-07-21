@@ -90,7 +90,8 @@ PB_Settings = OD_Settings:new({
         minFilterPanelWidth = 140,
         lastDockId = nil,
         numberOfResultsThatRequireConfirmation = 10,
-        numberOfTracksThatRequireConfirmation = 6
+        numberOfTracksThatRequireConfirmation = 6,
+        numberOfRecents = 5
     },
     dfsetfile = Scr.dfsetfile
 })
