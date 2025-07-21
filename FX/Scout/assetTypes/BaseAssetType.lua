@@ -55,19 +55,35 @@ end
 function BaseAssetType:addToRecentsAndExecute()
     local assetType = self -- Capture the asset type instance
     return function(asset, ...)
-        -- Handle addToRecents first
-        if asset.addToRecents then
-            asset:addToRecents()
-        end
-
         -- Get the execute function from the asset type
         local executeFunction = assetType:getExecuteFunction()
         if executeFunction then
-            -- Pass through all arguments (context, contextData, and any additional params)
-            return executeFunction(asset, ...)
+            -- Execute first and check if successful
+            local success, result = pcall(executeFunction, asset, ...)
+            
+            if success and result == true then
+                -- Only add to recents if execution was successful AND returned true
+                if asset.addToRecents then
+                    asset:addToRecents()
+                end
+                -- Return the actual result from the execute function
+                return result
+            elseif success then
+                -- Execution didn't throw error but returned false - don't add to recents
+                assetType.context.logger:logDebug('Execution returned false for asset: ' .. 
+                    (asset.searchText and asset.searchText[1] and asset.searchText[1].text or 'Unknown'))
+                return result
+            else
+                -- Log the error and don't add to recents
+                assetType.context.logger:logError('Execution failed for asset: ' .. 
+                    (asset.searchText and asset.searchText[1] and asset.searchText[1].text or 'Unknown') .. 
+                    ' - Error: ' .. tostring(result))
+                return false
+            end
         else
             assetType.context.logger:logError('No execute function available for asset type: ' ..
                 (assetType.name or 'Unknown'))
+            return false
         end
     end
 end

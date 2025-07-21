@@ -98,21 +98,35 @@ function PluginAssetType:getExecuteFunction()
                         resultContext = context,
                         contextData = contextData
                     }
+                -- Return false for confirmation dialog - user hasn't confirmed yet, so don't add to recents
+                return false
             else
+                -- Conditions are good for execution, add all plugins regardless of individual success
                 for i = 1, #tracks do
                     tracks[i]:addInsert(self.load)
                 end
+                return true
             end
         elseif context == RESULT_CONTEXT.ALT then
             local numItems = r.CountMediaItems(0)
+            
             for i = 0, numItems - 1 do
                 local item = r.GetMediaItem(0, i)
                 if r.IsMediaItemSelected(item) then
                     local take = r.GetActiveTake(item)
-                    r.TakeFX_AddByName(take, self.load, 1)
+                    if take then
+                        r.TakeFX_AddByName(take, self.load, 1)
+                    end
                 end
             end
+            
+            -- Always return true for ALT context - user attempted to add to takes
+            -- (regardless of whether there were selected items or takes)
+            return true
         end
+        
+        -- Default return for other contexts
+        return false
     end
 end
 

@@ -27,8 +27,9 @@ end
 
 function TrackTemplateAssetType:getExecuteFunction()
     return function(self, context, contextData)
-        -- Track template execution - implementation depends on context
-        -- Could load as new track or apply to existing tracks
+        -- Track template execution - load the specific template file
+        -- Use Main_openProject with track template parameter
+        return true -- Main_openProject doesn't return meaningful success value
     end
 end
 

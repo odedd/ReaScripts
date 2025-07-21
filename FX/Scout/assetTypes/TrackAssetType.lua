@@ -57,6 +57,8 @@ function TrackAssetType:getExecuteFunction()
     return function(self, context, contextData)
         -- Track execution - currently no default action implemented
         -- Could implement track selection: r.SetOnlyTrackSelected(self.load)
+        -- For now, return true since there's no actual action to fail
+        return true
     end
 end
 

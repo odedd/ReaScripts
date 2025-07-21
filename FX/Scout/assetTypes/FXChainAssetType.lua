@@ -30,10 +30,15 @@ function FXChainAssetType:getExecuteFunction()
         -- FX Chains are typically loaded into tracks like plugins
         if context == RESULT_CONTEXT.MAIN then
             local tracks = self.context.db:getSelectedTracks()
+            -- Conditions are good for execution, add to all tracks regardless of individual success
             for i = 1, #tracks do
                 tracks[i]:addInsert(self.load)
             end
+            return true
         end
+        
+        -- Default return for other contexts
+        return false
     end
 end
 

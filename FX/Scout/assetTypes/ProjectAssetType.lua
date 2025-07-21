@@ -41,6 +41,7 @@ function ProjectAssetType:getExecuteFunction()
     return function(self, context, contextData)
         -- Open the project file in Reaper
         r.Main_openProject("noprompt:" .. self.load)
+        return true
     end
 end
 

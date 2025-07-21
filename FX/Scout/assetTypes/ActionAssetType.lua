@@ -55,11 +55,12 @@ function ActionAssetType:getExecuteFunction()
             commandId = reaper.NamedCommandLookup('_'..commandId)
             if commandId == 0 then
                 self.context.logger:logError('Named command not found: ' .. self.load)
-                return
+                return false
             end
         end
         
         r.Main_OnCommand(commandId, 0)
+        return true
     end
 end
 
