@@ -89,11 +89,19 @@ function PluginAssetType:getData()
 end
 
 function PluginAssetType:getExecuteFunction()
-    return function(self, context, contextData)
+    return function(self, context, contextData, confirm)
         if context == RESULT_CONTEXT.MAIN then
             local tracks = self.context.db:getSelectedTracks()
-            for i = 1, #tracks do
-                tracks[i]:addInsert(self.load)
+            if #tracks > self.context.settings.current.numberOfTracksThatRequireConfirmation and confirm ~= true then
+                self.context.temp.confirmMultipleTracks = {
+                        count = #tracks,
+                        resultContext = context,
+                        contextData = contextData
+                    }
+            else
+                for i = 1, #tracks do
+                    tracks[i]:addInsert(self.load)
+                end
             end
         elseif context == RESULT_CONTEXT.ALT then
             local numItems = r.CountMediaItems(0)
