@@ -508,13 +508,13 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 if cmd ~= 'WAITING' and cmd ~= '' and cmd ~= nil then
                     r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
                     app.flow.setSearchMode(SEARCH_MODE.MAIN, { clear = true })
-                    r.defer(app.loop)
+                    PDefer(app.loop)
                 else
                     -- without this code the context gets invalidated, so it needs to be kept alive
                     local ctx = app.gui.ctx
                     ImGui.PushFont(ctx, app.gui.st.fonts.default)
                     ImGui.PopFont(ctx)
-                    r.defer(app.flow.waitForWakeup)
+                    PDefer(app.flow.waitForWakeup)
                 end
             end,
             handleSelectedResults = function(ctx, resultContext, contextData, confirm)
@@ -2320,6 +2320,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
         function app.loop()
             r.SetExtState('Odedd_Scout', 'RUNNING', 'TRUE', false)
+            
             local ctx = app.gui.ctx
             app.hide = false
             app.guiHelpers.initFrame(ctx)
@@ -2328,17 +2329,17 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
             ImGui.PushFont(ctx, app.gui.st.fonts.default)
 
             app.draw.mainWindow(ctx)
+            
             ImGui.PopFont(ctx)
-
             app.gui:popColors(app.gui.st.col.main)
             app.gui:popStyles(app.gui.st.vars.main)
 
             if not app.hide and not app.hardExit then
-                r.defer(app.loop)
+                PDefer(app.loop)
             elseif not app.hardExit and app.settings.current.persistantMode then
                 if app and app.settings then app.settings:save() end
                 r.SetExtState(Scr.ext_name, 'WAKEUP', 'WAITING', false)
-                r.defer(app.flow.waitForWakeup)
+                PDefer(app.flow.waitForWakeup)
             end
         end
 

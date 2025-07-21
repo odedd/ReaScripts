@@ -73,7 +73,6 @@ function BaseAssetType:addToRecentsAndExecute()
                 -- Execution didn't throw error but returned false - don't add to recents
                 assetType.context.logger:logDebug('Execution returned false for asset: ' .. 
                     (asset.searchText and asset.searchText[1] and asset.searchText[1].text or 'Unknown') ..'.'.. (logMsg and (' Reason: '.. logMsg) or '')) 
-                    -- BUG: when throwing an error here, like trying to print a nil, the whole "alive" extState makes the script unresponsive and unable to launch again. 
                 return result
             else
                 -- Log the error and don't add to recents
