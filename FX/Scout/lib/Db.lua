@@ -587,48 +587,88 @@ DB.createTag = function(self, name, parent)
         end
     end
 end
-DB.markFavorites = function(self)
-    self.app.logger:logDebug('-- DB.markFavorites()')
+DB.markSpecialGroups = function(self)
+    self.app.logger:logDebug('-- DB.markSpecialGroups()')
+    
     local favoriteCount = 0
-    for _, asset in ipairs(self.assets) do
-        local favoriteIndex = nil
-        for i, favoriteId in ipairs(self.app.tags.current.favorites) do
-            if favoriteId == asset.id then
-                favoriteIndex = i
-                break
-            end
-        end
-        
-        if favoriteIndex then
-            asset.originalGroup = asset.group
-            asset.group = SPECIAL_GROUPS.FAVORITES
-            asset.favoriteOrder = favoriteIndex  -- Store the position in favorites array
-            asset.favorite = true
-            favoriteCount = favoriteCount + 1
-        end
-    end
-    self.app.logger:logDebug('Marked favorites', favoriteCount)
-end
-DB.markRecents = function(self)
-    self.app.logger:logDebug('-- DB.markRecents()')
     local recentCount = 0
+    
+    -- Get current lists
+    local favorites = self.app.tags.current.favorites or {}
+    local recents = self.app.tags.current.recents or {}
+    
+    -- Clean up excess recents first
+    local recentsToDelete = {}
+    while #recents > self.app.settings.current.numberOfRecents do
+        table.insert(recentsToDelete, recents[#recents])
+        table.remove(recents, #recents)
+    end
+    
+    -- Create lookup tables for better performance
+    local favoritesLookup = {}
+    for i, favoriteId in ipairs(favorites) do
+        favoritesLookup[favoriteId] = i
+    end
+    
+    local recentsLookup = {}
+    for i, recentId in ipairs(recents) do
+        recentsLookup[recentId] = i
+    end
+    
+    local recentsToDeleteLookup = {}
+    for _, deleteId in ipairs(recentsToDelete) do
+        recentsToDeleteLookup[deleteId] = true
+    end
+    
+    -- Process all assets
     for _, asset in ipairs(self.assets) do
-        local recentIndex = nil
-        for i, recentId in ipairs(self.app.tags.current.recents) do
-            if recentId == asset.id then
-                recentIndex = i
-                break
+        local favoriteIndex = favoritesLookup[asset.id]
+        local recentIndex = recentsLookup[asset.id]
+        local shouldDeleteFromRecents = recentsToDeleteLookup[asset.id]
+        
+        -- Clear any existing special group markings first
+        if asset.group == SPECIAL_GROUPS.FAVORITES or asset.group == SPECIAL_GROUPS.RECENTS then
+            if asset.originalGroup then
+                asset.group = asset.originalGroup
+                asset.originalGroup = nil
             end
+            asset.favoriteOrder = nil
+            asset.recentOrder = nil
+            asset.favorite = nil
         end
         
+        -- Handle removal from recents (assets that were recently used but exceeded the limit)
+        if shouldDeleteFromRecents then
+            self.app.logger:logDebug('Removing asset from recents: ' .. asset.id)
+            -- Asset group should already be restored above
+        end
+        
+        -- Mark recents first (takes priority over favorites for group assignment)
         if recentIndex then
             asset.originalGroup = asset.group
             asset.group = SPECIAL_GROUPS.RECENTS
-            asset.recentOrder = recentIndex  -- Store the position in recents array
+            asset.recentOrder = recentIndex
             recentCount = recentCount + 1
+            self.app.logger:logDebug('Marked asset as recent: ' .. asset.id .. ' (order: ' .. recentIndex .. ')')
+        -- Mark favorites (only if not recent)
+        elseif favoriteIndex then
+            asset.originalGroup = asset.group
+            asset.group = SPECIAL_GROUPS.FAVORITES
+            asset.favoriteOrder = favoriteIndex
+            self.app.logger:logDebug('Marked asset as favorite: ' .. asset.id .. ' (order: ' .. favoriteIndex .. ')')
+        end
+        
+        -- Set favorite flag for all favorites, regardless of which group they're in
+        if favoriteIndex then
+            asset.favorite = true
+            favoriteCount = favoriteCount + 1
+            if recentIndex then
+                self.app.logger:logDebug('Asset is both favorite and recent: ' .. asset.id .. ' (appears in recents)')
+            end
         end
     end
-    self.app.logger:logDebug('Marked recents', recentCount)
+    
+    self.app.logger:logDebug('Marked special groups - Favorites: ' .. favoriteCount .. ', Recents: ' .. recentCount)
 end
 
 DB.tagAssets = function(self)
@@ -654,8 +694,7 @@ DB.assembleAssets = function(self)
     self.assets = assets
 
     self:tagAssets()
-    self:markFavorites()
-    self:markRecents()
+    self:markSpecialGroups()
     self:sortAssets()
     self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
 end
@@ -795,42 +834,42 @@ DB.assembleFilterAssets = function(self, whichFilters)
 end
 DB.sortAssets = function(self)
     self.app.logger:logDebug('-- DB.sortAssets()')
-    
+
     -- Check if we need to rebuild the group priority cache
     -- Simple check: compare groupOrder table directly (not perfect but good enough)
     local currentGroupOrder = self.app.settings.current.groupOrder
-    local needsRebuild = not self._groupPriorityCache or 
-                        not self._lastGroupOrder or
-                        OD_TableLength(currentGroupOrder or {}) ~= OD_TableLength(self._lastGroupOrder)
-    
+    local needsRebuild = not self._groupPriorityCache or
+        not self._lastGroupOrder or
+        OD_TableLength(currentGroupOrder or {}) ~= OD_TableLength(self._lastGroupOrder)
+
     if needsRebuild then
         self.app.logger:logDebug('Rebuilding group priority cache')
         local groupPriority = {}
-        
+
         -- Get group order - use setting if specified, otherwise build dynamically
         local groupOrder = currentGroupOrder
         if not groupOrder and self.assetTypeManager then
             groupOrder = self.assetTypeManager:buildDynamicGroupOrder()
         elseif not groupOrder then
             -- Fallback if no AssetTypeManager is available
-            groupOrder = {SPECIAL_GROUPS.RECENTS, SPECIAL_GROUPS.FAVORITES, SPECIAL_GROUPS.PLUGINS}
+            groupOrder = { SPECIAL_GROUPS.RECENTS, SPECIAL_GROUPS.FAVORITES, SPECIAL_GROUPS.PLUGINS }
         end
-        
+
         -- Cache for resolved group names to avoid repeated lookups
         local groupNameCache = {}
-        
+
         -- Helper function to resolve asset type class names to group names (with caching)
         local function resolveGroupName(item)
             if groupNameCache[item] then
                 return groupNameCache[item]
             end
-            
+
             local resolvedName
-            
+
             -- If it's a special group constant, return as-is
             if item == SPECIAL_GROUPS.FAVORITES or item == SPECIAL_GROUPS.RECENTS or item == SPECIAL_GROUPS.PLUGINS then
                 resolvedName = item
-            -- If it looks like an asset type class name, resolve it to the actual group name
+                -- If it looks like an asset type class name, resolve it to the actual group name
             elseif item:match("AssetType$") and self.assetTypeManager then
                 local assetType = self.assetTypeManager:getAssetTypeByClassName(item)
                 resolvedName = assetType and assetType.group or item
@@ -838,15 +877,15 @@ DB.sortAssets = function(self)
                 -- Otherwise, assume it's already a group name
                 resolvedName = item
             end
-            
+
             -- Cache the result (except for dynamic special groups)
             if item ~= SPECIAL_GROUPS.FAVORITES and item ~= SPECIAL_GROUPS.RECENTS then
                 groupNameCache[item] = resolvedName
             end
-            
+
             return resolvedName
         end
-        
+
         -- Build the final group order by expanding PLUGINS_GROUP placeholder and resolving class names
         local finalGroupOrder = {}
         for i, group in ipairs(groupOrder) do
@@ -861,18 +900,18 @@ DB.sortAssets = function(self)
                 table.insert(finalGroupOrder, resolvedGroup)
             end
         end
-        
+
         -- Assign priorities based on position in final order
         for i, group in ipairs(finalGroupOrder) do
             groupPriority[group] = i
         end
-        
+
         -- Cache the results
         self._groupPriorityCache = groupPriority
         self._lastGroupOrder = OD_DeepCopy(currentGroupOrder)
         self.app.logger:logDebug('Group priority cache built with ' .. OD_TableLength(groupPriority) .. ' groups')
     end
-    
+
     local groupPriority = self._groupPriorityCache
 
     table.sort(self.assets, function(a, b)
@@ -884,7 +923,7 @@ DB.sortAssets = function(self)
             -- Special handling for favorites: sort by favoriteOrder instead of alphabetically
             if a.group == SPECIAL_GROUPS.FAVORITES and b.group == SPECIAL_GROUPS.FAVORITES then
                 return (a.favoriteOrder or 0) < (b.favoriteOrder or 0)
-            -- Special handling for recents: sort by recentOrder instead of alphabetically
+                -- Special handling for recents: sort by recentOrder instead of alphabetically
             elseif a.group == SPECIAL_GROUPS.RECENTS and b.group == SPECIAL_GROUPS.RECENTS then
                 return (a.recentOrder or 0) < (b.recentOrder or 0)
             else

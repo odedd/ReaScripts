@@ -1178,7 +1178,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             if app.temp.searchMode == SEARCH_MODE.MAIN then
                                 hint = hint ..
                                     (app.guiHelpers.getShortcutDescription('markFavorite') ~= '' and (' Press %s to %s.'):format(app.guiHelpers.getShortcutDescription('markFavorite'),
-                                        hintResult.group == SPECIAL_GROUPS.FAVORITES and 'unfavorite' or 'favorite') or '')
+                                        hintResult.favorite and 'unfavorite' or 'favorite') or '')
                             end
                             app:setHint('main', hint)
                         else

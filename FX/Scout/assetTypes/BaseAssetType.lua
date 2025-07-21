@@ -109,23 +109,18 @@ BaseAssetType.assetActions = {
         local key = self.type .. ' ' .. self.load
         if OD_HasValue(favorites, key) then
             OD_RemoveValue(favorites, key)
-            if self.recentOrder == nil then
-                self.group = self.originalGroup
-                self.originalGroup = nil
-            end
             self.favorite = false
         else
             table.insert(favorites, 1, key)
-            if self.recentOrder == nil then
-                self.originalGroup = self.originalGroup or self.group
-                self.group = SPECIAL_GROUPS.FAVORITES
-            end
             self.favorite = true
         end
+        
         self.context.tags:save()
+        -- Use the unified special groups marking function to handle group reassignment
+        self.db:markSpecialGroups()
         self.db:sortAssets()
         self.context.flow.filterResults()
-        return self.group == SPECIAL_GROUPS.FAVORITES
+        return self.favorite == true
     end,
     moveFavorite = function(self, targetPosition)
         local favorite = self.context.tags.current.favorites
@@ -170,6 +165,7 @@ BaseAssetType.assetActions = {
         table.insert(favorite, targetPosition, key)
 
         self.context.tags:save()
+        self.db:markSpecialGroups()
         self.db:sortAssets()
 
         self.context.logger:logDebug('Moved favorite "' ..
@@ -183,24 +179,10 @@ BaseAssetType.assetActions = {
             OD_RemoveValue(recents, key)
         end
         table.insert(recents, 1, key)
-        self.originalGroup = self.originalGroup or self.group
-        self.group = SPECIAL_GROUPS.RECENTS
-        local recentsToDelete = {}
-        while #recents > 10 do
-            table.insert(recentsToDelete, recents[#recents])
-            table.remove(recents, #recents)
-        end
-        for _, asset in ipairs(self.db.assets) do
-            for i, recentId in ipairs(recentsToDelete) do
-                if recentId == asset.id then
-                    asset.group = asset.originalGroup
-                    asset.originalGroup = nil
-                    asset.recentOrder = nil -- Store the position in recents array
-                end
-            end
-        end
+        
         self.context.tags:save()
-        self.db:markRecents()
+        -- Use the unified special groups marking function
+        self.db:markSpecialGroups()
         self.db:sortAssets()
         self.context.flow.filterResults()
     end,
