@@ -39,6 +39,17 @@ T.SETTINGS = {
     UI_SCALE = {
         LABEL = 'Zoom',
         HINT = 'Interface scale. Double click to enter manually.',
+    },
+    EXPORT_TAGS = {
+        LABEL = 'Export Tags & Favorites',
+        BUTTON_LABEL = 'Export',
+        HINT = 'Export all tags, tagged assets, and favorites to a file.',
+    },
+    IMPORT_TAGS = {
+        LABEL = 'Import Tags & Favorites',
+        BUTTON_LABEL = 'Import (Overwrite)',
+        BUTTON_LABEL_MERGE = 'Import (Merge)',
+        HINT = 'Import tags, tagged assets, and favorites from a file. Hold Shift to merge with existing data.',
     }
 }
 
