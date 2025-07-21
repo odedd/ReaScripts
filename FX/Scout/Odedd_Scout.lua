@@ -1051,6 +1051,7 @@ else
                                             end
                                             ImGui.SameLine(ctx)
 
+                                            -- if result.type == ASSET_TYPE.TrackAssetType and result.color then
                                             if result.type == ASSET_TYPE.TrackAssetType then
                                                 local size = fontLineHeight -
                                                     select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
@@ -1925,6 +1926,43 @@ else
                         'orderable_list',
                         T.SETTINGS.FX_TYPE_ORDER.LABEL, T.SETTINGS.FX_TYPE_ORDER.HINT,
                         { app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility })
+                    
+                    ImGui.SeparatorText(ctx, 'Tags and Favorites')
+                    
+                    -- Export button
+                    if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, {label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL}) then
+                        local rv, filename = reaper.JS_Dialog_BrowseForSaveFile('Export Tags & Favorites', '', '', 'Scout Tags files (*.scout)\0*.scout\0\0')
+                        if rv and filename then
+                            local success, errorMsg = app.tags:export(filename)
+                            if success then
+                                app:msg('Export successful: ' .. filename)
+                            else
+                                app:msg('Export failed: ' .. (errorMsg or 'Unknown error'), 'error')
+                            end
+                        end
+                    end
+                    -- app:setHoveredHint('settings', T.SETTINGS.EXPORT_TAGS.HINT)
+                    
+                    -- Import button
+                    local mergeMode = ImGui.IsKeyDown(ctx, ImGui.Key_LeftShift) or ImGui.IsKeyDown(ctx, ImGui.Key_RightShift)
+                    local importButtonText = mergeMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE or T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL
+                    if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, {label = importButtonText}) then
+                        local rv, filename = reaper.GetUserFileNameForRead('', 'Import Tags & Favorites', 'scout')
+                        if rv and filename then
+                            local success, skippedAssets, mappedCount, skippedCount = app.tags:import(filename, mergeMode)
+                            if success then
+                                local msg = string.format('Import successful: %d assets mapped, %d assets skipped', mappedCount or 0, skippedCount or 0)
+                                if mergeMode then
+                                    msg = msg .. ' (merged with existing data)'
+                                end
+                                app:msg(msg)
+                            else
+                                app:msg('Import failed: ' .. (skippedAssets or 'Unknown error'), 'error')
+                            end
+                        end
+                    end
+                    app:setHoveredHint('settings', T.SETTINGS.IMPORT_TAGS.HINT)
+                    
                     app.draw.hint(ctx, 'settings')
                     app:drawMsg()
                     if app.temp.captureCounter > 3 and OD_IsGlobalKeyDown(OD_KEYCODES.ESCAPE) then
