@@ -591,9 +591,18 @@ DB.markFavorites = function(self)
     self.app.logger:logDebug('-- DB.markFavorites()')
     local favoriteCount = 0
     for _, asset in ipairs(self.assets) do
-        if OD_HasValue(self.app.tags.current.favorites, asset.id) then
+        local favoriteIndex = nil
+        for i, favoriteId in ipairs(self.app.tags.current.favorites) do
+            if favoriteId == asset.id then
+                favoriteIndex = i
+                break
+            end
+        end
+        
+        if favoriteIndex then
             asset.originalGroup = asset.group
             asset.group = SPECIAL_GROUPS.FAVORITES
+            asset.favoriteOrder = favoriteIndex  -- Store the position in favorites array
             favoriteCount = favoriteCount + 1
         end
     end
@@ -849,7 +858,12 @@ DB.sortAssets = function(self)
         if a.type == ASSET_TYPE.TrackAssetType and b.type == ASSET_TYPE.TrackAssetType and aPriority == bPriority then
             return a.order < b.order
         elseif aPriority == bPriority then
-            return a.searchText[1].text < b.searchText[1].text
+            -- Special handling for favorites: sort by favoriteOrder instead of alphabetically
+            if a.group == SPECIAL_GROUPS.FAVORITES and b.group == SPECIAL_GROUPS.FAVORITES then
+                return (a.favoriteOrder or 0) < (b.favoriteOrder or 0)
+            else
+                return a.searchText[1].text < b.searchText[1].text
+            end
         else
             return aPriority < bPriority
         end

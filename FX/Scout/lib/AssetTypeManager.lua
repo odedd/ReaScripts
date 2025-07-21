@@ -11,13 +11,60 @@ local assetActions = {
             self.group = self.originalGroup
             self.originalGroup = nil
         else
-            table.insert(favorite, key)
+            table.insert(favorite, 1, key)
             self.originalGroup = self.group
             self.group = SPECIAL_GROUPS.FAVORITES
         end
         self.db.app.tags:save()
         self.db:sortAssets()
         return self.group == SPECIAL_GROUPS.FAVORITES
+    end,
+    moveFavorite = function(self, targetPosition)
+        local favorite = self.db.app.tags.current.favorites
+        local key = self.type .. ' ' .. self.load
+        
+        -- Check if this asset is actually a favorite
+        if not OD_HasValue(favorite, key) then
+            self.db.app.logger:logError('Cannot move non-favorite asset: ' .. key)
+            return false
+        end
+        
+        -- Validate target position
+        if targetPosition < 1 or targetPosition > #favorite then
+            self.db.app.logger:logError('Invalid target position: ' .. targetPosition .. ' (must be between 1 and ' .. #favorite .. ')')
+            return false
+        end
+        
+        -- Find current position
+        local currentPosition = nil
+        for i, favoriteId in ipairs(favorite) do
+            if favoriteId == key then
+                currentPosition = i
+                break
+            end
+        end
+        
+        if not currentPosition then
+            self.db.app.logger:logError('Could not find current position for favorite: ' .. key)
+            return false
+        end
+        
+        -- If already at target position, nothing to do
+        if currentPosition == targetPosition then
+            return true
+        end
+        
+        -- Remove from current position
+        table.remove(favorite, currentPosition)
+        
+        -- Insert at target position
+        table.insert(favorite, targetPosition, key)
+        
+        self.db.app.tags:save()
+        self.db:sortAssets()
+        
+        self.db.app.logger:logDebug('Moved favorite "' .. key .. '" from position ' .. currentPosition .. ' to position ' .. targetPosition)
+        return true
     end,
     addTag = function(self, tag, saveToDB)
         local save

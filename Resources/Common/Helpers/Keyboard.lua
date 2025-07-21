@@ -3,6 +3,8 @@
 _OD_KEYS = {}
 _OD_INTERCEPTED_KEYS = {}
 _OD_KEYS_CUTOFF = -2
+_IMGUI_KEYCODES = nil
+
 -- taken from here https://forums.cockos.com/showpost.php?p=2608321&postcount=12
 OD_KEYCODES = {
   LBUTTON     = 0x01, --  The left mouse button
@@ -310,150 +312,146 @@ OD_KEYCODE_NAMES = {
   [OD_KEYCODES.OEM_CLEAR] = 'CLEAR',
 }
 
-OD_KEYCODE_IMGUI_CODES = {
-  -- Mouse buttons (ImGui doesn't have direct key constants for these)
-  [OD_KEYCODES.LBUTTON] = nil, -- Left Mouse Button
-  [OD_KEYCODES.RBUTTON] = nil, -- Right Mouse Button
-  [OD_KEYCODES.CANCEL] = nil, -- Cancel
-  [OD_KEYCODES.MBUTTON] = nil, -- Middle Mouse Button
-  
-  -- Standard keys
-  [OD_KEYCODES.BACK] = 259, -- Backspace
-  [OD_KEYCODES.TAB] = 258, -- Tab
-  [OD_KEYCODES.CLEAR] = nil, -- Clear
-  [OD_KEYCODES.ENTER] = 257, -- Enter
-  [OD_KEYCODES.SHIFT] = 340, -- LeftShift (use left shift as default)
-  [OD_KEYCODES.CONTROL] = 341, -- LeftCtrl (always Ctrl, ImGui handles platform differences)
-  [OD_KEYCODES.ALT] = 342, -- LeftAlt
-  [OD_KEYCODES.PAUSE] = 284, -- Pause
-  [OD_KEYCODES.CAPITAL] = 280, -- CapsLock
-  [OD_KEYCODES.ESCAPE] = 256, -- Escape
-  [OD_KEYCODES.SPACE] = 32, -- Space
-  [OD_KEYCODES.PAGEUP] = 266, -- PageUp
-  [OD_KEYCODES.PAGEDOWN] = 267, -- PageDown
-  [OD_KEYCODES.END] = 269, -- End
-  [OD_KEYCODES.HOME] = 268, -- Home
-  [OD_KEYCODES.LEFT] = 263, -- LeftArrow
-  [OD_KEYCODES.UP] = 265, -- UpArrow
-  [OD_KEYCODES.RIGHT] = 262, -- RightArrow
-  [OD_KEYCODES.DOWN] = 264, -- DownArrow
-  [OD_KEYCODES.SELECT] = nil, -- Select
-  [OD_KEYCODES.PRINT] = nil, -- Print
-  [OD_KEYCODES.EXECUTE] = nil, -- Execute
-  [OD_KEYCODES.SNAPSHOT] = 283, -- PrintScreen
-  [OD_KEYCODES.INSERT] = 260, -- Insert
-  [OD_KEYCODES.DELETE] = 261, -- Delete
-  [OD_KEYCODES.HELP] = nil, -- Help
-  
-  -- Number keys
-  [OD_KEYCODES['0']] = 48, -- 0
-  [OD_KEYCODES['1']] = 49, -- 1
-  [OD_KEYCODES['2']] = 50, -- 2
-  [OD_KEYCODES['3']] = 51, -- 3
-  [OD_KEYCODES['4']] = 52, -- 4
-  [OD_KEYCODES['5']] = 53, -- 5
-  [OD_KEYCODES['6']] = 54, -- 6
-  [OD_KEYCODES['7']] = 55, -- 7
-  [OD_KEYCODES['8']] = 56, -- 8
-  [OD_KEYCODES['9']] = 57, -- 9
-  
-  -- Letter keys
-  [OD_KEYCODES.A] = 65, -- A
-  [OD_KEYCODES.B] = 66, -- B
-  [OD_KEYCODES.C] = 67, -- C
-  [OD_KEYCODES.D] = 68, -- D
-  [OD_KEYCODES.E] = 69, -- E
-  [OD_KEYCODES.F] = 70, -- F
-  [OD_KEYCODES.G] = 71, -- G
-  [OD_KEYCODES.H] = 72, -- H
-  [OD_KEYCODES.I] = 73, -- I
-  [OD_KEYCODES.J] = 74, -- J
-  [OD_KEYCODES.K] = 75, -- K
-  [OD_KEYCODES.L] = 76, -- L
-  [OD_KEYCODES.M] = 77, -- M
-  [OD_KEYCODES.N] = 78, -- N
-  [OD_KEYCODES.O] = 79, -- O
-  [OD_KEYCODES.P] = 80, -- P
-  [OD_KEYCODES.Q] = 81, -- Q
-  [OD_KEYCODES.R] = 82, -- R
-  [OD_KEYCODES.S] = 83, -- S
-  [OD_KEYCODES.T] = 84, -- T
-  [OD_KEYCODES.U] = 85, -- U
-  [OD_KEYCODES.V] = 86, -- V
-  [OD_KEYCODES.W] = 87, -- W
-  [OD_KEYCODES.X] = 88, -- X
-  [OD_KEYCODES.Y] = 89, -- Y
-  [OD_KEYCODES.Z] = 90, -- Z
-  
-  -- System keys
-  [OD_KEYCODES.STARTKEY] = 343, -- LeftSuper (always Super, ImGui handles platform differences)
-  [OD_KEYCODES.CONTEXTKEY] = 348, -- Menu
-  
-  -- Numpad keys
-  [OD_KEYCODES.NUMPAD0] = 320, -- Keypad0
-  [OD_KEYCODES.NUMPAD1] = 321, -- Keypad1
-  [OD_KEYCODES.NUMPAD2] = 322, -- Keypad2
-  [OD_KEYCODES.NUMPAD3] = 323, -- Keypad3
-  [OD_KEYCODES.NUMPAD4] = 324, -- Keypad4
-  [OD_KEYCODES.NUMPAD5] = 325, -- Keypad5
-  [OD_KEYCODES.NUMPAD6] = 326, -- Keypad6
-  [OD_KEYCODES.NUMPAD7] = 327, -- Keypad7
-  [OD_KEYCODES.NUMPAD8] = 328, -- Keypad8
-  [OD_KEYCODES.NUMPAD9] = 329, -- Keypad9
-  [OD_KEYCODES.MULTIPLY] = 332, -- KeypadMultiply
-  [OD_KEYCODES.ADD] = 334, -- KeypadAdd
-  [OD_KEYCODES.SEPARATOR] = nil, -- Separator
-  [OD_KEYCODES.SUBTRACT] = 333, -- KeypadSubtract
-  [OD_KEYCODES.DECIMAL] = 330, -- KeypadDecimal
-  [OD_KEYCODES.DIVIDE] = 331, -- KeypadDivide
-  
-  -- Function keys
-  [OD_KEYCODES.F1] = 290, -- F1
-  [OD_KEYCODES.F2] = 291, -- F2
-  [OD_KEYCODES.F3] = 292, -- F3
-  [OD_KEYCODES.F4] = 293, -- F4
-  [OD_KEYCODES.F5] = 294, -- F5
-  [OD_KEYCODES.F6] = 295, -- F6
-  [OD_KEYCODES.F7] = 296, -- F7
-  [OD_KEYCODES.F8] = 297, -- F8
-  [OD_KEYCODES.F9] = 298, -- F9
-  [OD_KEYCODES.F10] = 299, -- F10
-  [OD_KEYCODES.F11] = 300, -- F11
-  [OD_KEYCODES.F12] = 301, -- F12
-  [OD_KEYCODES.F13] = 302, -- F13
-  [OD_KEYCODES.F14] = 303, -- F14
-  [OD_KEYCODES.F15] = 304, -- F15
-  [OD_KEYCODES.F16] = 305, -- F16
-  [OD_KEYCODES.F17] = 306, -- F17
-  [OD_KEYCODES.F18] = 307, -- F18
-  [OD_KEYCODES.F19] = 308, -- F19
-  [OD_KEYCODES.F20] = 309, -- F20
-  [OD_KEYCODES.F21] = 310, -- F21
-  [OD_KEYCODES.F22] = 311, -- F22
-  [OD_KEYCODES.F23] = 312, -- F23
-  [OD_KEYCODES.F24] = 313, -- F24
-  
-  -- Lock keys
-  [OD_KEYCODES.NUMLOCK] = 282, -- NumLock
-  [OD_KEYCODES.OEM_SCROLL] = 281, -- ScrollLock
-  
-  -- Symbol keys
-  [OD_KEYCODES.OEM_1] = 59, -- Semicolon
-  [OD_KEYCODES.OEM_PLUS] = 61, -- Equal
-  [OD_KEYCODES.OEM_COMMA] = 44, -- Comma
-  [OD_KEYCODES.OEM_MINUS] = 45, -- Minus
-  [OD_KEYCODES.OEM_PERIOD] = 46, -- Period
-  [OD_KEYCODES.OEM_2] = 47, -- Slash
-  [OD_KEYCODES.OEM_3] = 96, -- GraveAccent
-  [OD_KEYCODES.OEM_4] = 91, -- LeftBracket
-  [OD_KEYCODES.OEM_5] = 92, -- Backslash
-  [OD_KEYCODES.OEM_6] = 93, -- RightBracket
-  [OD_KEYCODES.OEM_7] = 39, -- Apostrophe
-  [OD_KEYCODES.OEM_8] = nil, -- Unknown
-}
+OD_GetImGuiKeyCode = function(imgui, key)
+  if _IMGUI_KEYCODES then
+    return _IMGUI_KEYCODES[key]
+  else
+    _IMGUI_KEYCODES = {
+      -- Mouse buttons (imgui doesn't have direct key constants for these)
+      [OD_KEYCODES.LBUTTON] = nil, -- Left Mouse Button
+      [OD_KEYCODES.RBUTTON] = nil, -- Right Mouse Button
+      [OD_KEYCODES.CANCEL] = nil, -- Cancel
+      [OD_KEYCODES.MBUTTON] = nil, -- Middle Mouse Button
 
-_OD_MinCutoff = function(cutoff)
-  return math.max(_OD_CUTOFF_TIME - os.time(), cutoff)
+      -- Standard keys
+      [OD_KEYCODES.BACK] = imgui.Key_Backspace,
+      [OD_KEYCODES.TAB] = imgui.Key_Tab,
+      [OD_KEYCODES.CLEAR] = nil, -- Clear
+      [OD_KEYCODES.ENTER] = imgui.Key_Enter,
+      [OD_KEYCODES.PAUSE] = imgui.Key_Pause,
+      [OD_KEYCODES.CAPITAL] = imgui.Key_CapsLock,
+      [OD_KEYCODES.ESCAPE] = imgui.Key_Escape,
+      [OD_KEYCODES.SPACE] = imgui.Key_Space,
+      [OD_KEYCODES.PAGEUP] = imgui.Key_PageUp,
+      [OD_KEYCODES.PAGEDOWN] = imgui.Key_PageDown,
+      [OD_KEYCODES.END] = imgui.Key_End,
+      [OD_KEYCODES.HOME] = imgui.Key_Home,
+      [OD_KEYCODES.LEFT] = imgui.Key_LeftArrow,
+      [OD_KEYCODES.UP] = imgui.Key_UpArrow,
+      [OD_KEYCODES.RIGHT] = imgui.Key_RightArrow,
+      [OD_KEYCODES.DOWN] = imgui.Key_DownArrow,
+      [OD_KEYCODES.SNAPSHOT] = imgui.Key_PrintScreen,
+      [OD_KEYCODES.INSERT] = imgui.Key_Insert,
+      [OD_KEYCODES.DELETE] = imgui.Key_Delete,
+
+      -- Number keys
+      [OD_KEYCODES['0']] = imgui.Key_0,
+      [OD_KEYCODES['1']] = imgui.Key_1,
+      [OD_KEYCODES['2']] = imgui.Key_2,
+      [OD_KEYCODES['3']] = imgui.Key_3,
+      [OD_KEYCODES['4']] = imgui.Key_4,
+      [OD_KEYCODES['5']] = imgui.Key_5,
+      [OD_KEYCODES['6']] = imgui.Key_6,
+      [OD_KEYCODES['7']] = imgui.Key_7,
+      [OD_KEYCODES['8']] = imgui.Key_8,
+      [OD_KEYCODES['9']] = imgui.Key_9,
+
+      -- Letter keys
+      [OD_KEYCODES.A] = imgui.Key_A,
+      [OD_KEYCODES.B] = imgui.Key_B,
+      [OD_KEYCODES.C] = imgui.Key_C,
+      [OD_KEYCODES.D] = imgui.Key_D,
+      [OD_KEYCODES.E] = imgui.Key_E,
+      [OD_KEYCODES.F] = imgui.Key_F,
+      [OD_KEYCODES.G] = imgui.Key_G,
+      [OD_KEYCODES.H] = imgui.Key_H,
+      [OD_KEYCODES.I] = imgui.Key_I,
+      [OD_KEYCODES.J] = imgui.Key_J,
+      [OD_KEYCODES.K] = imgui.Key_K,
+      [OD_KEYCODES.L] = imgui.Key_L,
+      [OD_KEYCODES.M] = imgui.Key_M,
+      [OD_KEYCODES.N] = imgui.Key_N,
+      [OD_KEYCODES.O] = imgui.Key_O,
+      [OD_KEYCODES.P] = imgui.Key_P,
+      [OD_KEYCODES.Q] = imgui.Key_Q,
+      [OD_KEYCODES.R] = imgui.Key_R,
+      [OD_KEYCODES.S] = imgui.Key_S,
+      [OD_KEYCODES.T] = imgui.Key_T,
+      [OD_KEYCODES.U] = imgui.Key_U,
+      [OD_KEYCODES.V] = imgui.Key_V,
+      [OD_KEYCODES.W] = imgui.Key_W,
+      [OD_KEYCODES.X] = imgui.Key_X,
+      [OD_KEYCODES.Y] = imgui.Key_Y,
+      [OD_KEYCODES.Z] = imgui.Key_Z,
+
+      -- System keys
+      [OD_KEYCODES.STARTKEY] = _OD_ISMAC and imgui.Key_LeftCtrl or imgui.Key_LeftSuper,
+      [OD_KEYCODES.CONTEXTKEY] = imgui.Key_Menu,
+
+      -- Numpad keys
+      [OD_KEYCODES.NUMPAD0] = imgui.Key_Keypad0,
+      [OD_KEYCODES.NUMPAD1] = imgui.Key_Keypad1,
+      [OD_KEYCODES.NUMPAD2] = imgui.Key_Keypad2,
+      [OD_KEYCODES.NUMPAD3] = imgui.Key_Keypad3,
+      [OD_KEYCODES.NUMPAD4] = imgui.Key_Keypad4,
+      [OD_KEYCODES.NUMPAD5] = imgui.Key_Keypad5,
+      [OD_KEYCODES.NUMPAD6] = imgui.Key_Keypad6,
+      [OD_KEYCODES.NUMPAD7] = imgui.Key_Keypad7,
+      [OD_KEYCODES.NUMPAD8] = imgui.Key_Keypad8,
+      [OD_KEYCODES.NUMPAD9] = imgui.Key_Keypad9,
+      [OD_KEYCODES.MULTIPLY] = imgui.Key_KeypadMultiply,
+      [OD_KEYCODES.ADD] = imgui.Key_KeypadAdd,
+      [OD_KEYCODES.SEPARATOR] = nil, -- Separator
+      [OD_KEYCODES.SUBTRACT] = imgui.Key_KeypadSubtract,
+      [OD_KEYCODES.DECIMAL] = imgui.Key_KeypadDecimal,
+      [OD_KEYCODES.DIVIDE] = imgui.Key_KeypadDivide,
+
+      -- Function keys
+      [OD_KEYCODES.F1] = imgui.Key_F1,
+      [OD_KEYCODES.F2] = imgui.Key_F2,
+      [OD_KEYCODES.F3] = imgui.Key_F3,
+      [OD_KEYCODES.F4] = imgui.Key_F4,
+      [OD_KEYCODES.F5] = imgui.Key_F5,
+      [OD_KEYCODES.F6] = imgui.Key_F6,
+      [OD_KEYCODES.F7] = imgui.Key_F7,
+      [OD_KEYCODES.F8] = imgui.Key_F8,
+      [OD_KEYCODES.F9] = imgui.Key_F9,
+      [OD_KEYCODES.F10] = imgui.Key_F10,
+      [OD_KEYCODES.F11] = imgui.Key_F11,
+      [OD_KEYCODES.F12] = imgui.Key_F12,
+      [OD_KEYCODES.F13] = imgui.Key_F13,
+      [OD_KEYCODES.F14] = imgui.Key_F14,
+      [OD_KEYCODES.F15] = imgui.Key_F15,
+      [OD_KEYCODES.F16] = imgui.Key_F16,
+      [OD_KEYCODES.F17] = imgui.Key_F17,
+      [OD_KEYCODES.F18] = imgui.Key_F18,
+      [OD_KEYCODES.F19] = imgui.Key_F19,
+      [OD_KEYCODES.F20] = imgui.Key_F20,
+      [OD_KEYCODES.F21] = imgui.Key_F21,
+      [OD_KEYCODES.F22] = imgui.Key_F22,
+      [OD_KEYCODES.F23] = imgui.Key_F23,
+      [OD_KEYCODES.F24] = imgui.Key_F24,
+
+      -- Lock keys
+      [OD_KEYCODES.NUMLOCK] = imgui.Key_NumLock,
+      [OD_KEYCODES.OEM_SCROLL] = imgui.Key_ScrollLock,
+
+      -- Symbol keys
+      [OD_KEYCODES.OEM_1] = imgui.Key_Semicolon,
+      [OD_KEYCODES.OEM_PLUS] = imgui.Key_Equal,
+      [OD_KEYCODES.OEM_COMMA] = imgui.Key_Comma,
+      [OD_KEYCODES.OEM_MINUS] = imgui.Key_Minus,
+      [OD_KEYCODES.OEM_PERIOD] = imgui.Key_Period,
+      [OD_KEYCODES.OEM_2] = imgui.Key_Slash,
+      [OD_KEYCODES.OEM_3] = imgui.Key_GraveAccent,
+      [OD_KEYCODES.OEM_4] = imgui.Key_LeftBracket,
+      [OD_KEYCODES.OEM_5] = imgui.Key_Backslash,
+      [OD_KEYCODES.OEM_6] = imgui.Key_RightBracket,
+      [OD_KEYCODES.OEM_7] = imgui.Key_Apostrophe,
+      [OD_KEYCODES.OEM_8] = nil
+    }                        -- Unknown}
+    return _IMGUI_KEYCODES[key]
+  end
 end
 
 OD_IsGlobalKeyDown = function(key, intercept, override_cutoff)
@@ -463,7 +461,7 @@ OD_IsGlobalKeyDown = function(key, intercept, override_cutoff)
     _OD_INTERCEPTED_KEYS[key] = true
     r.JS_VKeys_Intercept(key, 1)
   end
-  return r.JS_VKeys_GetState(_OD_MinCutoff(override_cutoff or _OD_KEYS_CUTOFF)):byte(key) == 1
+  return r.JS_VKeys_GetState(override_cutoff or _OD_KEYS_CUTOFF):byte(key) == 1
 end
 OD_ReleaseGlobalKeys = function()
   for key, v in pairs(_OD_INTERCEPTED_KEYS) do
@@ -480,7 +478,7 @@ OD_IsGlobalKeyPressed = function(key, intercept, override_cutoff)
     _OD_INTERCEPTED_KEYS[key] = true
     r.JS_VKeys_Intercept(key, 1)
   end
-  if r.JS_VKeys_GetState(_OD_MinCutoff(override_cutoff or _OD_KEYS_CUTOFF)):byte(key) ~= 0 then
+  if r.JS_VKeys_GetState(override_cutoff or _OD_KEYS_CUTOFF):byte(key) ~= 0 then
     if _OD_KEYS[key] == nil then -- make sure key went from not pressed to pressed
       _OD_KEYS[key] = true
       return true
@@ -497,7 +495,7 @@ OD_GetKeyPressed = function(from, to, intercept, override_cutoff)
   to = to or 255
   for i = from, to do
     if OD_KEYCODE_NAMES[i] ~= nil then
-      if OD_IsGlobalKeyPressed(i, intercept, _OD_MinCutoff(override_cutoff)) then
+      if OD_IsGlobalKeyPressed(i, intercept, override_cutoff) then
         return i
       end
     end
@@ -507,17 +505,11 @@ end
 OD_PrintKeysPressed = function(override_cutoff)
   local escapePressed = false
   for i = 0, 255 do
-    if r.JS_VKeys_GetState(_OD_MinCutoff(override_cutoff or _OD_KEYS_CUTOFF)):byte(OD_KEYCODES.ESCAPE) ~= 0 then
+    if r.JS_VKeys_GetState(override_cutoff or _OD_KEYS_CUTOFF):byte(OD_KEYCODES.ESCAPE) ~= 0 then
       escapePressed = true
-    elseif r.JS_VKeys_GetState(0):byte(i) == 1 then
-      r.ShowConsoleMsg(OD_KEYCODE_NAMES[i] .. '\n')
+    elseif r.JS_VKeys_GetState(override_cutoff or _OD_KEYS_CUTOFF):byte(i) == 1 then
+      r.ShowConsoleMsg(tostring(OD_KEYCODE_NAMES[i]) .. '\n')
     end
   end
   if not escapePressed then reaper.defer(OD_PrintKeysPressed) end
 end
-
-OD_ResetCutoff = function()
-  _OD_CUTOFF_TIME = os.time()-0.1
-end
-
-OD_ResetCutoff()

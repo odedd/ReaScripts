@@ -403,15 +403,14 @@ else
                     app.temp.waitingForDoubleClick = nil
                 end
 
-                -- reset keyboard cuttoff time when getting focus, 
+                -- reset keyboard cuttoff time when getting focus,
                 -- to prevent keys that were pressed before coming into focus from being captured
-                app.gui.mainWindow.focused = ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow)
-                if (not app.temp.prevWindowIsFocused) and app.gui.mainWindow.focused then
-                    OD_ResetCutoff()
-                    app.temp.prevWindowIsFocused = true
-                elseif not app.gui.mainWindow.focused and app.temp.prevWindowIsFocused then
-                    app.temp.prevWindowIsFocused = false
-                end
+                -- app.gui.mainWindow.focused = ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow)
+                -- if (not app.temp.prevWindowIsFocused) and app.gui.mainWindow.focused then
+                --     app.temp.prevWindowIsFocused = true
+                -- elseif not app.gui.mainWindow.focused and app.temp.prevWindowIsFocused then
+                --     app.temp.prevWindowIsFocused = false
+                -- end
 
                 if app.logger.showImGuiDebugWindows then
                     ImGui.ShowMetricsWindow(ctx)
@@ -470,21 +469,15 @@ else
                     end
                 end
             end,
-            isShortcutPressed = function(key, onlyIfFocused)
+            isShortcutPressed = function(key, global)
                 local shortcut = app.settings.current.shortcuts[key]
-                local focused = onlyIfFocused == nil and true or app.gui.mainWindow.focused
                 if shortcut and shortcut.key == -1 then return false end
-                local keyChord = OD_KEYCODE_IMGUI_CODES[shortcut.key] |
-                        (shortcut.shift and ImGui.Mod_Shift or 0) |
-                        (shortcut.ctrl and ImGui.Mod_Ctrl or 0) |
-                        (shortcut.macCtrl and ImGui.Mod_Super or 0) |
-                        (shortcut.alt and ImGui.Mod_Alt or 0)
-                    return shortcut and focused and 
-                        OD_IsGlobalKeyPressed(shortcut.key) and
-                        OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL) == shortcut.ctrl
-                        and OD_IsGlobalKeyDown(OD_KEYCODES.SHIFT) == shortcut.shift
-                        and OD_IsGlobalKeyDown(OD_KEYCODES.ALT) == shortcut.alt
-                        and OD_IsGlobalKeyDown(OD_KEYCODES.STARTKEY) == shortcut.macCtrl
+                local keyChord = OD_GetImGuiKeyCode(ImGui,shortcut.key)|
+                    (shortcut.shift and ImGui.Mod_Shift or 0) |
+                    (shortcut.ctrl and ImGui.Mod_Ctrl or 0) |
+                    (shortcut.macCtrl and ImGui.Mod_Super or 0) |
+                    (shortcut.alt and ImGui.Mod_Alt or 0)
+                return ImGui.Shortcut(app.gui.ctx, keyChord, global and ImGui.InputFlags_RouteAlways or ImGui.InputFlags_None)
             end,
             getShortcutDescription = function(key)
                 local shortcut = app.settings.current.shortcuts[key]
@@ -1691,13 +1684,11 @@ else
                 local menuW, h = calculateDimensions()
 
                 local handleSpecialKeys = function()
-                    local pressed = false
                     if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) then
                             if not app.temp.ignoreEscapeKey then
                                 if app.temp.searchInput == '' then
                                     app.hide = true
-                                    pressed = true
                                 end
                             end
                             app.temp.ignoreEscapeKey = nil
@@ -1712,17 +1703,13 @@ else
                                 else
                                     app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.MAIN)
                                 end
-                                pressed = true
                             end
                         elseif app.guiHelpers.isShortcutPressed('selectAllResults', true) then
                             app.selection:selectRange(1, #app.temp.searchResults)
-                            pressed = true
                         elseif app.guiHelpers.isShortcutPressed('resetFilters', true) then
                             app.flow.filterResults({ clear = true })
-                            pressed = true
-                        elseif app.guiHelpers.isShortcutPressed('hardCloseScript', true) then
-                            app.hardExit = true
-                            pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('hardCloseScript', true) then
+                                app.hardExit = true
                         elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.guiHelpers.isShortcutPressed('markFavorite', true) and app.selection.keyboardPos then
                             local result = app.temp.searchResults[app.selection.keyboardPos]
                             local fav = result:toggleFavorite()
@@ -1735,13 +1722,10 @@ else
                                     end
                                 end
                             end
-                            pressed = true
                         end
                     end
-                    return pressed
                 end
                 local drawTextSearchInput = function()
-                    local pressed = handleSpecialKeys() -- pressed is used to prevent keys from being entered into the search box
                     if app.pageSwitched then
                         app.flow.filterResults({ text = '' })
                     end
@@ -1754,10 +1738,12 @@ else
                     if not ImGui.IsAnyItemActive(ctx) and not app.temp.waitingForDoubleClick and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.tagRename and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows) then
                         ImGui.SetKeyboardFocusHere(ctx, 0)
                     end
+
+                    handleSpecialKeys()
+
                     rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput" .. app.temp.searchMode,
                         T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput,
-                        (app.temp.selectSearchInputTextOnNextFrame and ImGui.InputTextFlags_AutoSelectAll or ImGui.InputTextFlags_EscapeClearsAll) |
-                        (pressed and ImGui.InputTextFlags_ReadOnly or ImGui.InputTextFlags_None))
+                        (app.temp.selectSearchInputTextOnNextFrame and ImGui.InputTextFlags_AutoSelectAll or ImGui.InputTextFlags_EscapeClearsAll))
                     if not app.temp.selectSearchInputText then -- wait 1 frame for selection to work
                         app.temp.lastSearchMode = app.temp.searchMode
                         app.temp.selectSearchInputTextOnNextFrame = nil
