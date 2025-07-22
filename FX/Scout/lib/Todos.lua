@@ -5,15 +5,17 @@
 ---------------------------------------
 
 -- TODO: Presets
--- TODO: Add presets to userdata import/export
---       - FX Folder filters: include both folder ID and folder name/path
---         * Import: try matching by name+ID first, then name only, skip preset if no folder match found
---       - Category filters: categories might not exist on target system, skip preset if category missing
---       - Developer filters: developers might not exist on target system, skip preset if developer missing
---       - Tag filters: validate that referenced tags were successfully imported, skip preset if any tag missing
---       - Search text filters: should be safe to import as-is
---       - Import order: tags must be imported before presets to ensure tag dependencies are met
---       - Provide clear warnings about which presets were skipped and why (missing folders/categories/developers/tags)
+-- DONE: Add presets to userdata import/export
+--       ✓ FX Folder filters: exported as-is, validated at runtime
+--       ✓ Category filters: exported as-is, validated at runtime  
+--       ✓ Developer filters: exported as-is, validated at runtime
+--       ✓ Tag filters: validate that referenced tags exist during import, skip preset if any tag missing
+--       ✓ Search text filters: imported as-is (safe)
+--       ✓ Import order: tags imported before presets to ensure tag dependencies are met
+--       ✓ Provide clear warnings about which presets were skipped and why (missing tags)
+--       ✓ Presets section added to export/import file format with serialized filter data
+--       ✓ Merge mode support for presets (preserve existing + add new)
+--       ✓ UI labels updated to include presets in export/import dialogs
 -- TODO: Keyboard shortcuts for presets/filters
 -- TODO: Create actions for presets/filters
 -- TODO: Settings window

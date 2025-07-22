@@ -2207,7 +2207,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
                     -- Export button
                     if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL }) then
-                        local rv, filename = reaper.JS_Dialog_BrowseForSaveFile('Export Tags & Favorites', '', '',
+                        local rv, filename = reaper.JS_Dialog_BrowseForSaveFile('Export Tags, Presets & Favorites', '', '',
                             'Scout Tags files (*.scout)\0*.scout\0\0')
                         if rv and filename then
                             local success, errorMsg = app.userdata:export(filename)
@@ -2226,7 +2226,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     local importButtonText = mergeMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE or
                         T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL
                     if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText }) then
-                        local rv, filename = reaper.GetUserFileNameForRead('', 'Import Tags & Favorites', 'scout')
+                        local rv, filename = reaper.GetUserFileNameForRead('', 'Import Tags, Presets & Favorites', 'scout')
                         if rv and filename then
                             local success, skippedAssets, mappedCount, skippedCount = app.userdata:import(filename,
                                 mergeMode)

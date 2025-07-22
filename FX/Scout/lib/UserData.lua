@@ -119,6 +119,40 @@ function PB_UserData:export(filename)
     end
     file:write('\n')
 
+    -- Export presets
+    file:write('[presets]\n')
+    local presetsCount = 0
+    for id, preset in pairs(self.current.presets) do
+        -- Serialize preset filter using a simple key=value format
+        local filterParts = {}
+        for key, value in pairs(preset.filter) do
+            if key == "tags" and type(value) == "table" then
+                -- Special handling for tags (table of tagId=boolean)
+                local tagParts = {}
+                for tagId, positive in pairs(value) do
+                    table.insert(tagParts, tagId .. "=" .. (positive and "1" or "0"))
+                end
+                if #tagParts > 0 then
+                    table.insert(filterParts, "tags=" .. table.concat(tagParts, ";"))
+                end
+            elseif type(value) == "string" or type(value) == "number" then
+                table.insert(filterParts, key .. "=" .. tostring(value))
+            elseif type(value) == "boolean" then
+                table.insert(filterParts, key .. "=" .. (value and "1" or "0"))
+            end
+        end
+        local filterString = table.concat(filterParts, "&")
+        
+        local sanitizedName = OD_EscapeCSV(preset.name)
+        local sanitizedFilter = OD_EscapeCSV(filterString)
+        local sanitizedLetter = OD_EscapeCSV(preset.letter or "")
+        file:write(string.format('%d,%s,%s,%s\n', id, sanitizedName, sanitizedFilter, sanitizedLetter))
+        presetsCount = presetsCount + 1
+    end
+    file:write('\n')
+
+    self.app.logger:logDebug('Exported presets', presetsCount)
+
     -- Export favorites
     file:write('[favorites]\n')
     local favoritesCount = 0
@@ -133,7 +167,7 @@ function PB_UserData:export(filename)
 
     self.app.logger:logDebug('Exported favorites', favoritesCount)
     self.app.logger:logInfo('Successfully exported ' ..
-    tagCount .. ' tags, ' .. assetCount .. ' tagged assets, and ' .. favoritesCount .. ' favorites to ' .. filename)
+    tagCount .. ' tags, ' .. assetCount .. ' tagged assets, ' .. presetsCount .. ' presets, and ' .. favoritesCount .. ' favorites to ' .. filename)
 
     return true
 end
@@ -160,6 +194,7 @@ function PB_UserData:import(filename, mergeMode)
     local section = nil
     local importedTagInfo = {}
     local importedTaggedAssets = {}
+    local importedPresets = {}    -- Track imported presets
     local importedFavorites = {}  -- Track imported favorites
     local importedAssetTypes = {} -- Map of imported asset type ID -> class name
     local assetTypeMapping = {}   -- Map of imported asset type ID -> current system asset type ID
@@ -177,6 +212,8 @@ function PB_UserData:import(filename, mergeMode)
             section = "tagInfo"
         elseif line:match("^%[taggedAssets%]") then
             section = "taggedAssets"
+        elseif line:match("^%[presets%]") then
+            section = "presets"
         elseif line:match("^%[favorites%]") then
             section = "favorites"
         elseif section == "version" and line ~= "" then
@@ -322,6 +359,51 @@ function PB_UserData:import(filename, mergeMode)
             else
                 self.app.logger:logError('No colon separator found in taggedAssets line', line)
             end
+        elseif section == "presets" and line ~= "" then
+            -- Parse presets: id,name,filter,letter
+            local fields = OD_ParseCSVLine(line, ",")
+            if #fields >= 4 then
+                local id, name, filterString, letter = fields[1], fields[2], fields[3], fields[4]
+                if id and name and tonumber(id) then
+                    -- Parse filter string back to table format
+                    local filter = {}
+                    if filterString and filterString ~= "" then
+                        for pair in filterString:gmatch("([^&]+)") do
+                            local key, value = pair:match("([^=]+)=(.+)")
+                            if key and value then
+                                if key == "tags" then
+                                    -- Special handling for tags
+                                    filter.tags = {}
+                                    for tagPair in value:gmatch("([^;]+)") do
+                                        local tagId, positive = tagPair:match("([^=]+)=(.+)")
+                                        if tagId and positive then
+                                            filter.tags[tonumber(tagId)] = (positive == "1")
+                                        end
+                                    end
+                                elseif tonumber(value) then
+                                    filter[key] = tonumber(value)
+                                elseif value == "1" then
+                                    filter[key] = true
+                                elseif value == "0" then
+                                    filter[key] = false
+                                else
+                                    filter[key] = value
+                                end
+                            end
+                        end
+                    end
+                    
+                    importedPresets[tonumber(id)] = {
+                        name = name,
+                        filter = filter,
+                        letter = letter ~= "" and letter or nil
+                    }
+                else
+                    self.app.logger:logError('Invalid presets line format', line)
+                end
+            else
+                self.app.logger:logError('Insufficient fields in presets line', line)
+            end
         elseif section == "favorites" and line ~= "" then
             -- Parse favorites: one asset ID per line
             local favoriteAsset = OD_UnescapeCSV(line)
@@ -338,10 +420,12 @@ function PB_UserData:import(filename, mergeMode)
     for _ in pairs(importedTagInfo) do importedTagCount = importedTagCount + 1 end
     local importedAssetCount = 0
     for _ in pairs(importedTaggedAssets) do importedAssetCount = importedAssetCount + 1 end
+    local importedPresetsCount = 0
+    for _ in pairs(importedPresets) do importedPresetsCount = importedPresetsCount + 1 end
     local importedFavoritesCount = #importedFavorites
     self.app.logger:logDebug('Parsed ' ..
     importedTagCount ..
-    ' tags, ' .. importedAssetCount .. ' tagged assets, and ' .. importedFavoritesCount .. ' favorites from file')
+    ' tags, ' .. importedAssetCount .. ' tagged assets, ' .. importedPresetsCount .. ' presets, and ' .. importedFavoritesCount .. ' favorites from file')
     if fileVersion then
         self.app.logger:logDebug('File version', fileVersion)
     end
@@ -961,11 +1045,100 @@ function PB_UserData:import(filename, mergeMode)
     self.app.logger:logInfo('Favorites import: ' ..
     mappedFavoritesCount .. ' mapped, ' .. skippedFavoritesCount .. ' skipped, total favorites: ' .. #finalFavorites)
 
+    -- Process imported presets
+    local mappedPresetsCount = 0
+    local skippedPresetsCount = 0
+    local finalPresets = {}
+
+    if mergeMode then
+        -- In merge mode, preserve existing presets
+        for id, preset in pairs(self.current.presets) do
+            finalPresets[id] = preset
+        end
+    end
+
+    -- Helper function to validate filter dependencies
+    local function validateFilterDependencies(filter)
+        local issues = {}
+        
+        if filter.fxFolderId then
+            -- Check if FX folder exists (this would need folder validation logic)
+            -- For now, we'll assume folder validation happens at runtime
+        end
+        
+        if filter.fxCategory then
+            -- Check if category exists in current system
+            -- Categories are dynamic, so we'll validate at runtime
+        end
+        
+        if filter.fxDeveloper then
+            -- Check if developer exists in current system
+            -- Developers are dynamic, so we'll validate at runtime
+        end
+        
+        if filter.tags then
+            -- Check if all referenced tags exist
+            for tagId, _ in pairs(filter.tags) do
+                if not self.current.tagInfo[tagId] then
+                    table.insert(issues, "Missing tag ID: " .. tagId)
+                end
+            end
+        end
+        
+        return issues
+    end
+
+    for importedId, importedPreset in pairs(importedPresets) do
+        -- Validate filter dependencies
+        local issues = validateFilterDependencies(importedPreset.filter)
+        
+        if #issues > 0 then
+            skippedPresetsCount = skippedPresetsCount + 1
+            self.app.logger:logDebug('✗ Skipped preset "' .. importedPreset.name .. '": ' .. table.concat(issues, ", "))
+        else
+            -- Import preset
+            local newId = importedId
+            if mergeMode then
+                -- In merge mode, find next available ID if conflict exists
+                while finalPresets[newId] do
+                    newId = newId + 1
+                end
+            end
+            
+            finalPresets[newId] = {
+                id = newId,
+                name = importedPreset.name,
+                filter = OD_DeepCopy(importedPreset.filter),
+                letter = importedPreset.letter,
+                modified = os.time()
+            }
+            
+            mappedPresetsCount = mappedPresetsCount + 1
+            self.app.logger:logDebug('✓ Imported preset "' .. importedPreset.name .. '" with ID ' .. newId)
+        end
+    end
+
+    -- Update presets and idCount
+    self.current.presets = finalPresets
+    
+    -- Update idCount to be higher than any preset ID
+    local maxId = self.current.idCount or 0
+    for id, _ in pairs(finalPresets) do
+        if id > maxId then maxId = id end
+    end
+    if maxId > self.current.idCount then
+        self.current.idCount = maxId
+    end
+
+    self.app.logger:logInfo('Presets import: ' ..
+    mappedPresetsCount .. ' imported, ' .. skippedPresetsCount .. ' skipped, total presets: ' .. OD_TableLength(finalPresets))
+
     self:save()
     
     -- Notify engine to refresh its runtime data after import
     if self.app.engine then
         self.app.engine:getTags(true) -- Pass true to reassemble tag filter assets
+        self.app.engine:getPresets(true) -- Refresh presets
         self.app.engine:assembleAssets()
     end
     
