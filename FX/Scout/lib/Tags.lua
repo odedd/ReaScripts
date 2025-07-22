@@ -7,6 +7,7 @@ PB_Tags = OD_Settings:new({
         tagInfo = {},
         taggedAssets = {},
         recents = {},
+        presets = {},
         idCount = 7,
     },
     initial = {

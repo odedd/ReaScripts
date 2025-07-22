@@ -73,37 +73,43 @@ SPECIAL_GROUPS = {
 
 -- should be negative to differentiate them from regular assets
 FILTER_TYPES = {
-    TYPE = -1,
-    FX_TYPE = -2,
-    CATEGORY = -3,
-    FOLDER = -4,
-    DEVELOPER = -5,
-    TAG = -6,
+    PRESET = -1,
+    TYPE = -2,
+    FX_TYPE = -3,
+    CATEGORY = -4,
+    FOLDER = -5,
+    DEVELOPER = -6,
+    TAG = -7,
 }
 
 FILTER_MENU = {
-    [FILTER_TYPES.TYPE] = {
+    [FILTER_TYPES.PRESET] = {
         order = 1,
         allQuery = { type = 'all' },
         items = {} -- Will be populated dynamically by AssetTypeManager
     },
-    [FILTER_TYPES.FX_TYPE] = {
+    [FILTER_TYPES.TYPE] = {
         order = 2,
+        allQuery = { type = 'all' },
+        items = {} -- Will be populated dynamically by AssetTypeManager
+    },
+    [FILTER_TYPES.FX_TYPE] = {
+        order = 3,
         allQuery = { fx_type = 'all' },
         items = {}
     },
     [FILTER_TYPES.FOLDER] = {
-        order = 3,
+        order = 4,
         allQuery = { fxFolderId = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     },
     [FILTER_TYPES.CATEGORY] = {
-        order = 4,
+        order = 5,
         allQuery = { fxCategory = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     },
     [FILTER_TYPES.DEVELOPER] = {
-        order = 5,
+        order = 6,
         allQuery = { fxDeveloper = 'all' },
         items = {} -- added in Db.lua once folders are loaded
     }

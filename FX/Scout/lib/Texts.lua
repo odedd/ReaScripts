@@ -66,6 +66,7 @@ T.SEARCH_WINDOW = {
     }
 }
 T.FILTER_NAMES = {
+    [FILTER_TYPES.PRESET] = 'Preset',
     [FILTER_TYPES.TYPE] = 'Result Type',
     [FILTER_TYPES.FX_TYPE] = 'FX Type',
     [FILTER_TYPES.FOLDER] = 'Folder',
