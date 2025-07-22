@@ -101,17 +101,17 @@ FILTER_MENU = {
     [FILTER_TYPES.FOLDER] = {
         order = 4,
         allQuery = { fxFolderId = 'all' },
-        items = {} -- added in Db.lua once folders are loaded
+        items = {} -- added in DataEngine.lua once folders are loaded
     },
     [FILTER_TYPES.CATEGORY] = {
         order = 5,
         allQuery = { fxCategory = 'all' },
-        items = {} -- added in Db.lua once folders are loaded
+        items = {} -- added in DataEngine.lua once folders are loaded
     },
     [FILTER_TYPES.DEVELOPER] = {
         order = 6,
         allQuery = { fxDeveloper = 'all' },
-        items = {} -- added in Db.lua once folders are loaded
+        items = {} -- added in DataEngine.lua once folders are loaded
     }
 }
 for i, fx_type_name in ipairs(FX_TYPE) do

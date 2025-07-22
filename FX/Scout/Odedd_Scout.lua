@@ -51,9 +51,9 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
         dofile(p .. 'lib/Constants.lua')
         dofile(p .. 'lib/Texts.lua')
         dofile(p .. 'lib/Settings.lua')
-        dofile(p .. 'lib/Tags.lua')
+        dofile(p .. 'lib/UserData.lua')
         dofile(p .. 'lib/Gui.lua')
-        dofile(p .. 'lib/Db.lua')
+        dofile(p .. 'lib/DataEngine.lua')
 
         -- @noindex
 
@@ -82,7 +82,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
         app:connect('gui', gui)
         app:connect('logger', logger)
         app:connect('scr', Scr)
-        app:connect('db', DB)
+        app:connect('engine', PB_DataEngine)
         app:init()
         app.logger:init()
 
@@ -91,12 +91,12 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
         end
 
         local settings = PB_Settings:new({})
-        local tags = PB_Tags:new({})
+        local userdata = PB_UserData:new({})
 
         app:connect('settings', settings)
-        app:connect('tags', tags)
+        app:connect('userdata', userdata)
         app.settings:load()
-        app.tags:load()
+        app.userdata:load()
         app.gui:init();
 
 
@@ -232,8 +232,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 app.temp.filter = filter
 
                 -- Filtering assets
-                local assets = app.temp.searchMode == SEARCH_MODE.MAIN and app.db.assets or app.db.filterAssets
-                local tagsTable = app.db.tags
+                local assets = app.temp.searchMode == SEARCH_MODE.MAIN and app.engine.assets or app.engine.filterAssets
+                local tagsTable = app.engine.tags
                 local filterTags = filter.tags
                 local filterText = filter.text:lower()
 
@@ -395,8 +395,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 app.temp.filter = filter
 
                 -- Filtering assets
-                local assets = app.temp.searchMode == SEARCH_MODE.MAIN and app.db.assets or app.db.filterAssets
-                local tagsTable = app.db.tags
+                local assets = app.temp.searchMode == SEARCH_MODE.MAIN and app.engine.assets or app.engine.filterAssets
+                local tagsTable = app.engine.tags
                 local filterTags = filter.tags
                 local filterText = filter.text:lower()
 
@@ -756,7 +756,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx)
                 local filterAreaH = select(2, ImGui.GetContentRegionAvail(ctx))                -- Height available for search results
 
-                local tagInfo = app.tags.current.tagInfo
+                local tagInfo = app.userdata.current.tagInfo
                 local searchResults = app.temp.searchResults or
                     {} -- Current search results -- clear drop target hint on every frame
                 local hintResult, hintContext = nil, nil, nil
@@ -812,8 +812,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                 activeFilters[key].key = key
                                 activeFilters[key].type = FILTER_TYPES.TAG
                                 activeFilters[key].value = tagValue
-                                activeFilters[key].item = app.db.tags[tagKey]
-                                activeFilters[key].itemName = app.db.tags[tagKey].name
+                                activeFilters[key].item = app.engine.tags[tagKey]
+                                activeFilters[key].itemName = app.engine.tags[tagKey].name
 
                                 if activeFilters[key].order == nil then
                                     activeFilters[key].order = OD_Tablelength(
@@ -976,7 +976,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                     app.temp.highlightDropAreaFor = row.index
                                 end
                                 if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
-                                    local payloadTag = app.db.tags[tonumber(tagPayload)]
+                                    local payloadTag = app.engine.tags[tonumber(tagPayload)]
 
                                     local results
                                     local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
@@ -993,7 +993,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                             result:addTag(payloadTag, false)
                                         end
                                     end
-                                    app.tags:save()
+                                    app.userdata:save()
                                     app.flow.filterResults(nil, true)
                                     app.temp.highlightDropAreaForAllSelectedResults = nil
                                     app.temp.highlightDropAreaFor = nil
@@ -1432,7 +1432,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                                 ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
                                         end
                                         if tagDropped then
-                                            local payloadTag = app.db.tags[tonumber(tagPayload)]
+                                            local payloadTag = app.engine.tags[tonumber(tagPayload)]
 
                                             if position == 'inside' then
                                                 ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX,
@@ -1469,7 +1469,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                                         result:addTag(tag, false)
                                                     end
                                                 end
-                                                app.tags:save()
+                                                app.userdata:save()
                                                 app.flow.filterResults(nil, true)
                                             end
                                         end
@@ -1531,7 +1531,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                     end
                                     if ImGui.MenuItem(ctx, 'Create Nested Tag') then
                                         tag:toggleOpen(true)
-                                        local newTag = app.db:createTag('New Tag', tag)
+                                        local newTag = app.engine:createTag('New Tag', tag)
                                         app.temp.tagRename = newTag.id
                                         app.temp.tagRenameBuffer = newTag.name
                                     end
@@ -1720,7 +1720,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             -- Collect all tags with the given parentId, preserving order
                             local lastTag = nil
                             local firstTag = nil
-                            for id, tag in OD_PairsByOrder(app.db.tags) do
+                            for id, tag in OD_PairsByOrder(app.engine.tags) do
                                 if tag.parentId == parentId then
                                     if firstTag == nil and parentId == TAGS_ROOT_PARENT then
                                         local availH = ImGui.GetCursorPosY(ctx)
@@ -1791,7 +1791,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             ImGui.CalcTextSize(ctx, ICONS.PLUS))
                         -- ImGui.AlignTextToFramePadding(ctx)
                         if ImGui.Button(ctx, ICONS.PLUS .. '##CreateTag') then
-                            local newTag = app.db:createTag('New Tag', TAGS_ROOT_PARENT)
+                            local newTag = app.engine:createTag('New Tag', TAGS_ROOT_PARENT)
                             app.temp.tagRename = newTag.id
                             app.temp.tagRenameBuffer = newTag.name
                         end
@@ -2126,7 +2126,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         local rv, filename = reaper.JS_Dialog_BrowseForSaveFile('Export Tags & Favorites', '', '',
                             'Scout Tags files (*.scout)\0*.scout\0\0')
                         if rv and filename then
-                            local success, errorMsg = app.tags:export(filename)
+                            local success, errorMsg = app.userdata:export(filename)
                             if success then
                                 app:msg('Export successful: ' .. filename)
                             else
@@ -2144,7 +2144,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText }) then
                         local rv, filename = reaper.GetUserFileNameForRead('', 'Import Tags & Favorites', 'scout')
                         if rv and filename then
-                            local success, skippedAssets, mappedCount, skippedCount = app.tags:import(filename, mergeMode)
+                            local success, skippedAssets, mappedCount, skippedCount = app.userdata:import(filename, mergeMode)
                             if success then
                                 local msg = string.format('Import successful: %d assets mapped, %d assets skipped',
                                     mappedCount or 0, skippedCount or 0)
@@ -2164,7 +2164,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     if app.temp.captureCounter > 3 and OD_IsGlobalKeyDown(OD_KEYCODES.ESCAPE) then
                         app.temp.ignoreEscapeKey = true
                         OD_ReleaseGlobalKeys()
-                        app.db:sync(true)
+                        app.engine:sync(true)
                         ImGui.CloseCurrentPopup(ctx)
                     else
                         OD_ReleaseGlobalKeys()
@@ -2176,7 +2176,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 if app.temp.settingsWindowOpen and not ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow') then
                     app.temp.settingsWindowOpen = false
                     OD_ReleaseGlobalKeys()
-                    app.db:sync(true)
+                    app.engine:sync(true)
                     app.settings:save()
                 end
             end,
@@ -2391,8 +2391,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
         app.logger:logInfo('Started')
         app.logger:logAppInfo(app.logger.LOG_LEVEL.DEBUG, app)
         app.logger:logTable(app.logger.LOG_LEVEL.DEBUG, 'Settings', app.settings.current)
-        app.db:init()
-        app.db:sync()
+        app.engine:init()
+        app.engine:sync()
         app.flow.setPage(APP_PAGE.SEARCH)
         PDefer(app.loop)
     end

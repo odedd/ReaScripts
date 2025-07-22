@@ -6,34 +6,34 @@
 AssetTypeManager = {}
 AssetTypeManager.__index = AssetTypeManager
 
-function AssetTypeManager:new(db)
+function AssetTypeManager:new(engine)
     -- Create a minimal context object with only what asset types need
     local context = {
         -- Logger access
-        logger = db.app.logger,
+        logger = engine.app.logger,
 
         -- Settings access
-        settings = db.app.settings,
+        settings = engine.app.settings,
 
         -- Tags access
-        tags = db.app.tags,
+        tags = engine.app.userdata,
         
         -- flow access
-        flow = db.app.flow,
+        flow = engine.app.flow,
 
         -- temp objects access
-        temp = db.app.temp,
+        temp = engine.app.temp,
 
         -- GUI context for ImGui operations
-        gui = db.app.gui,
+        gui = engine.app.gui,
 
         -- FX data for plugin categorization
-        fxDevelopers = db.fxDevelopers,
-        pluginToCategories = db.pluginToCategories,
-        pluginToFolders = db.pluginToFolders,
+        fxDevelopers = engine.fxDevelopers,
+        pluginToCategories = engine.pluginToCategories,
+        pluginToFolders = engine.pluginToFolders,
 
         -- Reference back to full db for cases where it's still needed
-        db = db
+        db = engine
     }
 
     local instance = setmetatable({}, self)

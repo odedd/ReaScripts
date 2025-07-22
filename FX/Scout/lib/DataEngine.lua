@@ -1,6 +1,6 @@
 -- @noindex
 
-DB = {
+PB_DataEngine = {
     tags = {},
     setUndoPoint = function(self, name, type, trackparm)
         type = type or -1
@@ -38,7 +38,7 @@ DB = {
     end,
     lastGuids = {}, -- use to check if a track has been removed or added
     init = function(self, app)
-        self.app.logger:logDebug('-- DB.init()')
+        self.app.logger:logDebug('-- PB_DataEngine.init()')
         self.masterTrack = reaper.GetMasterTrack(0)
 
         -- Initialize fields that will be populated by asset types
@@ -71,7 +71,7 @@ DB = {
         end
     end,
     sync = function(self, refresh) -- not sure this is needed
-        self.app.logger:logDebug('-- DB.sync()')
+        self.app.logger:logDebug('-- PB_DataEngine.sync()')
         self.refresh = refresh or false
         self.current_project = r.GetProjectStateChangeCount(0) -- if project changed, force full sync
         if self.current_project ~= self.previous_project then
@@ -89,7 +89,7 @@ DB = {
 }
 
 -- Cache management
-DB.invalidateGroupPriorityCache = function(self)
+PB_DataEngine.invalidateGroupPriorityCache = function(self)
     self._groupPriorityCache = nil
     self._lastGroupOrder = nil
     self.app.logger:logDebug('Group priority cache invalidated')
@@ -97,8 +97,8 @@ end
 
 -- get project tracks into self.tracks, keeping the track's GUID, name and color, and wheather it has receives or not
 
-DB.getSelectedTracks = function(self)
-    self.app.logger:logDebug('-- DB.getSelectedTracks()')
+PB_DataEngine.getSelectedTracks = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.getSelectedTracks()')
     self:refreshTracks()
     local numTracks = r.CountSelectedTracks(0);
     local tracks = {};
@@ -115,8 +115,8 @@ DB.getSelectedTracks = function(self)
     return tracks;
 end
 
-DB._getTrack = function(self, track)
-    self.app.logger:logDebug('-- DB._getTrack()')
+PB_DataEngine._getTrack = function(self, track)
+    self.app.logger:logDebug('-- PB_DataEngine._getTrack()')
     for i, trk in ipairs(self.tracks) do
         if track == trk.object then
             return trk
@@ -127,8 +127,8 @@ DB._getTrack = function(self, track)
 end
 
 --- INSERTS
-DB.recalculateShortNames = function(self)
-    self.app.logger:logDebug('-- DB.recalculateShortNames()')
+PB_DataEngine.recalculateShortNames = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.recalculateShortNames()')
     local sendCount = 0
     for _, send in ipairs(self.sends) do
         if send.destTrack then
@@ -142,8 +142,8 @@ DB.recalculateShortNames = function(self)
     self.app.logger:logDebug('Recalculated short names for sends', sendCount)
 end
 
-DB.getFXFolders = function(self)
-    self.app.logger:logDebug('-- DB.getFXFolders()')
+PB_DataEngine.getFXFolders = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.getFXFolders()')
     self.fxFolders = {}
     self.pluginToFolders = {}
 
@@ -224,8 +224,8 @@ DB.getFXFolders = function(self)
     end
 end
 
-DB.getFXCategories = function(self)
-    self.app.logger:logDebug('-- DB.getFXCategories()')
+PB_DataEngine.getFXCategories = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.getFXCategories()')
     self.fxCategories = {}
     self.pluginToCategories = {}
 
@@ -286,8 +286,8 @@ DB.getFXCategories = function(self)
     end
 end
 
-DB.updateDevelopersFilterMenu = function(self)
-    self.app.logger:logDebug('-- DB.updateDevelopersFilterMenu()')
+PB_DataEngine.updateDevelopersFilterMenu = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.updateDevelopersFilterMenu()')
     FILTER_MENU[FILTER_TYPES.DEVELOPER].items = {}
 
     local developerNames = {}
@@ -309,8 +309,8 @@ end
 
 
 -- TAGS AND FAVORITES
-DB.getTags = function(self, reassembleTagFilterAssets)
-    self.tags = OD_DeepCopy(self.app.tags.current.tagInfo)
+PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
+    self.tags = OD_DeepCopy(self.app.userdata.current.tagInfo)
     local function hasCycle(tagId, visited)
         visited = visited or {}
         if visited[tagId] then return true end
@@ -322,7 +322,7 @@ DB.getTags = function(self, reassembleTagFilterAssets)
         return false
     end
 
-    for id, tagInfo in pairs(self.app.tags.current.tagInfo) do
+    for id, tagInfo in pairs(self.app.userdata.current.tagInfo) do
         -- Remove illegal parentId if it would cause a stack overflow (cycle)
         if tagInfo.parentId and tagInfo.parentId ~= TAGS_ROOT_PARENT and (tagInfo.parentId == id or hasCycle(id)) then
             self.app.logger:logError('Cycle detected for tag "' ..
@@ -350,15 +350,15 @@ DB.getTags = function(self, reassembleTagFilterAssets)
         self.tags[id].toggleOpen = function(self, state, persist)
             persist = (persist == nil) and true or persist
             self.open = state
-            self.app.tags.current.tagInfo[self.id].open = state
-            if persist then self.app.tags:save() end
+            self.app.userdata.current.tagInfo[self.id].open = state
+            if persist then self.app.userdata:save() end
         end
         self.tags[id].rename = function(self, name, persist)
             persist = (persist == nil) and true or persist
             self.name = name
-            self.app.tags.current.tagInfo[self.id].name = name
+            self.app.userdata.current.tagInfo[self.id].name = name
             if persist then
-                self.app.tags:save()
+                self.app.userdata:save()
                 self.db:getTags(true)
             end
         end
@@ -373,14 +373,14 @@ DB.getTags = function(self, reassembleTagFilterAssets)
             for _, tag in pairs(self.descendants) do
                 tag:delete(false)
             end
-            self.app.tags.current.tagInfo[self.id] = nil
+            self.app.userdata.current.tagInfo[self.id] = nil
             for sibId, sib in pairs(self.siblings) do
                 if sib.order > self.order then
-                    self.app.tags.current.tagInfo[sibId].order = self.app.tags.current.tagInfo[sibId].order - 1
+                    self.app.userdata.current.tagInfo[sibId].order = self.app.userdata.current.tagInfo[sibId].order - 1
                 end
             end
             if persistAndReload ~= false then
-                self.app.tags:save()
+                self.app.userdata:save()
                 self.db:getTags(true)
             end
         end
@@ -439,7 +439,7 @@ DB.getTags = function(self, reassembleTagFilterAssets)
                 return false
             end
 
-            local tagInfo = self.app.tags.current.tagInfo
+            local tagInfo = self.app.userdata.current.tagInfo
             local oldParentId = self.parentId
             local oldOrder = self.order
             local newParentId
@@ -532,7 +532,7 @@ DB.getTags = function(self, reassembleTagFilterAssets)
             self.parentId = newParentId
             self.order = nil -- will be set by above loop
 
-            self.app.tags:save()
+            self.app.userdata:save()
             -- Rescan tags into the DB after move
             self.db:getTags(true)
         end
@@ -554,13 +554,13 @@ DB.getTags = function(self, reassembleTagFilterAssets)
     if reassembleTagFilterAssets then self:assembleFilterAssets({ tags = true }) end
 end
 
-DB.createTag = function(self, name, parent)
-    self.app.logger:logDebug('-- DB.createTag()')
+PB_DataEngine.createTag = function(self, name, parent)
+    self.app.logger:logDebug('-- PB_DataEngine.createTag()')
     self.app.logger:logDebug('Creating tag "' .. name .. '"')
     local parentId = (parent == TAGS_ROOT_PARENT) and TAGS_ROOT_PARENT or parent.id
     local levelCount = 0
     local lastId = 1
-    for id, tagInfo in pairs(self.app.tags.current.tagInfo) do
+    for id, tagInfo in pairs(self.app.userdata.current.tagInfo) do
         if tagInfo.parentId == parentId then
             levelCount = levelCount + 1
         end
@@ -571,14 +571,14 @@ DB.createTag = function(self, name, parent)
         parentId = parentId,
         order = levelCount + 1
     }
-    local newId = self.app.tags.current.idCount + 1
-    self.app.tags.current.idCount = newId
-    self.app.tags.current.tagInfo[newId] = newTag
+    local newId = self.app.userdata.current.idCount + 1
+    self.app.userdata.current.idCount = newId
+    self.app.userdata.current.tagInfo[newId] = newTag
     self.app.logger:logInfo('Created a new tag \'' ..
         name ..
         '\' with id ' ..
         newId .. (parentId ~= TAGS_ROOT_PARENT and ' (parent Id: ' .. parentId .. ')' or ''))
-    self.app.tags:save()
+    self.app.userdata:save()
     self:getTags(true)
 
     for _, tag in pairs(self.tags) do
@@ -587,15 +587,15 @@ DB.createTag = function(self, name, parent)
         end
     end
 end
-DB.markSpecialGroups = function(self)
-    self.app.logger:logDebug('-- DB.markSpecialGroups()')
+PB_DataEngine.markSpecialGroups = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.markSpecialGroups()')
     
     local favoriteCount = 0
     local recentCount = 0
     
     -- Get current lists
-    local favorites = self.app.tags.current.favorites or {}
-    local recents = self.app.tags.current.recents or {}
+    local favorites = self.app.userdata.current.favorites or {}
+    local recents = self.app.userdata.current.recents or {}
     
     -- Clean up excess recents first
     local recentsToDelete = {}
@@ -671,13 +671,13 @@ DB.markSpecialGroups = function(self)
     self.app.logger:logDebug('Marked special groups - Favorites: ' .. favoriteCount .. ', Recents: ' .. recentCount)
 end
 
-DB.tagAssets = function(self)
+PB_DataEngine.tagAssets = function(self)
     for _, asset in ipairs(self.assets) do
-        asset.tags = OD_DeepCopy(self.app.tags.current.taggedAssets[asset.id]) or {}
+        asset.tags = OD_DeepCopy(self.app.userdata.current.taggedAssets[asset.id]) or {}
     end
 end
 
-DB.assetsWithTag = function(self, tag)
+PB_DataEngine.assetsWithTag = function(self, tag)
     local assetsWithTag = {}
     for _, asset in ipairs(self.assets) do
         if OD_HasValue(asset.tags, tag.id) then
@@ -687,8 +687,8 @@ DB.assetsWithTag = function(self, tag)
     return assetsWithTag
 end
 
-DB.assembleAssets = function(self)
-    self.app.logger:logDebug('-- DB.assembleAssets()')
+PB_DataEngine.assembleAssets = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.assembleAssets()')
 
     local assets, count = self.assetTypeManager:assembleAllAssets()
     self.assets = assets
@@ -699,30 +699,30 @@ DB.assembleAssets = function(self)
     self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
 end
 -- whichFilter example: {filters = {FILTER_TYPES.CATEGORY, FILTER_TYPES.DEVELOPER}, tags = true}
-DB.assembleFilterAssets = function(self, whichFilters)
-    self.app.logger:logDebug('-- DB.assembleFilterAssets()')
+PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
+    self.app.logger:logDebug('-- PB_DataEngine.assembleFilterAssets()')
     local scanAll = whichFilters == nil and true or false
     local whichFilters = whichFilters or {}
     local executeFilter = function(self, context)
         if self.type ~= FILTER_TYPES.TAG then
             if context == RESULT_CONTEXT.ALT then
-                self.db.app.flow.filterResults(self.loadAll)
+                self.app.flow.filterResults(self.loadAll)
             else
-                self.db.app.flow.filterResults(self.load)
+                self.app.flow.filterResults(self.load)
             end
         else
             if context == RESULT_CONTEXT.ALT then
-                self.db.app.flow.filterResults({ removeTags = { self.load } })
+                self.app.flow.filterResults({ removeTags = { self.load } })
             elseif context == RESULT_CONTEXT.CTRL then
-                self.db.app.flow.filterResults({ addTags = { [self.load] = false } })
+                self.app.flow.filterResults({ addTags = { [self.load] = false } })
             else
-                self.db.app.flow.filterResults({ addTags = { [self.load] = true } })
+                self.app.flow.filterResults({ addTags = { [self.load] = true } })
             end
         end
         if context ~= RESULT_CONTEXT.SHIFT then
-            self.db.app.flow.setSearchMode(SEARCH_MODE.MAIN)
+            self.app.flow.setSearchMode(SEARCH_MODE.MAIN)
         else
-            self.db.app.flow.filterResults({ clearText = true })
+            self.app.flow.filterResults({ clearText = true })
         end
     end
 
@@ -832,8 +832,8 @@ DB.assembleFilterAssets = function(self, whichFilters)
     self.app.logger:logInfo('A total of ' ..
         assetCount .. ' filter assets were ' .. (scanAll and 'added to ' or 'updated in ') .. 'the database')
 end
-DB.sortAssets = function(self)
-    self.app.logger:logDebug('-- DB.sortAssets()')
+PB_DataEngine.sortAssets = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.sortAssets()')
 
     -- Check if we need to rebuild the group priority cache
     -- Simple check: compare groupOrder table directly (not perfect but good enough)
@@ -937,8 +937,8 @@ DB.sortAssets = function(self)
     self.app.logger:logDebug('Sorted assets', #self.assets)
 end
 
-DB.sortFilterAssets = function(self)
-    self.app.logger:logDebug('-- DB.sortFilterAssets()')
+PB_DataEngine.sortFilterAssets = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.sortFilterAssets()')
     local groupPriority = {}
     for filterType, filterMenu in pairs(FILTER_MENU) do
         groupPriority[filterType] = filterMenu.order

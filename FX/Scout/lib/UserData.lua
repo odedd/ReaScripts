@@ -1,6 +1,6 @@
 -- @noindex
 
-PB_Tags = OD_Settings:new({
+PB_UserData = OD_Settings:new({
     default = {
         -- Defineable in GUI
         favorites = {},
@@ -30,7 +30,7 @@ PB_Tags = OD_Settings:new({
     dfsetfile = Scr.dir .. Scr.no_ext .. ' tags.ini'
 })
 
-function PB_Tags:new(o)
+function PB_UserData:new(o)
     o = o or {} -- create object if user does not provide one
     setmetatable(o, self)
     self.__index = self
@@ -59,17 +59,17 @@ local function getVersionInfo(version)
     return VERSION_COMPATIBILITY_NOTES[version] or "Unknown version"
 end
 
-function PB_Tags:getFileVersion()
+function PB_UserData:getFileVersion()
     return TAGS_FILE_VERSION
 end
 
-function PB_Tags:isVersionCompatible(version)
+function PB_UserData:isVersionCompatible(version)
     return isVersionCompatible(version)
 end
 
-function PB_Tags:export(filename)
+function PB_UserData:export(filename)
     -- Export tags and taggedAssets to a file
-    self.app.logger:logDebug('-- PB_Tags:export() to', filename)
+    self.app.logger:logDebug('-- PB_UserData:export() to', filename)
 
     local file = io.open(filename, 'w')
     if not file then
@@ -138,15 +138,15 @@ function PB_Tags:export(filename)
     return true
 end
 
-function PB_Tags:import(filename, mergeMode)
+function PB_UserData:import(filename, mergeMode)
     -- mergeMode: true = merge with existing tags, false = replace all tags (default: false)
     mergeMode = mergeMode or false
 
-    self.app.logger:logDebug('-- PB_Tags:import() from ' .. filename .. ' mergeMode: ' .. tostring(mergeMode))
+    self.app.logger:logDebug('-- PB_UserData:import() from ' .. filename .. ' mergeMode: ' .. tostring(mergeMode))
 
     -- Check for AssetTypeManager that could cause "attempt to index a nil value" errors
-    if not self.app.db.assetTypeManager then
-        local errorMsg = "self.app.db.assetTypeManager is nil - make sure to call db:init() first"
+    if not self.app.engine.assetTypeManager then
+        local errorMsg = "self.app.engine.assetTypeManager is nil - make sure to call db:init() first"
         self.app.logger:logError(errorMsg)
         return false, errorMsg, {}, 0, 0
     end
@@ -586,7 +586,7 @@ function PB_Tags:import(filename, mergeMode)
     local assetTypeDataCache = {}
     local function getAssetTypeData(assetType)
         if not assetTypeDataCache[assetType] then
-            local targetAssetType = self.app.db.assetTypeManager:getAssetTypeById(assetType)
+            local targetAssetType = self.app.engine.assetTypeManager:getAssetTypeById(assetType)
             if targetAssetType then
                 assetTypeDataCache[assetType] = {
                     assetType = targetAssetType,
@@ -962,8 +962,8 @@ function PB_Tags:import(filename, mergeMode)
     mappedFavoritesCount .. ' mapped, ' .. skippedFavoritesCount .. ' skipped, total favorites: ' .. #finalFavorites)
 
     self:save()
-    self.app.db:getTags(true) -- Pass true to reassemble tag filter assets
-    self.app.db:assembleAssets()
+    self.app.engine:getTags(true) -- Pass true to reassemble tag filter assets
+    self.app.engine:assembleAssets()
     self.app.flow.filterResults() -- Trigger a refresh of the search results to show updated tags
 
     return true, skippedAssets, mappedAssetsCount, skippedAssetsCount
