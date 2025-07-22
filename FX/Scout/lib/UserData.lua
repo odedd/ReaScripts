@@ -1136,4 +1136,134 @@ function PB_UserData:createTag(name, parent)
     end
 end
 
+-- Preset management functions
+function PB_UserData:createPreset(name, filter, letter)
+    if not name or name == '' then
+        self.app.logger:logError('Cannot create preset: name is required')
+        return nil
+    end
+    
+    if not filter then
+        self.app.logger:logError('Cannot create preset: filter is required')
+        return nil
+    end
+    
+    -- Create a deep copy of the filter to store
+    local presetFilter = OD_DeepCopy(filter)
+    
+    local newId = self.current.idCount + 1
+    self.current.idCount = newId
+    
+    local preset = {
+        id = newId,
+        name = name,
+        filter = presetFilter,
+        letter = letter
+    }
+    
+    self.current.presets[newId] = preset
+    
+    self.app.logger:logInfo('Created preset \'' .. name .. '\' with id ' .. newId)
+    
+    self:save()
+    
+    -- Notify engine to refresh its runtime data
+    if self.app.engine then
+        self.app.engine:getPresets(true)
+    end
+    
+    return preset
+end
+
+function PB_UserData:deletePreset(presetId)
+    if not self.current.presets[presetId] then
+        self.app.logger:logError('Cannot delete preset: preset with id ' .. presetId .. ' not found')
+        return false
+    end
+    
+    local presetName = self.current.presets[presetId].name
+    self.current.presets[presetId] = nil
+    
+    self.app.logger:logInfo('Deleted preset \'' .. presetName .. '\' with id ' .. presetId)
+    
+    self:save()
+    
+    -- Notify engine to refresh its runtime data
+    if self.app.engine then
+        self.app.engine:getPresets(true)
+    end
+    
+    return true
+end
+
+function PB_UserData:renamePreset(presetId, newName)
+    if not newName or newName == '' then
+        self.app.logger:logError('Cannot rename preset: new name is required')
+        return false
+    end
+    
+    if not self.current.presets[presetId] then
+        self.app.logger:logError('Cannot rename preset: preset with id ' .. presetId .. ' not found')
+        return false
+    end
+    
+    local oldName = self.current.presets[presetId].name
+    self.current.presets[presetId].name = newName
+    
+    self.app.logger:logInfo('Renamed preset from \'' .. oldName .. '\' to \'' .. newName .. '\'')
+    
+    self:save()
+    
+    -- Notify engine to refresh its runtime data
+    if self.app.engine then
+        self.app.engine:getPresets(true)
+    end
+    
+    return true
+end
+
+function PB_UserData:updatePreset(presetId, name, filter, letter)
+    if not self.current.presets[presetId] then
+        self.app.logger:logError('Cannot update preset: preset with id ' .. presetId .. ' not found')
+        return nil
+    end
+    
+    if not name or name == '' then
+        self.app.logger:logError('Cannot update preset: name is required')
+        return nil
+    end
+    
+    if not filter then
+        self.app.logger:logError('Cannot update preset: filter is required')
+        return nil
+    end
+    
+    -- Create a deep copy of the filter to store
+    local presetFilter = OD_DeepCopy(filter)
+    
+    self.current.presets[presetId].name = name
+    self.current.presets[presetId].filter = presetFilter
+    self.current.presets[presetId].letter = letter
+    self.current.presets[presetId].modified = os.time()
+    
+    self.app.logger:logInfo('Updated preset \'' .. name .. '\' with id ' .. presetId)
+    
+    self:save()
+    
+    -- Notify engine to refresh its runtime data
+    if self.app.engine then
+        self.app.engine:getPresets(true)
+    end
+    
+    return self.current.presets[presetId]
+end
+
+function PB_UserData:getPreset(presetId)
+    return self.current.presets[presetId]
+end
+
+function PB_UserData:getAllPresets()
+    return self.current.presets
+end
+
 -- * local

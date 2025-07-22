@@ -60,10 +60,12 @@ PB_DataEngine = {
         if self.app.logger.profile then Profile.start() end
 
         self:getTags()
+        self:getPresets()
 
         -- Use the new modular assembleAssets
         self:assembleAssets()
         self:updateDevelopersFilterMenu()
+        self:updatePresetsFilterMenu()
         self:assembleFilterAssets()
         if self.app.logger.profile then
             Profile.stop()
@@ -306,6 +308,26 @@ PB_DataEngine.updateDevelopersFilterMenu = function(self)
     self.app.logger:logDebug('Updated developers filter menu with developers', #developerNames)
 end
 
+PB_DataEngine.updatePresetsFilterMenu = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.updatePresetsFilterMenu()')
+    FILTER_MENU[FILTER_TYPES.PRESET].items = {}
+
+    local presetNames = {}
+    for id, preset in pairs(self.presets) do
+        table.insert(presetNames, { id = id, name = preset.name, preset = preset })
+    end
+    table.sort(presetNames, function(a, b) return a.name < b.name end)
+
+    for index, presetData in ipairs(presetNames) do
+        FILTER_MENU[FILTER_TYPES.PRESET].items[presetData.name] = {
+            order = index,
+            query = { preset = presetData.id } -- Store preset ID in query
+        }
+    end
+
+    self.app.logger:logDebug('Updated presets filter menu with presets', #presetNames)
+end
+
 
 
 -- TAGS AND FAVORITES
@@ -536,45 +558,113 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
     if reassembleTagFilterAssets then self:assembleFilterAssets({ tags = true }) end
 end
 
+PB_DataEngine.getPresets = function(self, reassemblePresetFilterAssets)
+    self.app.logger:logDebug('-- PB_DataEngine.getPresets()')
+
+    self.presets = {}
+
+    -- Create a sorted list of presets alphabetically for consistent ordering
+    local sortedPresets = {}
+    for id, presetData in pairs(self.app.userdata.current.presets) do
+        table.insert(sortedPresets, { id = id, data = presetData })
+    end
+
+    -- Sort alphabetically by name
+    table.sort(sortedPresets, function(a, b)
+        return a.data.name < b.data.name
+    end)
+
+    -- Process presets in sorted order and assign order field
+    for order, sortedPreset in ipairs(sortedPresets) do
+        local id = sortedPreset.id
+        local presetData = sortedPreset.data
+
+        local preset = OD_DeepCopy(presetData)
+        preset.id = id
+        preset.app = self.app
+        preset.engine = self
+        preset.order = order -- Add dynamic order field for OD_PairsByOrder
+
+        -- Add methods to preset
+        preset.apply = function(self)
+            -- Apply this preset's filter to the current search
+            if self.filter then
+                self.app.flow.filterResults(OD_DeepCopy(self.filter))
+                self.app.logger:logInfo('Applied preset "' .. self.name .. '"')
+            end
+        end
+
+        preset.update = function(self, newFilter)
+            -- Update this preset with current filter
+            self.app.userdata:updatePreset(self.id, newFilter or self.app.temp.filter)
+        end
+
+        preset.delete = function(self)
+            self.app.userdata:deletePreset(self.id)
+        end
+
+        preset.rename = function(self, newName)
+            self.app.userdata:renamePreset(self.id, newName)
+        end
+
+        -- Create a display name for this preset
+        preset.displayName = preset.name
+
+        self.presets[id] = preset
+        self.app.logger:logDebug('Added preset "' .. preset.name .. '" with id ' .. id .. ' (order: ' .. order .. ')')
+    end
+
+    if reassemblePresetFilterAssets then self:assembleFilterAssets({ presets = true }) end
+
+    -- Update the filter menu whenever presets change
+    self:updatePresetsFilterMenu()
+end
+
+PB_DataEngine.refreshPresets = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.refreshPresets()')
+    -- Simple wrapper around getPresets for external refresh calls
+    self:getPresets(true)
+end
+
 PB_DataEngine.markSpecialGroups = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.markSpecialGroups()')
-    
+
     local favoriteCount = 0
     local recentCount = 0
-    
+
     -- Get current lists
     local favorites = self.app.userdata.current.favorites or {}
     local recents = self.app.userdata.current.recents or {}
-    
+
     -- Clean up excess recents first
     local recentsToDelete = {}
     while #recents > self.app.settings.current.numberOfRecents do
         table.insert(recentsToDelete, recents[#recents])
         table.remove(recents, #recents)
     end
-    
+
     -- Create lookup tables for better performance
     local favoritesLookup = {}
     for i, favoriteId in ipairs(favorites) do
         favoritesLookup[favoriteId] = i
     end
-    
+
     local recentsLookup = {}
     for i, recentId in ipairs(recents) do
         recentsLookup[recentId] = i
     end
-    
+
     local recentsToDeleteLookup = {}
     for _, deleteId in ipairs(recentsToDelete) do
         recentsToDeleteLookup[deleteId] = true
     end
-    
+
     -- Process all assets
     for _, asset in ipairs(self.assets) do
         local favoriteIndex = favoritesLookup[asset.id]
         local recentIndex = recentsLookup[asset.id]
         local shouldDeleteFromRecents = recentsToDeleteLookup[asset.id]
-        
+
         -- Clear any existing special group markings first
         if asset.group == SPECIAL_GROUPS.FAVORITES or asset.group == SPECIAL_GROUPS.RECENTS then
             if asset.originalGroup then
@@ -585,13 +675,13 @@ PB_DataEngine.markSpecialGroups = function(self)
             asset.recentOrder = nil
             asset.favorite = nil
         end
-        
+
         -- Handle removal from recents (assets that were recently used but exceeded the limit)
         if shouldDeleteFromRecents then
             self.app.logger:logDebug('Removing asset from recents: ' .. asset.id)
             -- Asset group should already be restored above
         end
-        
+
         -- Mark recents first (takes priority over favorites for group assignment)
         if recentIndex then
             asset.originalGroup = asset.group
@@ -599,14 +689,14 @@ PB_DataEngine.markSpecialGroups = function(self)
             asset.recentOrder = recentIndex
             recentCount = recentCount + 1
             self.app.logger:logDebug('Marked asset as recent: ' .. asset.id .. ' (order: ' .. recentIndex .. ')')
-        -- Mark favorites (only if not recent)
+            -- Mark favorites (only if not recent)
         elseif favoriteIndex then
             asset.originalGroup = asset.group
             asset.group = SPECIAL_GROUPS.FAVORITES
             asset.favoriteOrder = favoriteIndex
             self.app.logger:logDebug('Marked asset as favorite: ' .. asset.id .. ' (order: ' .. favoriteIndex .. ')')
         end
-        
+
         -- Set favorite flag for all favorites, regardless of which group they're in
         if favoriteIndex then
             asset.favorite = true
@@ -616,7 +706,7 @@ PB_DataEngine.markSpecialGroups = function(self)
             end
         end
     end
-    
+
     self.app.logger:logDebug('Marked special groups - Favorites: ' .. favoriteCount .. ', Recents: ' .. recentCount)
 end
 
@@ -697,6 +787,12 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                         i = i - 1
                     end
                 end
+                if whichFilters.presets then
+                    if filterAsset.type == FILTER_TYPES.PRESET then
+                        table.remove(self.filterAssets, i)
+                        i = i - 1
+                    end
+                end
             end
         end
     end
@@ -709,7 +805,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 for itemName, item in pairs(filter.items) do
                     table.insert(self.filterAssets, {
                         engine = self,
-                        app = self.app,  -- Add app context for executeFilter
+                        app = self.app, -- Add app context for executeFilter
                         type = filterType,
                         searchText = { { text = itemName } },
                         order = item.order,
@@ -763,7 +859,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
             for tagId, tag in pairs(flatTags) do
                 table.insert(self.filterAssets, {
                     engine = self,
-                    app = self.app,  -- Add app context for executeFilter
+                    app = self.app, -- Add app context for executeFilter
                     type = FILTER_TYPES.TAG,
                     searchText = { { text = tag.name } },
                     parents = tag.parents,
@@ -774,6 +870,36 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 })
                 assetCount = assetCount + 1
             end
+        end
+    end
+
+    if scanAll or whichFilters.presets then
+        local executePresetFilter = function(self, context)
+            if context == RESULT_CONTEXT.ALT then
+                -- Alt-click: Update preset with current filter
+                self.preset:update()
+                self.app.logger:logInfo('Updated preset "' .. self.preset.name .. '" with current filter')
+            else
+                -- Normal click: Apply preset
+                self.preset:apply()
+            end
+            if context ~= RESULT_CONTEXT.SHIFT then
+                self.app.flow.setSearchMode(SEARCH_MODE.MAIN)
+            end
+        end
+
+        for presetId, preset in pairs(self.presets) do
+            table.insert(self.filterAssets, {
+                engine = self,
+                app = self.app,
+                type = FILTER_TYPES.PRESET,
+                searchText = { { text = preset.name } },
+                order = preset.id, -- Use ID as order for now, could be customized later
+                preset = preset,   -- Store reference to preset
+                group = T.FILTER_NAMES[FILTER_TYPES.PRESET],
+                execute = executePresetFilter
+            })
+            assetCount = assetCount + 1
         end
     end
     self:sortFilterAssets()

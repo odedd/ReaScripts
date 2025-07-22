@@ -83,10 +83,9 @@ FILTER_TYPES = {
 }
 
 FILTER_MENU = {
-    [FILTER_TYPES.PRESET] = {
-        order = 1,
-        allQuery = { type = 'all' },
-        items = {} -- Will be populated dynamically by AssetTypeManager
+        [FILTER_TYPES.PRESET] = {
+        order = 0,
+        items = {}
     },
     [FILTER_TYPES.TYPE] = {
         order = 2,
