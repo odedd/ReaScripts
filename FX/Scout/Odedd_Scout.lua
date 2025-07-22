@@ -29,6 +29,12 @@ local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
 
 if r.GetExtState('Odedd_Scout', 'WAKEUP') == 'WAITING' then
     r.SetExtState('Odedd_Scout', 'WAKEUP', 'GO', false)
+elseif r.GetExtState('Odedd_Scout', 'RUNNING') == 'TRUE' then
+    -- Script is already running, just bring it to focus
+    local scriptHwnd = r.JS_Window_Find('Odedd Scout', true) or r.JS_Window_FindTop('Scout', true)
+    if scriptHwnd then
+        r.JS_Window_SetFocus(scriptHwnd)
+    end
 elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
     if r.file_exists(p .. 'Resources/Common/Common.lua') then
         dofile(p .. 'Resources/Common/Common.lua')
