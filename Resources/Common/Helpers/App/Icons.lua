@@ -7,6 +7,7 @@ ICONS = {
     ['ARROW_LEFT'] = 'F',
     ['GEAR'] = 'G',
     ['HEADPHONES'] = 'H',
+    ['DISK'] = 'K',
     ['LEFT'] = 'L',
     ['MONEY'] = 'M',
     ['MINUS'] = 'N',

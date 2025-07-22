@@ -39,6 +39,7 @@ end
 function OD_Gui_App:setHint(window, text, color, ctx, level)
     local level = level or 0
     local ctx = ctx or self.gui.ctx
+    if self.hint[window] == nil then self.hint[window] = {} end
     color = color or 'hint'
     if (self.error or self.coPerform) and not (text == '') and text then
         self.hint[window] = {
@@ -203,11 +204,8 @@ function OD_Gui_App:drawMsg()
 end
 
 function OD_Gui_App:getHint(window)
-    if window == 'main' then
-        return self.hint[window].text, self.hint[window].color
-    else
-        return self.hint[window].text, self.hint[window].color
-    end
+    if self.hint[window] == nil then self.hint[window] = {} end
+    return self.hint[window].text, self.hint[window].color
 end
 
 -- ! OD_Perform_App

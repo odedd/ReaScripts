@@ -79,11 +79,19 @@ PB_Gui.init = function(self, fonts)
         hint = {
             [ImGui.Col_Text] = 0xCCCCCCff,
         },
+        hintError = {
+            [ImGui.Col_Text] = 0xFF4444FF,
+        },
         buttons = {
             topBarIcon = {
                 default = { [ImGui.Col_Text] = self.st.basecolors.midHovered },
                 hovered = { [ImGui.Col_Text] = self.st.basecolors.active },
                 active = { [ImGui.Col_Text] = self.st.basecolors.midText },
+            },
+            activeFilterAction = {
+                default = { [ImGui.Col_Text] = self.st.basecolors.midHovered },
+                hovered = { [ImGui.Col_Text] = self.st.basecolors.mainBright },
+                active = { [ImGui.Col_Text] = self.st.basecolors.mainBrighter },
             }
         },
         tagButtons = {
@@ -151,7 +159,6 @@ PB_Gui.init = function(self, fonts)
             [ImGui.Col_ChildBg] = 0x00000000,
             [ImGui.Col_Button] = self.st.basecolors.darkBG,
             [ImGui.Col_FrameBg] = self.st.basecolors.darkBG
-
         },
         main = {
             [ImGui.Col_Tab] = self.st.basecolors.darkHovered,
@@ -211,6 +218,9 @@ PB_Gui.init = function(self, fonts)
                 [ImGui.StyleVar_FramePadding] = { 4 * scale, 3 * scale },
                 [ImGui.StyleVar_ItemInnerSpacing] = { 4 * scale, 4 * scale },
                 [ImGui.StyleVar_SeparatorTextBorderSize] = { 1 * scale, nil },
+            },
+            popups = {
+                [ImGui.StyleVar_FramePadding] = { 4 * scale, 10 * scale },
             },
             topBar = {
                 [ImGui.StyleVar_FrameRounding] = { 12 * scale, nil },
@@ -370,7 +380,7 @@ PB_Gui.init = function(self, fonts)
             widgetWidth = itemWidth - ImGui.GetTextLineHeight(ctx) -
                 ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2
         end
-        ImGui.PushItemWidth(ctx, widgetWidth)
+        ImGui.PushItemWidth(ctx, data.width or widgetWidth)
 
         if stType == 'combo' then
             _, retval1 = ImGui.Combo(ctx, '##' .. text, val, data.list)
@@ -411,6 +421,30 @@ PB_Gui.init = function(self, fonts)
             end
         elseif stType == 'text' then
             _, retval1 = ImGui.InputText(ctx, '##' .. text, val)
+        elseif stType == 'oneCharacter' then
+            if not ImGui.ValidatePtr(self.oneCharacterCallback, 'ImGui_Function*') then
+                self.oneCharacterCallback = ImGui.CreateFunctionFromEEL([[
+    buflen = strlen(#Buf);
+    c = str_getchar(#Buf, buflen-1);
+    // Only allow alphanumeric characters
+    ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) ? (
+        // Valid character - convert to uppercase if needed and keep only this one
+        (c >= 'a' && c <= 'z') ? (
+            str_setchar(#first, 0, c ~ 32);
+        ) : (
+            str_setchar(#first, 0, c);
+        );
+        str_setlen(#first, 1);
+        InputTextCallback_DeleteChars(0, buflen);
+        InputTextCallback_InsertChars(0, #first);
+    ) : (
+        // Not alphanumeric, delete all characters (reject input)
+        InputTextCallback_DeleteChars(0, buflen);
+    );
+]])
+            end
+            _, retval1 = ImGui.InputText(ctx, '##' .. text, val, ImGui.InputTextFlags_CallbackEdit,
+                self.oneCharacterCallback)
         elseif stType == 'colorpicker' then
             hint = data.default and (hint .. ' alt-click to reset to default.') or hint
             retval1 = val
@@ -524,7 +558,7 @@ PB_Gui.init = function(self, fonts)
         if not sameline then
             ImGui.EndGroup(ctx)
         end
-        self.app:setHoveredHint('settings', hint)
+        self.app:setHoveredHint(data.hintWindow or 'settings', hint)
         return retval1, retval2
     end
 end

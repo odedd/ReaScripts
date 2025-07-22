@@ -206,7 +206,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         return
                     end
                 end
-                
+
                 local reset = (skipReset == nil) and true or (not skipReset)
                 local oldResults, oldKeyboardPosResult
                 if not reset then
@@ -733,7 +733,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 ImGui.Dummy(ctx, 0, 0)
                 if not disabled then return clicked end
             end,
-            iconButton = function(ctx, icon, colClass, font)
+            iconButton = function(ctx, icon, colClass, hint, font)
                 local font = font or app.gui.st.fonts.icons_large
                 ImGui.PushFont(ctx, font)
                 local x, y = ImGui.GetCursorPos(ctx)
@@ -742,6 +742,12 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 local clicked
                 if ImGui.InvisibleButton(ctx, '##menuBtn' .. icon, w, ImGui.GetTextLineHeightWithSpacing(ctx)) then
                     clicked = true
+                end
+                if hint then
+                    app:setHoveredHint('main', hint, nil, nil, 1)
+                end
+                if ImGui.IsItemHovered(ctx) then
+                    ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
                 end
                 if ImGui.IsItemHovered(ctx) and not ImGui.IsItemActive(ctx) then
                     app.gui:pushColors(colClass.hovered)
@@ -869,13 +875,29 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
                     ImGui.PushFont(ctx, app.gui.st.fonts.small)
                     if OD_Tablelength(activeFilters) > 0 then
+                        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
+
+                        if app.guiHelpers.iconButton(ctx, 'CLOSE', app.gui.st.col.buttons.activeFilterAction) then
+                            app.flow.filterResults({ clear = true })
+                        end
+                        if app.guiHelpers.iconButton(ctx, 'DISK', app.gui.st.col.buttons.activeFilterAction) then
+                            -- if ImGui.Button(ctx, "Save as Preset...") then
+                            app.temp.showCreatePresetDialog = true
+                            app.temp.presetName = ""
+                            app.temp.presetLetter = ""
+                            app.temp.editingPresetId = nil
+                            app.temp.originalPresetFilter = nil
+                        end
+                        ImGui.SameLine(ctx)
+                        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
                         app.gui:pushStyles(app.gui.st.vars.topBarActiveFiltersArea)
                         app.gui:pushColors(app.gui.st.col.topBarActiveFiltersArea)
-                        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
+
+
                         local closeButtonSizeW, closeButtonSizeH = app.guiHelpers.calcTinyIconSize(ctx, ICONS.CLOSE)
                         local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
                         local filterH = ImGui.GetTextLineHeight(ctx) + paddingY * 2
-                        
+
                         if ImGui.BeginChild(ctx, 'activeFilterArea', nil, nil, ImGui.ChildFlags_AutoResizeY) then
                             local i = 0
                             for filterKey, filter in OD_PairsByOrder(activeFilters) do
@@ -941,18 +963,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         app.gui:popColors(app.gui.st.col.topBarActiveFiltersArea)
                         height = lines * filterH + spacingY * (lines + 1)
                         ImGui.SetCursorPosY(ctx, y + height)
-                        
-                        -- Add save preset button when there are active filters
-                        if OD_Tablelength(activeFilters) > 0 then
-                            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
-                            if ImGui.Button(ctx, "Save as Preset...") then
-                                app.temp.showCreatePresetDialog = true
-                                app.temp.presetName = ""
-                                app.temp.presetLetter = ""
-                                app.temp.editingPresetId = nil
-                                app.temp.originalPresetFilter = nil
-                            end
-                        end
                     end
                     ImGui.PopFont(ctx)
                 end
@@ -1775,36 +1785,28 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         local function drawFilterMenu(menu, menuId)
                             for k, menuInfo in OD_PairsByOrder(menu) do
                                 ImGui.PushID(ctx, menuId .. '/' .. k)
-                                if ImGui.BeginMenu(ctx, T.FILTER_NAMES[k] .. '##filterMenu') then
-                                    -- Special handling for Presets menu
-                                    if k == FILTER_TYPES.PRESET then
-                                        -- "Save Preset..." - only show when filters are active
-                                        local hasActiveFilters = false
-                                        if app.temp.filter then
-                                            -- Check if any filters are active
-                                            for filterKey, filterValue in pairs(app.temp.filter) do
-                                                if filterKey == 'tags' then
-                                                    if OD_Tablelength(filterValue) > 0 then
+                                if k ~= FILTER_TYPES.PRESET or (k == FILTER_TYPES.PRESET and OD_Tablelength(app.engine.presets) > 0) then
+                                    if ImGui.BeginMenu(ctx, T.FILTER_NAMES[k] .. '##filterMenu') then
+                                        -- Special handling for Presets menu
+                                        if k == FILTER_TYPES.PRESET then
+                                            -- "Save Preset..." - only show when filters are active
+                                            local hasActiveFilters = false
+                                            if app.temp.filter then
+                                                -- Check if any filters are active
+                                                for filterKey, filterValue in pairs(app.temp.filter) do
+                                                    if filterKey == 'tags' then
+                                                        if OD_Tablelength(filterValue) > 0 then
+                                                            hasActiveFilters = true
+                                                            break
+                                                        end
+                                                    elseif filterKey ~= 'text' and filterValue ~= nil and filterValue ~= '' then
                                                         hasActiveFilters = true
                                                         break
                                                     end
-                                                elseif filterKey ~= 'text' and filterValue ~= nil and filterValue ~= '' then
-                                                    hasActiveFilters = true
-                                                    break
                                                 end
                                             end
-                                        end
-                                        
-                                        if hasActiveFilters then
-                                            if ImGui.MenuItem(ctx, 'Save Preset...##savePreset') then
-                                                app.temp.showCreatePresetDialog = true
-                                                app.temp.presetName = ""
-                                                app.temp.editingPresetId = nil -- Clear editing state
-                                            end
-                                        end
-                                        
-                                        -- "Edit Preset >" - show submenu with all presets
-                                        if OD_Tablelength(app.engine.presets) > 0 then
+
+                                            -- "Edit Preset >" - show submenu with all presets
                                             if ImGui.BeginMenu(ctx, 'Edit Preset...##editPreset') then
                                                 for presetId, preset in OD_PairsByOrder(app.engine.presets) do
                                                     if ImGui.MenuItem(ctx, preset.name .. '##editPreset_' .. presetId) then
@@ -1812,49 +1814,49 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                                         app.temp.presetName = preset.name
                                                         app.temp.editingPresetId = presetId
                                                         app.temp.presetLetter = preset.letter or ""
-                                                        app.temp.originalPresetFilter = preset.filter -- Store original filter
+                                                        app.temp.originalPresetFilter = preset
+                                                            .filter -- Store original filter
                                                     end
                                                 end
                                                 ImGui.EndMenu(ctx)
                                             end
-                                        end
-                                        
-                                        if hasActiveFilters or OD_Tablelength(app.engine.presets) > 0 then
+
                                             ImGui.Separator(ctx)
                                         end
-                                    end
-                                    
-                                    if menuInfo.allQuery then
-                                        local selected = true
-                                        for k, v in pairs(menuInfo.allQuery) do
-                                            if app.temp.filter[k] ~= ((menuInfo.allQuery[k] ~= 'all') and menuInfo.allQuery[k] or nil) then
-                                                selected = false
-                                            end
-                                        end
 
-                                        if ImGui.MenuItem(ctx, 'All' .. "##filterMenu-All", nil, selected) then
-                                            app.flow.filterResults(menuInfo.allQuery)
-                                        end
-                                        ImGui.Separator(ctx)
-                                    end
-
-                                    for item, value in OD_PairsByOrder(menuInfo.items) do
-                                        if value.submenu then
-                                            drawFilterMenu({ [item] = value.submenu }, menuId .. '-' .. item)
-                                        elseif value.query then
+                                        if menuInfo.allQuery then
                                             local selected = true
-                                            for k, v in pairs(value.query) do
-                                                if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then --BUG: this always results to value.query[k]
+                                            for k, v in pairs(menuInfo.allQuery) do
+                                                if app.temp.filter[k] ~= ((menuInfo.allQuery[k] ~= 'all') and menuInfo.allQuery[k] or nil) then
                                                     selected = false
                                                 end
                                             end
-                                            if ImGui.MenuItem(ctx, item, nil, selected) then
-                                                app.flow.filterResults(value.query)
+
+                                            if ImGui.MenuItem(ctx, 'All' .. "##filterMenu-All", nil, selected) then
+                                                app.flow.filterResults(menuInfo.allQuery)
+                                            end
+                                            ImGui.Separator(ctx)
+                                        end
+
+                                        for item, value in OD_PairsByOrder(menuInfo.items) do
+                                            if value.submenu then
+                                                drawFilterMenu({ [item] = value.submenu }, menuId .. '-' .. item)
+                                            elseif value.query then
+                                                local selected = true
+                                                for k, v in pairs(value.query) do
+                                                    if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then --BUG: this always results to value.query[k]
+                                                        selected = false
+                                                    end
+                                                end
+                                                if ImGui.MenuItem(ctx, item, nil, selected) then
+                                                    app.flow.filterResults(value.query)
+                                                end
                                             end
                                         end
+                                        ImGui.EndMenu(ctx)
                                     end
-                                    ImGui.EndMenu(ctx)
                                 end
+
                                 ImGui.PopID(ctx)
                             end
                         end
@@ -2031,11 +2033,10 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
                     local clicked = nil
                     for i, btn in ipairs(buttons) do
-                        if app.guiHelpers.iconButton(ctx, btn.icon, app.gui.st.col.buttons.topBarIcon) then
+                        if app.guiHelpers.iconButton(ctx, btn.icon, app.gui.st.col.buttons.topBarIcon, btn.hint) then
                             clicked = btn
                                 .icon
                         end
-                        app:setHoveredHint('main', btn.hint)
                     end
                     ImGui.PopFont(ctx)
                     return clicked ~= nil, clicked
@@ -2115,8 +2116,11 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     ImGui.SetNextWindowPos(ctx, app.settings.current.settingsWindowPos[1],
                         app.settings.current.settingsWindowPos[2], ImGui.Cond_Appearing)
                 end
+                app.gui:pushStyles(app.gui.st.vars.popups)
                 local visible, open = ImGui.BeginPopupModal(ctx, Scr.name .. ' Settings##settingsWindow', true,
                     ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_AlwaysAutoResize)
+                app.gui:popStyles(app.gui.st.vars.popups)
+
                 if visible then
                     app.temp.settingsWindowOpen = true
                     app.settings.current.settingsWindowPos = { ImGui.GetWindowPos(ctx) }
@@ -2288,7 +2292,11 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
                 ImGui.SetNextWindowPos(ctx, center[1], center[2], ImGui.Cond_Appearing, 0.5, 0.5)
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowTitleAlign, 0.5, 0.5)
+                app.gui:pushStyles(app.gui.st.vars.popups)
+
                 local open, visible = ImGui.BeginPopupModal(ctx, id, nil, ImGui.WindowFlags_NoResize)
+                app.gui:popStyles(app.gui.st.vars.popups)
+
                 if open then
                     local width = select(1, ImGui.GetContentRegionAvail(ctx))
                     ImGui.PushItemWidth(ctx, width)
@@ -2361,7 +2369,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 if app.temp.showCreatePresetDialog then
                     local isEditing = app.temp.editingPresetId ~= nil
                     local dialogTitle = isEditing and 'Edit Preset' or 'Create Preset'
-                    
+
                     if not ImGui.IsPopupOpen(ctx, dialogTitle) then
                         ImGui.OpenPopup(ctx, dialogTitle)
                         if not app.temp.presetName then
@@ -2373,32 +2381,35 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
 
                     ImGui.SetNextWindowSize(ctx, 350, 0, ImGui.Cond_Always)
+                    app.gui:pushStyles(app.gui.st.vars.popups)
+
                     local visible, open = ImGui.BeginPopupModal(ctx, dialogTitle, true,
-                        ImGui.WindowFlags_NoResize | ImGui.WindowFlags_AlwaysAutoResize)
+                        ImGui.WindowFlags_AlwaysAutoResize)
+                    app.gui:popStyles(app.gui.st.vars.popups)
 
                     if visible then
-                        ImGui.Text(ctx, "Preset name:")
-                        ImGui.SetNextItemWidth(ctx, -1)
-                        local nameChanged, newName = ImGui.InputText(ctx, "##presetName", app.temp.presetName)
-                        if nameChanged then
-                            app.temp.presetName = newName
+                        -- ImGui.Text(ctx, "Preset name:")
+                        -- ImGui.SetNextItemWidth(ctx, -1)
+                        -- local nameChanged, newName = ImGui.InputText(ctx, "##presetName", app.temp.presetName)
+                        if ImGui.IsWindowAppearing(ctx) then
+                            ImGui.SetKeyboardFocusHere(ctx, 0)
                         end
+                        app.temp.presetName = app.gui:setting('text', T.PRESET_EDIT_MENU.PRESET_NAME.LABEL,
+                            T.PRESET_EDIT_MENU.PRESET_NAME.HINT, app.temp.presetName, { hintWindow = 'presetEditWindow' })
 
                         -- Auto-focus the text input when dialog opens
-                        if ImGui.IsWindowAppearing(ctx) then
-                            ImGui.SetKeyboardFocusHere(ctx, -1)
-                        end
 
-                        ImGui.Text(ctx, "Shortcut letter (optional):")
-                        ImGui.SetNextItemWidth(ctx, 30)
-                        local letterChanged, newLetter = ImGui.InputText(ctx, "##presetLetter", app.temp.presetLetter, ImGui.InputTextFlags_CharsUppercase)
-                        if letterChanged then
-                            -- Limit to single character
-                            app.temp.presetLetter = string.sub(newLetter, 1, 1)
-                        end
-                        ImGui.SameLine(ctx)
-                        ImGui.Text(ctx, "(single letter)")
+                        local tempPresetLetter = app.gui:setting('oneCharacter', T.PRESET_EDIT_MENU.SHORTCUT.LABEL,
+                            T.PRESET_EDIT_MENU.SHORTCUT.HINT, app.temp.presetLetter,
+                            { width = 20 * app.gui.scale, hintWindow = 'presetEditWindow' })
+                        -- ImGui.Text(ctx, "Shortcut letter (optional):")
+                        app.temp.presetLetter = tempPresetLetter -- string.sub(tempPresetLetter, 1, 1)
+                        -- ImGui.SameLine(ctx)
+                        -- ImGui.Text(ctx, "(single letter)")
 
+                        app.gui:setting('button', T.PRESET_EDIT_MENU.ACTION.LABEL,
+                            T.PRESET_EDIT_MENU.ACTION.HINT, nil,
+                            { label = T.PRESET_EDIT_MENU.ACTION.BUTTON, hintWindow = 'presetEditWindow' })
                         -- TODO: Add "Create Action" button (placeholder for later implementation)
                         -- if ImGui.Button(ctx, "Create Action") then
                         --     -- Implementation will come later
@@ -2409,47 +2420,44 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         -- Validation and error messages
                         local canSave = app.temp.presetName and OD_Trim(app.temp.presetName) ~= ""
                         local errorMessage = ""
-                        
+
                         if canSave then
                             local trimmedName = OD_Trim(app.temp.presetName)
                             local trimmedLetter = OD_Trim(app.temp.presetLetter)
-                            
+
                             -- Check for duplicate name (excluding self when editing)
                             for presetId, preset in pairs(app.engine.presets) do
                                 if preset.name:lower() == trimmedName:lower() and presetId ~= app.temp.editingPresetId then
                                     canSave = false
-                                    errorMessage = "A preset with this name already exists"
+                                    errorMessage = "A preset with this name exists"
                                     break
                                 end
                             end
-                            
+
                             -- Check for duplicate letter (excluding self when editing)
                             if canSave and trimmedLetter ~= "" then
                                 for presetId, preset in pairs(app.engine.presets) do
                                     if preset.letter and preset.letter:lower() == trimmedLetter:lower() and presetId ~= app.temp.editingPresetId then
                                         canSave = false
-                                        errorMessage = "This shortcut letter is already assigned to another preset"
+                                        errorMessage = "This shortcut is taken"
                                         break
                                     end
                                 end
                             end
-                        else
-                            errorMessage = "Please enter a preset name"
                         end
 
                         -- Show error message if any
                         if errorMessage ~= "" then
-                            ImGui.PushStyleColor(ctx, ImGui.Col_Text, 0xFF4444FF) -- Red text
-                            ImGui.TextWrapped(ctx, errorMessage)
-                            ImGui.PopStyleColor(ctx)
+                            app:setHint('presetEditWindow', errorMessage, 'hintError')
                         end
 
                         -- Buttons
                         local buttonWidth = 80
                         local availWidth = ImGui.GetContentRegionAvail(ctx)
                         local buttonCount = isEditing and 3 or 2 -- Save/Create, Cancel, and Delete (if editing)
-                        local totalButtonWidth = buttonWidth * buttonCount + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * (buttonCount - 1)
-                        
+                        local totalButtonWidth = buttonWidth * buttonCount +
+                            ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * (buttonCount - 1)
+
                         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + availWidth - totalButtonWidth)
 
                         local actionButtonLabel = isEditing and "Save" or "Create"
@@ -2461,11 +2469,12 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             local trimmedName = OD_Trim(app.temp.presetName)
                             local trimmedLetter = OD_Trim(app.temp.presetLetter)
                             if trimmedLetter == "" then trimmedLetter = nil end
-                            
+
                             if isEditing then
                                 -- Update existing preset - use original filter, only update name and letter
                                 local filterToUse = app.temp.originalPresetFilter or app.temp.filter
-                                local preset = app.userdata:updatePreset(app.temp.editingPresetId, trimmedName, filterToUse, trimmedLetter)
+                                local preset = app.userdata:updatePreset(app.temp.editingPresetId, trimmedName,
+                                    filterToUse, trimmedLetter)
                                 if preset then
                                     app.logger:logInfo('Updated preset "' .. preset.name .. '"')
                                     -- Refresh the engine presets
@@ -2480,7 +2489,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                     app.engine:refreshPresets()
                                 end
                             end
-                            
+
                             app.temp.showCreatePresetDialog = false
                             app.temp.presetName = nil
                             app.temp.presetLetter = nil
@@ -2531,11 +2540,12 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             local trimmedName = OD_Trim(app.temp.presetName)
                             local trimmedLetter = OD_Trim(app.temp.presetLetter)
                             if trimmedLetter == "" then trimmedLetter = nil end
-                            
+
                             if isEditing then
                                 -- Update existing preset - use original filter, only update name and letter
                                 local filterToUse = app.temp.originalPresetFilter or app.temp.filter
-                                local preset = app.userdata:updatePreset(app.temp.editingPresetId, trimmedName, filterToUse, trimmedLetter)
+                                local preset = app.userdata:updatePreset(app.temp.editingPresetId, trimmedName,
+                                    filterToUse, trimmedLetter)
                                 if preset then
                                     app.logger:logInfo('Updated preset "' .. preset.name .. '"')
                                     app.engine:refreshPresets()
@@ -2548,7 +2558,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                     app.engine:refreshPresets()
                                 end
                             end
-                            
+
                             app.temp.showCreatePresetDialog = false
                             app.temp.presetName = nil
                             app.temp.presetLetter = nil
@@ -2563,7 +2573,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             app.temp.originalPresetFilter = nil
                             ImGui.CloseCurrentPopup(ctx)
                         end
-
+                        app.draw.hint(ctx, 'presetEditWindow')
+                        -- hintWindow = 'presetEditWindow'
                         ImGui.EndPopup(ctx)
                     end
 

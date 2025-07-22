@@ -1,6 +1,22 @@
 -- @noindex
 T = {}
 
+T.PRESET_EDIT_MENU = {
+    PRESET_NAME = {--TODO: Update this
+        LABEL = 'Preset Name',
+        HINT = 'A name for the new preset',
+    },
+    SHORTCUT = {
+        LABEL = 'Shortcut Letter',
+        HINT = 'A name for the new preset', 
+    },
+    ACTION = {
+        LABEL = 'Reaper Action',
+        BUTTON = 'Create Action',
+        HINT = 'temp',
+    }
+}
+
 T.SETTINGS = {
     CREATE_INSIDE_FODLER = {
         LABEL = 'Create sends inside folder',
