@@ -32,8 +32,8 @@ function AssetTypeManager:new(engine)
         pluginToCategories = engine.pluginToCategories,
         pluginToFolders = engine.pluginToFolders,
 
-        -- Reference back to full db for cases where it's still needed
-        db = engine
+        -- Reference back to full engine for cases where it's still needed
+        engine = engine
     }
 
     local instance = setmetatable({}, self)

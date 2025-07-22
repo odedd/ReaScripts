@@ -1531,7 +1531,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                     end
                                     if ImGui.MenuItem(ctx, 'Create Nested Tag') then
                                         tag:toggleOpen(true)
-                                        local newTag = app.engine:createTag('New Tag', tag)
+                                        local newTag = app.userdata:createTag('New Tag', tag)
                                         app.temp.tagRename = newTag.id
                                         app.temp.tagRenameBuffer = newTag.name
                                     end
@@ -1791,7 +1791,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             ImGui.CalcTextSize(ctx, ICONS.PLUS))
                         -- ImGui.AlignTextToFramePadding(ctx)
                         if ImGui.Button(ctx, ICONS.PLUS .. '##CreateTag') then
-                            local newTag = app.engine:createTag('New Tag', TAGS_ROOT_PARENT)
+                            local newTag = app.userdata:createTag('New Tag', TAGS_ROOT_PARENT)
                             app.temp.tagRename = newTag.id
                             app.temp.tagRenameBuffer = newTag.name
                         end

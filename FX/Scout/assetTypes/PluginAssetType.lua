@@ -91,7 +91,7 @@ end
 function PluginAssetType:getExecuteFunction()
     return function(self, context, contextData, confirm)
         if context == RESULT_CONTEXT.MAIN then
-            local tracks = self.context.db:getSelectedTracks()
+            local tracks = self.context.engine:getSelectedTracks()
             if #tracks > self.context.settings.current.numberOfTracksThatRequireConfirmation and confirm ~= true then
                 self.context.temp.confirmMultipleTracks = {
                     count = #tracks,

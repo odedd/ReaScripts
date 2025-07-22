@@ -26,7 +26,7 @@ function TrackAssetType:getData()
         
         local trackData = {
             object = track,
-            db = context.db,
+            engine = context.engine,
             guid = trackGuid,
             order = i,
             _refreshColor = function(self)

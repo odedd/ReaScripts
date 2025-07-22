@@ -122,20 +122,12 @@ end
 
 BaseAssetType.assetActions = {
     toggleFavorite = function(self)
-        local favorites = self.context.tags.current.favorites
         local key = self.type .. ' ' .. self.load
-        if OD_HasValue(favorites, key) then
-            OD_RemoveValue(favorites, key)
-            self.favorite = false
-        else
-            table.insert(favorites, 1, key)
-            self.favorite = true
-        end
+        self.favorite = self.context.tags:toggleAssetFavorite(key)
         
-        self.context.tags:save()
         -- Use the unified special groups marking function to handle group reassignment
-        self.db:markSpecialGroups()
-        self.db:sortAssets()
+        self.engine:markSpecialGroups()
+        self.engine:sortAssets()
         self.context.flow.filterResultsWithTargets(nil, {self})  -- Use multi-target to maintain selection on this asset
         return self.favorite == true
     end,
@@ -160,8 +152,8 @@ BaseAssetType.assetActions = {
         if changed then
             self.context.tags:save()
             -- Use the unified special groups marking function to handle group reassignment
-            self.db:markSpecialGroups()
-            self.db:sortAssets()
+            self.engine:markSpecialGroups()
+            self.engine:sortAssets()
             -- Don't call filterResults here - let the caller handle it with target assets
         end
         
@@ -210,8 +202,8 @@ BaseAssetType.assetActions = {
         table.insert(favorite, targetPosition, key)
 
         self.context.tags:save()
-        self.db:markSpecialGroups()
-        self.db:sortAssets()
+        self.engine:markSpecialGroups()
+        self.engine:sortAssets()
         self.context.flow.filterResultsWithTargets(nil, {self})  -- Use multi-target to maintain selection on this asset
 
         self.context.logger:logDebug('Moved favorite "' ..
@@ -219,45 +211,28 @@ BaseAssetType.assetActions = {
         return true
     end,
     addToRecents = function(self)
-        local recents = self.context.tags.current.recents
         local key = self.type .. ' ' .. self.load
-        if OD_HasValue(recents, key) then
-            OD_RemoveValue(recents, key)
-        end
-        table.insert(recents, 1, key)
+        self.context.tags:addAssetToRecents(key)
         
-        self.context.tags:save()
         -- Use the unified special groups marking function
-        self.db:markSpecialGroups()
-        self.db:sortAssets()
+        self.engine:markSpecialGroups()
+        self.engine:sortAssets()
         self.context.flow.filterResultsWithTargets(nil, {self})  -- Use multi-target to maintain selection on this asset
     end,
     addTag = function(self, tag, saveToDB)
-        local save
-        if save == nil then
-            save = true
-        else
-            save = saveToDB
-        end
+        local save = (saveToDB == nil) and true or saveToDB
+        
         if not OD_HasValue(self.tags, tag.id) then
             table.insert(self.tags, tag.id)
-            self.context.tags.current.taggedAssets[self.id] = self.context.tags.current.taggedAssets[self.id] or {}
-            table.insert(self.context.tags.current.taggedAssets[self.id], tag.id)
-            if save then self.context.tags:save() end
+            self.context.tags:addTagToAsset(self.id, tag.id, save)
         end
     end,
     removeTag = function(self, tag, saveToDB)
-        local save
-        if save == nil then
-            save = true
-        else
-            save = saveToDB
-        end
+        local save = (saveToDB == nil) and true or saveToDB
+        
         if OD_HasValue(self.tags, tag.id) then
             OD_RemoveValue(self.tags, tag.id)
-            OD_RemoveValue(self.context.tags.current.taggedAssets[self.id], tag.id)
-            if not next(self.context.tags.current.taggedAssets[self.id]) then self.context.tags.current.taggedAssets[self.id] = nil end
-            if save then self.context.tags:save() end
+            self.context.tags:removeTagFromAsset(self.id, tag.id, save)
         end
     end
 }
@@ -271,7 +246,7 @@ function BaseAssetType:createAssetBase(params)
         group = params.group,
         order = params.order or 0,
         context = self.context,
-        db = self.context.db, -- Add db reference for backward compatibility
+        engine = self.context.engine, -- Add engine reference for backward compatibility
         addTag = self.assetActions.addTag,
         removeTag = self.assetActions.removeTag,
         execute = self:executeAndAddToRecents(),

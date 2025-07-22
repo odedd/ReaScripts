@@ -962,11 +962,178 @@ function PB_UserData:import(filename, mergeMode)
     mappedFavoritesCount .. ' mapped, ' .. skippedFavoritesCount .. ' skipped, total favorites: ' .. #finalFavorites)
 
     self:save()
-    self.app.engine:getTags(true) -- Pass true to reassemble tag filter assets
-    self.app.engine:assembleAssets()
-    self.app.flow.filterResults() -- Trigger a refresh of the search results to show updated tags
+    
+    -- Notify engine to refresh its runtime data after import
+    if self.app.engine then
+        self.app.engine:getTags(true) -- Pass true to reassemble tag filter assets
+        self.app.engine:assembleAssets()
+    end
+    
+    -- Trigger a refresh of the search results to show updated tags
+    if self.app.flow then
+        self.app.flow.filterResults()
+    end
 
     return true, skippedAssets, mappedAssetsCount, skippedAssetsCount
+end
+
+function PB_UserData:toggleAssetFavorite(assetKey)
+    if OD_HasValue(self.current.favorites, assetKey) then
+        OD_RemoveValue(self.current.favorites, assetKey)
+        self:save()
+        return false
+    else
+        table.insert(self.current.favorites, 1, assetKey)
+        self:save()
+        return true
+    end
+end
+
+function PB_UserData:addAssetToRecents(assetKey)
+    if OD_HasValue(self.current.recents, assetKey) then
+        OD_RemoveValue(self.current.recents, assetKey)
+    end
+    
+    table.insert(self.current.recents, 1, assetKey)
+    
+    -- Keep only the most recent items (limit from settings)
+    local maxRecents = self.app.settings.current.numberOfRecents or 5
+    while #self.current.recents > maxRecents do
+        table.remove(self.current.recents)
+    end
+    
+    self:save()
+end
+
+function PB_UserData:addTagToAsset(assetId, tagId, save)
+    save = (save == nil) and true or save
+    
+    self.current.taggedAssets[assetId] = self.current.taggedAssets[assetId] or {}
+    if not OD_HasValue(self.current.taggedAssets[assetId], tagId) then
+        table.insert(self.current.taggedAssets[assetId], tagId)
+        if save then self:save() end
+        return true
+    end
+    return false
+end
+
+function PB_UserData:removeTagFromAsset(assetId, tagId, save)
+    save = (save == nil) and true or save
+    
+    if self.current.taggedAssets[assetId] then
+        if OD_HasValue(self.current.taggedAssets[assetId], tagId) then
+            OD_RemoveValue(self.current.taggedAssets[assetId], tagId)
+            if not next(self.current.taggedAssets[assetId]) then 
+                self.current.taggedAssets[assetId] = nil 
+            end
+            if save then self:save() end
+            return true
+        end
+    end
+    return false
+end
+
+function PB_UserData:toggleTagOpen(tagId, state, persist)
+    persist = (persist == nil) and true or persist
+    self.current.tagInfo[tagId].open = state
+    if persist then 
+        self:save() 
+    end
+end
+
+function PB_UserData:renameTag(tagId, name, persist)
+    persist = (persist == nil) and true or persist
+    self.current.tagInfo[tagId].name = name
+    if persist then
+        self:save()
+        -- Notify engine to refresh its runtime data
+        self.app.engine:getTags(true)
+    end
+end
+
+function PB_UserData:deleteTag(tagId, persistAndReload)
+    -- Find the tag's siblings to adjust their order
+    local tagInfo = self.current.tagInfo[tagId]
+    if not tagInfo then return end
+    
+    -- Remove from tagged assets first
+    for assetId, tagIds in pairs(self.current.taggedAssets) do
+        if OD_HasValue(tagIds, tagId) then
+            OD_RemoveValue(tagIds, tagId)
+            if #tagIds == 0 then
+                self.current.taggedAssets[assetId] = nil
+            end
+        end
+    end
+    
+    -- Find and delete all descendant tags recursively
+    local function deleteDescendants(parentId)
+        for id, info in pairs(self.current.tagInfo) do
+            if info.parentId == parentId then
+                deleteDescendants(id) -- Delete descendants first
+                self.current.tagInfo[id] = nil
+            end
+        end
+    end
+    deleteDescendants(tagId)
+    
+    -- Adjust sibling order
+    for sibId, sibInfo in pairs(self.current.tagInfo) do
+        if sibInfo.parentId == tagInfo.parentId and sibInfo.order > tagInfo.order then
+            self.current.tagInfo[sibId].order = sibInfo.order - 1
+        end
+    end
+    
+    -- Delete the tag itself
+    self.current.tagInfo[tagId] = nil
+    
+    if persistAndReload ~= false then
+        self:save()
+        -- Notify engine to refresh its runtime data
+        self.app.engine:getTags(true)
+    end
+end
+
+function PB_UserData:createTag(name, parent)
+    self.app.logger:logDebug('-- PB_UserData:createTag()')
+    self.app.logger:logDebug('Creating tag "' .. name .. '"')
+    
+    local parentId = (parent == TAGS_ROOT_PARENT) and TAGS_ROOT_PARENT or parent.id
+    local levelCount = 0
+    
+    -- Count existing tags at this level
+    for id, tagInfo in pairs(self.current.tagInfo) do
+        if tagInfo.parentId == parentId then
+            levelCount = levelCount + 1
+        end
+    end
+    
+    local newTag = {
+        name = name,
+        parentId = parentId,
+        order = levelCount + 1
+    }
+    
+    local newId = self.current.idCount + 1
+    self.current.idCount = newId
+    self.current.tagInfo[newId] = newTag
+    
+    self.app.logger:logInfo('Created a new tag \'' ..
+        name ..
+        '\' with id ' ..
+        newId .. (parentId ~= TAGS_ROOT_PARENT and ' (parent Id: ' .. parentId .. ')' or ''))
+    
+    self:save()
+    
+    -- Notify engine to refresh its runtime data
+    self.app.engine:getTags(true)
+    
+    -- Return the created tag from engine's processed data
+    for _, tag in pairs(self.app.engine.tags) do
+        if tag.id == newId then
+            return tag
+        end
+    end
 end
 
 -- * local

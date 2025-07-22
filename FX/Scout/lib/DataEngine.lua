@@ -345,44 +345,26 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
         self.tags[id].id = id
         self.tags[id].app = self.app
         self.tags[id].allTags = self.tags
-        self.tags[id].db = self
+        self.tags[id].engine = self
 
         self.tags[id].toggleOpen = function(self, state, persist)
-            persist = (persist == nil) and true or persist
             self.open = state
-            self.app.userdata.current.tagInfo[self.id].open = state
-            if persist then self.app.userdata:save() end
+            self.app.userdata:toggleTagOpen(self.id, state, persist)
         end
         self.tags[id].rename = function(self, name, persist)
-            persist = (persist == nil) and true or persist
             self.name = name
-            self.app.userdata.current.tagInfo[self.id].name = name
-            if persist then
-                self.app.userdata:save()
-                self.db:getTags(true)
-            end
+            self.app.userdata:renameTag(self.id, name, persist)
         end
         self.tags[id].delete = function(self, persistAndReload)
-            local assetsToRemoveTag = self.db:assetsWithTag(self)
+            local assetsToRemoveTag = self.engine:assetsWithTag(self)
             if self.app.temp.filter.tags then
                 self.app.flow.filterResults({ removeTags = { self.id } })
             end
             for _, asset in pairs(assetsToRemoveTag) do
                 asset:removeTag(self, false)
             end
-            for _, tag in pairs(self.descendants) do
-                tag:delete(false)
-            end
-            self.app.userdata.current.tagInfo[self.id] = nil
-            for sibId, sib in pairs(self.siblings) do
-                if sib.order > self.order then
-                    self.app.userdata.current.tagInfo[sibId].order = self.app.userdata.current.tagInfo[sibId].order - 1
-                end
-            end
-            if persistAndReload ~= false then
-                self.app.userdata:save()
-                self.db:getTags(true)
-            end
+            -- Let UserData handle the actual deletion logic
+            self.app.userdata:deleteTag(self.id, persistAndReload)
         end
 
         self.tags[id].addDescendants = function(self)
@@ -533,8 +515,8 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
             self.order = nil -- will be set by above loop
 
             self.app.userdata:save()
-            -- Rescan tags into the DB after move
-            self.db:getTags(true)
+            -- Rescan tags into the engine after move
+            self.engine:getTags(true)
         end
     end
 
@@ -554,39 +536,6 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
     if reassembleTagFilterAssets then self:assembleFilterAssets({ tags = true }) end
 end
 
-PB_DataEngine.createTag = function(self, name, parent)
-    self.app.logger:logDebug('-- PB_DataEngine.createTag()')
-    self.app.logger:logDebug('Creating tag "' .. name .. '"')
-    local parentId = (parent == TAGS_ROOT_PARENT) and TAGS_ROOT_PARENT or parent.id
-    local levelCount = 0
-    local lastId = 1
-    for id, tagInfo in pairs(self.app.userdata.current.tagInfo) do
-        if tagInfo.parentId == parentId then
-            levelCount = levelCount + 1
-        end
-        lastId = id
-    end
-    local newTag = {
-        name = name,
-        parentId = parentId,
-        order = levelCount + 1
-    }
-    local newId = self.app.userdata.current.idCount + 1
-    self.app.userdata.current.idCount = newId
-    self.app.userdata.current.tagInfo[newId] = newTag
-    self.app.logger:logInfo('Created a new tag \'' ..
-        name ..
-        '\' with id ' ..
-        newId .. (parentId ~= TAGS_ROOT_PARENT and ' (parent Id: ' .. parentId .. ')' or ''))
-    self.app.userdata:save()
-    self:getTags(true)
-
-    for _, tag in pairs(self.tags) do
-        if tag.id == newId then
-            return tag
-        end
-    end
-end
 PB_DataEngine.markSpecialGroups = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.markSpecialGroups()')
     
@@ -759,7 +708,8 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
             if scanAll or (whichFilters.filters and OD_HasValue(whichFilters.filters, filterType)) then
                 for itemName, item in pairs(filter.items) do
                     table.insert(self.filterAssets, {
-                        db = self,
+                        engine = self,
+                        app = self.app,  -- Add app context for executeFilter
                         type = filterType,
                         searchText = { { text = itemName } },
                         order = item.order,
@@ -812,7 +762,8 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
 
             for tagId, tag in pairs(flatTags) do
                 table.insert(self.filterAssets, {
-                    db = self,
+                    engine = self,
+                    app = self.app,  -- Add app context for executeFilter
                     type = FILTER_TYPES.TAG,
                     searchText = { { text = tag.name } },
                     parents = tag.parents,
