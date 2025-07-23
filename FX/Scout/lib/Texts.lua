@@ -6,10 +6,6 @@ T.PRESET_EDIT_MENU = {
         LABEL = 'Preset Name',
         HINT = 'A name for the new preset',
     },
-    SHORTCUT = {
-        LABEL = 'Shortcut Letter',
-        HINT = 'A name for the new preset', 
-    },
     ACTION = {
         LABEL = '',
         BUTTON = 'Export as Action',

@@ -795,7 +795,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             app.temp.showCreatePresetDialog = true
                             app.temp.presetName = ""
                             -- app.temp.presetActionExists = false
-                            app.temp.presetLetter = ""
                             app.temp.editingPresetId = nil
                             app.temp.originalPresetFilter = nil
                         end
@@ -1716,7 +1715,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                                         app.temp.showCreatePresetDialog = true
                                                         app.temp.presetName = preset.name
                                                         app.temp.editingPresetId = presetId
-                                                        app.temp.presetLetter = preset.letter or ""
                                                         app.temp.originalPresetFilter = preset
                                                             .filter -- Store original filter
                                                     end
@@ -2280,9 +2278,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         if not app.temp.presetName then
                             app.temp.presetName = ""
                         end
-                        if not app.temp.presetLetter then
-                            app.temp.presetLetter = ""
-                        end
                         -- if isEditing then
                         --     updateActionStatus()
                         -- end
@@ -2307,21 +2302,12 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         -- end
                         -- Auto-focus the text input when dialog opens
 
-                        local tempPresetLetter = app.gui:setting('oneCharacter', T.PRESET_EDIT_MENU.SHORTCUT.LABEL,
-                            T.PRESET_EDIT_MENU.SHORTCUT.HINT, app.temp.presetLetter,
-                            { width = 20 * app.gui.scale, hintWindow = 'presetEditWindow' })
-                        -- ImGui.Text(ctx, "Shortcut letter (optional):")
-                        app.temp.presetLetter = tempPresetLetter -- string.sub(tempPresetLetter, 1, 1)
-                        -- ImGui.SameLine(ctx)
-                        -- ImGui.Text(ctx, "(single letter)")
-
                         local canSave = app.temp.presetName and OD_Trim(app.temp.presetName) ~= ""
                         local errorMessage = ""
 
                         local trimmedName = OD_Trim(app.temp.presetName)
 
                         if canSave then
-                            local trimmedLetter = OD_Trim(app.temp.presetLetter)
 
                             -- Check for duplicate name (excluding self when editing)
                             for presetId, preset in pairs(app.engine.presets) do
@@ -2332,16 +2318,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                 end
                             end
 
-                            -- Check for duplicate letter (excluding self when editing)
-                            if canSave and trimmedLetter ~= "" then
-                                for presetId, preset in pairs(app.engine.presets) do
-                                    if preset.letter and preset.letter:lower() == trimmedLetter:lower() and presetId ~= app.temp.editingPresetId then
-                                        canSave = false
-                                        errorMessage = "This shortcut is taken"
-                                        break
-                                    end
-                                end
-                            end
+
                         end
                         -- Show error message if any
                         if errorMessage ~= "" then
@@ -2356,14 +2333,11 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSave) or app.gui:setting('button', T.PRESET_EDIT_MENU.SAVE.LABEL,
                                 T.PRESET_EDIT_MENU.SAVE.HINT, nil,
                                 { label = isEditing and T.PRESET_EDIT_MENU.SAVE.BUTTON_EDIT or T.PRESET_EDIT_MENU.SAVE.BUTTON_CREATE, hintWindow = 'presetEditWindow' }) then
-                            local trimmedLetter = OD_Trim(app.temp.presetLetter)
-                            if trimmedLetter == "" then trimmedLetter = nil end
-
                             if isEditing then
-                                -- Update existing preset - use original filter, only update name and letter
+                                -- Update existing preset - use original filter, only update name
                                 local filterToUse = app.temp.originalPresetFilter or app.temp.filter
                                 local preset = app.userdata:updatePreset(app.temp.editingPresetId, trimmedName,
-                                    filterToUse, trimmedLetter)
+                                    filterToUse)
                                 if preset then
                                     app.logger:logInfo('Updated preset "' .. preset.name .. '"')
                                     -- Refresh the engine presets
@@ -2371,7 +2345,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                 end
                             else
                                 -- Create new preset - use current active filters
-                                local preset = app.userdata:createPreset(trimmedName, app.temp.filter, trimmedLetter)
+                                local preset = app.userdata:createPreset(trimmedName, app.temp.filter)
                                 if preset then
                                     app.logger:logInfo('Created preset "' .. preset.name .. '"')
                                     -- Refresh the engine presets
@@ -2427,7 +2401,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         --         end
                         --         app.temp.showCreatePresetDialog = false
                         --         app.temp.presetName = nil
-                        --         app.temp.presetLetter = nil
                         --         app.temp.editingPresetId = nil
                         --         app.temp.originalPresetFilter = nil
                         --         ImGui.CloseCurrentPopup(ctx)
@@ -2443,7 +2416,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     if not open then
                         app.temp.showCreatePresetDialog = false
                         app.temp.presetName = nil
-                        app.temp.presetLetter = nil
                         app.temp.editingPresetId = nil
                         app.temp.originalPresetFilter = nil
                     end

@@ -146,8 +146,7 @@ function PB_UserData:export(filename)
 
         local sanitizedName = OD_EscapeCSV(preset.name)
         local sanitizedFilter = OD_EscapeCSV(filterString)
-        local sanitizedLetter = OD_EscapeCSV(preset.letter or "")
-        file:write(string.format('%d,%s,%s,%s\n', id, sanitizedName, sanitizedFilter, sanitizedLetter))
+        file:write(string.format('%d,%s,%s\n', id, sanitizedName, sanitizedFilter))
         presetsCount = presetsCount + 1
     end
     file:write('\n')
@@ -364,10 +363,10 @@ function PB_UserData:import(filename, mergeMode)
                 self.app.logger:logError('No colon separator found in taggedAssets line', line)
             end
         elseif section == "presets" and line ~= "" then
-            -- Parse presets: id,name,filter,letter
+            -- Parse presets: id,name,filter
             local fields = OD_ParseCSVLine(line, ",")
             if #fields >= 4 then
-                local id, name, filterString, letter = fields[1], fields[2], fields[3], fields[4]
+                local id, name, filterString = fields[1], fields[2], fields[3]
                 if id and name and tonumber(id) then
                     -- Parse filter string back to table format
                     local filter = {}
@@ -399,8 +398,7 @@ function PB_UserData:import(filename, mergeMode)
 
                     importedPresets[tonumber(id)] = {
                         name = name,
-                        filter = filter,
-                        letter = letter ~= "" and letter or nil
+                        filter = filter
                     }
                 else
                     self.app.logger:logError('Invalid presets line format', line)
@@ -1132,7 +1130,6 @@ function PB_UserData:import(filename, mergeMode)
                 id = newId,
                 name = importedPreset.name,
                 filter = OD_DeepCopy(importedPreset.filter),
-                letter = importedPreset.letter,
             }
 
             mappedPresetsCount = mappedPresetsCount + 1
@@ -1337,7 +1334,7 @@ function PB_UserData:createTag(name, parent)
 end
 
 -- Preset management functions
-function PB_UserData:createPreset(name, filter, letter)
+function PB_UserData:createPreset(name, filter)
     if not name or name == '' then
         self.app.logger:logError('Cannot create preset: name is required')
         return nil
@@ -1358,7 +1355,6 @@ function PB_UserData:createPreset(name, filter, letter)
         id = newId,
         name = name,
         filter = presetFilter,
-        letter = letter
     }
 
     self.current.presets[newId] = preset
@@ -1422,7 +1418,7 @@ function PB_UserData:renamePreset(presetId, newName)
     return true
 end
 
-function PB_UserData:updatePreset(presetId, name, filter, letter)
+function PB_UserData:updatePreset(presetId, name, filter)
     if not self.current.presets[presetId] then
         self.app.logger:logError('Cannot update preset: preset with id ' .. presetId .. ' not found')
         return nil
@@ -1443,7 +1439,6 @@ function PB_UserData:updatePreset(presetId, name, filter, letter)
 
     self.current.presets[presetId].name = name
     self.current.presets[presetId].filter = presetFilter
-    self.current.presets[presetId].letter = letter
 
     self.app.logger:logInfo('Updated preset \'' .. name .. '\' with id ' .. presetId)
 
