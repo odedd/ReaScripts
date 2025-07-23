@@ -25,6 +25,17 @@ PB_Gui.init = function(self, fonts)
     OD_Gui.init(self, false)
     self.searchResultsClipper = ImGui.CreateListClipper(self.ctx)
     ImGui.Attach(self.ctx, self.searchResultsClipper)
+
+    self.clearInputIfNeeded = ImGui.CreateFunctionFromEEL([[
+    buflen = strlen(#Buf);
+    InputTextCallback_DeleteChars(0, buflen);
+]])
+ImGui.Attach(self.ctx, self.clearInputIfNeeded)
+-- self.blockNextCharacter = ImGui.CreateFunctionFromEEL([[
+--     EventChar = 0;
+-- ]])
+--     ImGui.Attach(self.ctx, self.blockNextCharacter)
+
     self.st.basecolors = {
         darkestBG = 0x131313ff,
         darkerBG = 0x212123ff,
@@ -382,7 +393,8 @@ PB_Gui.init = function(self, fonts)
             --     ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2
         end
         if data.divideWidth then
-            widgetWidth = widgetWidth / data.divideWidth - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * (data.divideWidth - 1)
+            widgetWidth = widgetWidth / data.divideWidth -
+            ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * (data.divideWidth - 1)
         end
         ImGui.PushItemWidth(ctx, data.width or widgetWidth)
 

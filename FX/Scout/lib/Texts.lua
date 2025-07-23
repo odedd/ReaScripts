@@ -48,24 +48,16 @@ T.SETTINGS = {
     },
     SHORTCUTS = {
         CLOSE_SCRIPT = {
-            LABEL = 'Close script',
-            HINT = 'Shortcut to close script.',
+            LABEL = 'Enter sleep mode',
+            HINT = 'Sleep mode leads to faster loading times.',
         },
         HARD_CLOSE_SCRIPT = {
-            LABEL = 'Hard Close script',
-            HINT = 'Shortcut to hard close script (without persistant mode).',
+            LABEL = 'Exit script',
+            HINT = 'Close script without entering sleep mode.',
         },
-        NEW_SEND = {
-            LABEL = 'New send',
-            HINT = 'Shortcut to create a new send.',
-        },
-        NEW_RECV = {
-            LABEL = 'New receive',
-            HINT = 'Shortcut to create a new receive.',
-        },
-        NEW_HW = {
-            LABEL = 'New hardware send',
-            HINT = 'Shortcut to create a new hardware send.',
+        CLEAR_FILTERS = {
+            LABEL = 'Clear Filters',
+            HINT = 'Clear all filters.',
         },
         MARK_FAVORITE = {
             LABEL = 'Mark favorite',
@@ -77,7 +69,7 @@ T.SETTINGS = {
         HINT = 'Interface scale. Double click to enter manually.',
     },
     EXPORT_TAGS = {
-        LABEL = 'Tags, Presets and Favorites',
+        LABEL = 'Import / Export',
         BUTTON_LABEL = 'Export',
         HINT = 'Export user data for use on another system or as a backup.',
     },
@@ -85,7 +77,7 @@ T.SETTINGS = {
         LABEL = '',
         BUTTON_LABEL = 'Import (Overwrite)',
         BUTTON_LABEL_MERGE = 'Import (Merge)',
-        HINT = 'Import user data. Hold Shift to overwrite existing data.',
+        HINT = 'Import user data. Shift+click to overwrite existing data.',
     }
 }
 

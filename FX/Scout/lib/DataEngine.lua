@@ -98,7 +98,7 @@ PB_DataEngine = {
         -- Populate the dynamic filter menu
         FILTER_MENU[FILTER_TYPES.TYPE].items = self.assetTypeManager:buildFilterMenu()
 
-        if self.app.logger.profile then Profile.start() end
+        -- if self.app.logger.profile then Profile.start() end
 
         self:getTags()
         self:getPresets()
@@ -108,10 +108,10 @@ PB_DataEngine = {
         self:updateDevelopersFilterMenu()
         self:updatePresetsFilterMenu()
         self:assembleFilterAssets()
-        if self.app.logger.profile then
-            Profile.stop()
-            r.ShowConsoleMsg(Profile.report(10))
-        end
+        -- if self.app.logger.profile then
+        --     Profile.stop()
+        --     r.ShowConsoleMsg(Profile.report(10))
+        -- end
     end,
     sync = function(self, refresh) -- not sure this is needed
         self.app.logger:logDebug('-- PB_DataEngine.sync()')
@@ -1049,6 +1049,7 @@ PB_DataEngine.sortFilterAssets = function(self)
     for filterType, filterMenu in pairs(FILTER_MENU) do
         groupPriority[filterType] = filterMenu.order
     end
+    groupPriority[FILTER_TYPES.PRESET] = -2
     groupPriority[FILTER_TYPES.TAG] = -1
 
     table.sort(self.filterAssets, function(a, b)
