@@ -48,12 +48,11 @@ SEARCH_MODE = {
 }
 
 RESULT_CONTEXT = {
-    ['MAIN'] = 0,
-    ['ALT'] = 1,
-    ['SHIFT'] = 2,
-    ['CTRL'] = 3,
+    ['NONE'] = 0,
+    ['KEYBOARD'] = 1,
+    ['MOUSE'] = 2,
     ['DRAGGED_TO_TRACK'] = 4,
-    ['DRAGGED_TO_BLANK'] = 5,
+    ['DRAGGED_TO_BLANK'] = 8,
 }
 
 TAGS_ROOT_PARENT = -1

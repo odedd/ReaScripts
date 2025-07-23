@@ -744,21 +744,21 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
     local whichFilters = whichFilters or {}
     local executeFilter = function(self, context)
         if self.type ~= FILTER_TYPES.TAG then
-            if context == RESULT_CONTEXT.ALT then
+            if OD_BfCheck(context, ImGui.Mod_Alt) then
                 self.app.flow.filterResults(self.loadAll)
             else
                 self.app.flow.filterResults(self.load)
             end
         else
-            if context == RESULT_CONTEXT.ALT then
+            if OD_BfCheck(context, ImGui.Mod_Alt) then
                 self.app.flow.filterResults({ removeTags = { self.load } })
-            elseif context == RESULT_CONTEXT.CTRL then
+            elseif OD_BfCheck(context, ImGui.Mod_Ctrl) then
                 self.app.flow.filterResults({ addTags = { [self.load] = false } })
             else
                 self.app.flow.filterResults({ addTags = { [self.load] = true } })
             end
         end
-        if context ~= RESULT_CONTEXT.SHIFT then
+        if not OD_BfCheck(context, ImGui.Mod_Shift) then
             self.app.flow.setSearchMode(SEARCH_MODE.MAIN)
         else
             self.app.flow.filterResults({ clearText = true })
@@ -875,7 +875,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
 
     if scanAll or whichFilters.presets then
         local executePresetFilter = function(self, context)
-            if context == RESULT_CONTEXT.ALT then
+            if OD_BfCheck(context, ImGui.Mod_Alt) then
                 -- Alt-click: Update preset with current filter
                 self.preset:update()
                 self.app.logger:logInfo('Updated preset "' .. self.preset.name .. '" with current filter')
@@ -883,7 +883,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 -- Normal click: Apply preset
                 self.preset:apply()
             end
-            if context ~= RESULT_CONTEXT.SHIFT then
+            if not OD_BfCheck(context, ImGui.Mod_Shift) then
                 self.app.flow.setSearchMode(SEARCH_MODE.MAIN)
             end
         end

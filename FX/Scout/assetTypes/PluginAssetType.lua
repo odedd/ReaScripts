@@ -90,7 +90,7 @@ end
 
 function PluginAssetType:getExecuteFunction()
     return function(self, context, contextData, confirm)
-        if context == RESULT_CONTEXT.MAIN then
+        if not OD_BfCheck(context, ImGui.Mod_Alt) then
             local tracks = self.context.engine:getSelectedTracks()
             if #tracks > self.context.settings.current.numberOfTracksThatRequireConfirmation and confirm ~= true then
                 self.context.temp.confirmMultipleTracks = {
@@ -109,7 +109,7 @@ function PluginAssetType:getExecuteFunction()
                 end
                 return true, ('Added %s to %d tracks'):format(self.searchText[1].text, numTracks)
             end
-        elseif context == RESULT_CONTEXT.ALT then
+        else
             local numItems = r.CountMediaItems(0)
             if numItems == 0 then return false end
 

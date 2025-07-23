@@ -547,7 +547,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 elseif confirm or resultCount < app.settings.current.numberOfResultsThatRequireConfirmation then
                     for _, result in pairs(app.selection:results()) do
                         if result.execute then
-                            result:execute(resultContext, contextData, confirm)
+                            result:execute(ImGui.GetKeyMods(ctx) | (resultContext or 0), contextData, confirm)
                         end
                     end
                 end
@@ -1256,15 +1256,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                                             r.time_precise()
                                                     end
                                                     if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
-                                                        if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
-                                                            app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.ALT)
-                                                        elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
-                                                            app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.SHIFT)
-                                                        elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl) then
-                                                            app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.CTRL)
-                                                        else
-                                                            app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.MAIN)
-                                                        end
+                                                        app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.MOUSE)
                                                     end
                                                 end
                                             end
@@ -1954,15 +1946,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             app.temp.ignoreEscapeKey = nil
                         elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter, false) then
                             if not app.temp.tagRename then
-                                if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
-                                    app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.ALT)
-                                elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
-                                    app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.SHIFT)
-                                elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl) then
-                                    app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.CTRL)
-                                else
-                                    app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.MAIN)
-                                end
+                                app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.KEYBOARD)
                             end
                         elseif app.guiHelpers.isShortcutPressed('selectAllResults', true) then
                             app.selection:selectRange(1, #app.temp.searchResults)

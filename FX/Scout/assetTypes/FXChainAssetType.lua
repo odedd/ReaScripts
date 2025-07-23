@@ -28,17 +28,14 @@ end
 function FXChainAssetType:getExecuteFunction()
     return function(self, context, contextData)
         -- FX Chains are typically loaded into tracks like plugins
-        if context == RESULT_CONTEXT.MAIN then
-            local numTracks = r.CountSelectedTracks2(0, true);
-            if numTracks == 0 then return false end
-            for i = 0, numTracks - 1 do
-                local track = r.GetSelectedTrack2(0, i, true)
-                local fxIndex = r.TrackFX_AddByName(track, self.load, false, -1)
-            end
-            return true, ('Added %s to %d tracks'):format(self.searchText[1].text,numTracks)
+        local numTracks = r.CountSelectedTracks2(0, true);
+        if numTracks == 0 then return false end
+        for i = 0, numTracks - 1 do
+            local track = r.GetSelectedTrack2(0, i, true)
+            local fxIndex = r.TrackFX_AddByName(track, self.load, false, -1)
         end
+        return true, ('Added %s to %d tracks'):format(self.searchText[1].text, numTracks)
         -- Default return for other contexts
-        return false
     end
 end
 
@@ -50,6 +47,6 @@ function FXChainAssetType:assembleAsset(chain)
         group = self.group,
         order = 0
     })
-    
+
     return asset
 end
