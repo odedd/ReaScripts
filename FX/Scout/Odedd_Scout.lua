@@ -1953,9 +1953,9 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         -- local pressed = false
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) then
                             -- if not app.temp.ignoreEscapeKey then
-                                if app.temp.searchInput == '' then
-                                    app.hide = true
-                                end
+                            if app.temp.searchInput == '' then
+                                app.hide = true
+                            end
                             -- end
                             -- pressed = true
                             -- app.temp.ignoreEscapeKey = nil
@@ -2045,10 +2045,14 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         end
                     end
                     if rv then
-                        local wordFilter = app.engine.magicWords[app.temp.searchInput:upper():match('(.+)%s$')]
-                        if wordFilter then
-                            app.flow.filterResults(wordFilter)
-                            app.guiHelpers.clearSearchInputText()
+                        if app.temp.searchMode == SEARCH_MODE.MAIN then
+                            local wordFilter = app.engine.magicWords[app.temp.searchInput:upper():match('(.+)%s$')]
+                            if wordFilter then
+                                app.flow.filterResults(wordFilter)
+                                app.guiHelpers.clearSearchInputText()
+                            else
+                                app.flow.filterResults({ text = app.temp.searchInput })
+                            end
                         else
                             app.flow.filterResults({ text = app.temp.searchInput })
                         end
@@ -2218,7 +2222,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     -- Export button
                     app.gui:setting('label', T.SETTINGS.EXPORT_TAGS.LABEL)
                     if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL, divideWidth = 2 }, true) then
-                        local rv, filename = reaper.JS_Dialog_BrowseForSaveFile('Export Tags, Presets, Favorites and Magic Words', '',
+                        local rv, filename = reaper.JS_Dialog_BrowseForSaveFile(
+                            'Export Tags, Presets, Favorites and Magic Words', '',
                             '',
                             'Scout Tags files (*.scout)\0*.scout\0\0')
                         if rv == 1 and filename then
@@ -2237,7 +2242,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     local importButtonText = overwriteMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL or
                         T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE
                     if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText }, true) then
-                        local rv, filename = reaper.GetUserFileNameForRead('', 'Import Tags, Presets, Favorites and Magic Words',
+                        local rv, filename = reaper.GetUserFileNameForRead('',
+                            'Import Tags, Presets, Favorites and Magic Words',
                             'scout')
                         if rv and filename then
                             local success, skippedAssets, mappedCount, skippedCount = app.userdata:import(filename,
