@@ -377,13 +377,19 @@ PB_Gui.init = function(self, fonts)
             widgetWidth = itemWidth
         else
             ImGui.SameLine(ctx)
-            widgetWidth = itemWidth - ImGui.GetTextLineHeight(ctx) -
-                ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2
+            widgetWidth = ImGui.GetContentRegionAvail(ctx)
+            -- widgetWidth = itemWidth - ImGui.GetTextLineHeight(ctx) -
+            --     ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2
+        end
+        if data.divideWidth then
+            widgetWidth = widgetWidth / data.divideWidth - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * (data.divideWidth - 1)
         end
         ImGui.PushItemWidth(ctx, data.width or widgetWidth)
 
         if stType == 'combo' then
             _, retval1 = ImGui.Combo(ctx, '##' .. text, val, data.list)
+        elseif stType == 'label' then
+            ImGui.Dummy(ctx, 0, 0)
         elseif stType == 'checkbox' then
             _, retval1 = ImGui.Checkbox(ctx, '##' .. text, val)
         elseif stType == 'dragint' then

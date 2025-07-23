@@ -61,15 +61,15 @@ T.SETTINGS = {
         HINT = 'Interface scale. Double click to enter manually.',
     },
     EXPORT_TAGS = {
-        LABEL = 'Export Tags, Presets & Favorites',
+        LABEL = 'Tags, Presets and Favorites',
         BUTTON_LABEL = 'Export',
-        HINT = 'Export all tags, tagged assets, presets, and favorites to a file.',
+        HINT = 'Export user data for use on another system or as a backup.',
     },
     IMPORT_TAGS = {
-        LABEL = 'Import Tags, Presets & Favorites',
+        LABEL = '',
         BUTTON_LABEL = 'Import (Overwrite)',
         BUTTON_LABEL_MERGE = 'Import (Merge)',
-        HINT = 'Import tags, tagged assets, presets, and favorites from a file. Hold Shift to merge with existing data.',
+        HINT = 'Import user data. Hold Shift to overwrite existing data.',
     }
 }
 

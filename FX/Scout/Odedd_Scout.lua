@@ -2203,13 +2203,14 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         T.SETTINGS.FX_TYPE_ORDER.LABEL, T.SETTINGS.FX_TYPE_ORDER.HINT,
                         { app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility })
 
-                    ImGui.SeparatorText(ctx, 'Tags and Favorites')
+                    ImGui.SeparatorText(ctx, 'Import / Export')
 
                     -- Export button
-                    if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL }) then
+                    app.gui:setting('label', T.SETTINGS.EXPORT_TAGS.LABEL)
+                    if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL, divideWidth = 2 }, true) then
                         local rv, filename = reaper.JS_Dialog_BrowseForSaveFile('Export Tags, Presets & Favorites', '', '',
                             'Scout Tags files (*.scout)\0*.scout\0\0')
-                        if rv and filename then
+                        if rv == 1 and filename then
                             local success, errorMsg = app.userdata:export(filename)
                             if success then
                                 app:msg('Export successful: ' .. filename)
@@ -2221,20 +2222,19 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     -- app:setHoveredHint('settings', T.SETTINGS.EXPORT_TAGS.HINT)
 
                     -- Import button
-                    local mergeMode = ImGui.IsKeyDown(ctx, ImGui.Key_LeftShift) or
-                        ImGui.IsKeyDown(ctx, ImGui.Key_RightShift)
-                    local importButtonText = mergeMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE or
-                        T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL
-                    if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText }) then
+                    local overwriteMode = ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)
+                    local importButtonText = overwriteMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL or
+                        T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE
+                    if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText }, true) then
                         local rv, filename = reaper.GetUserFileNameForRead('', 'Import Tags, Presets & Favorites', 'scout')
                         if rv and filename then
                             local success, skippedAssets, mappedCount, skippedCount = app.userdata:import(filename,
-                                mergeMode)
+                                not overwriteMode)
                             if success then
                                 local msg = string.format('Import successful: %d assets mapped, %d assets skipped',
                                     mappedCount or 0, skippedCount or 0)
-                                if mergeMode then
-                                    msg = msg .. ' (merged with existing data)'
+                                if overwriteMode then
+                                    msg = msg .. ' (existing data overwritten)'
                                 end
                                 app:msg(msg)
                             else
