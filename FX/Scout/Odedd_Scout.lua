@@ -2218,12 +2218,12 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         T.SETTINGS.FX_TYPE_ORDER.LABEL, T.SETTINGS.FX_TYPE_ORDER.HINT,
                         { app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility })
 
-                    ImGui.SeparatorText(ctx, 'Import / Export')
+                    ImGui.SeparatorText(ctx, 'Tags, Presets, Favorites and Magic Words')
 
                     -- Export button
                     app.gui:setting('label', T.SETTINGS.EXPORT_TAGS.LABEL)
                     if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL, divideWidth = 2 }, true) then
-                        local rv, filename = reaper.JS_Dialog_BrowseForSaveFile('Export Tags, Presets & Favorites', '',
+                        local rv, filename = reaper.JS_Dialog_BrowseForSaveFile('Export Tags, Presets, Favorites and Magic Words', '',
                             '',
                             'Scout Tags files (*.scout)\0*.scout\0\0')
                         if rv == 1 and filename then
@@ -2242,7 +2242,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     local importButtonText = overwriteMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL or
                         T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE
                     if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText }, true) then
-                        local rv, filename = reaper.GetUserFileNameForRead('', 'Import Tags, Presets & Favorites',
+                        local rv, filename = reaper.GetUserFileNameForRead('', 'Import Tags, Presets, Favorites and Magic Words',
                             'scout')
                         if rv and filename then
                             local success, skippedAssets, mappedCount, skippedCount = app.userdata:import(filename,

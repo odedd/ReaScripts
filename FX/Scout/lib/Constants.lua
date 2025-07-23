@@ -83,7 +83,7 @@ FILTER_TYPES = {
 
 FILTER_MENU = {
         [FILTER_TYPES.PRESET] = {
-        order = 0,
+        order = 1,
         items = {}
     },
     [FILTER_TYPES.TYPE] = {

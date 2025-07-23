@@ -1046,6 +1046,7 @@ PB_DataEngine.sortFilterAssets = function(self)
     for filterType, filterMenu in pairs(FILTER_MENU) do
         groupPriority[filterType] = filterMenu.order
     end
+    groupPriority[FILTER_TYPES.PRESET] = -2
     groupPriority[FILTER_TYPES.TAG] = -1
 
     table.sort(self.filterAssets, function(a, b)
