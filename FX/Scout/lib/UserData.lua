@@ -8,6 +8,7 @@ PB_UserData = OD_Settings:new({
         taggedAssets = {},
         recents = {},
         presets = {},
+        magicWords = {},
         tagIdCount = 7,
         presetIdCount = 7,
     },
@@ -579,7 +580,7 @@ function PB_UserData:import(filename, mergeMode)
         end
 
         -- Merge mode: find existing tags with same name and parent path, create hierarchy as needed
-        local idMapping = {}                              -- maps imported ID to existing ID
+        local idMapping = {}                                 -- maps imported ID to existing ID
         local nextNewIdRef = { self.current.tagIdCount + 1 } -- Use table for reference
         local newTagsCount = 0
         local existingTagsCount = 0
@@ -1104,7 +1105,7 @@ function PB_UserData:import(filename, mergeMode)
             -- Import preset
             local newId = importedId
             local existingPresetId = nil
-            
+
             if mergeMode then
                 -- In merge mode, check if a preset with the same name already exists
                 for id, preset in pairs(finalPresets) do
@@ -1113,11 +1114,12 @@ function PB_UserData:import(filename, mergeMode)
                         break
                     end
                 end
-                
+
                 if existingPresetId then
                     -- Update existing preset with same name
                     newId = existingPresetId
-                    self.app.logger:logDebug('⟳ Updating existing preset "' .. importedPreset.name .. '" (ID ' .. newId .. ')')
+                    self.app.logger:logDebug('⟳ Updating existing preset "' ..
+                    importedPreset.name .. '" (ID ' .. newId .. ')')
                 else
                     -- Find next available ID if no name conflict exists
                     while finalPresets[newId] do
@@ -1458,6 +1460,144 @@ end
 
 function PB_UserData:getAllPresets()
     return self.current.presets
+end
+
+-- Preset management functions
+function PB_UserData:createMagicWord(word, filter)
+    if not word or word == '' then
+        self.app.logger:logError('Cannot create magic word: word is required')
+        return nil
+    end
+
+    if not filter then
+        self.app.logger:logError('Cannot create magic word: filter is required')
+        return nil
+    end
+
+    if not self.current.magicWords[word] then
+        self.app.logger:logError('Cannot create magic word: already exists')
+        return nil
+    end
+
+    -- Create a deep copy of the filter to store
+    local magicWord = OD_DeepCopy(filter)
+
+    self.current.magciWords[word] = {
+        order = OD_TableLength(self.current.magicWords),
+        filter = filter
+    }
+
+    self.app.logger:logInfo('Created magicWord \'' .. word)
+
+    self:save()
+
+    -- Notify engine to refresh its runtime data
+    if self.app.engine then
+        self.app.engine:getMagicWords(true)
+    end
+
+    return magicWord
+end
+
+function PB_UserData:deleteMagicWord(word)
+    if not self.current.magicWords[word] then
+        self.app.logger:logError('Cannot delete magic word: word ' .. word .. ' not found')
+        return false
+    end
+
+    self.current.magicWords[word] = nil
+
+    self.app.logger:logInfo('Deleted magic word \'' .. word)
+
+    self:save()
+
+    -- Notify engine to refresh its runtime data
+    if self.app.engine then
+        self.app.engine:getMagicWords(true)
+    end
+
+    return true
+end
+
+function PB_UserData:renameMagicWord(word, newName)
+    if not newName or newName == '' then
+        self.app.logger:logError('Cannot rename magic word: new name is required')
+        return false
+    end
+
+    if not self.current.magciWords[word] then
+        self.app.logger:logError('Cannot rename word ' .. word .. ' to ' .. newName .. ': word ' .. word .. ' not found')
+        return false
+    end
+
+    if self.current.magciWords[newName] then
+        self.app.logger:logError('Cannot rename word ' ..
+        word .. ' to ' .. newName .. ': word ' .. newName .. ' already exists')
+        return false
+    end
+
+    self.current.magciWords[newName] = OD_DeepCopy(self.current.magciWords[word])
+    self.current.magciWords[word] = nil
+
+    self.app.logger:logInfo('Renamed word from \'' .. word .. '\' to \'' .. newName .. '\'')
+
+    self:save()
+
+    -- Notify engine to refresh its runtime data
+    if self.app.engine then
+        self.app.engine:getMagicWords(true)
+    end
+
+    return true
+end
+
+function PB_UserData:updateMagicWord(word, newName, filter, order)
+    if not self.current.magciWords[word] then
+        self.app.logger:logError('Cannot update word: word ' .. word .. ' not found')
+        return nil
+    end
+
+    if not word or word == '' then
+        self.app.logger:logError('Cannot update word: name is required')
+        return nil
+    end
+
+    if self.current.magciWords[newName] then
+        self.app.logger:logError('Cannot rename word ' ..
+        word .. ' to ' .. newName .. ': word ' .. newName .. ' already exists')
+        return false
+    end
+
+    if not filter then
+        self.app.logger:logError('Cannot update word: filter is required')
+        return nil
+    end
+
+    local presetFilter = OD_DeepCopy(filter)
+    -- Create a deep copy of the filter to store
+    self.current.magciWords[newName] = OD_DeepCopy(self.current.magciWords[word])
+    self.current.magciWords[newName].filter = presetFilter
+    self.current.magciWords[newName].order = order or self.current.magciWords[word].order
+    self.current.magciWords[word] = nil
+
+    self.app.logger:logInfo('Updated word \'' .. word)
+
+    self:save()
+
+    -- Notify engine to refresh its runtime data
+    if self.app.engine then
+        self.app.engine:getMagicWords(true)
+    end
+
+    return self.current.magciWords[newName]
+end
+
+function PB_UserData:getMagicWord(word)
+    return self.current.magciWords[word]
+end
+
+function PB_UserData:getAllMagicWords()
+    return self.current.magciWords
 end
 
 -- * local
