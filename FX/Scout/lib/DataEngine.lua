@@ -40,7 +40,7 @@ PB_DataEngine = {
         end
         
         if validatedFilter.fxDeveloper and (not self.fxDevelopers or not self.fxDevelopers[validatedFilter.fxDeveloper]) then
-            self.app.logger:logError('FX Developer "' .. tostring(validatedFilter.fxDeveloper) .. '" does not exist, ignoring filter')
+            self.app.logger:logError('Developer "' .. tostring(validatedFilter.fxDeveloper) .. '" does not exist, ignoring filter')
             validatedFilter.fxDeveloper = nil
             hasIssues = true
         end
