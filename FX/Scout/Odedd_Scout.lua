@@ -2045,24 +2045,13 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         end
                     end
                     if rv then
-                        -- local foundWord = nil
-                        -- for word, wordData in pairs(app.userdata.current.magicWords) do
-                        --     if word:upper() .. ' ' == app.temp.searchInput:upper() then
-                        --         foundWord = wordData
-                        --         break
-                        --     end
-                        -- end
                         local wordFilter = app.engine.magicWords[app.temp.searchInput:upper():match('(.+)%s$')]
                         if wordFilter then
                             app.flow.filterResults(wordFilter)
-                            app.guiHelpers.clear
+                            app.guiHelpers.clearSearchInputText()
                         else
                             app.flow.filterResults({ text = app.temp.searchInput })
                         end
-                        -- if foundWord and foundWord.filter then
-                        --     app.flow.filterResults(foundWord.filter)
-                        -- else
-                        -- end
                     end
                 end
                 local drawIconMenu = function(ctx, buttons)
