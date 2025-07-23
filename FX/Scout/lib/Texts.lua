@@ -26,6 +26,11 @@ T.EDIT_FILTER_DIALOG = {
         BUTTON_EDIT = 'Save',
         HINT = 'temp',
     },
+    DELETE = {
+        LABEL = '',
+        BUTTON = 'Delete',
+        HINT = 'temp',
+    },
     CLOSE = {
         LABEL = '',
         BUTTON = 'Close',

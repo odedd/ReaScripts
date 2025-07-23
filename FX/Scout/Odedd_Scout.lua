@@ -900,7 +900,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             app.flow.filterResults({ clear = true })
                         end
                         if app.guiHelpers.iconButton(ctx, 'DISK', app.gui.st.col.buttons.activeFilterAction) then
-                            app.temp.showExportFilterDialog = true
+                            app.temp.showCreatePresetDialog = true
                             app.temp.presetName = ""
                             app.temp.actionName = ""
                             app.temp.presetWord = ""
@@ -1815,7 +1815,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                             if ImGui.BeginMenu(ctx, 'Edit Preset...##editPreset') then
                                                 for presetId, preset in OD_PairsByOrder(app.engine.presets) do
                                                     if ImGui.MenuItem(ctx, preset.name .. '##editPreset_' .. presetId) then
-                                                        app.temp.showEditPresetDialog = true
+                                                        app.temp.showCreatePresetDialog = true
                                                         app.temp.presetName = preset.name
                                                         app.temp.presetWord = preset.word
                                                         app.temp.editingPresetId = presetId
@@ -2382,8 +2382,9 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
                 end
             end,
-            exportFilterDialog = function(ctx)
-                if app.temp.showExportFilterDialog then
+            createPresetDialog = function(ctx)
+                if app.temp.showCreatePresetDialog then
+                    local isEditing = app.temp.editingPresetId ~= nil
                     -- local function updateActionStatus()
                     --     local content = OD_GetContent(r.GetResourcePath() .. "/" .. "reaper-kb.ini")
                     --     local statuses = {}
@@ -2413,9 +2414,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     app.gui:popStyles(app.gui.st.vars.popups)
 
                     if visible then
-                        ImGui.SeparatorText(ctx, 'Presets')
-                        ImGui.TextWrapped(ctx, 'Save as a preset to be loaded from the filters menu.')
-
                         if ImGui.IsWindowAppearing(ctx) then
                             ImGui.SetKeyboardFocusHere(ctx, 0)
                         end
@@ -2461,15 +2459,21 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
                         if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSavePreset) or app.gui:setting('button', T.EDIT_FILTER_DIALOG.SAVE_PRESET.LABEL,
                                 T.EDIT_FILTER_DIALOG.SAVE_PRESET.HINT, nil,
-                                { label = T.EDIT_FILTER_DIALOG.SAVE_PRESET.BUTTON_CREATE, hintWindow = 'editFilterWindow' }) then
+                                { label = isEditing and T.EDIT_FILTER_DIALOG.SAVE_PRESET.BUTTON_EDIT or T.EDIT_FILTER_DIALOG.SAVE_PRESET.BUTTON_CREATE, hintWindow = 'editFilterWindow' }) then
                             -- Create new preset - use current active filters
-                            local preset = app.userdata:createPreset(trimmedName, app.temp.filter, trimmedMagicWord)
-                            if preset then
-                                app.logger:logInfo('Created preset "' .. preset.name .. '"')
-                                -- Refresh the engine presets
-                                app.engine:refreshPresets()
+                            if not isEditing then
+                                local preset = app.userdata:createPreset(trimmedName, app.temp.filter, trimmedMagicWord)
+                                if preset then
+                                    app.logger:logInfo('Created preset "' .. preset.name .. '"')
+                                end
+                            else
+                                local preset = app.userdata:updatePreset(app.temp.editingPresetId, trimmedName,
+                                    app.temp.originalPresetFilter, trimmedMagicWord)
+                                if preset then
+                                    app.logger:logInfo('Updated preset "' .. preset.name .. '"')
+                                end
                             end
-                            app.temp.showExportFilterDialog = false
+                            app.temp.showCreatePresetDialog = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
 
@@ -2509,32 +2513,24 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EDIT_FILTER_DIALOG.CLOSE.LABEL,
                                 T.EDIT_FILTER_DIALOG.CLOSE.HINT, nil,
                                 { label = T.EDIT_FILTER_DIALOG.CLOSE.BUTTON, hintWindow = 'editFilterWindow' }) then
-                            app.temp.showExportFilterDialog = false
+                            app.temp.showCreatePresetDialog = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
 
                         -- Delete button (only when editing)
-                        -- if isEditing then
-                        --     ImGui.SameLine(ctx)
-                        --     ImGui.PushStyleColor(ctx, ImGui.Col_Button, 0xFF4444AA) -- Red button
-                        --     ImGui.PushStyleColor(ctx, ImGui.Col_ButtonHovered, 0xFF6666CC)
-                        --     ImGui.PushStyleColor(ctx, ImGui.Col_ButtonActive, 0xFF8888EE)
-                        --     if ImGui.Button(ctx, "Delete", buttonWidth, 0) then
-                        --         local preset = app.engine.presets[app.temp.editingPresetId]
-                        --         if preset then
-                        --             app.userdata:deletePreset(app.temp.editingPresetId)
-                        --             app.logger:logInfo('Deleted preset "' .. preset.name .. '"')
-                        --             -- Refresh the engine presets
-                        --             app.engine:refreshPresets()
-                        --         end
-                        --         app.temp.showCreatePresetDialog = false
-                        --         app.temp.presetName = nil
-                        --         app.temp.editingPresetId = nil
-                        --         app.temp.originalPresetFilter = nil
-                        --         ImGui.CloseCurrentPopup(ctx)
-                        --     end
-                        --     ImGui.PopStyleColor(ctx, 3)
-                        -- end
+                        if isEditing then
+                            if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSavePreset) or app.gui:setting('button', T.EDIT_FILTER_DIALOG.DELETE.LABEL,
+                                    T.EDIT_FILTER_DIALOG.DELETE.HINT, nil,
+                                    { label = T.EDIT_FILTER_DIALOG.DELETE.BUTTON, hintWindow = 'editFilterWindow' }) then
+                                local preset = app.engine.presets[app.temp.editingPresetId]
+                                if preset then
+                                    app.userdata:deletePreset(app.temp.editingPresetId)
+                                    app.logger:logInfo('Deleted preset "' .. preset.name .. '"')
+                                end
+                                app.temp.showCreatePresetDialog = false
+                                ImGui.CloseCurrentPopup(ctx)
+                            end
+                        end
 
                         app.draw.hint(ctx, 'editFilterWindow')
                         -- hintWindow = 'editFilterWindow'
@@ -2542,7 +2538,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
 
                     if not open then
-                        app.temp.showExportFilterDialog = false
+                        app.temp.showCreatePresetDialog = false
                         app.temp.presetName = nil
                         app.temp.presetWord = nil
                         app.temp.editingPresetId = nil
@@ -2674,7 +2670,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
                     app.draw.hint(ctx, 'main')
                     app.draw.confirmations(ctx)
-                    app.draw.exportFilterDialog(ctx)
+                    app.draw.createPresetDialog(ctx)
                     app.draw.editPresetDialog(ctx)
                     app.draw.settings(ctx)
                     app:drawMsg()
