@@ -177,6 +177,38 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 return results
             end
         }
+        
+        -- Cache invalidation helpers for optimized filtering
+        app.cacheHelpers = {
+            invalidateAssetSearchCache = function(self, asset)
+                -- Invalidate search text cache for a single asset
+                if asset then
+                    asset._searchTextConcat = nil
+                    asset._searchTextLower = nil
+                    asset._searchTextInvalid = true
+                end
+            end,
+            invalidateAllAssetSearchCaches = function(self)
+                -- Invalidate search text caches for all assets
+                if app.engine and app.engine.assets then
+                    for i = 1, #app.engine.assets do
+                        local asset = app.engine.assets[i]
+                        asset._searchTextConcat = nil
+                        asset._searchTextLower = nil
+                        asset._searchTextInvalid = true
+                    end
+                end
+                if app.engine and app.engine.filterAssets then
+                    for i = 1, #app.engine.filterAssets do
+                        local asset = app.engine.filterAssets[i]
+                        asset._searchTextConcat = nil
+                        asset._searchTextLower = nil
+                        asset._searchTextInvalid = true
+                    end
+                end
+            end
+        }
+        
         app.flow = {
             resetTemp = function()
                 app.temp.confirmation = {}
@@ -194,6 +226,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 app.flow.filterResults(filter or { text = '' })
             end,
             filterResults = function(query, skipReset, targetAssets)
+                
                 local reset = (skipReset == nil) and true or (not skipReset)
                 local assets = app.temp.searchMode == SEARCH_MODE.MAIN and app.engine.assets or app.engine.filterAssets
                 local tagsTable = app.engine.tags
@@ -259,77 +292,147 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     return filter
                 end
                 local filterAssets = function()
-                    -- Filtering assets
+                    -- Optimization 1: Pre-compute and cache expensive operations
+                    local filterTextLower = validatedFilter.text:lower()
+                    local filterWords = {}
+                    if filterTextLower ~= "" then
+                        for word in filterTextLower:gmatch("%S+") do
+                            table.insert(filterWords, word)
+                        end
+                    end
+                    
+                    -- Optimization 2: Early exit strategies - check if we have any filters
+                    local hasTextFilter = #filterWords > 0
+                    local hasTypeFilters = validatedFilter.type or validatedFilter.fx_type or 
+                                          validatedFilter.fxDeveloper or validatedFilter.fxFolderId or 
+                                          validatedFilter.fxCategory
+                    local hasTagFilters = next(validatedFilter.tags) ~= nil
+                    
+                    -- If no filters at all, return all assets (or handle based on search mode)
+                    if not hasTextFilter and not hasTypeFilters and not hasTagFilters and app.temp.searchMode == SEARCH_MODE.MAIN then
+                        for i = 1, #assets do
+                            local asset = assets[i]
+                            -- Set empty foundIndexes to prevent nil access errors
+                            asset.foundIndexes = {}
+                            app.temp.searchResults[#app.temp.searchResults + 1] = asset
+                        end
+                        return
+                    end
+
+                    -- Optimization 3: Batch asset filtering by type (group common type checks)
+                    local typeFilterChecks = {}
+                    if hasTypeFilters then
+                        typeFilterChecks.type = validatedFilter.type
+                        typeFilterChecks.fx_type = validatedFilter.fx_type
+                        typeFilterChecks.fxDeveloper = validatedFilter.fxDeveloper
+                        typeFilterChecks.fxFolderId = validatedFilter.fxFolderId
+                        typeFilterChecks.fxCategory = validatedFilter.fxCategory
+                    end
+
+                    -- Cache filter tags for faster access
                     local filterTags = validatedFilter.tags
-                    local filterText = validatedFilter.text:lower()
 
                     for i = 1, #assets do
                         local asset = assets[i]
+                        
+                        -- Ensure foundIndexes is always initialized to prevent nil access
+                        if not asset.foundIndexes then
+                            asset.foundIndexes = {}
+                        end
+                        
                         if app.temp.searchMode == SEARCH_MODE.MAIN then
-                            -- Type filters
-                            if (validatedFilter.type and asset.type ~= validatedFilter.type)
-                                or (validatedFilter.fx_type and asset.fx_type ~= validatedFilter.fx_type)
-                                or (validatedFilter.fxDeveloper and (not asset.vendor or asset.vendor ~= validatedFilter.fxDeveloper))
-                                or (validatedFilter.fxFolderId and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInFolder(validatedFilter.fxFolderId)))
-                                or (validatedFilter.fxCategory and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInCategory(validatedFilter.fxCategory)))
-                            then
-                                goto skip
-                            end
-
-                            -- Tag filters
-                            for tagId, positive in pairs(filterTags) do
-                                local hasValue = OD_HasValue(asset.tags, tagId)
-                                if not hasValue then
-                                    local tag = tagsTable[tagId]
-                                    if tag and tag.descendants then
-                                        for d = 1, #tag.descendants do
-                                            if OD_HasValue(asset.tags, tag.descendants[d].id) then
-                                                hasValue = true
-                                                break
-                                            end
-                                        end
-                                    end
+                            -- Optimization 2: Early exit on first failed type condition
+                            if hasTypeFilters then
+                                if (typeFilterChecks.type and asset.type ~= typeFilterChecks.type) then
+                                    goto skip
                                 end
-                                if (positive and not hasValue) or (not positive and hasValue) then
+                                if (typeFilterChecks.fx_type and asset.fx_type ~= typeFilterChecks.fx_type) then
+                                    goto skip
+                                end
+                                if (typeFilterChecks.fxDeveloper and (not asset.vendor or asset.vendor ~= typeFilterChecks.fxDeveloper)) then
+                                    goto skip
+                                end
+                                if (typeFilterChecks.fxFolderId and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInFolder(typeFilterChecks.fxFolderId))) then
+                                    goto skip
+                                end
+                                if (typeFilterChecks.fxCategory and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInCategory(typeFilterChecks.fxCategory))) then
                                     goto skip
                                 end
                             end
-                        end
-                        -- Text filter
-                        local foundIndexes = {}
-                        local allWordsFound = true
-                        local filterWords = {}
-                        for word in filterText:gmatch("%S+") do
-                            table.insert(filterWords, word)
-                        end
 
-                        -- Pre-lowercase asset searchText if not already done
-                        if not asset._searchTextLower then
-                            asset._searchTextLower = {}
-                            for j = 1, #asset.searchText do
-                                asset._searchTextLower[j] = asset.searchText[j].text:lower()
-                            end
-                        end
-
-                        for _, word in ipairs(filterWords) do
-                            local wordFound = false
-                            for j = 1, #asset._searchTextLower do
-                                local assetWordLower = asset._searchTextLower[j]
-                                local pos = string.find(assetWordLower, word, 1, true)
-                                if pos then
-                                    foundIndexes[j] = foundIndexes[j] or {}
-                                    table.insert(foundIndexes[j], { from = pos, to = pos + #word - 1, order = pos })
-                                    wordFound = true
+                            -- Tag filters with early exit
+                            if hasTagFilters then
+                                for tagId, positive in pairs(filterTags) do
+                                    local hasValue = OD_HasValue(asset.tags, tagId)
+                                    if not hasValue then
+                                        local tag = tagsTable[tagId]
+                                        if tag and tag.descendants then
+                                            for d = 1, #tag.descendants do
+                                                if OD_HasValue(asset.tags, tag.descendants[d].id) then
+                                                    hasValue = true
+                                                    break
+                                                end
+                                            end
+                                        end
+                                    end
+                                    if (positive and not hasValue) or (not positive and hasValue) then
+                                        goto skip
+                                    end
                                 end
                             end
-                            if not wordFound then
-                                allWordsFound = false
-                                break
-                            end
                         end
+                        
+                        -- Optimization 4: Optimize text search
+                        if hasTextFilter then
+                            -- Optimization 1: Pre-compute search text concatenation with cache invalidation
+                            if not asset._searchTextConcat or asset._searchTextInvalid then
+                                local parts = {}
+                                for j = 1, #asset.searchText do
+                                    parts[j] = asset.searchText[j].text
+                                end
+                                asset._searchTextConcat = table.concat(parts, " "):lower()
+                                asset._searchTextInvalid = false  -- Mark as valid
+                            end
 
-                        if allWordsFound then
-                            asset.foundIndexes = foundIndexes
+                            -- Use single concatenated string search instead of multiple searches
+                            local searchTarget = asset._searchTextConcat
+                            local allWordsFound = true
+                            
+                            for _, word in ipairs(filterWords) do
+                                if not searchTarget:find(word, 1, true) then -- plain text search
+                                    allWordsFound = false
+                                    break
+                                end
+                            end
+                            
+                            if allWordsFound then
+                                -- Only compute foundIndexes if we need highlighting (lazy computation)
+                                if not asset._searchTextLower or asset._searchTextInvalid then
+                                    asset._searchTextLower = {}
+                                    for j = 1, #asset.searchText do
+                                        asset._searchTextLower[j] = asset.searchText[j].text:lower()
+                                    end
+                                end
+                                
+                                local foundIndexes = {}
+                                for _, word in ipairs(filterWords) do
+                                    for j = 1, #asset._searchTextLower do
+                                        local assetWordLower = asset._searchTextLower[j]
+                                        local pos = string.find(assetWordLower, word, 1, true)
+                                        if pos then
+                                            foundIndexes[j] = foundIndexes[j] or {}
+                                            table.insert(foundIndexes[j], { from = pos, to = pos + #word - 1, order = pos })
+                                        end
+                                    end
+                                end
+                                
+                                asset.foundIndexes = foundIndexes
+                                app.temp.searchResults[#app.temp.searchResults + 1] = asset
+                            end
+                        else
+                            -- No text filter, add asset if it passed other filters
+                            -- Set empty foundIndexes to prevent nil access errors
+                            asset.foundIndexes = {}
                             app.temp.searchResults[#app.temp.searchResults + 1] = asset
                         end
                         ::skip::
@@ -598,6 +701,12 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
             selectSearchInputText = function()
                 app.temp.selectSearchInputText = true
             end,
+            clearSearchInputText = function()
+                app.temp.clearSearchInputText = true
+            end,
+            -- blockNextCharacter = function()
+            --     app.temp.blockNextCharacter = true
+            -- end,
             calcTinyIconSize = function(ctx, icon)
                 app.temp.iconSizes = app.temp.iconSizes or {}
                 if app.temp.iconSizes[icon] then
@@ -1840,24 +1949,31 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
                 local handleSpecialKeys = function()
                     if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then
+                        -- local pressed = false
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) then
                             if not app.temp.ignoreEscapeKey then
                                 if app.temp.searchInput == '' then
                                     app.hide = true
                                 end
                             end
+                            -- pressed = true
                             app.temp.ignoreEscapeKey = nil
                         elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter, false) then
                             if not app.temp.tagRename then
                                 app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.KEYBOARD)
                             end
+                            -- pressed = true
                         elseif app.guiHelpers.isShortcutPressed('selectAllResults', true) then
                             app.selection:selectRange(1, #app.temp.searchResults)
+                            -- pressed = true
                         elseif app.guiHelpers.isShortcutPressed('resetFilters', true) then
                             app.flow.filterResults({ clear = true })
+                            -- pressed = true
                         elseif app.guiHelpers.isShortcutPressed('hardCloseScript', true) then
                             app.hardExit = true
+                            -- pressed = true
                         elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.guiHelpers.isShortcutPressed('markFavorite', true) and app.selection.keyboardPos then
+                            -- pressed = true
                             -- Toggle favorite status for all selected assets
                             local selectedResults = app.selection:results()
                             if #selectedResults > 0 then
@@ -1874,6 +1990,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                 end
                             end
                         end
+                        -- if pressed then app.guiHelpers.blockNextCharacter() end
                     end
                 end
                 local drawTextSearchInput = function()
@@ -1892,9 +2009,22 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
                     handleSpecialKeys()
 
+                    local callback = nil
+                    local inputFlags = ImGui.InputTextFlags_EscapeClearsAll
+                    if app.temp.selectSearchInputTextOnNextFrame then
+                        inputFlags = inputFlags | ImGui.InputTextFlags_AutoSelectAll
+                    end
+                    if app.temp.clearSearchInputText then
+                        inputFlags = inputFlags | ImGui.InputTextFlags_CallbackAlways
+                        callback = app.gui.clearInputIfNeeded
+                    end
+                    -- if app.temp.blockNextCharacter then
+                    --     inputFlags = inputFlags | ImGui.InputTextFlags_CallbackCharFilter
+                    --     callback = app.gui.blockNextCharacter
+                    -- end
                     rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput" .. app.temp.searchMode,
                         T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput,
-                        (app.temp.selectSearchInputTextOnNextFrame and ImGui.InputTextFlags_AutoSelectAll or ImGui.InputTextFlags_EscapeClearsAll))
+                        inputFlags, callback)
                     if not app.temp.selectSearchInputText then -- wait 1 frame for selection to work
                         app.temp.lastSearchMode = app.temp.searchMode
                         app.temp.selectSearchInputTextOnNextFrame = nil
@@ -1902,6 +2032,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         app.temp.selectSearchInputText = nil
                         app.temp.selectSearchInputTextOnNextFrame = true
                     end
+                    -- app.temp.blockNextCharacter = nil
+                    app.temp.clearSearchInputText = nil
                     if ImGui.IsItemFocused(ctx) then
                         if ImGui.IsKeyReleased(ctx, ImGui.Key_Tab) then
                             if app.temp.searchMode == SEARCH_MODE.MAIN then
@@ -1914,12 +2046,13 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     if rv then
                         local foundWord = nil
                         for word, wordData in pairs(app.userdata.current.magicWords) do
-                            if word:upper().. ' ' == app.temp.searchInput:upper() then
+                            if word:upper() .. ' ' == app.temp.searchInput:upper() then
                                 foundWord = wordData
                                 break
                             end
                         end
                         if foundWord and foundWord.filter then
+                            app.guiHelpers.clearSearchInputText()
                             app.flow.filterResults(foundWord.filter)
                         else
                             app.flow.filterResults({ text = app.temp.searchInput })
@@ -2579,9 +2712,13 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
             app.gui:pushColors(app.gui.st.col.main)
             app.gui:pushStyles(app.gui.st.vars.main)
             ImGui.PushFont(ctx, app.gui.st.fonts.default)
+                if app.logger.profile then Profile.start() end
 
-            app.draw.mainWindow(ctx)
-
+                app.draw.mainWindow(ctx)
+                
+                if app.logger.profile then
+                    Profile.stop()
+                end
             ImGui.PopFont(ctx)
             app.gui:popColors(app.gui.st.col.main)
             app.gui:popStyles(app.gui.st.vars.main)
@@ -2624,6 +2761,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
         end
 
         function Release()
+            if app.logger.profile then r.ShowConsoleMsg(Profile.report(10)) end
+
             r.SetExtState('Odedd_Scout', 'RUNNING', '', false)
             OD_ReleaseGlobalKeys()
         end
@@ -2646,6 +2785,22 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
         app.logger:logTable(app.logger.LOG_LEVEL.DEBUG, 'Settings', app.settings.current)
         app.engine:init()
         app.engine:sync()
+        
+        -- Hook cache invalidation into engine operations
+        local originalAssembleAssets = app.engine.assembleAssets
+        app.engine.assembleAssets = function(self)
+            originalAssembleAssets(self)
+            -- Invalidate search caches when assets are reassembled
+            app.cacheHelpers:invalidateAllAssetSearchCaches()
+        end
+        
+        local originalAssembleFilterAssets = app.engine.assembleFilterAssets
+        app.engine.assembleFilterAssets = function(self, ...)
+            originalAssembleFilterAssets(self, ...)
+            -- Invalidate search caches when filter assets are reassembled
+            app.cacheHelpers:invalidateAllAssetSearchCaches()
+        end
+        
         app.flow.setPage(APP_PAGE.SEARCH)
         PDefer(app.loop)
     end
