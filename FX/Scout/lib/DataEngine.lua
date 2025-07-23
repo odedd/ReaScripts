@@ -338,7 +338,7 @@ PB_DataEngine.updatePresetsFilterMenu = function(self)
 
     local presetNames = {}
     for id, preset in pairs(self.presets) do
-        table.insert(presetNames, { id = id, name = preset.name, preset = preset })
+        table.insert(presetNames, { id = id, name = preset.name, preset = preset, word = preset.word })
     end
     table.sort(presetNames, function(a, b) return a.name < b.name end)
 
@@ -586,6 +586,7 @@ PB_DataEngine.getPresets = function(self, reassemblePresetFilterAssets)
     self.app.logger:logDebug('-- PB_DataEngine.getPresets()')
 
     self.presets = {}
+    self.magicWords = {}
 
     -- Create a sorted list of presets alphabetically for consistent ordering
     local sortedPresets = {}
@@ -602,7 +603,9 @@ PB_DataEngine.getPresets = function(self, reassemblePresetFilterAssets)
     for order, sortedPreset in ipairs(sortedPresets) do
         local id = sortedPreset.id
         local presetData = sortedPreset.data
-
+        if presetData.word and presetData.word ~= '' then
+            self.magicWords[presetData.word:upper()] = presetData.filter
+        end
         local preset = OD_DeepCopy(presetData)
         preset.id = id
         preset.app = self.app

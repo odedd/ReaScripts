@@ -10,7 +10,7 @@ T.EDIT_FILTER_DIALOG = {
         LABEL = 'Action Name',
         HINT = 'A name for the new action',
     },
-    MAGIC_WORD_NAME = {--TODO: Update this
+    PRESET_WORD = {--TODO: Update this
         LABEL = 'Magic Word',
         HINT = 'A name for the new magic word',
     },
@@ -18,12 +18,6 @@ T.EDIT_FILTER_DIALOG = {
         LABEL = '',
         BUTTON = 'Export as Action',
         SUCCESS = 'Successfully created action:\n%s',
-        HINT = 'temp',
-    },
-    EXPORT_MAGIC_WORD = {
-        LABEL = '',
-        BUTTON = 'Create Magic Word',
-        SUCCESS = 'Successfully created Magic Word:\n%s',
         HINT = 'temp',
     },
     SAVE_PRESET = {

@@ -794,7 +794,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             app.temp.showExportFilterDialog = true
                             app.temp.presetName = ""
                             app.temp.actionName = ""
-                            app.temp.magicWordName = ""
+                            app.temp.presetWord = ""
                         end
                         ImGui.SameLine(ctx)
                         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
@@ -1708,6 +1708,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                                     if ImGui.MenuItem(ctx, preset.name .. '##editPreset_' .. presetId) then
                                                         app.temp.showEditPresetDialog = true
                                                         app.temp.presetName = preset.name
+                                                        app.temp.presetWord = preset.word
                                                         app.temp.editingPresetId = presetId
                                                         app.temp.originalPresetFilter = preset
                                                             .filter -- Store original filter
@@ -1912,18 +1913,24 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         end
                     end
                     if rv then
-                        local foundWord = nil
-                        for word, wordData in pairs(app.userdata.current.magicWords) do
-                            if word:upper().. ' ' == app.temp.searchInput:upper() then
-                                foundWord = wordData
-                                break
-                            end
-                        end
-                        if foundWord and foundWord.filter then
-                            app.flow.filterResults(foundWord.filter)
+                        -- local foundWord = nil
+                        -- for word, wordData in pairs(app.userdata.current.magicWords) do
+                        --     if word:upper() .. ' ' == app.temp.searchInput:upper() then
+                        --         foundWord = wordData
+                        --         break
+                        --     end
+                        -- end
+                        local wordFilter = app.engine.magicWords[app.temp.searchInput:upper():match('(.+)%s$')]
+                        if wordFilter then
+                            app.flow.filterResults(wordFilter)
+                            app.guiHelpers.clear
                         else
                             app.flow.filterResults({ text = app.temp.searchInput })
                         end
+                        -- if foundWord and foundWord.filter then
+                        --     app.flow.filterResults(foundWord.filter)
+                        -- else
+                        -- end
                     end
                 end
                 local drawIconMenu = function(ctx, buttons)
@@ -2282,8 +2289,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         if not app.temp.actionName then
                             app.temp.actionName = ""
                         end
-                        if not app.temp.magicWordName then
-                            app.temp.magicWordName = ""
+                        if not app.temp.presetWord then
+                            app.temp.presetWord = ""
                         end
                     end
 
@@ -2308,6 +2315,12 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         local canSavePreset = trimmedName ~= ""
                         local errorMessage = ""
 
+                        app.temp.presetWord = app.gui:setting('text', T.EDIT_FILTER_DIALOG.PRESET_WORD.LABEL,
+                            T.EDIT_FILTER_DIALOG.PRESET_WORD.HINT, app.temp.presetWord,
+                            { hintWindow = 'editFilterWindow' })
+
+                        local trimmedMagicWord = OD_Trim(app.temp.presetWord)
+
 
                         if canSavePreset then
                             -- Check for duplicate name (excluding self when editing)
@@ -2315,6 +2328,12 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                 if preset.name:lower() == trimmedName:lower() and presetId ~= app.temp.editingPresetId then
                                     canSavePreset = false
                                     errorMessage = "A preset with this name exists"
+                                    break
+                                end
+
+                                if preset.word ~= nil and preset.word ~= '' and (preset.word or ''):lower() == trimmedMagicWord:lower() and presetId ~= app.temp.editingPresetId then
+                                    canSavePreset = false
+                                    errorMessage = "A preset with this word exists"
                                     break
                                 end
                             end
@@ -2333,7 +2352,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                 T.EDIT_FILTER_DIALOG.SAVE_PRESET.HINT, nil,
                                 { label = T.EDIT_FILTER_DIALOG.SAVE_PRESET.BUTTON_CREATE, hintWindow = 'editFilterWindow' }) then
                             -- Create new preset - use current active filters
-                            local preset = app.userdata:createPreset(trimmedName, app.temp.filter)
+                            local preset = app.userdata:createPreset(trimmedName, app.temp.filter, trimmedMagicWord)
                             if preset then
                                 app.logger:logInfo('Created preset "' .. preset.name .. '"')
                                 -- Refresh the engine presets
@@ -2347,53 +2366,34 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             ImGui.EndDisabled(ctx)
                         end
 
-                        ImGui.SeparatorText(ctx, 'Action')
-                        ImGui.TextWrapped(ctx,
-                            'Create a Reaper action which will launch Scout with the filter already loaded.')
+                        -- ImGui.SeparatorText(ctx, 'Action')
+                        -- ImGui.TextWrapped(ctx,
+                        --     'Create a Reaper action which will launch Scout with the filter already loaded.')
 
-                        app.temp.actionName = app.gui:setting('text', T.EDIT_FILTER_DIALOG.ACTION_NAME.LABEL,
-                            T.EDIT_FILTER_DIALOG.ACTION_NAME.HINT, app.temp.actionName,
-                            { hintWindow = 'editFilterWindow' })
+                        -- app.temp.actionName = app.gui:setting('text', T.EDIT_FILTER_DIALOG.ACTION_NAME.LABEL,
+                        --     T.EDIT_FILTER_DIALOG.ACTION_NAME.HINT, app.temp.actionName,
+                        --     { hintWindow = 'editFilterWindow' })
 
-                        local trimmedActionName = OD_Trim(app.temp.actionName)
-                        local canExportAction = trimmedActionName ~= ""
+                        -- local trimmedActionName = OD_Trim(app.temp.actionName)
+                        -- local canExportAction = trimmedActionName ~= ""
 
-                        if not canExportAction then ImGui.BeginDisabled(ctx) end
-                        if app.gui:setting('button', T.EDIT_FILTER_DIALOG.EXPORT_ACTION.LABEL,
-                                T.EDIT_FILTER_DIALOG.EXPORT_ACTION.HINT, nil,
-                                { label = T.EDIT_FILTER_DIALOG.EXPORT_ACTION.BUTTON, hintWindow = 'editFilterWindow' }) then
-                            local createdActionName = app.flow.createFilterAction(trimmedActionName, app.temp.filter)
-                            if createdActionName then
-                                app:msg((T.EDIT_FILTER_DIALOG.EXPORT_ACTION.SUCCESS):format(createdActionName))
-                            end
-                            app.temp.showExportFilterDialog = false --TODO: if I don't close the window, the msg disappears. check what's up with that
-                            ImGui.CloseCurrentPopup(ctx)
-                        end
-                        if not canExportAction then ImGui.EndDisabled(ctx) end
+                        -- if not canExportAction then ImGui.BeginDisabled(ctx) end
+                        -- if app.gui:setting('button', T.EDIT_FILTER_DIALOG.EXPORT_ACTION.LABEL,
+                        --         T.EDIT_FILTER_DIALOG.EXPORT_ACTION.HINT, nil,
+                        --         { label = T.EDIT_FILTER_DIALOG.EXPORT_ACTION.BUTTON, hintWindow = 'editFilterWindow' }) then
+                        --     local createdActionName = app.flow.createFilterAction(trimmedActionName, app.temp.filter)
+                        --     if createdActionName then
+                        --         app:msg((T.EDIT_FILTER_DIALOG.EXPORT_ACTION.SUCCESS):format(createdActionName))
+                        --     end
+                        --     app.temp.showExportFilterDialog = false --TODO: if I don't close the window, the msg disappears. check what's up with that
+                        --     ImGui.CloseCurrentPopup(ctx)
+                        -- end
+                        -- if not canExportAction then ImGui.EndDisabled(ctx) end
 
-                        ImGui.SeparatorText(ctx, 'Magic Words')
-                        ImGui.TextWrapped(ctx,
-                            'Create a Magic Word. When you start a search with a magic word followed by a space, the filter set gets immediately loaded')
+                        -- ImGui.SeparatorText(ctx, 'Magic Words')
+                        -- ImGui.TextWrapped(ctx,
+                        --     'Create a Magic Word. When you start a search with a magic word followed by a space, the filter set gets immediately loaded')
 
-                        app.temp.magicWordName = app.gui:setting('text', T.EDIT_FILTER_DIALOG.MAGIC_WORD_NAME.LABEL,
-                            T.EDIT_FILTER_DIALOG.MAGIC_WORD_NAME.HINT, app.temp.magicWordName,
-                            { hintWindow = 'editFilterWindow' })
-
-                        local trimmedMagicWord = OD_Trim(app.temp.magicWordName)
-                        local canSaveMagicWord = trimmedMagicWord ~= ""
-
-                        if not canSaveMagicWord then ImGui.BeginDisabled(ctx) end
-                        if app.gui:setting('button', T.EDIT_FILTER_DIALOG.EXPORT_MAGIC_WORD.LABEL,
-                                T.EDIT_FILTER_DIALOG.EXPORT_MAGIC_WORD.HINT, nil,
-                                { label = T.EDIT_FILTER_DIALOG.EXPORT_MAGIC_WORD.BUTTON, hintWindow = 'editFilterWindow' }) then
-                            local createdMagicWord = app.userdata:createMagicWord(trimmedMagicWord, app.temp.filter)
-                            if createdMagicWord then
-                                app:msg((T.EDIT_FILTER_DIALOG.EXPORT_MAGIC_WORD.SUCCESS):format(trimmedMagicWord))
-                            end
-                            app.temp.showExportFilterDialog = false --TODO: if I don't close the window, the msg disappears. check what's up with that
-                            ImGui.CloseCurrentPopup(ctx)
-                        end
-                        if not canSaveMagicWord then ImGui.EndDisabled(ctx) end
 
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EDIT_FILTER_DIALOG.CLOSE.LABEL,
                                 T.EDIT_FILTER_DIALOG.CLOSE.HINT, nil,
@@ -2433,8 +2433,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     if not open then
                         app.temp.showExportFilterDialog = false
                         app.temp.presetName = nil
-                        app.temp.actionName = nil
-                        app.temp.magicWordName = nil
+                        app.temp.presetWord = nil
                         app.temp.editingPresetId = nil
                         app.temp.originalPresetFilter = nil
                     end
@@ -2446,6 +2445,9 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         ImGui.OpenPopup(ctx, 'Edit Preset')
                         if not app.temp.presetName then
                             app.temp.presetName = ""
+                        end
+                        if not app.temp.presetWord then
+                            app.temp.presetWord = ""
                         end
                     end
 
