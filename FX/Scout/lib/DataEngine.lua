@@ -127,23 +127,6 @@ PB_DataEngine._getTrack = function(self, track)
     self.app.logger:logDebug('Track not found in database')
     return nil
 end
-
---- INSERTS
-PB_DataEngine.recalculateShortNames = function(self)
-    self.app.logger:logDebug('-- PB_DataEngine.recalculateShortNames()')
-    local sendCount = 0
-    for _, send in ipairs(self.sends) do
-        if send.destTrack then
-            for _, insert in ipairs(send.destTrack.inserts) do
-                insert:calculateShortName()
-            end
-            send:calculateShortName()
-            sendCount = sendCount + 1
-        end
-    end
-    self.app.logger:logDebug('Recalculated short names for sends', sendCount)
-end
-
 PB_DataEngine.getFXFolders = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.getFXFolders()')
     self.fxFolders = {}
@@ -765,6 +748,9 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
         end
     end
 
+    local createPresetAction = function(self)
+        return self.app.flow.createAction(self.searchText[1].text, 'LOAD_PRESET '.. self.id)
+    end
     if scanAll then
         self.filterAssets = {}
     else
@@ -875,7 +861,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
 
     if scanAll or whichFilters.presets then
         local executePresetFilter = function(self, context)
-            if OD_BfCheck(context, ImGui.Mod_Alt) then
+            if OD_BfCheck(context or 0, ImGui.Mod_Alt) then
                 -- Alt-click: Update preset with current filter
                 self.preset:update()
                 self.app.logger:logInfo('Updated preset "' .. self.preset.name .. '" with current filter')
@@ -890,6 +876,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
 
         for presetId, preset in pairs(self.presets) do
             table.insert(self.filterAssets, {
+                id = preset.id,
                 engine = self,
                 app = self.app,
                 type = FILTER_TYPES.PRESET,
@@ -897,7 +884,8 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 order = preset.id, -- Use ID as order for now, could be customized later
                 preset = preset,   -- Store reference to preset
                 group = T.FILTER_NAMES[FILTER_TYPES.PRESET],
-                execute = executePresetFilter
+                execute = executePresetFilter,
+                createAction = createPresetAction
             })
             assetCount = assetCount + 1
         end
@@ -1035,4 +1023,14 @@ PB_DataEngine.sortFilterAssets = function(self)
     end)
 
     self.app.logger:logDebug('Sorted filter assets', #self.filterAssets)
+end
+
+
+PB_DataEngine.getFilterAssetById = function(self, filterType, id)
+    for _, filterAsset in pairs(self.filterAssets) do
+        if filterAsset.type == filterType and tostring(filterAsset.id) == tostring(id) then
+            return filterAsset
+        end
+    end
+    return false
 end

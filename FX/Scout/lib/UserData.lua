@@ -142,7 +142,7 @@ function PB_UserData:export(filename)
             end
         end
         local filterString = table.concat(filterParts, "&")
-        
+
         local sanitizedName = OD_EscapeCSV(preset.name)
         local sanitizedFilter = OD_EscapeCSV(filterString)
         local sanitizedLetter = OD_EscapeCSV(preset.letter or "")
@@ -167,7 +167,10 @@ function PB_UserData:export(filename)
 
     self.app.logger:logDebug('Exported favorites', favoritesCount)
     self.app.logger:logInfo('Successfully exported ' ..
-    tagCount .. ' tags, ' .. assetCount .. ' tagged assets, ' .. presetsCount .. ' presets, and ' .. favoritesCount .. ' favorites to ' .. filename)
+        tagCount ..
+        ' tags, ' ..
+        assetCount ..
+        ' tagged assets, ' .. presetsCount .. ' presets, and ' .. favoritesCount .. ' favorites to ' .. filename)
 
     return true
 end
@@ -392,7 +395,7 @@ function PB_UserData:import(filename, mergeMode)
                             end
                         end
                     end
-                    
+
                     importedPresets[tonumber(id)] = {
                         name = name,
                         filter = filter,
@@ -424,8 +427,11 @@ function PB_UserData:import(filename, mergeMode)
     for _ in pairs(importedPresets) do importedPresetsCount = importedPresetsCount + 1 end
     local importedFavoritesCount = #importedFavorites
     self.app.logger:logDebug('Parsed ' ..
-    importedTagCount ..
-    ' tags, ' .. importedAssetCount .. ' tagged assets, ' .. importedPresetsCount .. ' presets, and ' .. importedFavoritesCount .. ' favorites from file')
+        importedTagCount ..
+        ' tags, ' ..
+        importedAssetCount ..
+        ' tagged assets, ' ..
+        importedPresetsCount .. ' presets, and ' .. importedFavoritesCount .. ' favorites from file')
     if fileVersion then
         self.app.logger:logDebug('File version', fileVersion)
     end
@@ -435,8 +441,8 @@ function PB_UserData:import(filename, mergeMode)
         self.app.logger:logInfo('Found ' .. #unmappedAssetTypes .. ' unmapped asset types in imported file:')
         for _, unmappedType in ipairs(unmappedAssetTypes) do
             self.app.logger:logInfo('  ' ..
-            unmappedType.className ..
-            ' (imported ID: ' .. unmappedType.importedId .. ') - not available in current system')
+                unmappedType.className ..
+                ' (imported ID: ' .. unmappedType.importedId .. ') - not available in current system')
         end
     end
 
@@ -574,7 +580,7 @@ function PB_UserData:import(filename, mergeMode)
         end
 
         -- Merge mode: find existing tags with same name and parent path, create hierarchy as needed
-        local idMapping = {}                            -- maps imported ID to existing ID
+        local idMapping = {}                              -- maps imported ID to existing ID
         local nextNewIdRef = { self.current.idCount + 1 } -- Use table for reference
         local newTagsCount = 0
         local existingTagsCount = 0
@@ -592,8 +598,8 @@ function PB_UserData:import(filename, mergeMode)
                 existingTagsCount = existingTagsCount + 1
                 local pathStr = table.concat(getTagPath(importedTag.parentId, importedTagInfo, idMapping, {}), " > ")
                 self.app.logger:logDebug('Tag "' ..
-                importedTag.name ..
-                '" at path "' .. pathStr .. '" already exists, mapping ' .. importedId .. ' -> ' .. existingId)
+                    importedTag.name ..
+                    '" at path "' .. pathStr .. '" already exists, mapping ' .. importedId .. ' -> ' .. existingId)
             else
                 -- New tag, assign new ID
                 idMapping[importedId] = nextNewIdRef[1]
@@ -605,7 +611,7 @@ function PB_UserData:import(filename, mergeMode)
                 newTagsCount = newTagsCount + 1
                 local pathStr = table.concat(getTagPath(mappedParentId, self.current.tagInfo, nil, {}), " > ")
                 self.app.logger:logDebug(
-                'Adding new tag "' .. importedTag.name .. '" at path "' .. pathStr .. '" with ID', nextNewIdRef[1])
+                    'Adding new tag "' .. importedTag.name .. '" at path "' .. pathStr .. '" with ID', nextNewIdRef[1])
                 nextNewIdRef[1] = nextNewIdRef[1] + 1
             end
         end
@@ -614,7 +620,7 @@ function PB_UserData:import(filename, mergeMode)
         self.current.idCount = nextNewIdRef[1] - 1
 
         self.app.logger:logDebug('Merge mode: mapped ' ..
-        existingTagsCount .. ' existing tags, ' .. newTagsCount .. ' new tags added')
+            existingTagsCount .. ' existing tags, ' .. newTagsCount .. ' new tags added')
 
         -- Remap tag IDs in imported tagged assets
         local remappedImportedTaggedAssets = {}
@@ -740,7 +746,7 @@ function PB_UserData:import(filename, mergeMode)
 
                         if systemBasename == importedBasename then
                             self.app.logger:logDebug('✓ Basename fallback match: "' ..
-                            importedFullPath .. '" -> "' .. systemFullPath .. '"')
+                                importedFullPath .. '" -> "' .. systemFullPath .. '"')
                             return asset.id, mappedAssetTypeId
                         end
                     end
@@ -777,7 +783,7 @@ function PB_UserData:import(filename, mergeMode)
 
     for imported_basename, assetData in pairs(importedTaggedAssets) do
         self.app.logger:logDebug('Processing imported asset: basename="' ..
-        imported_basename .. '" originalAssetId="' .. assetData.originalAssetId .. '"')
+            imported_basename .. '" originalAssetId="' .. assetData.originalAssetId .. '"')
 
         -- Use mapped asset type if available, fallback to extracted from original
         local assetType = assetData.mappedAssetType or tonumber(assetData.originalAssetId:match("^(%d+)"))
@@ -792,7 +798,7 @@ function PB_UserData:import(filename, mergeMode)
 
         -- Use the improved mapping function that tries exact path first, then basename fallback
         local matchedSystemAssetId, mappedAssetType = mapImportedAssetToSystem(assetData.remappedAssetId or
-        assetData.originalAssetId)
+            assetData.originalAssetId)
 
         if matchedSystemAssetId then
             mappedAssetsCount = mappedAssetsCount + 1
@@ -803,7 +809,7 @@ function PB_UserData:import(filename, mergeMode)
             end
 
             self.app.logger:logDebug('✓ Mapped asset "' ..
-            imported_basename .. '" to system asset "' .. matchedSystemAssetId .. '"')
+                imported_basename .. '" to system asset "' .. matchedSystemAssetId .. '"')
 
             if mergeMode then
                 -- In merge mode, combine with existing tags for this asset
@@ -833,7 +839,7 @@ function PB_UserData:import(filename, mergeMode)
             -- Asset could not be mapped to an existing system asset
             local cachedAssetTypeData = getAssetTypeData(mappedAssetType or assetType)
             local shouldImportUnmapped = cachedAssetTypeData and
-            not cachedAssetTypeData.assetType.requiresMappingOnImport
+                not cachedAssetTypeData.assetType.requiresMappingOnImport
 
             if shouldImportUnmapped then
                 -- Import asset even without mapping (e.g., for tracks that may be created later)
@@ -848,7 +854,7 @@ function PB_UserData:import(filename, mergeMode)
                 -- Use the remapped asset ID from the import data
                 local unmappedAssetId = assetData.remappedAssetId or assetData.originalAssetId
                 self.app.logger:logDebug('✓ Imported unmapped asset "' ..
-                imported_basename .. '" as "' .. unmappedAssetId .. '" (will apply when asset becomes available)')
+                    imported_basename .. '" as "' .. unmappedAssetId .. '" (will apply when asset becomes available)')
 
                 if mergeMode then
                     -- In merge mode, combine with existing tags for this asset
@@ -880,30 +886,30 @@ function PB_UserData:import(filename, mergeMode)
 
                 local finalAssetType = mappedAssetType or assetType
                 self.app.logger:logDebug('✗ Asset "' ..
-                imported_basename .. '" (type ' .. (finalAssetType or "unknown") .. ') not found in system assets')
+                    imported_basename .. '" (type ' .. (finalAssetType or "unknown") .. ') not found in system assets')
 
                 -- Determine asset type name for logging and update counts
                 local assetTypeGuess = "unknown"
                 if finalAssetType == ASSET_TYPE.PluginAssetType then
                     assetTypeGuess = "plugin"
                     assetTypeCounts[ASSET_TYPE.PluginAssetType].skipped = assetTypeCounts[ASSET_TYPE.PluginAssetType]
-                    .skipped + 1
+                        .skipped + 1
                 elseif finalAssetType == ASSET_TYPE.FXChainAssetType then
                     assetTypeGuess = "FX chain"
                     assetTypeCounts[ASSET_TYPE.FXChainAssetType].skipped = assetTypeCounts[ASSET_TYPE.FXChainAssetType]
-                    .skipped + 1
+                        .skipped + 1
                 elseif finalAssetType == ASSET_TYPE.TrackTemplateAssetType then
                     assetTypeGuess = "track template"
                     assetTypeCounts[ASSET_TYPE.TrackTemplateAssetType].skipped = assetTypeCounts
-                    [ASSET_TYPE.TrackTemplateAssetType].skipped + 1
+                        [ASSET_TYPE.TrackTemplateAssetType].skipped + 1
                 elseif finalAssetType == ASSET_TYPE.TrackAssetType then
                     assetTypeGuess = "track"
                     assetTypeCounts[ASSET_TYPE.TrackAssetType].skipped = assetTypeCounts[ASSET_TYPE.TrackAssetType]
-                    .skipped + 1
+                        .skipped + 1
                 elseif finalAssetType == ASSET_TYPE.ActionAssetType then
                     assetTypeGuess = "action"
                     assetTypeCounts[ASSET_TYPE.ActionAssetType].skipped = assetTypeCounts[ASSET_TYPE.ActionAssetType]
-                    .skipped + 1
+                        .skipped + 1
                 end
 
                 -- Record the skipped asset with its reason
@@ -939,8 +945,8 @@ function PB_UserData:import(filename, mergeMode)
 
     -- Log detailed breakdown by asset type
     self.app.logger:logInfo('Import successful: ' ..
-    mappedAssetsCount ..
-    ' assets mapped, ' .. skippedAssetsCount .. ' assets skipped, total tagged assets: ' .. finalAssetCount)
+        mappedAssetsCount ..
+        ' assets mapped, ' .. skippedAssetsCount .. ' assets skipped, total tagged assets: ' .. finalAssetCount)
 
     -- Log asset type mapping information
     local mappingCount = 0
@@ -1017,7 +1023,7 @@ function PB_UserData:import(filename, mergeMode)
             local mappedAssetTypeId = assetTypeMapping[importedAssetTypeId] or importedAssetTypeId
             local cachedAssetTypeData = mappedAssetTypeId and getAssetTypeData(mappedAssetTypeId)
             local shouldImportUnmapped = cachedAssetTypeData and
-            not cachedAssetTypeData.assetType.requiresMappingOnImport
+                not cachedAssetTypeData.assetType.requiresMappingOnImport
 
             if shouldImportUnmapped then
                 -- Import unmapped favorite (will apply when asset becomes available)
@@ -1031,7 +1037,7 @@ function PB_UserData:import(filename, mergeMode)
                     mappedFavoritesCount = mappedFavoritesCount + 1
                     skippedFavoritesCount = skippedFavoritesCount - 1
                     self.app.logger:logDebug('✓ Imported unmapped favorite "' ..
-                    remappedAssetId .. '" (will apply when asset becomes available)')
+                        remappedAssetId .. '" (will apply when asset becomes available)')
                 end
             else
                 self.app.logger:logDebug('✗ Favorite "' .. importedFavorite .. '" not found in system assets')
@@ -1043,7 +1049,7 @@ function PB_UserData:import(filename, mergeMode)
     self.current.favorites = finalFavorites
 
     self.app.logger:logInfo('Favorites import: ' ..
-    mappedFavoritesCount .. ' mapped, ' .. skippedFavoritesCount .. ' skipped, total favorites: ' .. #finalFavorites)
+        mappedFavoritesCount .. ' mapped, ' .. skippedFavoritesCount .. ' skipped, total favorites: ' .. #finalFavorites)
 
     -- Process imported presets
     local mappedPresetsCount = 0
@@ -1060,22 +1066,22 @@ function PB_UserData:import(filename, mergeMode)
     -- Helper function to validate filter dependencies
     local function validateFilterDependencies(filter)
         local issues = {}
-        
+
         if filter.fxFolderId then
             -- Check if FX folder exists (this would need folder validation logic)
             -- For now, we'll assume folder validation happens at runtime
         end
-        
+
         if filter.fxCategory then
             -- Check if category exists in current system
             -- Categories are dynamic, so we'll validate at runtime
         end
-        
+
         if filter.fxDeveloper then
             -- Check if developer exists in current system
             -- Developers are dynamic, so we'll validate at runtime
         end
-        
+
         if filter.tags then
             -- Check if all referenced tags exist
             for tagId, _ in pairs(filter.tags) do
@@ -1084,14 +1090,14 @@ function PB_UserData:import(filename, mergeMode)
                 end
             end
         end
-        
+
         return issues
     end
 
     for importedId, importedPreset in pairs(importedPresets) do
         -- Validate filter dependencies
         local issues = validateFilterDependencies(importedPreset.filter)
-        
+
         if #issues > 0 then
             skippedPresetsCount = skippedPresetsCount + 1
             self.app.logger:logDebug('✗ Skipped preset "' .. importedPreset.name .. '": ' .. table.concat(issues, ", "))
@@ -1104,7 +1110,7 @@ function PB_UserData:import(filename, mergeMode)
                     newId = newId + 1
                 end
             end
-            
+
             finalPresets[newId] = {
                 id = newId,
                 name = importedPreset.name,
@@ -1112,7 +1118,7 @@ function PB_UserData:import(filename, mergeMode)
                 letter = importedPreset.letter,
                 modified = os.time()
             }
-            
+
             mappedPresetsCount = mappedPresetsCount + 1
             self.app.logger:logDebug('✓ Imported preset "' .. importedPreset.name .. '" with ID ' .. newId)
         end
@@ -1120,7 +1126,7 @@ function PB_UserData:import(filename, mergeMode)
 
     -- Update presets and idCount
     self.current.presets = finalPresets
-    
+
     -- Update idCount to be higher than any preset ID
     local maxId = self.current.idCount or 0
     for id, _ in pairs(finalPresets) do
@@ -1131,17 +1137,18 @@ function PB_UserData:import(filename, mergeMode)
     end
 
     self.app.logger:logInfo('Presets import: ' ..
-    mappedPresetsCount .. ' imported, ' .. skippedPresetsCount .. ' skipped, total presets: ' .. OD_TableLength(finalPresets))
+        mappedPresetsCount ..
+        ' imported, ' .. skippedPresetsCount .. ' skipped, total presets: ' .. OD_TableLength(finalPresets))
 
     self:save()
-    
+
     -- Notify engine to refresh its runtime data after import
     if self.app.engine then
-        self.app.engine:getTags(true) -- Pass true to reassemble tag filter assets
+        self.app.engine:getTags(true)    -- Pass true to reassemble tag filter assets
         self.app.engine:getPresets(true) -- Refresh presets
         self.app.engine:assembleAssets()
     end
-    
+
     -- Trigger a refresh of the search results to show updated tags
     if self.app.flow then
         self.app.flow.filterResults()
@@ -1166,21 +1173,21 @@ function PB_UserData:addAssetToRecents(assetKey)
     if OD_HasValue(self.current.recents, assetKey) then
         OD_RemoveValue(self.current.recents, assetKey)
     end
-    
+
     table.insert(self.current.recents, 1, assetKey)
-    
+
     -- Keep only the most recent items (limit from settings)
     local maxRecents = self.app.settings.current.numberOfRecents or 5
     while #self.current.recents > maxRecents do
         table.remove(self.current.recents)
     end
-    
+
     self:save()
 end
 
 function PB_UserData:addTagToAsset(assetId, tagId, save)
     save = (save == nil) and true or save
-    
+
     self.current.taggedAssets[assetId] = self.current.taggedAssets[assetId] or {}
     if not OD_HasValue(self.current.taggedAssets[assetId], tagId) then
         table.insert(self.current.taggedAssets[assetId], tagId)
@@ -1192,12 +1199,12 @@ end
 
 function PB_UserData:removeTagFromAsset(assetId, tagId, save)
     save = (save == nil) and true or save
-    
+
     if self.current.taggedAssets[assetId] then
         if OD_HasValue(self.current.taggedAssets[assetId], tagId) then
             OD_RemoveValue(self.current.taggedAssets[assetId], tagId)
-            if not next(self.current.taggedAssets[assetId]) then 
-                self.current.taggedAssets[assetId] = nil 
+            if not next(self.current.taggedAssets[assetId]) then
+                self.current.taggedAssets[assetId] = nil
             end
             if save then self:save() end
             return true
@@ -1209,8 +1216,8 @@ end
 function PB_UserData:toggleTagOpen(tagId, state, persist)
     persist = (persist == nil) and true or persist
     self.current.tagInfo[tagId].open = state
-    if persist then 
-        self:save() 
+    if persist then
+        self:save()
     end
 end
 
@@ -1228,7 +1235,7 @@ function PB_UserData:deleteTag(tagId, persistAndReload)
     -- Find the tag's siblings to adjust their order
     local tagInfo = self.current.tagInfo[tagId]
     if not tagInfo then return end
-    
+
     -- Remove from tagged assets first
     for assetId, tagIds in pairs(self.current.taggedAssets) do
         if OD_HasValue(tagIds, tagId) then
@@ -1238,7 +1245,7 @@ function PB_UserData:deleteTag(tagId, persistAndReload)
             end
         end
     end
-    
+
     -- Find and delete all descendant tags recursively
     local function deleteDescendants(parentId)
         for id, info in pairs(self.current.tagInfo) do
@@ -1249,17 +1256,17 @@ function PB_UserData:deleteTag(tagId, persistAndReload)
         end
     end
     deleteDescendants(tagId)
-    
+
     -- Adjust sibling order
     for sibId, sibInfo in pairs(self.current.tagInfo) do
         if sibInfo.parentId == tagInfo.parentId and sibInfo.order > tagInfo.order then
             self.current.tagInfo[sibId].order = sibInfo.order - 1
         end
     end
-    
+
     -- Delete the tag itself
     self.current.tagInfo[tagId] = nil
-    
+
     if persistAndReload ~= false then
         self:save()
         -- Notify engine to refresh its runtime data
@@ -1270,37 +1277,37 @@ end
 function PB_UserData:createTag(name, parent)
     self.app.logger:logDebug('-- PB_UserData:createTag()')
     self.app.logger:logDebug('Creating tag "' .. name .. '"')
-    
+
     local parentId = (parent == TAGS_ROOT_PARENT) and TAGS_ROOT_PARENT or parent.id
     local levelCount = 0
-    
+
     -- Count existing tags at this level
     for id, tagInfo in pairs(self.current.tagInfo) do
         if tagInfo.parentId == parentId then
             levelCount = levelCount + 1
         end
     end
-    
+
     local newTag = {
         name = name,
         parentId = parentId,
         order = levelCount + 1
     }
-    
+
     local newId = self.current.idCount + 1
     self.current.idCount = newId
     self.current.tagInfo[newId] = newTag
-    
+
     self.app.logger:logInfo('Created a new tag \'' ..
         name ..
         '\' with id ' ..
         newId .. (parentId ~= TAGS_ROOT_PARENT and ' (parent Id: ' .. parentId .. ')' or ''))
-    
+
     self:save()
-    
+
     -- Notify engine to refresh its runtime data
     self.app.engine:getTags(true)
-    
+
     -- Return the created tag from engine's processed data
     for _, tag in pairs(self.app.engine.tags) do
         if tag.id == newId then
@@ -1315,36 +1322,36 @@ function PB_UserData:createPreset(name, filter, letter)
         self.app.logger:logError('Cannot create preset: name is required')
         return nil
     end
-    
+
     if not filter then
         self.app.logger:logError('Cannot create preset: filter is required')
         return nil
     end
-    
+
     -- Create a deep copy of the filter to store
     local presetFilter = OD_DeepCopy(filter)
-    
+
     local newId = self.current.idCount + 1
     self.current.idCount = newId
-    
+
     local preset = {
         id = newId,
         name = name,
         filter = presetFilter,
         letter = letter
     }
-    
+
     self.current.presets[newId] = preset
-    
+
     self.app.logger:logInfo('Created preset \'' .. name .. '\' with id ' .. newId)
-    
+
     self:save()
-    
+
     -- Notify engine to refresh its runtime data
     if self.app.engine then
         self.app.engine:getPresets(true)
     end
-    
+
     return preset
 end
 
@@ -1353,19 +1360,19 @@ function PB_UserData:deletePreset(presetId)
         self.app.logger:logError('Cannot delete preset: preset with id ' .. presetId .. ' not found')
         return false
     end
-    
+
     local presetName = self.current.presets[presetId].name
     self.current.presets[presetId] = nil
-    
+
     self.app.logger:logInfo('Deleted preset \'' .. presetName .. '\' with id ' .. presetId)
-    
+
     self:save()
-    
+
     -- Notify engine to refresh its runtime data
     if self.app.engine then
         self.app.engine:getPresets(true)
     end
-    
+
     return true
 end
 
@@ -1374,24 +1381,24 @@ function PB_UserData:renamePreset(presetId, newName)
         self.app.logger:logError('Cannot rename preset: new name is required')
         return false
     end
-    
+
     if not self.current.presets[presetId] then
         self.app.logger:logError('Cannot rename preset: preset with id ' .. presetId .. ' not found')
         return false
     end
-    
+
     local oldName = self.current.presets[presetId].name
     self.current.presets[presetId].name = newName
-    
+
     self.app.logger:logInfo('Renamed preset from \'' .. oldName .. '\' to \'' .. newName .. '\'')
-    
+
     self:save()
-    
+
     -- Notify engine to refresh its runtime data
     if self.app.engine then
         self.app.engine:getPresets(true)
     end
-    
+
     return true
 end
 
@@ -1400,34 +1407,34 @@ function PB_UserData:updatePreset(presetId, name, filter, letter)
         self.app.logger:logError('Cannot update preset: preset with id ' .. presetId .. ' not found')
         return nil
     end
-    
+
     if not name or name == '' then
         self.app.logger:logError('Cannot update preset: name is required')
         return nil
     end
-    
+
     if not filter then
         self.app.logger:logError('Cannot update preset: filter is required')
         return nil
     end
-    
+
     -- Create a deep copy of the filter to store
     local presetFilter = OD_DeepCopy(filter)
-    
+
     self.current.presets[presetId].name = name
     self.current.presets[presetId].filter = presetFilter
     self.current.presets[presetId].letter = letter
     self.current.presets[presetId].modified = os.time()
-    
+
     self.app.logger:logInfo('Updated preset \'' .. name .. '\' with id ' .. presetId)
-    
+
     self:save()
-    
+
     -- Notify engine to refresh its runtime data
     if self.app.engine then
         self.app.engine:getPresets(true)
     end
-    
+
     return self.current.presets[presetId]
 end
 

@@ -13,6 +13,7 @@ T.PRESET_EDIT_MENU = {
     ACTION = {
         LABEL = 'Reaper Action',
         BUTTON = 'Create Action',
+        BUTTON_EXISTS = 'Action Already Exists',
         HINT = 'temp',
     }
 }

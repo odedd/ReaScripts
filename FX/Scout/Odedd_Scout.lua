@@ -551,6 +551,66 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         end
                     end
                 end
+            end,
+            createAction = function(actionName, cmd)
+                local snActionName = OD_SanitizeFilename(actionName)
+                local filename = ('%s - %s'):format(Scr.no_ext, snActionName)
+
+                local outputFn = string.format('%s/%s.lua', Scr.dir, filename)
+                local code = ([[
+local r = reaper
+local context = '$context'
+local script_name = '$scriptname'
+local cmd = '$cmd'
+
+function getScriptId(script_name)
+    local file = io.open(r.GetResourcePath().."/".."reaper-kb.ini")
+    if not file then return "" end
+    local content = file:read("*a")
+    file:close()
+    local santizedSn = script_name:gsub("([^%w])", "%%%1")
+    if content:find(santizedSn) then
+        return content:match('[^\r\n].+(RS.+) "Custom: '..santizedSn)
+    end
+end
+
+local cmdId = getScriptId(script_name)
+
+if cmdId then
+    if r.GetExtState(context, 'defer') ~= '1' then
+        local intId = r.NamedCommandLookup('_'..cmdId)
+        if intId ~= 0 then r.Main_OnCommand(intId,0) end
+    end
+    r.SetExtState(context, 'EXTERNAL_COMMAND',cmd, false)
+else
+    r.MB(script_name..' not installed', script_name,0)
+end]]):gsub('$(%w+)', {
+                    context = Scr.ext_name,
+                    scriptname = Scr.basename,
+                    cmd = cmd
+                })
+                code = ('-- This file was created by %s on %s\n\n'):format(Scr.name, os.date('%c')) .. code
+                local file = assert(io.open(outputFn, 'w'))
+                file:write(code)
+                file:close()
+
+                if r.AddRemoveReaScript(true, 0, outputFn, true) == 0 then
+                    return false
+                end
+                return true
+            end,
+            checkExternalCommand = function()
+                local raw_cmd = r.GetExtState(Scr.ext_name, 'EXTERNAL_COMMAND')
+                local cmd, arg = raw_cmd:match('^([%w_]+)%s*(.*)$')
+                if cmd ~= '' and cmd ~= nil then
+                    r.SetExtState(Scr.ext_name, 'EXTERNAL_COMMAND', '', false)
+                    local filterAsset = app.engine:getFilterAssetById(FILTER_TYPES.PRESET, arg)
+                    if filterAsset then
+                        filterAsset:execute()
+                    else
+                        app:msg('Preset not found')
+                    end
+                end
             end
         }
         app.guiHelpers = {
@@ -884,6 +944,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             -- if ImGui.Button(ctx, "Save as Preset...") then
                             app.temp.showCreatePresetDialog = true
                             app.temp.presetName = ""
+                            app.temp.presetActionExists = false
                             app.temp.presetLetter = ""
                             app.temp.editingPresetId = nil
                             app.temp.originalPresetFilter = nil
@@ -2192,7 +2253,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     -- Export button
                     app.gui:setting('label', T.SETTINGS.EXPORT_TAGS.LABEL)
                     if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL, divideWidth = 2 }, true) then
-                        local rv, filename = reaper.JS_Dialog_BrowseForSaveFile('Export Tags, Presets & Favorites', '', '',
+                        local rv, filename = reaper.JS_Dialog_BrowseForSaveFile('Export Tags, Presets & Favorites', '',
+                            '',
                             'Scout Tags files (*.scout)\0*.scout\0\0')
                         if rv == 1 and filename then
                             local success, errorMsg = app.userdata:export(filename)
@@ -2210,7 +2272,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     local importButtonText = overwriteMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL or
                         T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE
                     if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText }, true) then
-                        local rv, filename = reaper.GetUserFileNameForRead('', 'Import Tags, Presets & Favorites', 'scout')
+                        local rv, filename = reaper.GetUserFileNameForRead('', 'Import Tags, Presets & Favorites',
+                            'scout')
                         if rv and filename then
                             local success, skippedAssets, mappedCount, skippedCount = app.userdata:import(filename,
                                 not overwriteMode)
@@ -2355,12 +2418,23 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     local dialogTitle = isEditing and 'Edit Preset' or 'Create Preset'
 
                     if not ImGui.IsPopupOpen(ctx, dialogTitle) then
+                        local function doesActionExist()
+                            local content = OD_GetContent(r.GetResourcePath() .. "/" .. "reaper-kb.ini")
+                            local statuses = {}
+                            local action_name = 'Custom: ' ..
+                                Scr.no_ext .. ' - ' .. app.temp.presetName .. '.lua'
+                            return (content:find(OD_EscapePattern(action_name)) ~= nil)
+                        end
+
                         ImGui.OpenPopup(ctx, dialogTitle)
                         if not app.temp.presetName then
                             app.temp.presetName = ""
                         end
                         if not app.temp.presetLetter then
                             app.temp.presetLetter = ""
+                        end
+                        if isEditing then
+                            app.temp.presetActionExists = doesActionExist()
                         end
                     end
 
@@ -2391,13 +2465,23 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         -- ImGui.SameLine(ctx)
                         -- ImGui.Text(ctx, "(single letter)")
 
-                        app.gui:setting('button', T.PRESET_EDIT_MENU.ACTION.LABEL,
-                            T.PRESET_EDIT_MENU.ACTION.HINT, nil,
-                            { label = T.PRESET_EDIT_MENU.ACTION.BUTTON, hintWindow = 'presetEditWindow' })
-                        -- TODO: Add "Create Action" button (placeholder for later implementation)
-                        -- if ImGui.Button(ctx, "Create Action") then
-                        --     -- Implementation will come later
-                        -- end
+                        if isEditing then
+                            if app.temp.presetActionExists then ImGui.BeginDisabled(ctx) end
+                            if app.gui:setting('button', T.PRESET_EDIT_MENU.ACTION.LABEL,
+                                    T.PRESET_EDIT_MENU.ACTION.HINT, nil,
+                                    { label = app.temp.presetActionExists and T.PRESET_EDIT_MENU.ACTION.BUTTON_EXISTS or T.PRESET_EDIT_MENU.ACTION.BUTTON, hintWindow = 'presetEditWindow' }) then
+                                local filterAsset = app.engine:getFilterAssetById(FILTER_TYPES.PRESET,
+                                    app.temp.editingPresetId)
+                                if filterAsset:createAction() then
+                                    app.temp.createdPresetAction = true
+                                end
+                            end
+                            if app.temp.presetActionExists then ImGui.EndDisabled(ctx) end
+                            if app.temp.createdPresetAction then
+                                app.temp.presetActionExists = true
+                                app.temp.createdPresetAction = nil
+                            end
+                        end
 
                         ImGui.Separator(ctx)
 
@@ -2629,6 +2713,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
             ImGui.PopFont(ctx)
             app.gui:popColors(app.gui.st.col.main)
             app.gui:popStyles(app.gui.st.vars.main)
+            app.flow.checkExternalCommand()
 
             if not app.hide and not app.hardExit then
                 PDefer(app.loop)

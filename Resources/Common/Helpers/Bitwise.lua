@@ -8,7 +8,7 @@ end
 
 -- BitField check
 function OD_BfCheck(int, bit)
-    return (int & bit ~= 0)
+    return ((int or 0) & bit ~= 0)
 end
 
 -- BitField toggle

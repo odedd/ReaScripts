@@ -4,7 +4,6 @@
 -- THOUGHTS and TODOS -----------------
 ---------------------------------------
 
--- TODO: Presets
 -- DONE: Add presets to userdata import/export
 --       ✓ FX Folder filters: exported as-is, validated at runtime
 --       ✓ Category filters: exported as-is, validated at runtime  
