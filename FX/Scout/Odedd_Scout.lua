@@ -341,13 +341,13 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         local targets = targetAssets
                         -- If targetAssets is a single asset (not a table), convert it to a table
                         if targets and type(targets) ~= "table" then
-                            targets = {targets}
+                            targets = { targets }
                         end
-                        
+
                         if targets and #targets > 0 and #app.temp.searchResults > 0 then
                             app.selection:empty()
                             local firstTargetIndex = nil
-                            
+
                             for i, result in ipairs(app.temp.searchResults) do
                                 for _, targetAsset in ipairs(targets) do
                                     if result == targetAsset then
@@ -359,7 +359,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                     end
                                 end
                             end
-                            
+
                             if firstTargetIndex then
                                 app.selection:setKeyboardPos(firstTargetIndex)
                             else
@@ -2264,15 +2264,15 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     local isEditing = app.temp.editingPresetId ~= nil
                     local dialogTitle = isEditing and 'Edit Preset' or 'Create Preset'
 
-                    if not ImGui.IsPopupOpen(ctx, dialogTitle) then
-                        local function doesActionExist()
-                            local content = OD_GetContent(r.GetResourcePath() .. "/" .. "reaper-kb.ini")
-                            local statuses = {}
-                            local action_name = 'Custom: ' ..
-                                Scr.no_ext .. ' - ' .. app.temp.presetName .. '.lua'
-                            return (content:find(OD_EscapePattern(action_name)) ~= nil)
-                        end
+                    local function updateActionStatus()
+                        local content = OD_GetContent(r.GetResourcePath() .. "/" .. "reaper-kb.ini")
+                        local statuses = {}
+                        local action_name = 'Custom: ' ..
+                            Scr.no_ext .. ' - ' .. app.temp.presetName .. '.lua'
+                        app.temp.presetActionExists = (content:find(OD_EscapePattern(action_name)) ~= nil)
+                    end
 
+                    if not ImGui.IsPopupOpen(ctx, dialogTitle) then
                         ImGui.OpenPopup(ctx, dialogTitle)
                         if not app.temp.presetName then
                             app.temp.presetName = ""
@@ -2281,7 +2281,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             app.temp.presetLetter = ""
                         end
                         if isEditing then
-                            app.temp.presetActionExists = doesActionExist()
+                            updateActionStatus()
                         end
                     end
 
@@ -2293,15 +2293,15 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     app.gui:popStyles(app.gui.st.vars.popups)
 
                     if visible then
-                        -- ImGui.Text(ctx, "Preset name:")
-                        -- ImGui.SetNextItemWidth(ctx, -1)
-                        -- local nameChanged, newName = ImGui.InputText(ctx, "##presetName", app.temp.presetName)
                         if ImGui.IsWindowAppearing(ctx) then
                             ImGui.SetKeyboardFocusHere(ctx, 0)
                         end
-                        app.temp.presetName = app.gui:setting('text', T.PRESET_EDIT_MENU.PRESET_NAME.LABEL,
+                        local tempName = app.gui:setting('text', T.PRESET_EDIT_MENU.PRESET_NAME.LABEL,
                             T.PRESET_EDIT_MENU.PRESET_NAME.HINT, app.temp.presetName, { hintWindow = 'presetEditWindow' })
-
+                        if app.temp.presetName ~= tempName then
+                                app.temp.presetName = tempName
+                                updateActionStatus()
+                        end
                         -- Auto-focus the text input when dialog opens
 
                         local tempPresetLetter = app.gui:setting('oneCharacter', T.PRESET_EDIT_MENU.SHORTCUT.LABEL,
@@ -2339,7 +2339,49 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                 end
                             end
                         end
+                        -- Show error message if any
+                        if errorMessage ~= "" then
+                            app:setHint('presetEditWindow', errorMessage, 'hintError')
+                        end
 
+                        -- Buttons
+                        if not canSave then
+                            ImGui.BeginDisabled(ctx)
+                        end
+
+                        if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSave) or app.gui:setting('button', T.PRESET_EDIT_MENU.SAVE.LABEL,
+                                T.PRESET_EDIT_MENU.SAVE.HINT, nil,
+                                { label = isEditing and T.PRESET_EDIT_MENU.SAVE.BUTTON_EDIT or T.PRESET_EDIT_MENU.SAVE.BUTTON_CREATE, hintWindow = 'presetEditWindow' }) then
+                            local trimmedName = OD_Trim(app.temp.presetName)
+                            local trimmedLetter = OD_Trim(app.temp.presetLetter)
+                            if trimmedLetter == "" then trimmedLetter = nil end
+
+                            if isEditing then
+                                -- Update existing preset - use original filter, only update name and letter
+                                local filterToUse = app.temp.originalPresetFilter or app.temp.filter
+                                local preset = app.userdata:updatePreset(app.temp.editingPresetId, trimmedName,
+                                    filterToUse, trimmedLetter)
+                                if preset then
+                                    app.logger:logInfo('Updated preset "' .. preset.name .. '"')
+                                    -- Refresh the engine presets
+                                    app.engine:refreshPresets()
+                                end
+                            else
+                                -- Create new preset - use current active filters
+                                local preset = app.userdata:createPreset(trimmedName, app.temp.filter, trimmedLetter)
+                                if preset then
+                                    app.logger:logInfo('Created preset "' .. preset.name .. '"')
+                                    -- Refresh the engine presets
+                                    app.engine:refreshPresets()
+                                end
+                            end
+                            app.temp.showCreatePresetDialog = false
+                            ImGui.CloseCurrentPopup(ctx)
+                        end
+
+                        if not canSave then
+                            ImGui.EndDisabled(ctx)
+                        end
 
                         if isEditing then
                             if app.temp.presetActionExists or (not canSave) then ImGui.BeginDisabled(ctx) end
@@ -2351,6 +2393,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                 if filterAsset:createAction() then
                                     app.temp.createdPresetAction = true
                                 end
+                                app.temp.showCreatePresetDialog = false
+                                ImGui.CloseCurrentPopup(ctx)
                             end
                             if app.temp.presetActionExists or (not canSave) then ImGui.EndDisabled(ctx) end
                             if app.temp.createdPresetAction then
@@ -2359,133 +2403,37 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             end
                         end
 
-                        -- Show error message if any
-                        if errorMessage ~= "" then
-                            app:setHint('presetEditWindow', errorMessage, 'hintError')
-                        end
-
-                        -- Buttons
-                        local buttonWidth = 80
-                        local availWidth = ImGui.GetContentRegionAvail(ctx)
-                        local buttonCount = isEditing and 3 or 2 -- Save/Create, Cancel, and Delete (if editing)
-                        local totalButtonWidth = buttonWidth * buttonCount +
-                            ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * (buttonCount - 1)
-
-                        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + availWidth - totalButtonWidth)
-
-                        local actionButtonLabel = isEditing and "Save" or "Create"
-                        if not canSave then
-                            ImGui.BeginDisabled(ctx)
-                        end
-
-                        if ImGui.Button(ctx, actionButtonLabel, buttonWidth, 0) and canSave then
-                            local trimmedName = OD_Trim(app.temp.presetName)
-                            local trimmedLetter = OD_Trim(app.temp.presetLetter)
-                            if trimmedLetter == "" then trimmedLetter = nil end
-
-                            if isEditing then
-                                -- Update existing preset - use original filter, only update name and letter
-                                local filterToUse = app.temp.originalPresetFilter or app.temp.filter
-                                local preset = app.userdata:updatePreset(app.temp.editingPresetId, trimmedName,
-                                    filterToUse, trimmedLetter)
-                                if preset then
-                                    app.logger:logInfo('Updated preset "' .. preset.name .. '"')
-                                    -- Refresh the engine presets
-                                    app.engine:refreshPresets()
-                                end
-                            else
-                                -- Create new preset - use current active filters
-                                local preset = app.userdata:createPreset(trimmedName, app.temp.filter, trimmedLetter)
-                                if preset then
-                                    app.logger:logInfo('Created preset "' .. preset.name .. '"')
-                                    -- Refresh the engine presets
-                                    app.engine:refreshPresets()
-                                end
-                            end
-
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.PRESET_EDIT_MENU.CANCEL.LABEL,
+                                T.PRESET_EDIT_MENU.CANCEL.HINT, nil,
+                                { label = T.PRESET_EDIT_MENU.CANCEL.BUTTON, hintWindow = 'presetEditWindow' }) then
                             app.temp.showCreatePresetDialog = false
-                            app.temp.presetName = nil
-                            app.temp.presetLetter = nil
-                            app.temp.editingPresetId = nil
-                            ImGui.CloseCurrentPopup(ctx)
-                        end
-
-                        if not canSave then
-                            ImGui.EndDisabled(ctx)
-                        end
-
-                        ImGui.SameLine(ctx)
-                        if ImGui.Button(ctx, "Cancel", buttonWidth, 0) then
-                            app.temp.showCreatePresetDialog = false
-                            app.temp.presetName = nil
-                            app.temp.presetLetter = nil
-                            app.temp.editingPresetId = nil
-                            app.temp.originalPresetFilter = nil
                             ImGui.CloseCurrentPopup(ctx)
                         end
 
                         -- Delete button (only when editing)
-                        if isEditing then
-                            ImGui.SameLine(ctx)
-                            ImGui.PushStyleColor(ctx, ImGui.Col_Button, 0xFF4444AA) -- Red button
-                            ImGui.PushStyleColor(ctx, ImGui.Col_ButtonHovered, 0xFF6666CC)
-                            ImGui.PushStyleColor(ctx, ImGui.Col_ButtonActive, 0xFF8888EE)
-                            if ImGui.Button(ctx, "Delete", buttonWidth, 0) then
-                                local preset = app.engine.presets[app.temp.editingPresetId]
-                                if preset then
-                                    app.userdata:deletePreset(app.temp.editingPresetId)
-                                    app.logger:logInfo('Deleted preset "' .. preset.name .. '"')
-                                    -- Refresh the engine presets
-                                    app.engine:refreshPresets()
-                                end
-                                app.temp.showCreatePresetDialog = false
-                                app.temp.presetName = nil
-                                app.temp.presetLetter = nil
-                                app.temp.editingPresetId = nil
-                                app.temp.originalPresetFilter = nil
-                                ImGui.CloseCurrentPopup(ctx)
-                            end
-                            ImGui.PopStyleColor(ctx, 3)
-                        end
+                        -- if isEditing then
+                        --     ImGui.SameLine(ctx)
+                        --     ImGui.PushStyleColor(ctx, ImGui.Col_Button, 0xFF4444AA) -- Red button
+                        --     ImGui.PushStyleColor(ctx, ImGui.Col_ButtonHovered, 0xFF6666CC)
+                        --     ImGui.PushStyleColor(ctx, ImGui.Col_ButtonActive, 0xFF8888EE)
+                        --     if ImGui.Button(ctx, "Delete", buttonWidth, 0) then
+                        --         local preset = app.engine.presets[app.temp.editingPresetId]
+                        --         if preset then
+                        --             app.userdata:deletePreset(app.temp.editingPresetId)
+                        --             app.logger:logInfo('Deleted preset "' .. preset.name .. '"')
+                        --             -- Refresh the engine presets
+                        --             app.engine:refreshPresets()
+                        --         end
+                        --         app.temp.showCreatePresetDialog = false
+                        --         app.temp.presetName = nil
+                        --         app.temp.presetLetter = nil
+                        --         app.temp.editingPresetId = nil
+                        --         app.temp.originalPresetFilter = nil
+                        --         ImGui.CloseCurrentPopup(ctx)
+                        --     end
+                        --     ImGui.PopStyleColor(ctx, 3)
+                        -- end
 
-                        -- Handle Enter and Escape keys
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSave then
-                            local trimmedName = OD_Trim(app.temp.presetName)
-                            local trimmedLetter = OD_Trim(app.temp.presetLetter)
-                            if trimmedLetter == "" then trimmedLetter = nil end
-
-                            if isEditing then
-                                -- Update existing preset - use original filter, only update name and letter
-                                local filterToUse = app.temp.originalPresetFilter or app.temp.filter
-                                local preset = app.userdata:updatePreset(app.temp.editingPresetId, trimmedName,
-                                    filterToUse, trimmedLetter)
-                                if preset then
-                                    app.logger:logInfo('Updated preset "' .. preset.name .. '"')
-                                    app.engine:refreshPresets()
-                                end
-                            else
-                                -- Create new preset - use current active filters
-                                local preset = app.userdata:createPreset(trimmedName, app.temp.filter, trimmedLetter)
-                                if preset then
-                                    app.logger:logInfo('Created preset "' .. preset.name .. '"')
-                                    app.engine:refreshPresets()
-                                end
-                            end
-
-                            app.temp.showCreatePresetDialog = false
-                            app.temp.presetName = nil
-                            app.temp.presetLetter = nil
-                            app.temp.editingPresetId = nil
-                            app.temp.originalPresetFilter = nil
-                            ImGui.CloseCurrentPopup(ctx)
-                        elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
-                            app.temp.showCreatePresetDialog = false
-                            app.temp.presetName = nil
-                            app.temp.presetLetter = nil
-                            app.temp.editingPresetId = nil
-                            app.temp.originalPresetFilter = nil
-                            ImGui.CloseCurrentPopup(ctx)
-                        end
                         app.draw.hint(ctx, 'presetEditWindow')
                         -- hintWindow = 'presetEditWindow'
                         ImGui.EndPopup(ctx)

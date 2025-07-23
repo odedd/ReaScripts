@@ -1105,10 +1105,26 @@ function PB_UserData:import(filename, mergeMode)
         else
             -- Import preset
             local newId = importedId
+            local existingPresetId = nil
+            
             if mergeMode then
-                -- In merge mode, find next available ID if conflict exists
-                while finalPresets[newId] do
-                    newId = newId + 1
+                -- In merge mode, check if a preset with the same name already exists
+                for id, preset in pairs(finalPresets) do
+                    if preset.name == importedPreset.name then
+                        existingPresetId = id
+                        break
+                    end
+                end
+                
+                if existingPresetId then
+                    -- Update existing preset with same name
+                    newId = existingPresetId
+                    self.app.logger:logDebug('⟳ Updating existing preset "' .. importedPreset.name .. '" (ID ' .. newId .. ')')
+                else
+                    -- Find next available ID if no name conflict exists
+                    while finalPresets[newId] do
+                        newId = newId + 1
+                    end
                 end
             end
 
@@ -1117,11 +1133,14 @@ function PB_UserData:import(filename, mergeMode)
                 name = importedPreset.name,
                 filter = OD_DeepCopy(importedPreset.filter),
                 letter = importedPreset.letter,
-                modified = os.time()
             }
 
             mappedPresetsCount = mappedPresetsCount + 1
-            self.app.logger:logDebug('✓ Imported preset "' .. importedPreset.name .. '" with ID ' .. newId)
+            if existingPresetId then
+                self.app.logger:logDebug('✓ Updated preset "' .. importedPreset.name .. '" with ID ' .. newId)
+            else
+                self.app.logger:logDebug('✓ Imported preset "' .. importedPreset.name .. '" with ID ' .. newId)
+            end
         end
     end
 
@@ -1425,7 +1444,6 @@ function PB_UserData:updatePreset(presetId, name, filter, letter)
     self.current.presets[presetId].name = name
     self.current.presets[presetId].filter = presetFilter
     self.current.presets[presetId].letter = letter
-    self.current.presets[presetId].modified = os.time()
 
     self.app.logger:logInfo('Updated preset \'' .. name .. '\' with id ' .. presetId)
 

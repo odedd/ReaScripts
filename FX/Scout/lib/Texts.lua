@@ -11,9 +11,20 @@ T.PRESET_EDIT_MENU = {
         HINT = 'A name for the new preset', 
     },
     ACTION = {
-        LABEL = 'Reaper Action',
-        BUTTON = 'Create Action',
+        LABEL = '',
+        BUTTON = 'Export as Action',
         BUTTON_EXISTS = 'Action exists',
+        HINT = 'temp',
+    },
+    SAVE = {
+        LABEL = '',
+        BUTTON_CREATE = 'Create Preset',
+        BUTTON_EDIT = 'Save',
+        HINT = 'temp',
+    },
+    CANCEL = {
+        LABEL = '',
+        BUTTON = 'Close',
         HINT = 'temp',
     }
 }
