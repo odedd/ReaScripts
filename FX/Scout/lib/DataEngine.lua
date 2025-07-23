@@ -20,6 +20,47 @@ PB_DataEngine = {
             r.Undo_EndBlock(name, type)
         end
     end,
+    validateFilter = function(self, filter)
+        self.app.logger:logDebug('-- PB_DataEngine.validateFilter()')
+        
+        local validatedFilter = OD_DeepCopy(filter)
+        local hasIssues = false
+        
+        -- Validate FX-related filters
+        if validatedFilter.fxFolderId and (not self.fxFolders or not self.fxFolders[validatedFilter.fxFolderId]) then
+            self.app.logger:logError('FX Folder ID ' .. tostring(validatedFilter.fxFolderId) .. ' does not exist, ignoring filter')
+            validatedFilter.fxFolderId = nil
+            hasIssues = true
+        end
+        
+        if validatedFilter.fxCategory and (not self.fxCategories or not self.fxCategories[validatedFilter.fxCategory]) then
+            self.app.logger:logError('FX Category "' .. tostring(validatedFilter.fxCategory) .. '" does not exist, ignoring filter')
+            validatedFilter.fxCategory = nil
+            hasIssues = true
+        end
+        
+        if validatedFilter.fxDeveloper and (not self.fxDevelopers or not self.fxDevelopers[validatedFilter.fxDeveloper]) then
+            self.app.logger:logError('FX Developer "' .. tostring(validatedFilter.fxDeveloper) .. '" does not exist, ignoring filter')
+            validatedFilter.fxDeveloper = nil
+            hasIssues = true
+        end
+        
+        -- Validate tag filters
+        if validatedFilter.tags then
+            local validTags = {}
+            for tagId, positive in pairs(validatedFilter.tags) do
+                if self.tags and self.tags[tagId] then
+                    validTags[tagId] = positive
+                else
+                    self.app.logger:logError('Tag ID ' .. tostring(tagId) .. ' does not exist, ignoring tag filter')
+                    hasIssues = true
+                end
+            end
+            validatedFilter.tags = validTags
+        end
+        
+        return validatedFilter, hasIssues
+    end,
     refreshTracks = function(self)
         -- Helper function to refresh tracks using the modular system
         if self.assetTypeManager then
@@ -749,7 +790,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
     end
 
     local createPresetAction = function(self)
-        return self.app.flow.createAction(self.searchText[1].text, 'LOAD_PRESET '.. self.name)
+        return self.app.flow.createAction(self.searchText[1].text, "APPLY_FILTER \'..\n[[" .. pickle(self.preset.filter).."\n]]..\'")
     end
     if scanAll then
         self.filterAssets = {}
@@ -787,7 +828,8 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
 
     if scanAll or whichFilters.filters then
         for filterType, filter in pairs(FILTER_MENU) do
-            if scanAll or (whichFilters.filters and OD_HasValue(whichFilters.filters, filterType)) then
+            -- Skip presets here since they're handled separately with more functionality
+            if filterType ~= FILTER_TYPES.PRESET and (scanAll or (whichFilters.filters and OD_HasValue(whichFilters.filters, filterType))) then
                 for itemName, item in pairs(filter.items) do
                     table.insert(self.filterAssets, {
                         engine = self,

@@ -242,29 +242,37 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
                 end
 
-                -- Other filter fields
+                -- Other filter fields with validation
                 for queryType, queryValue in pairs(query) do
                     if queryType ~= 'text' and queryType ~= 'addTags' and queryType ~= 'removeTags' then
-                        filter[queryType] = (queryValue ~= 'all') and queryValue or nil
+                        if queryValue == 'all' then
+                            filter[queryType] = nil
+                        else
+                            filter[queryType] = queryValue
+                        end
                     end
                 end
-                app.temp.filter = filter
+
+                -- Validate the complete filter using the engine's validation function
+                local validatedFilter, hasIssues = app.engine:validateFilter(filter)
+                
+                app.temp.filter = validatedFilter
 
                 -- Filtering assets
                 local assets = app.temp.searchMode == SEARCH_MODE.MAIN and app.engine.assets or app.engine.filterAssets
                 local tagsTable = app.engine.tags
-                local filterTags = filter.tags
-                local filterText = filter.text:lower()
+                local filterTags = validatedFilter.tags
+                local filterText = validatedFilter.text:lower()
 
                 for i = 1, #assets do
                     local asset = assets[i]
                     if app.temp.searchMode == SEARCH_MODE.MAIN then
                         -- Type filters
-                        if (filter.type and asset.type ~= filter.type)
-                            or (filter.fx_type and asset.fx_type ~= filter.fx_type)
-                            or (filter.fxDeveloper and (not asset.vendor or asset.vendor ~= filter.fxDeveloper))
-                            or (filter.fxFolderId and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInFolder(filter.fxFolderId)))
-                            or (filter.fxCategory and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInCategory(filter.fxCategory)))
+                        if (validatedFilter.type and asset.type ~= validatedFilter.type)
+                            or (validatedFilter.fx_type and asset.fx_type ~= validatedFilter.fx_type)
+                            or (validatedFilter.fxDeveloper and (not asset.vendor or asset.vendor ~= validatedFilter.fxDeveloper))
+                            or (validatedFilter.fxFolderId and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInFolder(validatedFilter.fxFolderId)))
+                            or (validatedFilter.fxCategory and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInCategory(validatedFilter.fxCategory)))
                         then
                             goto skip
                         end
@@ -411,23 +419,27 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         filter[queryType] = (queryValue ~= 'all') and queryValue or nil
                     end
                 end
-                app.temp.filter = filter
+                
+                -- Validate the complete filter using the engine's validation function
+                local validatedFilter, hasIssues = app.engine:validateFilter(filter)
+                
+                app.temp.filter = validatedFilter
 
                 -- Filtering assets
                 local assets = app.temp.searchMode == SEARCH_MODE.MAIN and app.engine.assets or app.engine.filterAssets
                 local tagsTable = app.engine.tags
-                local filterTags = filter.tags
-                local filterText = filter.text:lower()
+                local filterTags = validatedFilter.tags
+                local filterText = validatedFilter.text:lower()
 
                 for i = 1, #assets do
                     local asset = assets[i]
                     if app.temp.searchMode == SEARCH_MODE.MAIN then
                         -- Type filters
-                        if (filter.type and asset.type ~= filter.type)
-                            or (filter.fx_type and asset.fx_type ~= filter.fx_type)
-                            or (filter.fxDeveloper and (not asset.vendor or asset.vendor ~= filter.fxDeveloper))
-                            or (filter.fxFolderId and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInFolder(filter.fxFolderId)))
-                            or (filter.fxCategory and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInCategory(filter.fxCategory)))
+                        if (validatedFilter.type and asset.type ~= validatedFilter.type)
+                            or (validatedFilter.fx_type and asset.fx_type ~= validatedFilter.fx_type)
+                            or (validatedFilter.fxDeveloper and (not asset.vendor or asset.vendor ~= validatedFilter.fxDeveloper))
+                            or (validatedFilter.fxFolderId and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInFolder(validatedFilter.fxFolderId)))
+                            or (validatedFilter.fxCategory and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInCategory(validatedFilter.fxCategory)))
                         then
                             goto skip
                         end
@@ -603,12 +615,10 @@ end]]):gsub('$(%w+)', {
                 local raw_cmd = r.GetExtState(Scr.ext_name, 'EXTERNAL_COMMAND')
                 local cmd, arg = raw_cmd:match('^([%w_]+)%s*(.*)$')
                 if cmd ~= '' and cmd ~= nil then
-                    r.SetExtState(Scr.ext_name, 'EXTERNAL_COMMAND', '', false)
-                    local filterAsset = app.engine:getFilterAssetByKey(FILTER_TYPES.PRESET, 'name', arg)
-                    if filterAsset then
-                        filterAsset:execute()
-                    else
-                        app:msg('Preset not found')
+                    if cmd == "APPLY_FILTER" then
+                        local filter = unpickle(arg)
+                        app.flow.filterResults(filter)
+                        r.SetExtState(Scr.ext_name, 'EXTERNAL_COMMAND', '', false)
                     end
                 end
             end
@@ -891,18 +901,20 @@ end]]):gsub('$(%w+)', {
                             end
                         else
                             for tagKey, tagValue in pairs(app.temp.filter.tags) do
-                                local key = filterKey .. tagKey
-                                table.insert(currentActiveKeys, key)
-                                activeFilters[key] = activeFilters[key] or {}
-                                activeFilters[key].key = key
-                                activeFilters[key].type = FILTER_TYPES.TAG
-                                activeFilters[key].value = tagValue
-                                activeFilters[key].item = app.engine.tags[tagKey]
-                                activeFilters[key].itemName = app.engine.tags[tagKey].name
+                                if app.engine.tags[tagKey] then
+                                    local key = filterKey .. tagKey
+                                    table.insert(currentActiveKeys, key)
+                                    activeFilters[key] = activeFilters[key] or {}
+                                    activeFilters[key].key = key
+                                    activeFilters[key].type = FILTER_TYPES.TAG
+                                    activeFilters[key].value = tagValue
+                                    activeFilters[key].item = app.engine.tags[tagKey]
+                                    activeFilters[key].itemName = app.engine.tags[tagKey].name
 
-                                if activeFilters[key].order == nil then
-                                    activeFilters[key].order = OD_Tablelength(
-                                        activeFilters)
+                                    if activeFilters[key].order == nil then
+                                        activeFilters[key].order = OD_Tablelength(
+                                            activeFilters)
+                                    end
                                 end
                             end
                         end
