@@ -1,9 +1,9 @@
--- This file was created by Scout on Wed Jul 23 09:33:38 2025
+-- This file was created by Scout on Wed Jul 23 10:48:31 2025
 
 local r = reaper
 local context = 'Odedd_Scout'
 local script_name = 'Odedd_Scout.lua'
-local cmd = 'LOAD_PRESET 79'
+local cmd = 'LOAD_PRESET Analog Compressors'
 
 function getScriptId(script_name)
     local file = io.open(r.GetResourcePath().."/".."reaper-kb.ini")

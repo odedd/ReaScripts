@@ -604,7 +604,7 @@ end]]):gsub('$(%w+)', {
                 local cmd, arg = raw_cmd:match('^([%w_]+)%s*(.*)$')
                 if cmd ~= '' and cmd ~= nil then
                     r.SetExtState(Scr.ext_name, 'EXTERNAL_COMMAND', '', false)
-                    local filterAsset = app.engine:getFilterAssetById(FILTER_TYPES.PRESET, arg)
+                    local filterAsset = app.engine:getFilterAssetByKey(FILTER_TYPES.PRESET, 'name', arg)
                     if filterAsset then
                         filterAsset:execute()
                     else
@@ -2465,27 +2465,6 @@ end]]):gsub('$(%w+)', {
                         -- ImGui.SameLine(ctx)
                         -- ImGui.Text(ctx, "(single letter)")
 
-                        if isEditing then
-                            if app.temp.presetActionExists then ImGui.BeginDisabled(ctx) end
-                            if app.gui:setting('button', T.PRESET_EDIT_MENU.ACTION.LABEL,
-                                    T.PRESET_EDIT_MENU.ACTION.HINT, nil,
-                                    { label = app.temp.presetActionExists and T.PRESET_EDIT_MENU.ACTION.BUTTON_EXISTS or T.PRESET_EDIT_MENU.ACTION.BUTTON, hintWindow = 'presetEditWindow' }) then
-                                local filterAsset = app.engine:getFilterAssetById(FILTER_TYPES.PRESET,
-                                    app.temp.editingPresetId)
-                                if filterAsset:createAction() then
-                                    app.temp.createdPresetAction = true
-                                end
-                            end
-                            if app.temp.presetActionExists then ImGui.EndDisabled(ctx) end
-                            if app.temp.createdPresetAction then
-                                app.temp.presetActionExists = true
-                                app.temp.createdPresetAction = nil
-                            end
-                        end
-
-                        ImGui.Separator(ctx)
-
-                        -- Validation and error messages
                         local canSave = app.temp.presetName and OD_Trim(app.temp.presetName) ~= ""
                         local errorMessage = ""
 
@@ -2511,6 +2490,25 @@ end]]):gsub('$(%w+)', {
                                         break
                                     end
                                 end
+                            end
+                        end
+
+
+                        if isEditing then
+                            if app.temp.presetActionExists or (not canSave) then ImGui.BeginDisabled(ctx) end
+                            if app.gui:setting('button', T.PRESET_EDIT_MENU.ACTION.LABEL,
+                                    T.PRESET_EDIT_MENU.ACTION.HINT, nil,
+                                    { label = app.temp.presetActionExists and T.PRESET_EDIT_MENU.ACTION.BUTTON_EXISTS or T.PRESET_EDIT_MENU.ACTION.BUTTON, hintWindow = 'presetEditWindow' }) then
+                                local filterAsset = app.engine:getFilterAssetByKey(FILTER_TYPES.PRESET, 'name',
+                                    app.temp.presetName)
+                                if filterAsset:createAction() then
+                                    app.temp.createdPresetAction = true
+                                end
+                            end
+                            if app.temp.presetActionExists or (not canSave) then ImGui.EndDisabled(ctx) end
+                            if app.temp.createdPresetAction then
+                                app.temp.presetActionExists = true
+                                app.temp.createdPresetAction = nil
                             end
                         end
 

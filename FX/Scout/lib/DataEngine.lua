@@ -749,7 +749,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
     end
 
     local createPresetAction = function(self)
-        return self.app.flow.createAction(self.searchText[1].text, 'LOAD_PRESET '.. self.id)
+        return self.app.flow.createAction(self.searchText[1].text, 'LOAD_PRESET '.. self.name)
     end
     if scanAll then
         self.filterAssets = {}
@@ -876,7 +876,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
 
         for presetId, preset in pairs(self.presets) do
             table.insert(self.filterAssets, {
-                id = preset.id,
+                name = preset.name,
                 engine = self,
                 app = self.app,
                 type = FILTER_TYPES.PRESET,
@@ -1026,9 +1026,9 @@ PB_DataEngine.sortFilterAssets = function(self)
 end
 
 
-PB_DataEngine.getFilterAssetById = function(self, filterType, id)
+PB_DataEngine.getFilterAssetByKey = function(self, filterType, key, value)
     for _, filterAsset in pairs(self.filterAssets) do
-        if filterAsset.type == filterType and tostring(filterAsset.id) == tostring(id) then
+        if filterAsset.type == filterType and tostring(filterAsset[key]) == tostring(value) then
             return filterAsset
         end
     end

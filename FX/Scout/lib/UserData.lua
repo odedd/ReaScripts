@@ -8,7 +8,8 @@ PB_UserData = OD_Settings:new({
         taggedAssets = {},
         recents = {},
         presets = {},
-        idCount = 7,
+        tagIdCount = 7,
+        presetIdCount = 7,
     },
     initial = {
         tagInfo = {
@@ -581,7 +582,7 @@ function PB_UserData:import(filename, mergeMode)
 
         -- Merge mode: find existing tags with same name and parent path, create hierarchy as needed
         local idMapping = {}                              -- maps imported ID to existing ID
-        local nextNewIdRef = { self.current.idCount + 1 } -- Use table for reference
+        local nextNewIdRef = { self.current.tagIdCount + 1 } -- Use table for reference
         local newTagsCount = 0
         local existingTagsCount = 0
 
@@ -617,7 +618,7 @@ function PB_UserData:import(filename, mergeMode)
         end
 
         -- Update idCount
-        self.current.idCount = nextNewIdRef[1] - 1
+        self.current.tagIdCount = nextNewIdRef[1] - 1
 
         self.app.logger:logDebug('Merge mode: mapped ' ..
             existingTagsCount .. ' existing tags, ' .. newTagsCount .. ' new tags added')
@@ -645,12 +646,12 @@ function PB_UserData:import(filename, mergeMode)
         -- Replace mode: completely replace tagInfo
         self.current.tagInfo = importedTagInfo
 
-        -- Update idCount to be higher than any imported ID
+        -- Update tagIdCount to be higher than any imported ID
         local maxId = 0
         for id, _ in pairs(importedTagInfo) do
             if id > maxId then maxId = id end
         end
-        self.current.idCount = maxId
+        self.current.tagIdCount = maxId
 
         local tagCount = 0
         for _ in pairs(importedTagInfo) do tagCount = tagCount + 1 end
@@ -1124,16 +1125,16 @@ function PB_UserData:import(filename, mergeMode)
         end
     end
 
-    -- Update presets and idCount
+    -- Update presets and presetIdCount
     self.current.presets = finalPresets
 
-    -- Update idCount to be higher than any preset ID
-    local maxId = self.current.idCount or 0
+    -- Update presetIdCount to be higher than any preset ID
+    local maxId = self.current.presetIdCount or 0
     for id, _ in pairs(finalPresets) do
         if id > maxId then maxId = id end
     end
-    if maxId > self.current.idCount then
-        self.current.idCount = maxId
+    if maxId > self.current.presetIdCount then
+        self.current.presetIdCount = maxId
     end
 
     self.app.logger:logInfo('Presets import: ' ..
@@ -1294,8 +1295,8 @@ function PB_UserData:createTag(name, parent)
         order = levelCount + 1
     }
 
-    local newId = self.current.idCount + 1
-    self.current.idCount = newId
+    local newId = self.current.tagIdCount + 1
+    self.current.tagIdCount = newId
     self.current.tagInfo[newId] = newTag
 
     self.app.logger:logInfo('Created a new tag \'' ..
@@ -1331,8 +1332,8 @@ function PB_UserData:createPreset(name, filter, letter)
     -- Create a deep copy of the filter to store
     local presetFilter = OD_DeepCopy(filter)
 
-    local newId = self.current.idCount + 1
-    self.current.idCount = newId
+    local newId = self.current.presetIdCount + 1
+    self.current.presetIdCount = newId
 
     local preset = {
         id = newId,
