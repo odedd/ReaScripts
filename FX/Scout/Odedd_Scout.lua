@@ -431,34 +431,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 local filename = ('%s - %s'):format(Scr.no_ext, snActionName)
 
                 local outputFn = string.format('%s/%s.lua', Scr.dir, filename)
-                local code = ([[
-local r = reaper
-local context = '$context'
-local script_name = '$scriptname'
-local cmd = '$cmd'
-
-function getScriptId(script_name)
-    local file = io.open(r.GetResourcePath().."/".."reaper-kb.ini")
-    if not file then return "" end
-    local content = file:read("*a")
-    file:close()
-    local santizedSn = script_name:gsub("([^%w])", "%%%1")
-    if content:find(santizedSn) then
-        return content:match('[^\r\n].+(RS.+) "Custom: '..santizedSn)
-    end
-end
-
-local cmdId = getScriptId(script_name)
-
-if cmdId then
-    if r.GetExtState(context, 'defer') ~= '1' then
-        local intId = r.NamedCommandLookup('_'..cmdId)
-        if intId ~= 0 then r.Main_OnCommand(intId,0) end
-    end
-    r.SetExtState(context, 'EXTERNAL_COMMAND',cmd, false)
-else
-    r.MB(script_name..' not installed', script_name,0)
-end]]):gsub('$(%w+)', {
+                local code = (EXPORTED_ACTION):gsub('$(%w+)', {
                     context = Scr.ext_name,
                     scriptname = Scr.basename,
                     cmd = cmd
