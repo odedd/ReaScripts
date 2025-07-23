@@ -193,7 +193,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 app.temp.searchInput = ''
                 app.flow.filterResults(filter or { text = '' })
             end,
-            filterResults = function(query, skipReset, targetAsset)
+            filterResults = function(query, skipReset, targetAssets)
                 local reset = (skipReset == nil) and true or (not skipReset)
                 local assets = app.temp.searchMode == SEARCH_MODE.MAIN and app.engine.assets or app.engine.filterAssets
                 local tagsTable = app.engine.tags
@@ -337,19 +337,33 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 end
                 local resetOrRestoreSelection = function()
                     if reset then
-                        -- Handle target asset selection first
-                        if targetAsset and #app.temp.searchResults > 0 then
-                            local targetIndex = nil
+                        -- Handle target assets selection (can be single asset, multiple assets, or nil)
+                        local targets = targetAssets
+                        -- If targetAssets is a single asset (not a table), convert it to a table
+                        if targets and type(targets) ~= "table" then
+                            targets = {targets}
+                        end
+                        
+                        if targets and #targets > 0 and #app.temp.searchResults > 0 then
+                            app.selection:empty()
+                            local firstTargetIndex = nil
+                            
                             for i, result in ipairs(app.temp.searchResults) do
-                                if result == targetAsset then
-                                    targetIndex = i
-                                    break
+                                for _, targetAsset in ipairs(targets) do
+                                    if result == targetAsset then
+                                        app.selection:add(i)
+                                        if not firstTargetIndex then
+                                            firstTargetIndex = i
+                                        end
+                                        break
+                                    end
                                 end
                             end
-                            if targetIndex then
-                                app.selection:selectOnly(targetIndex)
+                            
+                            if firstTargetIndex then
+                                app.selection:setKeyboardPos(firstTargetIndex)
                             else
-                                -- Target asset not found in results, fall back to first result
+                                -- Target assets not found in results, fall back to first result
                                 app.selection:selectOnly(1)
                             end
                         else
@@ -373,7 +387,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         end
                     end
                 end
-                
+
                 if handlePreset() then return end
                 init()
                 filter = queryToFilter()
@@ -381,168 +395,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 app.temp.filter = validatedFilter
                 filterAssets()
                 resetOrRestoreSelection()
-            end,
-            -- Helper function to filter results while maintaining selection on a specific asset
-            filterResultsWithTarget = function(query, targetAsset)
-                app.flow.filterResults(query, false, targetAsset)
-            end,
-            -- Helper function to filter results while maintaining selection on multiple target assets
-            filterResultsWithTargets = function(query, targetAssets)
-                local reset = true
-                local oldResults, oldKeyboardPosResult
-                if not reset then
-                    oldResults = app.selection:results()
-                    oldKeyboardPosResult = oldResults[app.selection.keyboardPos]
-                end
-                query = OD_DeepCopy(query) or {}
-                if query.clear then
-                    app.temp.searchInput = ''
-                    app.temp.filter = {}
-                end
-                if query.clearText then
-                    app.temp.searchInput = ''
-                    app.temp.filter.text = ''
-                end
-                query.text = query.text or app.temp.filter.text or ''
-                app.temp.searchResults = {}
-
-                -- Prepare filter
-                local filter = app.temp.filter or {}
-                filter.text = query.text:gsub('%s+', ' ')
-                filter.tags = filter.tags or {}
-
-                -- Add/remove tags
-                if query.addTags then
-                    for tagId, positive in pairs(query.addTags) do
-                        filter.tags[tagId] = positive
-                    end
-                end
-                if query.removeTags then
-                    for _, tagId in ipairs(query.removeTags) do
-                        filter.tags[tagId] = nil
-                    end
-                end
-
-                -- Other filter fields
-                for queryType, queryValue in pairs(query) do
-                    if queryType ~= 'text' and queryType ~= 'addTags' and queryType ~= 'removeTags' then
-                        filter[queryType] = (queryValue ~= 'all') and queryValue or nil
-                    end
-                end
-
-                -- Validate the complete filter using the engine's validation function
-                local validatedFilter, hasIssues = app.engine:validateFilter(filter)
-
-                app.temp.filter = validatedFilter
-
-                -- Filtering assets
-                local assets = app.temp.searchMode == SEARCH_MODE.MAIN and app.engine.assets or app.engine.filterAssets
-                local tagsTable = app.engine.tags
-                local filterTags = validatedFilter.tags
-                local filterText = validatedFilter.text:lower()
-
-                for i = 1, #assets do
-                    local asset = assets[i]
-                    if app.temp.searchMode == SEARCH_MODE.MAIN then
-                        -- Type filters
-                        if (validatedFilter.type and asset.type ~= validatedFilter.type)
-                            or (validatedFilter.fx_type and asset.fx_type ~= validatedFilter.fx_type)
-                            or (validatedFilter.fxDeveloper and (not asset.vendor or asset.vendor ~= validatedFilter.fxDeveloper))
-                            or (validatedFilter.fxFolderId and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInFolder(validatedFilter.fxFolderId)))
-                            or (validatedFilter.fxCategory and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInCategory(validatedFilter.fxCategory)))
-                        then
-                            goto skip
-                        end
-
-                        -- Tag filters
-                        for tagId, positive in pairs(filterTags) do
-                            local hasValue = OD_HasValue(asset.tags, tagId)
-                            if not hasValue then
-                                local tag = tagsTable[tagId]
-                                if tag and tag.descendants then
-                                    for d = 1, #tag.descendants do
-                                        if OD_HasValue(asset.tags, tag.descendants[d].id) then
-                                            hasValue = true
-                                            break
-                                        end
-                                    end
-                                end
-                            end
-                            if (positive and not hasValue) or (not positive and hasValue) then
-                                goto skip
-                            end
-                        end
-                    end
-                    -- Text filter
-                    local foundIndexes = {}
-                    local allWordsFound = true
-                    local filterWords = {}
-                    for word in filterText:gmatch("%S+") do
-                        table.insert(filterWords, word)
-                    end
-
-                    -- Pre-lowercase asset searchText if not already done
-                    if not asset._searchTextLower then
-                        asset._searchTextLower = {}
-                        for j = 1, #asset.searchText do
-                            asset._searchTextLower[j] = asset.searchText[j].text:lower()
-                        end
-                    end
-
-                    for _, word in ipairs(filterWords) do
-                        local wordFound = false
-                        for j = 1, #asset._searchTextLower do
-                            local assetWordLower = asset._searchTextLower[j]
-                            local pos = string.find(assetWordLower, word, 1, true)
-                            if pos then
-                                foundIndexes[j] = foundIndexes[j] or {}
-                                table.insert(foundIndexes[j], { from = pos, to = pos + #word - 1, order = pos })
-                                wordFound = true
-                            end
-                        end
-                        if not wordFound then
-                            allWordsFound = false
-                            break
-                        end
-                    end
-
-                    if allWordsFound then
-                        asset.foundIndexes = foundIndexes
-                        app.temp.searchResults[#app.temp.searchResults + 1] = asset
-                    end
-                    ::skip::
-                end
-
-                -- Handle multiple target assets selection
-                app.selection:empty()
-                local firstTargetIndex = nil
-                if targetAssets and #targetAssets > 0 and #app.temp.searchResults > 0 then
-                    for i, result in ipairs(app.temp.searchResults) do
-                        for _, targetAsset in ipairs(targetAssets) do
-                            if result == targetAsset then
-                                app.selection:add(i)
-                                if not firstTargetIndex then
-                                    firstTargetIndex = i
-                                end
-                                break
-                            end
-                        end
-                    end
-
-                    if firstTargetIndex then
-                        app.selection:setKeyboardPos(firstTargetIndex)
-                    elseif #app.temp.searchResults > 0 then
-                        -- Fallback to first result if no targets found
-                        app.selection:selectOnly(1)
-                    end
-                else
-                    -- Default behavior: make the first result selected and set the keyboard position to it
-                    if #app.temp.searchResults > 0 then
-                        app.selection:selectOnly(1)
-                    else
-                        app.selection:empty()
-                    end
-                end
             end,
             waitForWakeup = function()
                 local cmd = r.GetExtState(Scr.ext_name, 'WAKEUP')
@@ -558,7 +410,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     PDefer(app.flow.waitForWakeup)
                 end
             end,
-            handleSelectedResults = function(ctx, resultContext, contextData, confirm)
+            executeSelectedResults = function(ctx, resultContext, contextData, confirm)
                 local resultCount = app.selection:count()
                 if resultCount >= app.settings.current.numberOfResultsThatRequireConfirmation and not confirm then
                     app.temp.confirmMultipleResults = {
@@ -1183,14 +1035,14 @@ end]]):gsub('$(%w+)', {
                         end
                         if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragToTrack then
                             if app.temp.dragToTrack == -1 then
-                                app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.DRAGGED_TO_BLANK)
+                                app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.DRAGGED_TO_BLANK)
                                 app.logger:logDebug('Will create a new track with ' ..
                                     app.selection:count() .. ' plugin(s)\n')
                             else
                                 app.logger:logDebug('Will add ' ..
                                     app.selection:count() ..
                                     ' plugins to track ' .. select(2, r.GetTrackName(app.temp.dragToTrack)) .. '\n')
-                                app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.DRAGGED_TO_TRACK, app.temp
+                                app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.DRAGGED_TO_TRACK, app.temp
                                     .dragToTrack)
                             end
                             app.temp.dragToTrack = nil
@@ -1339,7 +1191,7 @@ end]]):gsub('$(%w+)', {
                                                             r.time_precise()
                                                     end
                                                     if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
-                                                        app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.MOUSE)
+                                                        app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.MOUSE)
                                                     end
                                                 end
                                             end
@@ -2029,7 +1881,7 @@ end]]):gsub('$(%w+)', {
                             app.temp.ignoreEscapeKey = nil
                         elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter, false) then
                             if not app.temp.tagRename then
-                                app.flow.handleSelectedResults(ctx, RESULT_CONTEXT.KEYBOARD)
+                                app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.KEYBOARD)
                             end
                         elseif app.guiHelpers.isShortcutPressed('selectAllResults', true) then
                             app.selection:selectRange(1, #app.temp.searchResults)
@@ -2049,8 +1901,8 @@ end]]):gsub('$(%w+)', {
                                 local changed = firstResult:batchToggleFavorites(selectedResults, willFavorite)
 
                                 if changed then
-                                    -- Use filterResultsWithTargets to maintain selection on all affected assets
-                                    app.flow.filterResultsWithTargets(nil, selectedResults)
+                                    -- Use filterResults to maintain selection on all affected assets
+                                    app.flow.filterResults(nil, nil, selectedResults)
                                 end
                             end
                         end
@@ -2411,7 +2263,7 @@ end]]):gsub('$(%w+)', {
                         'You selected ' ..
                         app.temp.confirmMultipleResults.count .. ' items.\nAre you sure you want to continue?')
                     if confirm then
-                        app.flow.handleSelectedResults(ctx, app.temp.confirmMultipleResults.resultContext,
+                        app.flow.executeSelectedResults(ctx, app.temp.confirmMultipleResults.resultContext,
                             app.temp.confirmMultipleResults.contextData, true)
                     end
                     if not open then
@@ -2426,7 +2278,7 @@ end]]):gsub('$(%w+)', {
                         'There are ' ..
                         app.temp.confirmMultipleTracks.count .. ' tracks selected.\nAre you sure you want to continue?')
                     if confirm then
-                        app.flow.handleSelectedResults(ctx, app.temp.confirmMultipleTracks.resultContext,
+                        app.flow.executeSelectedResults(ctx, app.temp.confirmMultipleTracks.resultContext,
                             app.temp.confirmMultipleTracks.contextData, true)
                     end
                     if not open then
