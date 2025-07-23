@@ -444,7 +444,10 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 if r.AddRemoveReaScript(true, 0, outputFn, true) == 0 then
                     return false
                 end
-                return true
+                return filename..'.lua'
+            end,
+            createFilterAction = function(actionName, filter)
+                return app.flow.createAction(actionName, "APPLY_FILTER \'..\n[[" .. pickle(filter).."\n]]..\'")
             end,
             checkExternalCommand = function()
                 local raw_cmd = r.GetExtState(Scr.ext_name, 'EXTERNAL_COMMAND')
@@ -791,7 +794,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             -- if ImGui.Button(ctx, "Save as Preset...") then
                             app.temp.showCreatePresetDialog = true
                             app.temp.presetName = ""
-                            app.temp.presetActionExists = false
+                            -- app.temp.presetActionExists = false
                             app.temp.presetLetter = ""
                             app.temp.editingPresetId = nil
                             app.temp.originalPresetFilter = nil
@@ -2264,13 +2267,13 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     local isEditing = app.temp.editingPresetId ~= nil
                     local dialogTitle = isEditing and 'Edit Preset' or 'Create Preset'
 
-                    local function updateActionStatus()
-                        local content = OD_GetContent(r.GetResourcePath() .. "/" .. "reaper-kb.ini")
-                        local statuses = {}
-                        local action_name = 'Custom: ' ..
-                            Scr.no_ext .. ' - ' .. app.temp.presetName .. '.lua'
-                        app.temp.presetActionExists = (content:find(OD_EscapePattern(action_name)) ~= nil)
-                    end
+                    -- local function updateActionStatus()
+                    --     local content = OD_GetContent(r.GetResourcePath() .. "/" .. "reaper-kb.ini")
+                    --     local statuses = {}
+                    --     local action_name = 'Custom: ' ..
+                    --         Scr.no_ext .. ' - ' .. app.temp.presetName .. '.lua'
+                    --     app.temp.presetActionExists = (content:upper():find(OD_EscapePattern(action_name:upper())) ~= nil)
+                    -- end
 
                     if not ImGui.IsPopupOpen(ctx, dialogTitle) then
                         ImGui.OpenPopup(ctx, dialogTitle)
@@ -2280,9 +2283,9 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         if not app.temp.presetLetter then
                             app.temp.presetLetter = ""
                         end
-                        if isEditing then
-                            updateActionStatus()
-                        end
+                        -- if isEditing then
+                        --     updateActionStatus()
+                        -- end
                     end
 
                     ImGui.SetNextWindowSize(ctx, 350, 0, ImGui.Cond_Always)
@@ -2296,12 +2299,12 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         if ImGui.IsWindowAppearing(ctx) then
                             ImGui.SetKeyboardFocusHere(ctx, 0)
                         end
-                        local tempName = app.gui:setting('text', T.PRESET_EDIT_MENU.PRESET_NAME.LABEL,
+                        app.temp.presetName = app.gui:setting('text', T.PRESET_EDIT_MENU.PRESET_NAME.LABEL,
                             T.PRESET_EDIT_MENU.PRESET_NAME.HINT, app.temp.presetName, { hintWindow = 'presetEditWindow' })
-                        if app.temp.presetName ~= tempName then
-                                app.temp.presetName = tempName
-                                updateActionStatus()
-                        end
+                        -- if app.temp.presetName ~= tempName then
+                        --         app.temp.presetName = tempName
+                        --         -- updateActionStatus()
+                        -- end
                         -- Auto-focus the text input when dialog opens
 
                         local tempPresetLetter = app.gui:setting('oneCharacter', T.PRESET_EDIT_MENU.SHORTCUT.LABEL,
@@ -2315,8 +2318,9 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         local canSave = app.temp.presetName and OD_Trim(app.temp.presetName) ~= ""
                         local errorMessage = ""
 
+                        local trimmedName = OD_Trim(app.temp.presetName)
+
                         if canSave then
-                            local trimmedName = OD_Trim(app.temp.presetName)
                             local trimmedLetter = OD_Trim(app.temp.presetLetter)
 
                             -- Check for duplicate name (excluding self when editing)
@@ -2352,7 +2356,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSave) or app.gui:setting('button', T.PRESET_EDIT_MENU.SAVE.LABEL,
                                 T.PRESET_EDIT_MENU.SAVE.HINT, nil,
                                 { label = isEditing and T.PRESET_EDIT_MENU.SAVE.BUTTON_EDIT or T.PRESET_EDIT_MENU.SAVE.BUTTON_CREATE, hintWindow = 'presetEditWindow' }) then
-                            local trimmedName = OD_Trim(app.temp.presetName)
                             local trimmedLetter = OD_Trim(app.temp.presetLetter)
                             if trimmedLetter == "" then trimmedLetter = nil end
 
@@ -2383,25 +2386,23 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             ImGui.EndDisabled(ctx)
                         end
 
-                        if isEditing then
-                            if app.temp.presetActionExists or (not canSave) then ImGui.BeginDisabled(ctx) end
-                            if app.gui:setting('button', T.PRESET_EDIT_MENU.ACTION.LABEL,
-                                    T.PRESET_EDIT_MENU.ACTION.HINT, nil,
-                                    { label = app.temp.presetActionExists and T.PRESET_EDIT_MENU.ACTION.BUTTON_EXISTS or T.PRESET_EDIT_MENU.ACTION.BUTTON, hintWindow = 'presetEditWindow' }) then
-                                local filterAsset = app.engine:getFilterAssetByKey(FILTER_TYPES.PRESET, 'name',
-                                    app.temp.presetName)
-                                if filterAsset:createAction() then
-                                    app.temp.createdPresetAction = true
-                                end
-                                app.temp.showCreatePresetDialog = false
-                                ImGui.CloseCurrentPopup(ctx)
-                            end
-                            if app.temp.presetActionExists or (not canSave) then ImGui.EndDisabled(ctx) end
-                            if app.temp.createdPresetAction then
-                                app.temp.presetActionExists = true
+                        local canExport = (trimmedName ~= '')
+                        if not canExport then ImGui.BeginDisabled(ctx) end
+                        if app.gui:setting('button', T.PRESET_EDIT_MENU.ACTION.LABEL,
+                                T.PRESET_EDIT_MENU.ACTION.HINT, nil,
+                                { label = T.PRESET_EDIT_MENU.ACTION.BUTTON, hintWindow = 'presetEditWindow' }) then
+                            -- local filterAsset = app.engine:getFilterAssetByKey(FILTER_TYPES.PRESET, 'name',
+                            --     app.temp.presetName)
+                            local filterToUse = app.temp.originalPresetFilter or app.temp.filter
+                            local actionName = app.flow.createFilterAction(trimmedName, filterToUse)
+                            if actionName then
                                 app.temp.createdPresetAction = nil
+                                app:msg((T.PRESET_EDIT_MENU.ACTION.SUCCESS):format(actionName))
                             end
+                            app.temp.showCreatePresetDialog = false --TODO: if I don't close the window, the msg disappears. check what's up with that
+                            ImGui.CloseCurrentPopup(ctx)
                         end
+                        if not canExport then ImGui.EndDisabled(ctx) end
 
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.PRESET_EDIT_MENU.CANCEL.LABEL,
                                 T.PRESET_EDIT_MENU.CANCEL.HINT, nil,

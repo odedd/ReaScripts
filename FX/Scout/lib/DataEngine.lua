@@ -789,9 +789,6 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
         end
     end
 
-    local createPresetAction = function(self)
-        return self.app.flow.createAction(self.searchText[1].text, "APPLY_FILTER \'..\n[[" .. pickle(self.preset.filter).."\n]]..\'")
-    end
     if scanAll then
         self.filterAssets = {}
     else
@@ -926,8 +923,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 order = preset.id, -- Use ID as order for now, could be customized later
                 preset = preset,   -- Store reference to preset
                 group = T.FILTER_NAMES[FILTER_TYPES.PRESET],
-                execute = executePresetFilter,
-                createAction = createPresetAction
+                execute = executePresetFilter
             })
             assetCount = assetCount + 1
         end

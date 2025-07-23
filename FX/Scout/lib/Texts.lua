@@ -13,7 +13,7 @@ T.PRESET_EDIT_MENU = {
     ACTION = {
         LABEL = '',
         BUTTON = 'Export as Action',
-        BUTTON_EXISTS = 'Action exists',
+        SUCCESS = 'Successfully created action:\n%s',
         HINT = 'temp',
     },
     SAVE = {
