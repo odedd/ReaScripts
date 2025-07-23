@@ -177,7 +177,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 return results
             end
         }
-        
+
         -- Cache invalidation helpers for optimized filtering
         app.cacheHelpers = {
             invalidateAssetSearchCache = function(self, asset)
@@ -208,7 +208,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 end
             end
         }
-        
+
         app.flow = {
             resetTemp = function()
                 app.temp.confirmation = {}
@@ -226,7 +226,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 app.flow.filterResults(filter or { text = '' })
             end,
             filterResults = function(query, skipReset, targetAssets)
-                
                 local reset = (skipReset == nil) and true or (not skipReset)
                 local assets = app.temp.searchMode == SEARCH_MODE.MAIN and app.engine.assets or app.engine.filterAssets
                 local tagsTable = app.engine.tags
@@ -300,14 +299,14 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             table.insert(filterWords, word)
                         end
                     end
-                    
+
                     -- Optimization 2: Early exit strategies - check if we have any filters
                     local hasTextFilter = #filterWords > 0
-                    local hasTypeFilters = validatedFilter.type or validatedFilter.fx_type or 
-                                          validatedFilter.fxDeveloper or validatedFilter.fxFolderId or 
-                                          validatedFilter.fxCategory
+                    local hasTypeFilters = validatedFilter.type or validatedFilter.fx_type or
+                        validatedFilter.fxDeveloper or validatedFilter.fxFolderId or
+                        validatedFilter.fxCategory
                     local hasTagFilters = next(validatedFilter.tags) ~= nil
-                    
+
                     -- If no filters at all, return all assets (or handle based on search mode)
                     if not hasTextFilter and not hasTypeFilters and not hasTagFilters and app.temp.searchMode == SEARCH_MODE.MAIN then
                         for i = 1, #assets do
@@ -334,12 +333,12 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
                     for i = 1, #assets do
                         local asset = assets[i]
-                        
+
                         -- Ensure foundIndexes is always initialized to prevent nil access
                         if not asset.foundIndexes then
                             asset.foundIndexes = {}
                         end
-                        
+
                         if app.temp.searchMode == SEARCH_MODE.MAIN then
                             -- Optimization 2: Early exit on first failed type condition
                             if hasTypeFilters then
@@ -381,7 +380,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                 end
                             end
                         end
-                        
+
                         -- Optimization 4: Optimize text search
                         if hasTextFilter then
                             -- Optimization 1: Pre-compute search text concatenation with cache invalidation
@@ -391,20 +390,20 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                     parts[j] = asset.searchText[j].text
                                 end
                                 asset._searchTextConcat = table.concat(parts, " "):lower()
-                                asset._searchTextInvalid = false  -- Mark as valid
+                                asset._searchTextInvalid = false -- Mark as valid
                             end
 
                             -- Use single concatenated string search instead of multiple searches
                             local searchTarget = asset._searchTextConcat
                             local allWordsFound = true
-                            
+
                             for _, word in ipairs(filterWords) do
                                 if not searchTarget:find(word, 1, true) then -- plain text search
                                     allWordsFound = false
                                     break
                                 end
                             end
-                            
+
                             if allWordsFound then
                                 -- Only compute foundIndexes if we need highlighting (lazy computation)
                                 if not asset._searchTextLower or asset._searchTextInvalid then
@@ -413,7 +412,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                         asset._searchTextLower[j] = asset.searchText[j].text:lower()
                                     end
                                 end
-                                
+
                                 local foundIndexes = {}
                                 for _, word in ipairs(filterWords) do
                                     for j = 1, #asset._searchTextLower do
@@ -421,11 +420,12 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                         local pos = string.find(assetWordLower, word, 1, true)
                                         if pos then
                                             foundIndexes[j] = foundIndexes[j] or {}
-                                            table.insert(foundIndexes[j], { from = pos, to = pos + #word - 1, order = pos })
+                                            table.insert(foundIndexes[j],
+                                                { from = pos, to = pos + #word - 1, order = pos })
                                         end
                                     end
                                 end
-                                
+
                                 asset.foundIndexes = foundIndexes
                                 app.temp.searchResults[#app.temp.searchResults + 1] = asset
                             end
@@ -1651,7 +1651,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                 ImGui.SetCursorPos(ctx, x + paddingX + triangleW, y + paddingY)
                                 if app.temp.tagRename == tag.id then
                                     local rv
-                                    app.temp.ignoreEscapeKey = true
+                                    -- app.temp.ignoreEscapeKey = true
                                     ImGui.SetNextItemWidth(ctx, tagW)
                                     rv, app.temp.tagRenameBuffer = ImGui.InputText(ctx, '##EditTagName', app.temp
                                         .tagRenameBuffer, ImGui.InputTextFlags_AutoSelectAll)
@@ -1664,7 +1664,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                     if ImGui.IsItemDeactivated(ctx) then
                                         app.temp.tagRename = nil
                                         app.temp.tagRenameBuffer = nil
-                                        app.temp.ignoreEscapeKey = nil
+                                        -- app.temp.ignoreEscapeKey = nil
                                     end
                                 else
                                     ImGui.Text(ctx, tag.name)
@@ -1951,13 +1951,13 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then
                         -- local pressed = false
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) then
-                            if not app.temp.ignoreEscapeKey then
+                            -- if not app.temp.ignoreEscapeKey then
                                 if app.temp.searchInput == '' then
                                     app.hide = true
                                 end
-                            end
+                            -- end
                             -- pressed = true
-                            app.temp.ignoreEscapeKey = nil
+                            -- app.temp.ignoreEscapeKey = nil
                         elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter, false) then
                             if not app.temp.tagRename then
                                 app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.KEYBOARD)
@@ -2186,6 +2186,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                                 function(k, v) return k ~= 'closeScript' end)
                         })
+                    if resetCounter then app.temp.captureCounter = 0 end
                     app.settings.current.shortcuts.hardCloseScript, resetCounter = app.gui:setting('shortcut',
                         T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.LABEL,
                         T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.HINT, app.settings.current.shortcuts.hardCloseScript,
@@ -2194,28 +2195,12 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                 function(k, v) return k ~= 'hardCloseScript' end)
                         })
                     if resetCounter then app.temp.captureCounter = 0 end
-                    app.settings.current.shortcuts.addSend, resetCounter = app.gui:setting('shortcut',
-                        T.SETTINGS.SHORTCUTS.NEW_SEND.LABEL,
-                        T.SETTINGS.SHORTCUTS.NEW_SEND.HINT, app.settings.current.shortcuts.addSend,
+                    app.settings.current.shortcuts.resetFilters, resetCounter = app.gui:setting('shortcut',
+                        T.SETTINGS.SHORTCUTS.CLEAR_FILTERS.LABEL,
+                        T.SETTINGS.SHORTCUTS.CLEAR_FILTERS.HINT, app.settings.current.shortcuts.resetFilters,
                         {
                             existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                function(k, v) return k ~= 'addSend' end)
-                        })
-                    if resetCounter then app.temp.captureCounter = 0 end
-                    app.settings.current.shortcuts.addRecv, resetCounter = app.gui:setting('shortcut',
-                        T.SETTINGS.SHORTCUTS.NEW_RECV.LABEL,
-                        T.SETTINGS.SHORTCUTS.NEW_RECV.HINT, app.settings.current.shortcuts.addRecv,
-                        {
-                            existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                function(k, v) return k ~= 'addRecv' end)
-                        })
-                    if resetCounter then app.temp.captureCounter = 0 end
-                    app.settings.current.shortcuts.addHW, resetCounter = app.gui:setting('shortcut',
-                        T.SETTINGS.SHORTCUTS.NEW_HW.LABEL,
-                        T.SETTINGS.SHORTCUTS.NEW_HW.HINT, app.settings.current.shortcuts.addHW,
-                        {
-                            existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                function(k, v) return k ~= 'addHW' end)
+                                function(k, v) return k ~= 'resetFilters' end)
                         })
                     if resetCounter then app.temp.captureCounter = 0 end
                     app.settings.current.shortcuts.markFavorite, resetCounter = app.gui:setting('shortcut',
@@ -2279,7 +2264,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     app.draw.hint(ctx, 'settings')
                     app:drawMsg()
                     if app.temp.captureCounter > 3 and OD_IsGlobalKeyDown(OD_KEYCODES.ESCAPE) then
-                        app.temp.ignoreEscapeKey = true
                         OD_ReleaseGlobalKeys()
                         app.engine:sync(true)
                         ImGui.CloseCurrentPopup(ctx)
@@ -2582,7 +2566,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         end
                     end
 
-                    ImGui.SetNextWindowSize(ctx, 550 * app.gui.scale, 0, ImGui.Cond_Always)
+                    ImGui.SetNextWindowSize(ctx, 350 * app.gui.scale, 0, ImGui.Cond_Always)
                     app.gui:pushStyles(app.gui.st.vars.popups)
 
                     local visible, open = ImGui.BeginPopupModal(ctx, 'Edit Preset', true,
@@ -2712,13 +2696,13 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
             app.gui:pushColors(app.gui.st.col.main)
             app.gui:pushStyles(app.gui.st.vars.main)
             ImGui.PushFont(ctx, app.gui.st.fonts.default)
-                if app.logger.profile then Profile.start() end
+            if app.logger.profile then Profile.start() end
 
-                app.draw.mainWindow(ctx)
-                
-                if app.logger.profile then
-                    Profile.stop()
-                end
+            app.draw.mainWindow(ctx)
+
+            if app.logger.profile then
+                Profile.stop()
+            end
             ImGui.PopFont(ctx)
             app.gui:popColors(app.gui.st.col.main)
             app.gui:popStyles(app.gui.st.vars.main)
@@ -2785,7 +2769,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
         app.logger:logTable(app.logger.LOG_LEVEL.DEBUG, 'Settings', app.settings.current)
         app.engine:init()
         app.engine:sync()
-        
+
         -- Hook cache invalidation into engine operations
         local originalAssembleAssets = app.engine.assembleAssets
         app.engine.assembleAssets = function(self)
@@ -2793,14 +2777,14 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
             -- Invalidate search caches when assets are reassembled
             app.cacheHelpers:invalidateAllAssetSearchCaches()
         end
-        
+
         local originalAssembleFilterAssets = app.engine.assembleFilterAssets
         app.engine.assembleFilterAssets = function(self, ...)
             originalAssembleFilterAssets(self, ...)
             -- Invalidate search caches when filter assets are reassembled
             app.cacheHelpers:invalidateAllAssetSearchCaches()
         end
-        
+
         app.flow.setPage(APP_PAGE.SEARCH)
         PDefer(app.loop)
     end

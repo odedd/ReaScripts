@@ -61,17 +61,9 @@ T.SETTINGS = {
             LABEL = 'Hard Close script',
             HINT = 'Shortcut to hard close script (without persistant mode).',
         },
-        NEW_SEND = {
-            LABEL = 'New send',
-            HINT = 'Shortcut to create a new send.',
-        },
-        NEW_RECV = {
-            LABEL = 'New receive',
-            HINT = 'Shortcut to create a new receive.',
-        },
-        NEW_HW = {
-            LABEL = 'New hardware send',
-            HINT = 'Shortcut to create a new hardware send.',
+        CLEAR_FILTERS = {
+            LABEL = 'Clear Filters',
+            HINT = 'Clear all filters.',
         },
         MARK_FAVORITE = {
             LABEL = 'Mark favorite',
