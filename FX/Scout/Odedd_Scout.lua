@@ -444,10 +444,10 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 if r.AddRemoveReaScript(true, 0, outputFn, true) == 0 then
                     return false
                 end
-                return filename..'.lua'
+                return filename .. '.lua'
             end,
             createFilterAction = function(actionName, filter)
-                return app.flow.createAction(actionName, "APPLY_FILTER \'..\n[[" .. pickle(filter).."\n]]..\'")
+                return app.flow.createAction(actionName, "APPLY_FILTER \'..\n[[" .. pickle(filter) .. "\n]]..\'")
             end,
             checkExternalCommand = function()
                 local raw_cmd = r.GetExtState(Scr.ext_name, 'EXTERNAL_COMMAND')
@@ -791,12 +791,10 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             app.flow.filterResults({ clear = true })
                         end
                         if app.guiHelpers.iconButton(ctx, 'DISK', app.gui.st.col.buttons.activeFilterAction) then
-                            -- if ImGui.Button(ctx, "Save as Preset...") then
-                            app.temp.showCreatePresetDialog = true
+                            app.temp.showExportFilterDialog = true
                             app.temp.presetName = ""
-                            -- app.temp.presetActionExists = false
-                            app.temp.editingPresetId = nil
-                            app.temp.originalPresetFilter = nil
+                            app.temp.actionName = ""
+                            app.temp.magicWordName = ""
                         end
                         ImGui.SameLine(ctx)
                         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
@@ -1122,10 +1120,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
                             if ImGui.BeginTable(ctx, "##searchResults", 1, tableFlags, 0, searchResultsH) then
                                 app.temp.tableScrollY = ImGui.GetScrollY(ctx)
-                                if app.temp.scrollToTop then
-                                    ImGui.SetScrollY(ctx, 0)
-                                    app.temp.scrollToTop = false
-                                end
 
                                 ImGui.ListClipper_Begin(app.gui.searchResultsClipper, #flatRows)
                                 firstGroup = nil
@@ -1310,7 +1304,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 local drawTagSeparator = function()
                     -- Separator Resize Line
                     local separatorX, separatorY = ImGui.GetCursorScreenPos(ctx)
-                    ImGui.DrawList_AddLine(ImGui.GetForegroundDrawList(ctx), separatorX, separatorY, separatorX,
+                    ImGui.DrawList_AddLine(ImGui.GetWindowDrawList(ctx), separatorX, separatorY, separatorX,
                         separatorY + h,
                         ImGui.GetStyleColor(ctx, ImGui.Col_Separator))
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
@@ -1712,7 +1706,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                             if ImGui.BeginMenu(ctx, 'Edit Preset...##editPreset') then
                                                 for presetId, preset in OD_PairsByOrder(app.engine.presets) do
                                                     if ImGui.MenuItem(ctx, preset.name .. '##editPreset_' .. presetId) then
-                                                        app.temp.showCreatePresetDialog = true
+                                                        app.temp.showEditPresetDialog = true
                                                         app.temp.presetName = preset.name
                                                         app.temp.editingPresetId = presetId
                                                         app.temp.originalPresetFilter = preset
@@ -1918,8 +1912,18 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         end
                     end
                     if rv then
-                        app.flow.filterResults({ text = app.temp.searchInput })
-                        app.temp.scrollToTop = true
+                        local foundWord = nil
+                        for word, wordData in pairs(app.userdata.current.magicWords) do
+                            if word:upper().. ' ' == app.temp.searchInput:upper() then
+                                foundWord = wordData
+                                break
+                            end
+                        end
+                        if foundWord and foundWord.filter then
+                            app.flow.filterResults(foundWord.filter)
+                        else
+                            app.flow.filterResults({ text = app.temp.searchInput })
+                        end
                     end
                 end
                 local drawIconMenu = function(ctx, buttons)
@@ -2260,11 +2264,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
                 end
             end,
-            createPresetDialog = function(ctx)
-                if app.temp.showCreatePresetDialog then
-                    local isEditing = app.temp.editingPresetId ~= nil
-                    local dialogTitle = isEditing and 'Edit Preset' or 'Create Preset'
-
+            exportFilterDialog = function(ctx)
+                if app.temp.showExportFilterDialog then
                     -- local function updateActionStatus()
                     --     local content = OD_GetContent(r.GetResourcePath() .. "/" .. "reaper-kb.ini")
                     --     local statuses = {}
@@ -2273,115 +2274,131 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     --     app.temp.presetActionExists = (content:upper():find(OD_EscapePattern(action_name:upper())) ~= nil)
                     -- end
 
-                    if not ImGui.IsPopupOpen(ctx, dialogTitle) then
-                        ImGui.OpenPopup(ctx, dialogTitle)
+                    if not ImGui.IsPopupOpen(ctx, 'Save Filter Set') then
+                        ImGui.OpenPopup(ctx, 'Save Filter Set')
                         if not app.temp.presetName then
                             app.temp.presetName = ""
                         end
-                        -- if isEditing then
-                        --     updateActionStatus()
-                        -- end
+                        if not app.temp.actionName then
+                            app.temp.actionName = ""
+                        end
+                        if not app.temp.magicWordName then
+                            app.temp.magicWordName = ""
+                        end
                     end
 
-                    ImGui.SetNextWindowSize(ctx, 350, 0, ImGui.Cond_Always)
+                    ImGui.SetNextWindowSize(ctx, 550 * app.gui.scale, 0, ImGui.Cond_Always)
                     app.gui:pushStyles(app.gui.st.vars.popups)
 
-                    local visible, open = ImGui.BeginPopupModal(ctx, dialogTitle, true,
+                    local visible, open = ImGui.BeginPopupModal(ctx, 'Save Filter Set', true,
                         ImGui.WindowFlags_AlwaysAutoResize)
                     app.gui:popStyles(app.gui.st.vars.popups)
 
                     if visible then
+                        ImGui.SeparatorText(ctx, 'Presets')
+                        ImGui.TextWrapped(ctx, 'Save as a preset to be loaded from the filters menu.')
+
                         if ImGui.IsWindowAppearing(ctx) then
                             ImGui.SetKeyboardFocusHere(ctx, 0)
                         end
-                        app.temp.presetName = app.gui:setting('text', T.PRESET_EDIT_MENU.PRESET_NAME.LABEL,
-                            T.PRESET_EDIT_MENU.PRESET_NAME.HINT, app.temp.presetName, { hintWindow = 'presetEditWindow' })
-                        -- if app.temp.presetName ~= tempName then
-                        --         app.temp.presetName = tempName
-                        --         -- updateActionStatus()
-                        -- end
-                        -- Auto-focus the text input when dialog opens
-
-                        local canSave = app.temp.presetName and OD_Trim(app.temp.presetName) ~= ""
+                        app.temp.presetName = app.gui:setting('text', T.EDIT_FILTER_DIALOG.PRESET_NAME.LABEL,
+                            T.EDIT_FILTER_DIALOG.PRESET_NAME.HINT, app.temp.presetName,
+                            { hintWindow = 'editFilterWindow' })
+                        local trimmedName = OD_Trim(app.temp.presetName)
+                        local canSavePreset = trimmedName ~= ""
                         local errorMessage = ""
 
-                        local trimmedName = OD_Trim(app.temp.presetName)
 
-                        if canSave then
-
+                        if canSavePreset then
                             -- Check for duplicate name (excluding self when editing)
                             for presetId, preset in pairs(app.engine.presets) do
                                 if preset.name:lower() == trimmedName:lower() and presetId ~= app.temp.editingPresetId then
-                                    canSave = false
+                                    canSavePreset = false
                                     errorMessage = "A preset with this name exists"
                                     break
                                 end
                             end
-
-
                         end
                         -- Show error message if any
                         if errorMessage ~= "" then
-                            app:setHint('presetEditWindow', errorMessage, 'hintError')
+                            app:setHint('editFilterWindow', errorMessage, 'hintError')
                         end
 
                         -- Buttons
-                        if not canSave then
+                        if not canSavePreset then
                             ImGui.BeginDisabled(ctx)
                         end
 
-                        if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSave) or app.gui:setting('button', T.PRESET_EDIT_MENU.SAVE.LABEL,
-                                T.PRESET_EDIT_MENU.SAVE.HINT, nil,
-                                { label = isEditing and T.PRESET_EDIT_MENU.SAVE.BUTTON_EDIT or T.PRESET_EDIT_MENU.SAVE.BUTTON_CREATE, hintWindow = 'presetEditWindow' }) then
-                            if isEditing then
-                                -- Update existing preset - use original filter, only update name
-                                local filterToUse = app.temp.originalPresetFilter or app.temp.filter
-                                local preset = app.userdata:updatePreset(app.temp.editingPresetId, trimmedName,
-                                    filterToUse)
-                                if preset then
-                                    app.logger:logInfo('Updated preset "' .. preset.name .. '"')
-                                    -- Refresh the engine presets
-                                    app.engine:refreshPresets()
-                                end
-                            else
-                                -- Create new preset - use current active filters
-                                local preset = app.userdata:createPreset(trimmedName, app.temp.filter)
-                                if preset then
-                                    app.logger:logInfo('Created preset "' .. preset.name .. '"')
-                                    -- Refresh the engine presets
-                                    app.engine:refreshPresets()
-                                end
+                        if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSavePreset) or app.gui:setting('button', T.EDIT_FILTER_DIALOG.SAVE_PRESET.LABEL,
+                                T.EDIT_FILTER_DIALOG.SAVE_PRESET.HINT, nil,
+                                { label = T.EDIT_FILTER_DIALOG.SAVE_PRESET.BUTTON_CREATE, hintWindow = 'editFilterWindow' }) then
+                            -- Create new preset - use current active filters
+                            local preset = app.userdata:createPreset(trimmedName, app.temp.filter)
+                            if preset then
+                                app.logger:logInfo('Created preset "' .. preset.name .. '"')
+                                -- Refresh the engine presets
+                                app.engine:refreshPresets()
                             end
-                            app.temp.showCreatePresetDialog = false
+                            app.temp.showExportFilterDialog = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
 
-                        if not canSave then
+                        if not canSavePreset then
                             ImGui.EndDisabled(ctx)
                         end
 
-                        local canExport = (trimmedName ~= '')
-                        if not canExport then ImGui.BeginDisabled(ctx) end
-                        if app.gui:setting('button', T.PRESET_EDIT_MENU.ACTION.LABEL,
-                                T.PRESET_EDIT_MENU.ACTION.HINT, nil,
-                                { label = T.PRESET_EDIT_MENU.ACTION.BUTTON, hintWindow = 'presetEditWindow' }) then
-                            -- local filterAsset = app.engine:getFilterAssetByKey(FILTER_TYPES.PRESET, 'name',
-                            --     app.temp.presetName)
-                            local filterToUse = app.temp.originalPresetFilter or app.temp.filter
-                            local actionName = app.flow.createFilterAction(trimmedName, filterToUse)
-                            if actionName then
-                                app.temp.createdPresetAction = nil
-                                app:msg((T.PRESET_EDIT_MENU.ACTION.SUCCESS):format(actionName))
+                        ImGui.SeparatorText(ctx, 'Action')
+                        ImGui.TextWrapped(ctx,
+                            'Create a Reaper action which will launch Scout with the filter already loaded.')
+
+                        app.temp.actionName = app.gui:setting('text', T.EDIT_FILTER_DIALOG.ACTION_NAME.LABEL,
+                            T.EDIT_FILTER_DIALOG.ACTION_NAME.HINT, app.temp.actionName,
+                            { hintWindow = 'editFilterWindow' })
+
+                        local trimmedActionName = OD_Trim(app.temp.actionName)
+                        local canExportAction = trimmedActionName ~= ""
+
+                        if not canExportAction then ImGui.BeginDisabled(ctx) end
+                        if app.gui:setting('button', T.EDIT_FILTER_DIALOG.EXPORT_ACTION.LABEL,
+                                T.EDIT_FILTER_DIALOG.EXPORT_ACTION.HINT, nil,
+                                { label = T.EDIT_FILTER_DIALOG.EXPORT_ACTION.BUTTON, hintWindow = 'editFilterWindow' }) then
+                            local createdActionName = app.flow.createFilterAction(trimmedActionName, app.temp.filter)
+                            if createdActionName then
+                                app:msg((T.EDIT_FILTER_DIALOG.EXPORT_ACTION.SUCCESS):format(createdActionName))
                             end
-                            app.temp.showCreatePresetDialog = false --TODO: if I don't close the window, the msg disappears. check what's up with that
+                            app.temp.showExportFilterDialog = false --TODO: if I don't close the window, the msg disappears. check what's up with that
                             ImGui.CloseCurrentPopup(ctx)
                         end
-                        if not canExport then ImGui.EndDisabled(ctx) end
+                        if not canExportAction then ImGui.EndDisabled(ctx) end
 
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.PRESET_EDIT_MENU.CANCEL.LABEL,
-                                T.PRESET_EDIT_MENU.CANCEL.HINT, nil,
-                                { label = T.PRESET_EDIT_MENU.CANCEL.BUTTON, hintWindow = 'presetEditWindow' }) then
-                            app.temp.showCreatePresetDialog = false
+                        ImGui.SeparatorText(ctx, 'Magic Words')
+                        ImGui.TextWrapped(ctx,
+                            'Create a Magic Word. When you start a search with a magic word followed by a space, the filter set gets immediately loaded')
+
+                        app.temp.magicWordName = app.gui:setting('text', T.EDIT_FILTER_DIALOG.MAGIC_WORD_NAME.LABEL,
+                            T.EDIT_FILTER_DIALOG.MAGIC_WORD_NAME.HINT, app.temp.magicWordName,
+                            { hintWindow = 'editFilterWindow' })
+
+                        local trimmedMagicWord = OD_Trim(app.temp.magicWordName)
+                        local canSaveMagicWord = trimmedMagicWord ~= ""
+
+                        if not canSaveMagicWord then ImGui.BeginDisabled(ctx) end
+                        if app.gui:setting('button', T.EDIT_FILTER_DIALOG.EXPORT_MAGIC_WORD.LABEL,
+                                T.EDIT_FILTER_DIALOG.EXPORT_MAGIC_WORD.HINT, nil,
+                                { label = T.EDIT_FILTER_DIALOG.EXPORT_MAGIC_WORD.BUTTON, hintWindow = 'editFilterWindow' }) then
+                            local createdMagicWord = app.userdata:createMagicWord(trimmedMagicWord, app.temp.filter)
+                            if createdMagicWord then
+                                app:msg((T.EDIT_FILTER_DIALOG.EXPORT_MAGIC_WORD.SUCCESS):format(trimmedMagicWord))
+                            end
+                            app.temp.showExportFilterDialog = false --TODO: if I don't close the window, the msg disappears. check what's up with that
+                            ImGui.CloseCurrentPopup(ctx)
+                        end
+                        if not canSaveMagicWord then ImGui.EndDisabled(ctx) end
+
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EDIT_FILTER_DIALOG.CLOSE.LABEL,
+                                T.EDIT_FILTER_DIALOG.CLOSE.HINT, nil,
+                                { label = T.EDIT_FILTER_DIALOG.CLOSE.BUTTON, hintWindow = 'editFilterWindow' }) then
+                            app.temp.showExportFilterDialog = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
 
@@ -2408,13 +2425,101 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         --     ImGui.PopStyleColor(ctx, 3)
                         -- end
 
-                        app.draw.hint(ctx, 'presetEditWindow')
-                        -- hintWindow = 'presetEditWindow'
+                        app.draw.hint(ctx, 'editFilterWindow')
+                        -- hintWindow = 'editFilterWindow'
                         ImGui.EndPopup(ctx)
                     end
 
                     if not open then
-                        app.temp.showCreatePresetDialog = false
+                        app.temp.showExportFilterDialog = false
+                        app.temp.presetName = nil
+                        app.temp.actionName = nil
+                        app.temp.magicWordName = nil
+                        app.temp.editingPresetId = nil
+                        app.temp.originalPresetFilter = nil
+                    end
+                end
+            end,
+            editPresetDialog = function(ctx)
+                if app.temp.showEditPresetDialog then
+                    if not ImGui.IsPopupOpen(ctx, 'Edit Preset') then
+                        ImGui.OpenPopup(ctx, 'Edit Preset')
+                        if not app.temp.presetName then
+                            app.temp.presetName = ""
+                        end
+                    end
+
+                    ImGui.SetNextWindowSize(ctx, 550 * app.gui.scale, 0, ImGui.Cond_Always)
+                    app.gui:pushStyles(app.gui.st.vars.popups)
+
+                    local visible, open = ImGui.BeginPopupModal(ctx, 'Edit Preset', true,
+                        ImGui.WindowFlags_AlwaysAutoResize)
+                    app.gui:popStyles(app.gui.st.vars.popups)
+
+                    if visible then
+                        if ImGui.IsWindowAppearing(ctx) then
+                            ImGui.SetKeyboardFocusHere(ctx, 0)
+                        end
+                        app.temp.presetName = app.gui:setting('text', T.EDIT_FILTER_DIALOG.PRESET_NAME.LABEL,
+                            T.EDIT_FILTER_DIALOG.PRESET_NAME.HINT, app.temp.presetName,
+                            { hintWindow = 'editFilterWindow' })
+                        local trimmedName = OD_Trim(app.temp.presetName)
+                        local canSavePreset = trimmedName ~= ""
+                        local errorMessage = ""
+
+                        if canSavePreset then
+                            -- Check for duplicate name (excluding self when editing)
+                            for presetId, preset in pairs(app.engine.presets) do
+                                if preset.name:lower() == trimmedName:lower() and presetId ~= app.temp.editingPresetId then
+                                    canSavePreset = false
+                                    errorMessage = "A preset with this name exists"
+                                    break
+                                end
+                            end
+                        end
+                        -- Show error message if any
+                        if errorMessage ~= "" then
+                            app:setHint('editFilterWindow', errorMessage, 'hintError')
+                        end
+
+                        -- Buttons
+                        if not canSavePreset then
+                            ImGui.BeginDisabled(ctx)
+                        end
+
+                        if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSavePreset) or app.gui:setting('button', T.EDIT_FILTER_DIALOG.SAVE_PRESET.LABEL,
+                                T.EDIT_FILTER_DIALOG.SAVE_PRESET.HINT, nil,
+                                { label = T.EDIT_FILTER_DIALOG.SAVE_PRESET.BUTTON_EDIT, hintWindow = 'editFilterWindow', divideWidth = 2 }) then
+                            -- Update existing preset - use original filter, only update name
+                            local preset = app.userdata:updatePreset(app.temp.editingPresetId, trimmedName,
+                                app.temp.originalPresetFilter)
+                            if preset then
+                                app.logger:logInfo('Updated preset "' .. preset.name .. '"')
+                                -- Refresh the engine presets
+                                app.engine:refreshPresets()
+                            end
+
+                            app.temp.showEditPresetDialog = false
+                            ImGui.CloseCurrentPopup(ctx)
+                        end
+
+                        if not canSavePreset then
+                            ImGui.EndDisabled(ctx)
+                        end
+
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EDIT_FILTER_DIALOG.CLOSE.LABEL,
+                                T.EDIT_FILTER_DIALOG.CLOSE.HINT, nil,
+                                { label = T.EDIT_FILTER_DIALOG.CLOSE.BUTTON, hintWindow = 'editFilterWindow' }, true) then
+                            app.temp.showEditPresetDialog = false
+                            ImGui.CloseCurrentPopup(ctx)
+                        end
+
+                        app.draw.hint(ctx, 'editFilterWindow')
+                        ImGui.EndPopup(ctx)
+                    end
+
+                    if not open then
+                        app.temp.showEditPresetDialog = false
                         app.temp.presetName = nil
                         app.temp.editingPresetId = nil
                         app.temp.originalPresetFilter = nil
@@ -2456,7 +2561,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
                     app.draw.hint(ctx, 'main')
                     app.draw.confirmations(ctx)
-                    app.draw.createPresetDialog(ctx)
+                    app.draw.exportFilterDialog(ctx)
+                    app.draw.editPresetDialog(ctx)
                     app.draw.settings(ctx)
                     app:drawMsg()
                     ImGui.End(ctx)

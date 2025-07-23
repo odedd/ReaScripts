@@ -1,24 +1,38 @@
 -- @noindex
 T = {}
 
-T.PRESET_EDIT_MENU = {
+T.EDIT_FILTER_DIALOG = {
     PRESET_NAME = {--TODO: Update this
         LABEL = 'Preset Name',
         HINT = 'A name for the new preset',
     },
-    ACTION = {
+    ACTION_NAME = {--TODO: Update this
+        LABEL = 'Action Name',
+        HINT = 'A name for the new action',
+    },
+    MAGIC_WORD_NAME = {--TODO: Update this
+        LABEL = 'Magic Word',
+        HINT = 'A name for the new magic word',
+    },
+    EXPORT_ACTION = {
         LABEL = '',
         BUTTON = 'Export as Action',
         SUCCESS = 'Successfully created action:\n%s',
         HINT = 'temp',
     },
-    SAVE = {
+    EXPORT_MAGIC_WORD = {
         LABEL = '',
-        BUTTON_CREATE = 'Create Preset',
+        BUTTON = 'Create Magic Word',
+        SUCCESS = 'Successfully created Magic Word:\n%s',
+        HINT = 'temp',
+    },
+    SAVE_PRESET = {
+        LABEL = '',
+        BUTTON_CREATE = 'Save as Preset',
         BUTTON_EDIT = 'Save',
         HINT = 'temp',
     },
-    CANCEL = {
+    CLOSE = {
         LABEL = '',
         BUTTON = 'Close',
         HINT = 'temp',

@@ -1474,7 +1474,7 @@ function PB_UserData:createMagicWord(word, filter)
         return nil
     end
 
-    if not self.current.magicWords[word] then
+    if self.current.magicWords[word] then
         self.app.logger:logError('Cannot create magic word: already exists')
         return nil
     end
@@ -1482,7 +1482,7 @@ function PB_UserData:createMagicWord(word, filter)
     -- Create a deep copy of the filter to store
     local magicWord = OD_DeepCopy(filter)
 
-    self.current.magciWords[word] = {
+    self.current.magicWords[word] = {
         order = OD_TableLength(self.current.magicWords),
         filter = filter
     }
@@ -1490,11 +1490,6 @@ function PB_UserData:createMagicWord(word, filter)
     self.app.logger:logInfo('Created magicWord \'' .. word)
 
     self:save()
-
-    -- Notify engine to refresh its runtime data
-    if self.app.engine then
-        self.app.engine:getMagicWords(true)
-    end
 
     return magicWord
 end
@@ -1511,11 +1506,6 @@ function PB_UserData:deleteMagicWord(word)
 
     self:save()
 
-    -- Notify engine to refresh its runtime data
-    if self.app.engine then
-        self.app.engine:getMagicWords(true)
-    end
-
     return true
 end
 
@@ -1525,34 +1515,29 @@ function PB_UserData:renameMagicWord(word, newName)
         return false
     end
 
-    if not self.current.magciWords[word] then
+    if not self.current.magicWords[word] then
         self.app.logger:logError('Cannot rename word ' .. word .. ' to ' .. newName .. ': word ' .. word .. ' not found')
         return false
     end
 
-    if self.current.magciWords[newName] then
+    if self.current.magicWords[newName] then
         self.app.logger:logError('Cannot rename word ' ..
         word .. ' to ' .. newName .. ': word ' .. newName .. ' already exists')
         return false
     end
 
-    self.current.magciWords[newName] = OD_DeepCopy(self.current.magciWords[word])
-    self.current.magciWords[word] = nil
+    self.current.magicWords[newName] = OD_DeepCopy(self.current.magicWords[word])
+    self.current.magicWords[word] = nil
 
     self.app.logger:logInfo('Renamed word from \'' .. word .. '\' to \'' .. newName .. '\'')
 
     self:save()
 
-    -- Notify engine to refresh its runtime data
-    if self.app.engine then
-        self.app.engine:getMagicWords(true)
-    end
-
     return true
 end
 
 function PB_UserData:updateMagicWord(word, newName, filter, order)
-    if not self.current.magciWords[word] then
+    if not self.current.magicWords[word] then
         self.app.logger:logError('Cannot update word: word ' .. word .. ' not found')
         return nil
     end
@@ -1562,7 +1547,7 @@ function PB_UserData:updateMagicWord(word, newName, filter, order)
         return nil
     end
 
-    if self.current.magciWords[newName] then
+    if self.current.magicWords[newName] then
         self.app.logger:logError('Cannot rename word ' ..
         word .. ' to ' .. newName .. ': word ' .. newName .. ' already exists')
         return false
@@ -1575,29 +1560,24 @@ function PB_UserData:updateMagicWord(word, newName, filter, order)
 
     local presetFilter = OD_DeepCopy(filter)
     -- Create a deep copy of the filter to store
-    self.current.magciWords[newName] = OD_DeepCopy(self.current.magciWords[word])
-    self.current.magciWords[newName].filter = presetFilter
-    self.current.magciWords[newName].order = order or self.current.magciWords[word].order
-    self.current.magciWords[word] = nil
+    self.current.magicWords[newName] = OD_DeepCopy(self.current.magicWords[word])
+    self.current.magicWords[newName].filter = presetFilter
+    self.current.magicWords[newName].order = order or self.current.magicWords[word].order
+    self.current.magicWords[word] = nil
 
     self.app.logger:logInfo('Updated word \'' .. word)
 
     self:save()
 
-    -- Notify engine to refresh its runtime data
-    if self.app.engine then
-        self.app.engine:getMagicWords(true)
-    end
-
-    return self.current.magciWords[newName]
+    return self.current.magicWords[newName]
 end
 
 function PB_UserData:getMagicWord(word)
-    return self.current.magciWords[word]
+    return self.current.magicWords[word]
 end
 
 function PB_UserData:getAllMagicWords()
-    return self.current.magciWords
+    return self.current.magicWords
 end
 
 -- * local
