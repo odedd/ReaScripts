@@ -431,7 +431,8 @@ PB_DataEngine.updateFilterMenus = function(self, options)
         for index, presetData in ipairs(presetNames) do
             FILTER_MENU[FILTER_TYPES.PRESET].items[presetData.name] = {
                 order = index,
-                query = { preset = presetData.id }
+                query = { preset = presetData.id },
+                shortcut = presetData.word
             }
         end
         self.app.logger:logDebug('Updated presets filter menu with ' .. #presetNames .. ' presets')

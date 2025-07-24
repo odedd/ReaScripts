@@ -1880,11 +1880,11 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                                 elseif value.query then
                                                     local selected = true
                                                     for k, v in pairs(value.query) do
-                                                        if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then --BUG: this always results to value.query[k]
+                                                        if app.temp.filter[k] ~= value.query[k] then
                                                             selected = false
                                                         end
                                                     end
-                                                    if ImGui.MenuItem(ctx, item, nil, selected) then
+                                                    if ImGui.MenuItem(ctx, item, value.shortcut, selected) then
                                                         app.flow.filterResults(value.query)
                                                     end
                                                 end
