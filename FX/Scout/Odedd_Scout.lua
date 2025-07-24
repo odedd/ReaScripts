@@ -900,10 +900,19 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             app.flow.filterResults({ clear = true })
                         end
                         if app.guiHelpers.iconButton(ctx, 'DISK', app.gui.st.col.buttons.activeFilterAction) then
-                            app.temp.showCreatePresetDialog = true
-                            app.temp.presetName = ""
-                            app.temp.actionName = ""
-                            app.temp.presetWord = ""
+                            ImGui.OpenPopup(ctx, 'Save Filter Set Context Menu')
+                        end
+                        if ImGui.BeginPopup(ctx, 'Save Filter Set Context Menu') then
+                            if ImGui.MenuItem(ctx, 'Save preset...') then
+                                app.temp.showCreatePresetDialog = true
+                                app.temp.presetName = ""
+                                app.temp.presetWord = ""
+                            end
+                            if ImGui.MenuItem(ctx, 'Create reaper action...') then
+                                app.temp.showExportActionDialog = true
+                                app.temp.actionName = ""
+                            end
+                            ImGui.EndPopup(ctx)
                         end
                         ImGui.SameLine(ctx)
                         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
@@ -2145,10 +2154,10 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     ImGui.SetNextWindowPos(ctx, app.settings.current.settingsWindowPos[1],
                         app.settings.current.settingsWindowPos[2], ImGui.Cond_Appearing)
                 end
-                app.gui:pushStyles(app.gui.st.vars.popups)
+                app.gui:pushStyles(app.gui.st.vars.popupsTitle)
                 local visible, open = ImGui.BeginPopupModal(ctx, Scr.name .. ' Settings##settingsWindow', true,
                     ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_AlwaysAutoResize)
-                app.gui:popStyles(app.gui.st.vars.popups)
+                app.gui:popStyles(app.gui.st.vars.popupsTitle)
 
                 if visible then
                     app.temp.settingsWindowOpen = true
@@ -2309,10 +2318,10 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
                 ImGui.SetNextWindowPos(ctx, center[1], center[2], ImGui.Cond_Appearing, 0.5, 0.5)
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowTitleAlign, 0.5, 0.5)
-                app.gui:pushStyles(app.gui.st.vars.popups)
+                app.gui:pushStyles(app.gui.st.vars.popupsTitle)
 
                 local open, visible = ImGui.BeginPopupModal(ctx, id, nil, ImGui.WindowFlags_NoResize)
-                app.gui:popStyles(app.gui.st.vars.popups)
+                app.gui:popStyles(app.gui.st.vars.popupsTitle)
 
                 if open then
                     local width = select(1, ImGui.GetContentRegionAvail(ctx))
@@ -2405,11 +2414,11 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
 
                     ImGui.SetNextWindowSize(ctx, 550 * app.gui.scale, 0, ImGui.Cond_Always)
-                    app.gui:pushStyles(app.gui.st.vars.popups)
+                    app.gui:pushStyles(app.gui.st.vars.popupsTitle)
 
                     local visible, open = ImGui.BeginPopupModal(ctx, title, true,
                         ImGui.WindowFlags_AlwaysAutoResize)
-                    app.gui:popStyles(app.gui.st.vars.popups)
+                    app.gui:popStyles(app.gui.st.vars.popupsTitle)
 
                     if visible then
                         if ImGui.IsWindowAppearing(ctx) then
@@ -2549,11 +2558,11 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
 
                     ImGui.SetNextWindowSize(ctx, 350 * app.gui.scale, 0, ImGui.Cond_Always)
-                    app.gui:pushStyles(app.gui.st.vars.popups)
+                    app.gui:pushStyles(app.gui.st.vars.popupsTitle)
 
                     local visible, open = ImGui.BeginPopupModal(ctx, 'Export Reaper Action', true,
                         ImGui.WindowFlags_AlwaysAutoResize)
-                    app.gui:popStyles(app.gui.st.vars.popups)
+                    app.gui:popStyles(app.gui.st.vars.popupsTitle)
 
                     if visible then
                         if ImGui.IsWindowAppearing(ctx) then
@@ -2578,7 +2587,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             if createdActionName then
                                 app:msg((T.EXPORT_ACTION_DIALOG.EXPORT.SUCCESS):format(createdActionName))
                             end
-                            app.temp.showExportFilterDialog = false --TODO: if I don't close the window, the msg disappears. check what's up with that
+                            app.temp.showExportActionDialog = false --TODO: if I don't close the window, the msg disappears. check what's up with that
                             ImGui.CloseCurrentPopup(ctx)
                         end
                         if not canExportAction then ImGui.EndDisabled(ctx) end

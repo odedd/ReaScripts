@@ -230,7 +230,7 @@ ImGui.Attach(self.ctx, self.clearInputIfNeeded)
                 [ImGui.StyleVar_ItemInnerSpacing] = { 4 * scale, 4 * scale },
                 [ImGui.StyleVar_SeparatorTextBorderSize] = { 1 * scale, nil },
             },
-            popups = {
+            popupsTitle = {
                 [ImGui.StyleVar_FramePadding] = { 4 * scale, 10 * scale },
             },
             topBar = {

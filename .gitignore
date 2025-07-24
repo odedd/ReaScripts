@@ -24,4 +24,6 @@ Rendering/Stem Manager/*
 !Rendering/Stem Manager/lib/*
 
 Resources/Fonts/*.glyphs
+
 FX/Scout/internal
+FX/Scout/Odedd_Scout -*.lua 
