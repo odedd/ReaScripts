@@ -18,9 +18,9 @@
 -- DONE: Create actions for presets/filters
 -- DONE: Reset filter button
 -- DONE: Better visual representation of search mode
+-- DONE: Option to hide sidebar
+-- DONE: do something about horizontal scroll for long results
 -- TODO: Settings window
 -- TODO: Fix Hints
 -- TODO: minimal mode (?)
--- TODO: do something about horizontal scroll for long results
 -- TODO: Add tooltips to results with additional information
--- TODO: Option to hide FilterArea
