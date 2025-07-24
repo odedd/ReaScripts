@@ -1,24 +1,32 @@
 -- @noindex
 T = {}
 
+T.EXPORT_ACTION_DIALOG = {
+    NAME = {--TODO: Update this
+        LABEL = 'Action Name',
+        HINT = 'A name for the new action',
+    },
+        EXPORT = {
+        LABEL = '',
+        BUTTON = 'Export as Action',
+        SUCCESS = 'Successfully created action:\n%s',
+        HINT = 'temp',
+    },
+    CLOSE = {
+        LABEL = '',
+        BUTTON = 'Close',
+        HINT = 'temp',
+    }
+}
+
 T.EDIT_FILTER_DIALOG = {
     PRESET_NAME = {--TODO: Update this
         LABEL = 'Preset Name',
         HINT = 'A name for the new preset',
     },
-    ACTION_NAME = {--TODO: Update this
-        LABEL = 'Action Name',
-        HINT = 'A name for the new action',
-    },
     PRESET_WORD = {--TODO: Update this
         LABEL = 'Magic Word',
         HINT = 'A name for the new magic word',
-    },
-    EXPORT_ACTION = {
-        LABEL = '',
-        BUTTON = 'Export as Action',
-        SUCCESS = 'Successfully created action:\n%s',
-        HINT = 'temp',
     },
     SAVE_PRESET = {
         LABEL = '',
