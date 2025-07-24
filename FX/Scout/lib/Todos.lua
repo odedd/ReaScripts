@@ -17,9 +17,10 @@
 --       ✓ UI labels updated to include presets in export/import dialogs
 -- DONE: Create actions for presets/filters
 -- DONE: Reset filter button
+-- DONE: Better visual representation of search mode
 -- TODO: Settings window
 -- TODO: Fix Hints
--- TODO: Better visual representation of search mode
 -- TODO: minimal mode (?)
 -- TODO: do something about horizontal scroll for long results
--- TODO: Add tooltips to results with tag information
+-- TODO: Add tooltips to results with additional information
+-- TODO: Option to hide FilterArea
