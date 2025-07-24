@@ -722,7 +722,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 end
             end,
             tinyIcon = function(ctx, id, icon, highlighted, disabled, toolTip)
-                r.ShowConsoleMsg((toolTip or ''))
                 local clicked = false
                 local textW, textH = ImGui.CalcTextSize(ctx, 'I')
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
@@ -792,17 +791,19 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
             search = function(ctx)
                 app.gui:pushStyles(app.gui.st.vars.searchWindow)
                 app.gui:pushColors(app.gui.st.col.searchWindow)
-
                 -- Inline variable explanations for layout/UI parameters:
                 local w, h = ImGui.GetContentRegionAvail(ctx)
-                local tagAreaW = app.settings.current.filterPanelWidth * app.gui.scale
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
                 local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
-                local tagAreaScreenX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - tagAreaW -- X position for tag area
+                local sideBarMinimizedW = 0
+                local sideBarW, sideBarH =
+                    app.settings.current.showSideBar and (app.settings.current.sideBarWidth * app.gui.scale) or
+                    sideBarMinimizedW,
+                    select(2, ImGui.GetContentRegionAvail(ctx))
+                local sideBarScreenX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - sideBarW -- X position for tag area
                 local upperRowY = ImGui.GetCursorPosY(ctx)                                     -- Y position for upper row, used for "sticky" first group title
                 local upperRowScreenY = select(2, ImGui.GetCursorScreenPos(ctx))               -- Y position for upper row, used for "sticky" first group title
                 local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx)
-                local filterAreaH = select(2, ImGui.GetContentRegionAvail(ctx))                -- Height available for search results
 
                 local tagInfo = app.userdata.current.tagInfo
                 local searchResults = app.temp.searchResults or
@@ -818,7 +819,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
                 if app.logger.level == OD_Logger.LOG_LEVEL.DEBUG then
                     ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),
-                        tagAreaScreenX, 10, tagAreaScreenX + tagAreaW, 1000, 0xffffff22)
+                        sideBarScreenX, 10, sideBarScreenX + sideBarW, 1000, 0xffffff22)
                 end
 
                 local drawActiveFilters = function()
@@ -930,7 +931,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
                         local filterH = ImGui.GetTextLineHeight(ctx) + paddingY * 2
 
-                        if ImGui.BeginChild(ctx, 'activeFilterArea', nil, nil, ImGui.ChildFlags_AutoResizeY) then
+                        if ImGui.BeginChild(ctx, 'activesideBar', nil, nil, ImGui.ChildFlags_AutoResizeY) then
                             local i = 0
                             for filterKey, filter in OD_PairsByOrder(activeFilters) do
                                 i = i + 1
@@ -1211,7 +1212,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         end
                     end
 
-                    if ImGui.BeginChild(ctx, 'resultsArea', w - tagAreaW - spacingX) then
+                    if ImGui.BeginChild(ctx, 'resultsArea', w - sideBarW - spacingX) then
                         if app.pageSwitched then
                             app.flow.filterResults({ text = '' })
                         end
@@ -1450,7 +1451,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         separatorY + h,
                         ImGui.GetStyleColor(ctx, ImGui.Col_Separator))
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
-                    ImGui.InvisibleButton(ctx, '##separator', spacingX * 2 + 1, filterAreaH)
+                    ImGui.InvisibleButton(ctx, '##separator', spacingX * 2 + 1, sideBarH)
                     if ImGui.IsItemHovered(ctx) then
                         app:setHoveredHint('main', 'Drag to change tag list width', nil, nil, 1)
                         ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
@@ -1459,18 +1460,18 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
                         local mouseDeltaX = select(1, ImGui.GetMouseDragDelta(ctx, nil, nil, ImGui.MouseButton_Left))
                         if mouseDeltaX ~= 0 then
-                            local newWidth = (tagAreaW - mouseDeltaX) / app.gui.scale
-                            if newWidth > app.settings.current.minFilterPanelWidth then
-                                app.settings.current.filterPanelWidth = newWidth
+                            local newWidth = (sideBarW - mouseDeltaX) / app.gui.scale
+                            if newWidth > app.settings.current.minSideBarWidth then
+                                app.settings.current.sideBarWidth = newWidth
                                 ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
                             else
-                                app.settings.current.filterPanelWidth = app.settings.current.minFilterPanelWidth
+                                app.settings.current.sideBarWidth = app.settings.current.minSideBarWidth
                             end
                         end
                     end
                 end
-                local drawFilterArea = function()
-                    if ImGui.BeginChild(ctx, 'filterArea', tagAreaW - spacingX * 2, filterAreaH) then
+                local drawsideBar = function()
+                    if ImGui.BeginChild(ctx, 'sideBar', sideBarW - spacingX * 2, sideBarH) then
                         local function drawTagsOfParent(parentId, indent, parentsDragged)
                             local drawTagNode
                             local function drawDropTarget(tag, height, position, offsetY, dragTargetLineOffsetY)
@@ -1919,7 +1920,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         app:setHoveredHint('main', 'Create new tag', nil, nil, 1)
                         ImGui.PopFont(ctx)
                         ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
-                        if ImGui.BeginChild(ctx, 'TagScrollArea', tagAreaW - paddingX * 2, select(2, ImGui.GetContentRegionAvail(ctx)) - spacingY, nil) then
+                        if ImGui.BeginChild(ctx, 'TagScrollArea', sideBarW - paddingX * 2, select(2, ImGui.GetContentRegionAvail(ctx)) - spacingY, nil) then
                             ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
                             drawTagsOfParent(TAGS_ROOT_PARENT, false, false)
                             ImGui.Dummy(ctx, 0, 0)
@@ -1930,15 +1931,17 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
                 end
 
-                if ImGui.BeginChild(ctx, 'rightArea', w - tagAreaW - spacingX) then
+                if ImGui.BeginChild(ctx, 'mainArea', w - sideBarW - spacingX) then
                     drawActiveFilters()
                     drawResultsTable()
                     ImGui.EndChild(ctx)
                 end
-                ImGui.SameLine(ctx)
-                drawTagSeparator()
-                ImGui.SameLine(ctx)
-                drawFilterArea()
+                if app.settings.current.showSideBar then
+                    ImGui.SameLine(ctx)
+                    drawTagSeparator()
+                    ImGui.SameLine(ctx)
+                    drawsideBar()
+                end
                 -- handleSelectedResult()
 
                 app.gui:popColors(app.gui.st.col.searchWindow)
@@ -1963,9 +1966,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     else
                         table.insert(menu, { icon = 'dock_down', hint = 'Dock' })
                     end
-                    if app.page == APP_PAGE.SEARCH then
-                        table.insert(menu, { icon = 'gear', hint = 'Settings' })
-                    end
+                    table.insert(menu, { icon = 'gear', hint = 'Settings' })
+                    table.insert(menu, { icon = 'sidebar', hint = app.settings.current.showSideBar and 'Hide side bar' or 'Show side bar', active = app.settings.current.showSideBar })
                     return menu
                 end
                 local calculateDimensions = function()
@@ -2092,7 +2094,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
                     local clicked = nil
                     for i, btn in ipairs(buttons) do
-                        if app.guiHelpers.iconButton(ctx, btn.icon, app.gui.st.col.buttons.topBarIcon, btn.hint) then
+                        local col = btn.active and app.gui.st.col.buttons.topBarActiveIcon or app.gui.st.col.buttons.topBarIcon
+                        if app.guiHelpers.iconButton(ctx, btn.icon, col, btn.hint) then
                             clicked = btn
                                 .icon
                         end
@@ -2139,6 +2142,9 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             end
                         elseif btn == 'gear' then
                             ImGui.OpenPopup(ctx, Scr.name .. ' Settings##settingsWindow')
+                        elseif btn == 'sidebar' then
+                            app.settings.current.showSideBar = not app.settings.current.showSideBar
+                            app.settings:save()
                         elseif btn == 'money' then
                             OD_OpenLink(Scr.donation)
                         end
@@ -2471,7 +2477,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
 
                     ImGui.SetNextWindowSize(ctx, 350 * app.gui.scale, 0, ImGui.Cond_Always)
-                    ImGui.SetNextWindowPos(ctx, app.gui.mainWindow.pos[1]+(app.gui.mainWindow.size[1] / 2), app.gui.mainWindow.pos[2]+(app.gui.mainWindow.size[2] / 2), ImGui.Cond_Appearing,0.5,0.5)
+                    ImGui.SetNextWindowPos(ctx, app.gui.mainWindow.pos[1] + (app.gui.mainWindow.size[1] / 2),
+                        app.gui.mainWindow.pos[2] + (app.gui.mainWindow.size[2] / 2), ImGui.Cond_Appearing, 0.5, 0.5)
                     app.gui:pushStyles(app.gui.st.vars.popupsTitle)
 
                     local visible, open = ImGui.BeginPopupModal(ctx, title, true,
@@ -2592,7 +2599,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
 
                     ImGui.SetNextWindowSize(ctx, 350 * app.gui.scale, 0, ImGui.Cond_Always)
-                    ImGui.SetNextWindowPos(ctx, app.gui.mainWindow.pos[1]+(app.gui.mainWindow.size[1] / 2), app.gui.mainWindow.pos[2]+(app.gui.mainWindow.size[2] / 2), ImGui.Cond_Appearing,0.5,0.5)
+                    ImGui.SetNextWindowPos(ctx, app.gui.mainWindow.pos[1] + (app.gui.mainWindow.size[1] / 2),
+                        app.gui.mainWindow.pos[2] + (app.gui.mainWindow.size[2] / 2), ImGui.Cond_Appearing, 0.5, 0.5)
                     app.gui:pushStyles(app.gui.st.vars.popupsTitle)
 
                     local visible, open = ImGui.BeginPopupModal(ctx, 'Export Reaper Action', true,

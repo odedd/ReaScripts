@@ -99,6 +99,11 @@ PB_Gui.init = function(self, fonts)
                 hovered = { [ImGui.Col_Text] = self.st.basecolors.active },
                 active = { [ImGui.Col_Text] = self.st.basecolors.midText },
             },
+            topBarActiveIcon = {
+                default = { [ImGui.Col_Text] = self.st.basecolors.main },
+                hovered = { [ImGui.Col_Text] = self.st.basecolors.mainBright },
+                active = { [ImGui.Col_Text] = self.st.basecolors.mainBrighter },
+            },
             activeFilterAction = {
                 default = { [ImGui.Col_Text] = self.st.basecolors.midHovered },
                 hovered = { [ImGui.Col_Text] = self.st.basecolors.mainBright },

@@ -7,6 +7,7 @@ PB_Settings = OD_Settings:new({
         sendFolderName = 'FX Return Tracks',
         persistantMode = true,
         projectScanFolders = { '/Users/odeddavidov/Desktop' },
+        showSideBar = false,
         shortcuts = {
             markFavorite = {
                 key = OD_KEYCODES.F,
@@ -95,9 +96,9 @@ PB_Settings = OD_Settings:new({
         uiScale = 1,
 
         -- set In the UI
-        filterPanelWidth = 200,
+        sideBarWidth = 200,
         -- Internal
-        minFilterPanelWidth = 140,
+        minSideBarWidth = 140,
         lastDockId = nil,
         numberOfResultsThatRequireConfirmation = 10,
         numberOfTracksThatRequireConfirmation = 6,

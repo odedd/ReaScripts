@@ -2,6 +2,7 @@
 
 ICONS = {
     ['BOX'] = 'A',
+    ['SIDEBAR'] = 'b',
     ['BRIEFCASE'] = 'B',
     ['PENCIL'] = 'C',
     ['DOCK_DOWN'] = 'D',
