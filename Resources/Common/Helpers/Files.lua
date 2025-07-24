@@ -14,6 +14,7 @@ end
 
 -- file_exists works in mac but fails in windows under some conditions. this works in both (but fails as a total replacement for file_exists)
 function OD_FolderExists(file)
+    -- First try the original os.rename approach
     local ok, err, code = os.rename(file, file)
     if not ok then
         if code == 13 then
@@ -24,6 +25,29 @@ function OD_FolderExists(file)
     if ok == nil then
         ok = false
     end
+    
+    -- If os.rename failed, try alternative approaches
+    if not ok then
+        -- Try to open the directory with io.popen (works on Unix-like systems)
+        if OS_is and OS_is.win then
+            -- On Windows, try dir command
+            local handle = io.popen('dir "' .. file .. '" 2>nul')
+            if handle then
+                local result = handle:read("*a")
+                handle:close()
+                return result and result ~= ""
+            end
+        else
+            -- On macOS/Linux, try ls command
+            local handle = io.popen('ls -d "' .. file .. '" 2>/dev/null')
+            if handle then
+                local result = handle:read("*a")
+                handle:close()
+                return result and result:find(file, 1, true) ~= nil
+            end
+        end
+    end
+    
     return ok, err
 end
 

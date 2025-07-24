@@ -14,10 +14,11 @@ function ProjectAssetType:getData()
     local scanFolders = self.context.settings.current.projectScanFolders or {}
     
     for _, folderPath in ipairs(scanFolders) do
-        if OD_FolderExists(folderPath) then
-            self.context.logger:logDebug('Scanning folder for RPP files: ' .. folderPath)
-            local projectFiles = OD_GetFilesInFolderAndSubfolders(folderPath, "rpp", true)
-            
+        -- Try to scan the folder directly instead of using OD_FolderExists which can be unreliable
+        self.context.logger:logDebug('Scanning folder for RPP files: ' .. folderPath)
+        local success, projectFiles = pcall(OD_GetFilesInFolderAndSubfolders, folderPath, "rpp", true)
+        
+        if success and projectFiles then
             for _, relativePath in ipairs(projectFiles) do
                 local fullPath = folderPath .. OD_FolderSep() .. relativePath
                 local path, name, ext = OD_DissectFilename(relativePath)
@@ -30,7 +31,7 @@ function ProjectAssetType:getData()
                 })
             end
         else
-            self.context.logger:logError('Project scan folder does not exist: ' .. folderPath)
+            self.context.logger:logError('Project scan folder does not exist or is not accessible: ' .. folderPath)
         end
     end
     

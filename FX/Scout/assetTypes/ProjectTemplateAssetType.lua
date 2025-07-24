@@ -14,10 +14,11 @@ function ProjectTemplateAssetType:getData()
     local resource_path = reaper.GetResourcePath()
     
     local folderPath = resource_path .. '/ProjectTemplates'
-    if OD_FolderExists(folderPath) then
-        self.context.logger:logDebug('Scanning template folder for RPP files: ' .. folderPath)
-        local projectFiles = OD_GetFilesInFolderAndSubfolders(folderPath, "rpp", true)
-
+    -- Try to scan the folder directly instead of using OD_FolderExists which can be unreliable
+    self.context.logger:logDebug('Scanning template folder for RPP files: ' .. folderPath)
+    local success, projectFiles = pcall(OD_GetFilesInFolderAndSubfolders, folderPath, "rpp", true)
+    
+    if success and projectFiles then
         for _, relativePath in ipairs(projectFiles) do
             local fullPath = folderPath .. OD_FolderSep() .. relativePath
             local path, name, ext = OD_DissectFilename(relativePath)
@@ -30,7 +31,7 @@ function ProjectTemplateAssetType:getData()
             })
         end
     else
-        self.context.logger:logError('Project Template scan folder does not exist: ' .. folderPath)
+        self.context.logger:logError('Project Template scan folder does not exist or is not accessible: ' .. folderPath)
     end
 
     return data
