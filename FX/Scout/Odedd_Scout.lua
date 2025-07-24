@@ -2470,7 +2470,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         end
                     end
 
-                    ImGui.SetNextWindowSize(ctx, 550 * app.gui.scale, 0, ImGui.Cond_Always)
+                    ImGui.SetNextWindowSize(ctx, 350 * app.gui.scale, 0, ImGui.Cond_Always)
+                    ImGui.SetNextWindowPos(ctx, app.gui.mainWindow.pos[1]+(app.gui.mainWindow.size[1] / 2), app.gui.mainWindow.pos[2]+(app.gui.mainWindow.size[2] / 2), ImGui.Cond_Appearing,0.5,0.5)
                     app.gui:pushStyles(app.gui.st.vars.popupsTitle)
 
                     local visible, open = ImGui.BeginPopupModal(ctx, title, true,
@@ -2545,30 +2546,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             ImGui.EndDisabled(ctx)
                         end
 
-                        -- ImGui.SeparatorText(ctx, 'Action')
-                        -- ImGui.TextWrapped(ctx,
-                        --     'Create a Reaper action which will launch Scout with the filter already loaded.')
-
-                        -- app.temp.actionName = app.gui:setting('text', T.EDIT_FILTER_DIALOG.ACTION_NAME.LABEL,
-                        --     T.EDIT_FILTER_DIALOG.ACTION_NAME.HINT, app.temp.actionName,
-                        --     { hintWindow = 'editFilterWindow' })
-
-                        -- local trimmedActionName = OD_Trim(app.temp.actionName)
-                        -- local canExportAction = trimmedActionName ~= ""
-
-                        -- if not canExportAction then ImGui.BeginDisabled(ctx) end
-                        -- if app.gui:setting('button', T.EDIT_FILTER_DIALOG.EXPORT_ACTION.LABEL,
-                        --         T.EDIT_FILTER_DIALOG.EXPORT_ACTION.HINT, nil,
-                        --         { label = T.EDIT_FILTER_DIALOG.EXPORT_ACTION.BUTTON, hintWindow = 'editFilterWindow' }) then
-                        --     local createdActionName = app.flow.createFilterAction(trimmedActionName, app.temp.filter)
-                        --     if createdActionName then
-                        --         app:msg((T.EDIT_FILTER_DIALOG.EXPORT_ACTION.SUCCESS):format(createdActionName))
-                        --     end
-                        --     app.temp.showExportFilterDialog = false --TODO: if I don't close the window, the msg disappears. check what's up with that
-                        --     ImGui.CloseCurrentPopup(ctx)
-                        -- end
-                        -- if not canExportAction then ImGui.EndDisabled(ctx) end
-
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EDIT_FILTER_DIALOG.CLOSE.LABEL,
                                 T.EDIT_FILTER_DIALOG.CLOSE.HINT, nil,
                                 { label = T.EDIT_FILTER_DIALOG.CLOSE.BUTTON, hintWindow = 'editFilterWindow' }) then
@@ -2615,6 +2592,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
 
                     ImGui.SetNextWindowSize(ctx, 350 * app.gui.scale, 0, ImGui.Cond_Always)
+                    ImGui.SetNextWindowPos(ctx, app.gui.mainWindow.pos[1]+(app.gui.mainWindow.size[1] / 2), app.gui.mainWindow.pos[2]+(app.gui.mainWindow.size[2] / 2), ImGui.Cond_Appearing,0.5,0.5)
                     app.gui:pushStyles(app.gui.st.vars.popupsTitle)
 
                     local visible, open = ImGui.BeginPopupModal(ctx, 'Export Reaper Action', true,
@@ -2625,9 +2603,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         if ImGui.IsWindowAppearing(ctx) then
                             ImGui.SetKeyboardFocusHere(ctx, 0)
                         end
-
-                        ImGui.TextWrapped(ctx,
-                            'Create a Reaper action which will launch Scout with the filter already loaded.')
 
                         app.temp.actionName = app.gui:setting('text', T.EXPORT_ACTION_DIALOG.NAME.LABEL,
                             T.EXPORT_ACTION_DIALOG.NAME.HINT, app.temp.actionName,
@@ -2652,7 +2627,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EXPORT_ACTION_DIALOG.CLOSE.LABEL,
                                 T.EXPORT_ACTION_DIALOG.CLOSE.HINT, nil,
                                 { label = T.EXPORT_ACTION_DIALOG.CLOSE.BUTTON, hintWindow = 'editFilterWindow' }) then
-                            app.temp.showCreatePresetDialog = false
+                            app.temp.showExportActionDialog = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
                         app.draw.hint(ctx, 'editFilterWindow')
