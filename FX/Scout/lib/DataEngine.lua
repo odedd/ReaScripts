@@ -895,11 +895,22 @@ PB_DataEngine.assembleAssets = function(self, forceRebuildCache)
     end
 
     self:tagAssets()
-    self:markSpecialGroups()
+    
+    -- IMPORTANT: Plugin priority filtering must happen BEFORE special group processing
+    -- because special groups change the asset groups and break FX type priority sorting
+    if self.app.settings.current.showOnlyHighestPriorityPlugin then
+        self:sortAssetsByFXPriorityOnly() -- Sort by FX priority first
+        self:removeLowPriorityPlugins()    -- Remove duplicates while FX types are intact
+    end
+    
+    self:markSpecialGroups() -- Mark favorites/recents (changes asset groups)
+    
     if forceRebuildCache then
         self:invalidateGroupPriorityCache()
     end
-    self:sortAssets()
+    
+    self:sortAssets() -- Final sort with special groups and group priority cache
+    
     self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
 end
 -- whichFilter example: {filters = {FILTER_TYPES.CATEGORY, FILTER_TYPES.DEVELOPER}, tags = true}
@@ -977,7 +988,6 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
         for filterType, filter in pairs(FILTER_MENU) do
             -- Skip presets here since they're handled separately with more functionality
             if filterType ~= FILTER_TYPES.PRESET and (scanAll or (whichFilters.filters and OD_HasValue(whichFilters.filters, filterType))) then
-
                 for itemName, item in pairs(filter.items) do
                     table.insert(self.filterAssets, {
                         engine = self,
@@ -1176,6 +1186,65 @@ PB_DataEngine.sortAssets = function(self)
     self.app.logger:logDebug('Sorted assets', #self.assets)
 end
 
+PB_DataEngine.sortAssetsByFXPriorityOnly = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.sortAssetsByFXPriorityOnly()')
+    
+    -- Create FX type priority lookup
+    local fxTypePriority = {}
+    for i, fxType in ipairs(self.app.settings.current.fxTypeOrder) do
+        fxTypePriority[fxType] = i
+    end
+    
+    -- Sort only plugin assets by FX type priority, leave others in original order
+    table.sort(self.assets, function(a, b)
+        -- If both are plugins, sort by FX type priority
+        if a.fx_type and b.fx_type then
+            local aPriority = fxTypePriority[a.fx_type] or 1000
+            local bPriority = fxTypePriority[b.fx_type] or 1000
+            if aPriority == bPriority then
+                return a.searchText[1].text < b.searchText[1].text
+            else
+                return aPriority < bPriority
+            end
+        -- If only one is a plugin, maintain original relative order
+        elseif a.fx_type and not b.fx_type then
+            return false -- keep non-plugin before plugin
+        elseif not a.fx_type and b.fx_type then
+            return true -- keep non-plugin before plugin
+        else
+            -- Both are non-plugins, maintain original order
+            return false
+        end
+    end)
+    
+    self.app.logger:logDebug('Sorted assets by FX priority for duplicate removal')
+end
+
+PB_DataEngine.removeLowPriorityPlugins = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.removeLowPriorityPlugins()')
+    
+    local assetsIdxToRemove = {}
+    local foundPlugins = {}
+    
+    for i, asset in ipairs(self.assets) do
+        if asset.fx_type then
+            local id = asset.name .. (asset.vendor or '')
+            if foundPlugins[id] then
+                table.insert(assetsIdxToRemove, i)
+                self.app.logger:logDebug('Marking duplicate plugin for removal: ' .. asset.name .. ' (' .. asset.fx_type .. ')')
+            else
+                foundPlugins[id] = true
+                self.app.logger:logDebug('Keeping highest priority plugin: ' .. asset.name .. ' (' .. asset.fx_type .. ')')
+            end
+        end
+    end
+    
+    for i = #assetsIdxToRemove, 1, -1 do
+        table.remove(self.assets, assetsIdxToRemove[i])
+    end
+    
+    self.app.logger:logInfo('Removed ' .. #assetsIdxToRemove .. ' duplicate plugins')
+end
 PB_DataEngine.sortFilterAssets = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.sortFilterAssets()')
     local groupPriority = {}

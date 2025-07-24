@@ -10,6 +10,7 @@ ICONS = {
     ['FOLDER'] = 'f',
     ['ARROW_LEFT'] = 'F',
     ['GEAR'] = 'G',
+    ['QUESTION_CIRCLE'] = 'h',
     ['HEADPHONES'] = 'H',
     ['COMPUTER'] = 'I',
     ['DISK'] = 'K',

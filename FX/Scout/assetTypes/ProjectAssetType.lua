@@ -30,7 +30,7 @@ function ProjectAssetType:getData()
                 })
             end
         else
-            self.context.logger:logWarning('Project scan folder does not exist: ' .. folderPath)
+            self.context.logger:logError('Project scan folder does not exist: ' .. folderPath)
         end
     end
     

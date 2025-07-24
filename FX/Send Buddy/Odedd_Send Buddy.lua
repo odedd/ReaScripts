@@ -1623,8 +1623,8 @@ if OD_PrereqsOK({
             ImGui.SeparatorText(ctx, 'Shortcuts')
             local resetCounter = false
             app.settings.current.shortcuts.closeScript, resetCounter = app.gui:setting('shortcut',
-                T.SETTINGS.SHORTCUTS.CLOSE_SCRIPT.LABEL,
-                T.SETTINGS.SHORTCUTS.CLOSE_SCRIPT.HINT, app.settings.current.shortcuts.closeScript,
+                T.SETTINGS.SHORTCUTS.ENTER_SLEEP_MODE.LABEL,
+                T.SETTINGS.SHORTCUTS.ENTER_SLEEP_MODE.HINT, app.settings.current.shortcuts.closeScript,
                 {
                     existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                         function(k, v) return k ~= 'closeScript' end)

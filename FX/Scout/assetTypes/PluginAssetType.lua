@@ -145,6 +145,7 @@ function PluginAssetType:assembleAsset(plugin)
         order = 0
     })
 
+    asset.name = plugin.name
     asset.vendor = plugin.vendor
     asset.fx_type = plugin.fx_type
     asset.categories = {}

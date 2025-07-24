@@ -24,3 +24,7 @@
 -- TODO: Fix Hints
 -- TODO: minimal mode (?)
 -- TODO: Add tooltips to results with additional information
+-- TODO: Refresh tracks
+-- TODO: Refresh projects?
+-- TODO: Add project templates
+-- TODO: Add markers/regions

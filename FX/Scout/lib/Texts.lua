@@ -55,21 +55,39 @@ T.SETTINGS = {
         LABEL = 'Folder name',
         HINT = 'If one does not exist, it will be created when adding sends.',
     },
+    SLEEP_MODE = {
+        LABEL = 'Use sleep mode',
+        HINT = 'If one does not exist, it will be created when adding sends.',
+    },
     GROUP_ORDER = {
         LABEL = 'Item priority',
         HINT = 'The order in which items are displayed in the search window.',
+    },
+    PROJECT_SCAN_FOLDER = {
+        LABEL = 'Project scanning folder',
+        LABEL_BUTTON = 'Add...',
+        HINT = 'Where Scout needs to search for projects. Will also scan subfolders.',
+        HINT_DELETE = 'Remove this folder',
     },
     FX_TYPE_ORDER = {
         LABEL = 'FX type priority',
         HINT = 'The order in which FX are displayed in the search window.',
     },
+    SHOW_ONLY_HIGHEST_PRIORITY_FX = {
+        LABEL = 'Only show highest priority FX',
+        HINT = 'If FX exist in several formats, only show the highest priority ones.'
+    },
     SHORTCUTS = {
-        CLOSE_SCRIPT = {
+        ENTER_SLEEP_MODE = {
             LABEL = 'Enter sleep mode',
             HINT = 'Sleep mode leads to faster loading times.',
         },
+        CLOSE_SCRIPT = {
+            LABEL = 'Close script',
+            HINT = 'Close script without entering sleep mode.',
+        },
         HARD_CLOSE_SCRIPT = {
-            LABEL = 'Exit script',
+            LABEL = 'Close script (no sleep)',
             HINT = 'Close script without entering sleep mode.',
         },
         CLEAR_FILTERS = {
@@ -137,3 +155,17 @@ T.SPECIAL_GROUPS = {
     [SPECIAL_GROUPS.RECENTS] = 'Recents',
     [SPECIAL_GROUPS.PLUGINS] = 'FX'
 }
+
+T.SLEEP_MODE_EXPLANATION = 
+[[TL;DR - The script loads fastest when 'sleep mode' is turned on.
+For it to work, the next time the script runs, select 'new instance'.
+If you accidentally selected something else, please delete the script
+and add it again.
+
+Sleep mode reduces loading times considerably by keeping the script 
+runningin the background (with minimal resource use) and makes the 
+experience much faster and smoother. However, since there's currently 
+no way forscripts to set it on their own, you have to select new 
+instance manually.]]
+
+T.TURN_ON_SLEEP_MODE = 'Do you wish to turn on sleep mode? (Say yes!)'

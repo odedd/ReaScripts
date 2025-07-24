@@ -5,8 +5,8 @@ PB_Settings = OD_Settings:new({
         -- Settings window
         createInsideFolder = true,
         sendFolderName = 'FX Return Tracks',
-        persistantMode = true,
-        projectScanFolders = { '/Users/odeddavidov/Desktop' },
+        sleepMode = false,
+        projectScanFolders = {},
         showSideBar = true,
         shortcuts = {
             markFavorite = {
@@ -71,6 +71,7 @@ PB_Settings = OD_Settings:new({
             "LV2",
             "LV2i"
         },
+        showOnlyHighestPriorityPlugin = true,
         -- Default group order using asset type class names (more robust than group names)
         -- Use SPECIAL_GROUPS constants for special groups
         groupOrder = {
@@ -102,7 +103,11 @@ PB_Settings = OD_Settings:new({
         lastDockId = nil,
         numberOfResultsThatRequireConfirmation = 10,
         numberOfTracksThatRequireConfirmation = 6,
-        numberOfRecents = 5
+        numberOfRecents = 5,
+        welcomeScreenShown = false
+    },
+    initial = {
+        projectScanFolders = { '/Users/odeddavidov/Desktop' },
     },
     dfsetfile = Scr.dfsetfile
 })

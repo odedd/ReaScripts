@@ -735,15 +735,17 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 end
                 local col = highlighted and app.gui.st.basecolors.textDark or
                     (disabled and app.gui.st.basecolors.textDark or app.gui.st.col.activeFilterButton[ImGui.Col_Button])
-                if ImGui.IsItemHovered(ctx) then
-                    if toolTip then ImGui.SetTooltip(ctx, toolTip) end
-                    if not disabled then
-                        ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
-                        if ImGui.IsItemActive(ctx) then
-                            col = app.gui.st.col.activeFilterButton[ImGui.Col_ButtonActive]
-                        else
-                            col = app.gui.st.col.activeFilterButton[ImGui.Col_ButtonHovered]
-                        end
+                if toolTip then
+                    if ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
+                        ImGui.SetTooltip(ctx, toolTip)
+                    end
+                end
+                if ImGui.IsItemHovered(ctx) and not disabled then
+                    ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                    if ImGui.IsItemActive(ctx) then
+                        col = app.gui.st.col.activeFilterButton[ImGui.Col_ButtonActive]
+                    else
+                        col = app.gui.st.col.activeFilterButton[ImGui.Col_ButtonHovered]
                     end
                 end
                 -- ImGui.SetCursorPosY(ctx, y + paddingY + (textH - closeButtonSizeH) / 2)
@@ -1917,7 +1919,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         app:setHoveredHint('main', 'Create new tag', nil, nil, 1)
                         ImGui.PopFont(ctx)
                         ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
-                        ImGui.SetNextWindowScroll(ctx, 0,-1)
+                        ImGui.SetNextWindowScroll(ctx, 0, -1)
                         if ImGui.BeginChild(ctx, 'TagScrollArea', sideBarW - paddingX * 2, select(2, ImGui.GetContentRegionAvail(ctx)) - spacingY) then
                             ImGui.Spacing(ctx)
                             drawTagsOfParent(TAGS_ROOT_PARENT, false, false)
@@ -1966,8 +1968,12 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
                     table.insert(menu, { icon = 'gear', hint = 'Settings' })
                     table.insert(menu,
-                        { icon = 'sidebar', hint = app.settings.current.showSideBar and 'Hide side bar' or
-                        'Show side bar', active = app.settings.current.showSideBar })
+                        {
+                            icon = 'sidebar',
+                            hint = app.settings.current.showSideBar and 'Hide side bar' or
+                                'Show side bar',
+                            active = app.settings.current.showSideBar
+                        })
                     return menu
                 end
                 local calculateDimensions = function()
@@ -2095,7 +2101,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     local clicked = nil
                     for i, btn in ipairs(buttons) do
                         local col = btn.active and app.gui.st.col.buttons.topBarActiveIcon or
-                        app.gui.st.col.buttons.topBarIcon
+                            app.gui.st.col.buttons.topBarIcon
                         if app.guiHelpers.iconButton(ctx, btn.icon, col, btn.hint) then
                             clicked = btn
                                 .icon
@@ -2167,153 +2173,206 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 app.gui:popStyles(app.gui.st.vars.topBar)
             end,
             settings = function(ctx)
-                local w = 700 * app.gui.scale
+                local w = 730 * app.gui.scale
+                local h = 850 * app.gui.scale
+                local maxH = app.gui.screen.size[2] * .8
+                local hintHeight = app.gui.st.sizes.hintHeight
                 -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger
                 -- closing this window. So we increment a counter which will be reset if the shortcut is
                 -- being captured, so that we can know to ignore the captured key unless some frames have passed.
                 app.temp.captureCounter = app.temp.captureCounter and app.temp.captureCounter + 1 or 0
-                ImGui.SetNextWindowSize(ctx, w, 0, nil)
-                if app.settings.current.settingsWindowPos == nil then
-                    ImGui.SetNextWindowPos(ctx, app.gui.screen.size[1] / 2, app.gui.screen.size[2] / 2,
-                        ImGui.Cond_Appearing,
-                        0.5,
-                        0.5)
-                else
-                    ImGui.SetNextWindowPos(ctx, app.settings.current.settingsWindowPos[1],
-                        app.settings.current.settingsWindowPos[2], ImGui.Cond_Appearing)
-                end
+                ImGui.SetNextWindowSize(ctx, w, h)
+                -- if app.settings.current.settingsWindowPos == nil then
+                ImGui.SetNextWindowPos(ctx, app.gui.screen.size[1] / 2, app.gui.screen.size[2] / 2,
+                    ImGui.Cond_Appearing,
+                    0.5,
+                    0.5)
+                -- else
+                ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, maxH)
+                -- ImGui.SetNextWindowSize(ctx, w, ,h))
+
+                -- end
                 app.gui:pushStyles(app.gui.st.vars.popupsTitle)
                 local visible, open = ImGui.BeginPopupModal(ctx, Scr.name .. ' Settings##settingsWindow', true,
-                    ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_AlwaysAutoResize)
+                    ImGui.WindowFlags_NoDocking)
+                -- ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoScrollWithMouse)
                 app.gui:popStyles(app.gui.st.vars.popupsTitle)
 
                 if visible then
-                    if ImGui.IsWindowAppearing(ctx) then
-                        app.temp.groupOrder = {}
-                        app.temp.groupVisibility = {}
-                        for i, group in ipairs(app.settings.current.groupOrder) do
-                            table.insert(app.temp.groupOrder, app.engine.assetGroupNameCache[group])
-                            app.temp.groupVisibility[app.engine.assetGroupNameCache[group]] = app.settings
-                                .current.groupVisibility[group]
-                            -- table.insert(app.temp.groupOrder, app.engine.assetGroupNameCache[group] or group)
+                    if ImGui.BeginChild(ctx, 'SettingsMainArea', 0.0, -app.gui.st.sizes.hintHeight) then --math.min(500*app.gui.scale, h - hintHeight)) then
+                        if ImGui.IsWindowAppearing(ctx) then
+                            app.temp.groupOrder = {}
+                            app.temp.groupVisibility = {}
+                            for i, group in ipairs(app.settings.current.groupOrder) do
+                                table.insert(app.temp.groupOrder, app.engine.assetGroupNameCache[group])
+                                app.temp.groupVisibility[app.engine.assetGroupNameCache[group]] = app.settings
+                                    .current.groupVisibility[group]
+                                -- table.insert(app.temp.groupOrder, app.engine.assetGroupNameCache[group] or group)
+                            end
                         end
-                    end
-                    app.temp.settingsWindowOpen = true
-                    app.settings.current.settingsWindowPos = { ImGui.GetWindowPos(ctx) }
-                    ImGui.SeparatorText(ctx, 'General')
-                    app.settings.current.uiScale = app.gui:setting('dragdouble', T.SETTINGS.UI_SCALE.LABEL,
-                            T.SETTINGS.UI_SCALE.HINT,
-                            app.settings.current.uiScale * 100,
+                        app.temp.settingsWindowOpen = true
+                        -- app.settings.current.settingsWindowPos = { ImGui.GetWindowPos(ctx) }
+                        ImGui.SeparatorText(ctx, 'General')
+                        app.settings.current.uiScale = app.gui:setting('dragdouble', T.SETTINGS.UI_SCALE.LABEL,
+                                T.SETTINGS.UI_SCALE.HINT,
+                                app.settings.current.uiScale * 100,
+                                {
+                                    default = app.settings.default.uiScale * 100,
+                                    min = 50,
+                                    max = 200,
+                                    speed = 1,
+                                    format =
+                                    '%.f%%',
+                                    dontUnpdateWhileEnteringManually = true,
+                                    flags = (ImGui.SliderFlags_AlwaysClamp)
+                                }) /
+                            100
+                        app.settings.current.sleepMode = app.gui:setting('checkbox',
+                            T.SETTINGS.SLEEP_MODE.LABEL,
+                            T.SETTINGS.SLEEP_MODE.HINT, app.settings.current.sleepMode,
+                            { help = T.SLEEP_MODE_EXPLANATION })
+                        app.settings.current.createInsideFolder = app.gui:setting('checkbox',
+                            T.SETTINGS.CREATE_INSIDE_FODLER.LABEL,
+                            T.SETTINGS.CREATE_INSIDE_FODLER.HINT, app.settings.current.createInsideFolder)
+                        if app.settings.current.createInsideFolder then
+                            app.settings.current.sendFolderName = app.gui:setting('text_with_hint', '###sendFolderName',
+                                T.SETTINGS.SEND_FOLDER_NAME.HINT, app.settings.current.sendFolderName,
+                                { hint = T.SETTINGS.SEND_FOLDER_NAME.LABEL }, true)
+                        end
+                        ImGui.SeparatorText(ctx, 'Shortcuts')
+                        local resetCounter = false
+                        local key = app.settings.current.sleepMode and T.SETTINGS.SHORTCUTS.ENTER_SLEEP_MODE or
+                            T.SETTINGS.SHORTCUTS.CLOSE_SCRIPT
+                        app.settings.current.shortcuts.closeScript, resetCounter = app.gui:setting('shortcut',
+                            key.LABEL,
+                            key.HINT, app.settings.current.shortcuts.closeScript,
                             {
-                                default = app.settings.default.uiScale * 100,
-                                min = 50,
-                                max = 200,
-                                speed = 1,
-                                format =
-                                '%.f%%',
-                                dontUnpdateWhileEnteringManually = true,
-                                flags = (ImGui.SliderFlags_AlwaysClamp)
-                            }) /
-                        100
-                    app.settings.current.createInsideFolder = app.gui:setting('checkbox',
-                        T.SETTINGS.CREATE_INSIDE_FODLER.LABEL,
-                        T.SETTINGS.CREATE_INSIDE_FODLER.HINT, app.settings.current.createInsideFolder)
-                    if app.settings.current.createInsideFolder then
-                        app.settings.current.sendFolderName = app.gui:setting('text_with_hint', '###sendFolderName',
-                            T.SETTINGS.SEND_FOLDER_NAME.HINT, app.settings.current.sendFolderName,
-                            { hint = T.SETTINGS.SEND_FOLDER_NAME.LABEL }, true)
-                    end
-                    ImGui.SeparatorText(ctx, 'Shortcuts')
-                    local resetCounter = false
-                    app.settings.current.shortcuts.closeScript, resetCounter = app.gui:setting('shortcut',
-                        T.SETTINGS.SHORTCUTS.CLOSE_SCRIPT.LABEL,
-                        T.SETTINGS.SHORTCUTS.CLOSE_SCRIPT.HINT, app.settings.current.shortcuts.closeScript,
-                        {
-                            existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                function(k, v) return k ~= 'closeScript' end)
-                        })
-                    if resetCounter then app.temp.captureCounter = 0 end
-                    app.settings.current.shortcuts.hardCloseScript, resetCounter = app.gui:setting('shortcut',
-                        T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.LABEL,
-                        T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.HINT, app.settings.current.shortcuts.hardCloseScript,
-                        {
-                            existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                function(k, v) return k ~= 'hardCloseScript' end)
-                        })
-                    if resetCounter then app.temp.captureCounter = 0 end
-                    app.settings.current.shortcuts.resetFilters, resetCounter = app.gui:setting('shortcut',
-                        T.SETTINGS.SHORTCUTS.CLEAR_FILTERS.LABEL,
-                        T.SETTINGS.SHORTCUTS.CLEAR_FILTERS.HINT, app.settings.current.shortcuts.resetFilters,
-                        {
-                            existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                function(k, v) return k ~= 'resetFilters' end)
-                        })
-                    if resetCounter then app.temp.captureCounter = 0 end
-                    app.settings.current.shortcuts.markFavorite, resetCounter = app.gui:setting('shortcut',
-                        T.SETTINGS.SHORTCUTS.MARK_FAVORITE.LABEL,
-                        T.SETTINGS.SHORTCUTS.MARK_FAVORITE.HINT, app.settings.current.shortcuts.markFavorite,
-                        {
-                            existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                function(k, v) return k ~= 'markFavorite' end)
-                        })
-                    if resetCounter then app.temp.captureCounter = 0 end
-                    ImGui.SeparatorText(ctx, 'Ordering')
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'closeScript' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+                        if app.settings.current.sleepMode then
+                            app.settings.current.shortcuts.hardCloseScript, resetCounter = app.gui:setting('shortcut',
+                                T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.LABEL,
+                                T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.HINT,
+                                app.settings.current.shortcuts.hardCloseScript,
+                                {
+                                    existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                        function(k, v) return k ~= 'hardCloseScript' end)
+                                })
+                            if resetCounter then app.temp.captureCounter = 0 end
+                        end
+                        app.settings.current.shortcuts.resetFilters, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.CLEAR_FILTERS.LABEL,
+                            T.SETTINGS.SHORTCUTS.CLEAR_FILTERS.HINT, app.settings.current.shortcuts.resetFilters,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'resetFilters' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+                        app.settings.current.shortcuts.markFavorite, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.MARK_FAVORITE.LABEL,
+                            T.SETTINGS.SHORTCUTS.MARK_FAVORITE.HINT, app.settings.current.shortcuts.markFavorite,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'markFavorite' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+                        ImGui.SeparatorText(ctx, 'Ordering')
 
-                    app.temp.groupOrder, app.temp.groupVisibility = app.gui:setting(
-                        'orderable_list',
-                        T.SETTINGS.GROUP_ORDER.LABEL, T.SETTINGS.GROUP_ORDER.HINT,
-                        { app.temp.groupOrder, app.temp.groupVisibility })
+                        app.temp.groupOrder, app.temp.groupVisibility = app.gui:setting(
+                            'orderable_list',
+                            T.SETTINGS.GROUP_ORDER.LABEL, T.SETTINGS.GROUP_ORDER.HINT,
+                            { app.temp.groupOrder, app.temp.groupVisibility })
 
-                    app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility = app.gui:setting(
-                        'orderable_list',
-                        T.SETTINGS.FX_TYPE_ORDER.LABEL, T.SETTINGS.FX_TYPE_ORDER.HINT,
-                        { app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility })
+                        app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility = app.gui:setting(
+                            'orderable_list',
+                            T.SETTINGS.FX_TYPE_ORDER.LABEL, T.SETTINGS.FX_TYPE_ORDER.HINT,
+                            { app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility })
 
-                    ImGui.SeparatorText(ctx, 'Tags, Presets and Favorites')
+                        app.settings.current.showOnlyHighestPriorityPlugin = app.gui:setting('checkbox',
+                            T.SETTINGS.SHOW_ONLY_HIGHEST_PRIORITY_FX.LABEL, T.SETTINGS.SHOW_ONLY_HIGHEST_PRIORITY_FX
+                            .HINT,app.settings.current.showOnlyHighestPriorityPlugin)
 
-                    -- Export button
-                    app.gui:setting('label', T.SETTINGS.EXPORT_TAGS.LABEL)
-                    if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL, divideWidth = 2 }, true) then
-                        local rv, filename = reaper.JS_Dialog_BrowseForSaveFile(
-                            'Export Tags, Presets and Favorites', '',
-                            '',
-                            'Scout Tags files (*.scout)\0*.scout\0\0')
-                        if rv == 1 and filename then
-                            local success, errorMsg = app.userdata:export(filename)
-                            if success then
-                                app:msg('Export successful: ' .. filename)
-                            else
-                                app:msg('Export failed: ' .. (errorMsg or 'Unknown error'), 'error')
+                        ImGui.SeparatorText(ctx, 'Item specific settings')
+                        -- app.temp.projectScanFolders = {}
+                        local removePath = nil
+                        local path = app.gui:setting('folder', T.SETTINGS.PROJECT_SCAN_FOLDER.LABEL,
+                            T.SETTINGS.PROJECT_SCAN_FOLDER.HINT, nil,
+                            { label = T.SETTINGS.PROJECT_SCAN_FOLDER.LABEL_BUTTON })
+                        if path then
+                            if not OD_HasValue(app.settings.current.projectScanFolders, path) then
+                                table.insert(app.settings.current.projectScanFolders, path)
                             end
                         end
-                    end
-                    -- app:setHoveredHint('settings', T.SETTINGS.EXPORT_TAGS.HINT)
+                        for i, path in ipairs(app.settings.current.projectScanFolders) do
+                            if app.gui:setting('button', nil, T.SETTINGS.PROJECT_SCAN_FOLDER.HINT_DELETE, nil, { label = 'X##' .. i, width = ImGui.CalcTextSize(ctx, 'X') + ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2 }) then
+                                removePath = i
+                            end
+                            ImGui.SameLine(ctx)
+                            local tooLong = ImGui.CalcTextSize(ctx, path) > ImGui.GetContentRegionAvail(ctx)
+                            if ImGui.BeginChild(ctx, 'path' .. i, ImGui.GetContentRegionAvail(ctx), ImGui.GetTextLineHeightWithSpacing(ctx), nil, ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoMouseInputs) then
+                                ImGui.AlignTextToFramePadding(ctx)
 
-                    -- Import button
-                    local overwriteMode = ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)
-                    local importButtonText = overwriteMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL or
-                        T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE
-                    if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText }, true) then
-                        local rv, filename = reaper.GetUserFileNameForRead('',
-                            'Import Tags, Presets and Favorites',
-                            'scout')
-                        if rv and filename then
-                            local success, skippedAssets, mappedCount, skippedCount = app.userdata:import(filename,
-                                not overwriteMode)
-                            if success then
-                                local msg = string.format('Import successful: %d assets mapped, %d assets skipped',
-                                    mappedCount or 0, skippedCount or 0)
-                                if overwriteMode then
-                                    msg = msg .. ' (existing data overwritten)'
+                                ImGui.Text(ctx, path)
+                                ImGui.EndChild(ctx)
+                            end
+                            if tooLong and ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
+                                ImGui.SetTooltip(ctx, path)
+                            end
+                            -- path = app.gui:setting('folder', path,T.SETTINGS.PROJECT_SCAN_FOLDER.HINT, path, {}, true)
+                        end
+                        if removePath then
+                            table.remove(app.settings.current.projectScanFolders, removePath)
+                            removePath = nil
+                        end
+
+                        ImGui.SeparatorText(ctx, 'Tags, Presets and Favorites')
+
+                        -- Export button
+                        app.gui:setting('label', T.SETTINGS.EXPORT_TAGS.LABEL)
+                        if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL, divideWidth = 2 }, true) then
+                            local rv, filename = reaper.JS_Dialog_BrowseForSaveFile(
+                                'Export Tags, Presets and Favorites', '',
+                                '',
+                                'Scout Tags files (*.scout)\0*.scout\0\0')
+                            if rv == 1 and filename then
+                                local success, errorMsg = app.userdata:export(filename)
+                                if success then
+                                    app:msg('Export successful: ' .. filename)
+                                else
+                                    app:msg('Export failed: ' .. (errorMsg or 'Unknown error'), 'error')
                                 end
-                                app:msg(msg)
-                            else
-                                app:msg('Import failed: ' .. (skippedAssets or 'Unknown error'), 'error')
                             end
                         end
-                    end
-                    app:setHoveredHint('settings', T.SETTINGS.IMPORT_TAGS.HINT)
+                        -- app:setHoveredHint('settings', T.SETTINGS.EXPORT_TAGS.HINT)
 
+                        -- Import button
+                        local overwriteMode = ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)
+                        local importButtonText = overwriteMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL or
+                            T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE
+                        if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText }, true) then
+                            local rv, filename = reaper.GetUserFileNameForRead('',
+                                'Import Tags, Presets and Favorites',
+                                'scout')
+                            if rv and filename then
+                                local success, skippedAssets, mappedCount, skippedCount = app.userdata:import(filename,
+                                    not overwriteMode)
+                                if success then
+                                    local msg = string.format('Import successful: %d assets mapped, %d assets skipped',
+                                        mappedCount or 0, skippedCount or 0)
+                                    if overwriteMode then
+                                        msg = msg .. ' (existing data overwritten)'
+                                    end
+                                    app:msg(msg)
+                                else
+                                    app:msg('Import failed: ' .. (skippedAssets or 'Unknown error'), 'error')
+                                end
+                            end
+                        end
+                        app:setHoveredHint('settings', T.SETTINGS.IMPORT_TAGS.HINT)
+                        ImGui.EndChild(ctx)
+                    end
                     app.draw.hint(ctx, 'settings')
                     app:drawMsg()
                     if app.temp.captureCounter > 3 and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
@@ -2425,6 +2484,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 ImGui.PopStyleVar(ctx)
                 return open, okPressed
             end,
+
             confirmations = function(ctx)
                 if app.temp.confirmMultipleResults then
                     if not ImGui.IsPopupOpen(ctx, 'Are you sure?') then
@@ -2454,6 +2514,25 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
                     if not open then
                         app.temp.confirmMultipleTracks = nil
+                    end
+                end
+            end,
+            welcomeDialog = function(ctx)
+                if not app.settings.current.welcomeScreenShown then
+                    local title = 'Welcome to ' .. Scr.name
+                    if not ImGui.IsPopupOpen(ctx, title) then
+                        ImGui.OpenPopup(ctx, title)
+                    end
+                    local open, confirm = app.draw.popup(app.gui.ctx, title,
+                        T.SLEEP_MODE_EXPLANATION .. '\n\n' .. T.TURN_ON_SLEEP_MODE)
+                    if confirm then
+                        app.settings.current.sleepMode = true
+                        app.settings.current.welcomeScreenShown = true
+                        app.settings:save()
+                    elseif not open then
+                        app.settings.current.sleepMode = false
+                        app.settings.current.welcomeScreenShown = true
+                        app.settings:save()
                     end
                 end
             end,
@@ -2630,7 +2709,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             if createdActionName then
                                 app:msg((T.EXPORT_ACTION_DIALOG.EXPORT.SUCCESS):format(createdActionName))
                             end
-                            app.temp.showExportActionDialog = false --TODO: if I don't close the window, the msg disappears. check what's up with that
+                            app.temp.showExportActionDialog = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
                         if not canExportAction then ImGui.EndDisabled(ctx) end
@@ -2691,6 +2770,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     app.draw.createPresetDialog(ctx)
                     app.draw.exportActionDialog(ctx)
                     app.draw.settings(ctx)
+                    app.draw.welcomeDialog(ctx)
                     app:drawMsg()
                     ImGui.End(ctx)
                 end
@@ -2720,7 +2800,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
             if not app.hide and not app.hardExit then
                 PDefer(app.loop)
-            elseif not app.hardExit and app.settings.current.persistantMode then
+            elseif not app.hardExit and app.settings.current.sleepMode then
                 if app and app.settings then app.settings:save() end
                 r.SetExtState(Scr.ext_name, 'WAKEUP', 'WAITING', false)
                 PDefer(app.flow.waitForWakeup)

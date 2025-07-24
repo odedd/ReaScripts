@@ -367,8 +367,6 @@ PB_Gui.init = function(self, fonts)
             (y or select(2, ImGui.GetCursorScreenPos(self.ctx))) - letterspacing * #text
         text = text:reverse()
         for ci = 1, #text do
-            -- ImGui.SetCursorPos(self.ctx, posX, posY + letterspacing * (ci - 1))
-            -- ImGui.Text(self.ctx, text:sub(ci, ci))
             ImGui.DrawList_AddText(drawList, posX, posY + letterspacing * (ci - 1), color, text:sub(ci, ci))
         end
         ImGui.PopFont(self.ctx)
@@ -387,6 +385,16 @@ PB_Gui.init = function(self, fonts)
             ImGui.AlignTextToFramePadding(ctx)
             ImGui.PushTextWrapPos(ctx, thirdWidth)
             ImGui.Text(ctx, text)
+            if data.help then
+                ImGui.SameLine(ctx)
+                ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
+                ImGui.PushFont(ctx, self.st.fonts.icons_small)
+                ImGui.TextColored(ctx,self.st.basecolors.textDarker, ICONS.QUESTION_CIRCLE)
+                ImGui.PopFont(ctx)
+                if ImGui.IsItemHovered(ctx) then
+                    ImGui.SetTooltip(ctx, data.help)
+                end
+            end
             ImGui.PopTextWrapPos(ctx)
             ImGui.SameLine(ctx)
             if stType == 'orderable_list' then
@@ -399,7 +407,7 @@ PB_Gui.init = function(self, fonts)
                 ImGui.SetCursorPos(ctx, x, y)
             end
             ImGui.SetCursorPosX(ctx, thirdWidth)
-            widgetWidth = itemWidth
+            widgetWidth = data.width or ImGui.GetContentRegionAvail(ctx)--itemWidth
         else
             ImGui.SameLine(ctx)
             widgetWidth = ImGui.GetContentRegionAvail(ctx)
