@@ -20,11 +20,13 @@
 -- DONE: Better visual representation of search mode
 -- DONE: Option to hide sidebar
 -- DONE: do something about horizontal scroll for long results
--- TODO: Settings window
+-- DONE: Settings window
+-- TODO: All execute functions + handling FX instruments
 -- TODO: Fix Hints
--- TODO: minimal mode (?)
 -- TODO: Add tooltips to results with additional information
 -- TODO: Refresh tracks
 -- TODO: Refresh projects?
 -- TODO: Add project templates
 -- TODO: Add markers/regions
+-- TODO: Track newly added plugins (?)
+-- TODO: minimal mode (?)

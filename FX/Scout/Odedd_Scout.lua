@@ -2231,14 +2231,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             T.SETTINGS.SLEEP_MODE.LABEL,
                             T.SETTINGS.SLEEP_MODE.HINT, app.settings.current.sleepMode,
                             { help = T.SLEEP_MODE_EXPLANATION })
-                        app.settings.current.createInsideFolder = app.gui:setting('checkbox',
-                            T.SETTINGS.CREATE_INSIDE_FODLER.LABEL,
-                            T.SETTINGS.CREATE_INSIDE_FODLER.HINT, app.settings.current.createInsideFolder)
-                        if app.settings.current.createInsideFolder then
-                            app.settings.current.sendFolderName = app.gui:setting('text_with_hint', '###sendFolderName',
-                                T.SETTINGS.SEND_FOLDER_NAME.HINT, app.settings.current.sendFolderName,
-                                { hint = T.SETTINGS.SEND_FOLDER_NAME.LABEL }, true)
-                        end
                         ImGui.SeparatorText(ctx, 'Shortcuts')
                         local resetCounter = false
                         local key = app.settings.current.sleepMode and T.SETTINGS.SHORTCUTS.ENTER_SLEEP_MODE or
@@ -2283,19 +2275,28 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         app.temp.groupOrder, app.temp.groupVisibility = app.gui:setting(
                             'orderable_list',
                             T.SETTINGS.GROUP_ORDER.LABEL, T.SETTINGS.GROUP_ORDER.HINT,
-                            { app.temp.groupOrder, app.temp.groupVisibility })
+                            { app.temp.groupOrder, app.temp.groupVisibility }, { divideWidth = 2 })
 
                         app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility = app.gui:setting(
                             'orderable_list',
-                            T.SETTINGS.FX_TYPE_ORDER.LABEL, T.SETTINGS.FX_TYPE_ORDER.HINT,
-                            { app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility })
+                            '', T.SETTINGS.FX_TYPE_ORDER.HINT,
+                            { app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility }, {}, true)
 
                         app.settings.current.showOnlyHighestPriorityPlugin = app.gui:setting('checkbox',
                             T.SETTINGS.SHOW_ONLY_HIGHEST_PRIORITY_FX.LABEL, T.SETTINGS.SHOW_ONLY_HIGHEST_PRIORITY_FX
-                            .HINT,app.settings.current.showOnlyHighestPriorityPlugin)
+                            .HINT, app.settings.current.showOnlyHighestPriorityPlugin)
 
                         ImGui.SeparatorText(ctx, 'Item specific settings')
-                        -- app.temp.projectScanFolders = {}
+                        app.settings.current.createSendsInsideFolder = app.gui:setting('checkbox',
+                            T.SETTINGS.CREATE_INSIDE_FODLER.LABEL,
+                            T.SETTINGS.CREATE_INSIDE_FODLER.HINT, app.settings.current.createSendsInsideFolder)
+                        if app.settings.current.createSendsInsideFolder then
+                            app.settings.current.sendFolderName = app.gui:setting('text_with_hint', '###sendFolderName',
+                                T.SETTINGS.SEND_FOLDER_NAME.HINT, app.settings.current.sendFolderName,
+                                { hint = T.SETTINGS.SEND_FOLDER_NAME.LABEL }, true)
+                        end
+
+
                         local removePath = nil
                         local path = app.gui:setting('folder', T.SETTINGS.PROJECT_SCAN_FOLDER.LABEL,
                             T.SETTINGS.PROJECT_SCAN_FOLDER.HINT, nil,

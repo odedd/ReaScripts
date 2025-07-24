@@ -59,18 +59,18 @@ T.SETTINGS = {
         LABEL = 'Use sleep mode',
         HINT = 'If one does not exist, it will be created when adding sends.',
     },
-    GROUP_ORDER = {
-        LABEL = 'Item priority',
-        HINT = 'The order in which items are displayed in the search window.',
-    },
     PROJECT_SCAN_FOLDER = {
         LABEL = 'Project scanning folder',
         LABEL_BUTTON = 'Add...',
         HINT = 'Where Scout needs to search for projects. Will also scan subfolders.',
         HINT_DELETE = 'Remove this folder',
     },
+    GROUP_ORDER = {
+        LABEL = 'Item and FX priority',
+        HINT = 'The order in which items are displayed in the search window.',
+    },
     FX_TYPE_ORDER = {
-        LABEL = 'FX type priority',
+        -- LABEL = 'FX type priority',
         HINT = 'The order in which FX are displayed in the search window.',
     },
     SHOW_ONLY_HIGHEST_PRIORITY_FX = {
