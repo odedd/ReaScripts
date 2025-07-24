@@ -1444,14 +1444,14 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         ImGui.EndChild(ctx)
                     end
                 end
-                local drawTagSeparator = function()
+                local drawSideBarSeparator = function()
                     -- Separator Resize Line
                     local separatorX, separatorY = ImGui.GetCursorScreenPos(ctx)
                     ImGui.DrawList_AddLine(ImGui.GetWindowDrawList(ctx), separatorX, separatorY, separatorX,
                         separatorY + h,
                         ImGui.GetStyleColor(ctx, ImGui.Col_Separator))
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
-                    ImGui.InvisibleButton(ctx, '##separator', spacingX * 2 + 1, sideBarH)
+                    ImGui.InvisibleButton(ctx, '##separator', spacingX * 2, sideBarH)
                     if ImGui.IsItemHovered(ctx) then
                         app:setHoveredHint('main', 'Drag to change tag list width', nil, nil, 1)
                         ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
@@ -1779,16 +1779,13 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
 
                                 if tag.hasDescendants and tag.open then
-                                    ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
+                                    ImGui.Spacing(ctx)
                                     drawTagsOfParent(tag.id, true, dragged)
-                                    -- ImGui.TreePop(ctx)
                                 elseif not dragged then
-                                    -- ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx))
                                     drawDropTarget(tag, spacingY, 'after', 0, spacingY)
-                                    ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
-                                    -- ImGui.Dummy(ctx, 0, 0)
+                                    ImGui.Spacing(ctx)
                                 else
-                                    ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
+                                    ImGui.Spacing(ctx)
                                 end
                                 -- end
                                 if indent then ImGui.Unindent(ctx) end
@@ -1902,7 +1899,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         end
 
                         ImGui.SeparatorText(ctx, "Filters")
-                        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
+                        ImGui.Spacing(ctx)
                         drawFilterMenu(FILTER_MENU, 'root')
 
                         ImGui.SeparatorText(ctx, "Tags")
@@ -1921,7 +1918,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         ImGui.PopFont(ctx)
                         ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
                         if ImGui.BeginChild(ctx, 'TagScrollArea', sideBarW - paddingX * 2, select(2, ImGui.GetContentRegionAvail(ctx)) - spacingY, nil) then
-                            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
+                            -- ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
+                            ImGui.Spacing(ctx)
                             drawTagsOfParent(TAGS_ROOT_PARENT, false, false)
                             ImGui.Dummy(ctx, 0, 0)
                             ImGui.EndChild(ctx)
@@ -1938,7 +1936,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 end
                 if app.settings.current.showSideBar then
                     ImGui.SameLine(ctx)
-                    drawTagSeparator()
+                    drawSideBarSeparator()
                     ImGui.SameLine(ctx)
                     drawsideBar()
                 end
@@ -1967,7 +1965,9 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         table.insert(menu, { icon = 'dock_down', hint = 'Dock' })
                     end
                     table.insert(menu, { icon = 'gear', hint = 'Settings' })
-                    table.insert(menu, { icon = 'sidebar', hint = app.settings.current.showSideBar and 'Hide side bar' or 'Show side bar', active = app.settings.current.showSideBar })
+                    table.insert(menu,
+                        { icon = 'sidebar', hint = app.settings.current.showSideBar and 'Hide side bar' or
+                        'Show side bar', active = app.settings.current.showSideBar })
                     return menu
                 end
                 local calculateDimensions = function()
@@ -2094,7 +2094,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
                     local clicked = nil
                     for i, btn in ipairs(buttons) do
-                        local col = btn.active and app.gui.st.col.buttons.topBarActiveIcon or app.gui.st.col.buttons.topBarIcon
+                        local col = btn.active and app.gui.st.col.buttons.topBarActiveIcon or
+                        app.gui.st.col.buttons.topBarIcon
                         if app.guiHelpers.iconButton(ctx, btn.icon, col, btn.hint) then
                             clicked = btn
                                 .icon
@@ -2357,11 +2358,13 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
             hint = function(ctx, window)
                 local status, col = app:getHint(window)
                 ImGui.Separator(ctx)
-                if col then app.gui:pushColors(app.gui.st.col[col]) end
-                ImGui.SetCursorPosY(ctx,
-                    ImGui.GetCursorPosY(ctx) + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2)
-                ImGui.Text(ctx, status)
-                if col then app.gui:popColors(app.gui.st.col[col]) end
+                if ImGui.BeginChild(ctx, window .. 'Hint', nil, ImGui.GetTextLineHeightWithSpacing(ctx), nil, ImGui.WindowFlags_NoScrollWithMouse) then
+                    if col then app.gui:pushColors(app.gui.st.col[col]) end
+                    ImGui.Spacing(ctx)
+                    ImGui.Text(ctx, status)
+                    if col then app.gui:popColors(app.gui.st.col[col]) end
+                    ImGui.EndChild(ctx)
+                end
                 app:setHint(window, '')
             end,
             popup = function(ctx, id, text)
