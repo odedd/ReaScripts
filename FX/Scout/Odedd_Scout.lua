@@ -1917,8 +1917,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         app:setHoveredHint('main', 'Create new tag', nil, nil, 1)
                         ImGui.PopFont(ctx)
                         ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
-                        if ImGui.BeginChild(ctx, 'TagScrollArea', sideBarW - paddingX * 2, select(2, ImGui.GetContentRegionAvail(ctx)) - spacingY, nil) then
-                            -- ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
+                        ImGui.SetNextWindowScroll(ctx, 0,-1)
+                        if ImGui.BeginChild(ctx, 'TagScrollArea', sideBarW - paddingX * 2, select(2, ImGui.GetContentRegionAvail(ctx)) - spacingY) then
                             ImGui.Spacing(ctx)
                             drawTagsOfParent(TAGS_ROOT_PARENT, false, false)
                             ImGui.Dummy(ctx, 0, 0)
