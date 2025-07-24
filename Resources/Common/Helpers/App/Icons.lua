@@ -1,12 +1,16 @@
 -- @noindex
 
 ICONS = {
+    ['BOX'] = 'A',
+    ['BRIEFCASE'] = 'B',
     ['PENCIL'] = 'C',
     ['DOCK_DOWN'] = 'D',
     ['UNDOCK'] = 'E',
+    ['FOLDER'] = 'f',
     ['ARROW_LEFT'] = 'F',
     ['GEAR'] = 'G',
     ['HEADPHONES'] = 'H',
+    ['COMPUTER'] = 'I',
     ['DISK'] = 'K',
     ['LEFT'] = 'L',
     ['MONEY'] = 'M',
@@ -14,6 +18,7 @@ ICONS = {
     ['POLARITY'] = 'O',
     ['PLUS'] = 'P',
     ['RIGHT'] = 'R',
+    ['SUBFOLDER'] = 's',
     ['STAR'] = 'S',
     ['TRASH'] = 'T',
     ['UNDO'] = 'U',
@@ -22,5 +27,7 @@ ICONS = {
     ['CLOSE'] = 'X',
     ['STEREO'] = 'Y',
     ['MONO'] = 'Z',
-    ['SEARCH'] = '*'
+    ['SEARCH'] = '*',
+    ['TAG'] = '-',
+    ['QUESTION'] = '?'
 }

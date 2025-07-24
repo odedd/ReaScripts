@@ -921,7 +921,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
             --     self.preset:update()
             --     self.app.logger:logInfo('Updated preset "' .. self.preset.name .. '" with current filter')
             -- else
-                -- Normal click: Apply preset
+            -- Normal click: Apply preset
             self.preset:apply()
             -- end
         else
@@ -976,6 +976,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
         for filterType, filter in pairs(FILTER_MENU) do
             -- Skip presets here since they're handled separately with more functionality
             if filterType ~= FILTER_TYPES.PRESET and (scanAll or (whichFilters.filters and OD_HasValue(whichFilters.filters, filterType))) then
+
                 for itemName, item in pairs(filter.items) do
                     table.insert(self.filterAssets, {
                         engine = self,
@@ -1054,7 +1055,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 engine = self,
                 app = self.app,
                 type = FILTER_TYPES.PRESET,
-                searchText = { { text = preset.name } },
+                searchText = { { text = preset.name }, { text = preset.word or '' } },
                 order = preset.id, -- Use ID as order for now, could be customized later
                 preset = preset,   -- Store reference to preset
                 group = T.FILTER_NAMES[FILTER_TYPES.PRESET],

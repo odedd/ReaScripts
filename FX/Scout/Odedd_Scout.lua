@@ -721,7 +721,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     return table.unpack(app.temp.iconSizes[icon])
                 end
             end,
-            tinyIcon = function(ctx, id, icon, highlighted, disabled)
+            tinyIcon = function(ctx, id, icon, highlighted, disabled, toolTip)
+                r.ShowConsoleMsg((toolTip or ''))
                 local clicked = false
                 local textW, textH = ImGui.CalcTextSize(ctx, 'I')
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
@@ -735,12 +736,15 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 end
                 local col = highlighted and app.gui.st.basecolors.textDark or
                     (disabled and app.gui.st.basecolors.textDark or app.gui.st.col.activeFilterButton[ImGui.Col_Button])
-                if not disabled and ImGui.IsItemHovered(ctx) then
-                    ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
-                    if ImGui.IsItemActive(ctx) then
-                        col = app.gui.st.col.activeFilterButton[ImGui.Col_ButtonActive]
-                    else
-                        col = app.gui.st.col.activeFilterButton[ImGui.Col_ButtonHovered]
+                if ImGui.IsItemHovered(ctx) then
+                    if toolTip then ImGui.SetTooltip(ctx, toolTip) end
+                    if not disabled then
+                        ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                        if ImGui.IsItemActive(ctx) then
+                            col = app.gui.st.col.activeFilterButton[ImGui.Col_ButtonActive]
+                        else
+                            col = app.gui.st.col.activeFilterButton[ImGui.Col_ButtonHovered]
+                        end
                     end
                 end
                 -- ImGui.SetCursorPosY(ctx, y + paddingY + (textH - closeButtonSizeH) / 2)
@@ -896,7 +900,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
                     ImGui.PushFont(ctx, app.gui.st.fonts.small)
                     if OD_Tablelength(activeFilters) > 0 then
-                        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + spacingY)
+                        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx))
 
                         if app.guiHelpers.iconButton(ctx, 'CLOSE', app.gui.st.col.buttons.activeFilterAction) then
                             app.flow.filterResults({ clear = true })
@@ -930,18 +934,18 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             local i = 0
                             for filterKey, filter in OD_PairsByOrder(activeFilters) do
                                 i = i + 1
-                                local text = (filter.type == FILTER_TYPES.TAG and filter.key or T.FILTER_NAMES[filter.key]) ..
-                                    ' ' .. filter.itemName
+                                local text = filter.itemName
                                 local textW, textH = ImGui.CalcTextSize(ctx, text)
                                 if filter.type == FILTER_TYPES.TAG then
                                     text = filter.itemName
                                     textW = app.guiHelpers.calcTinyIconSize(ctx,
                                             filter.value and ICONS.PLUS or ICONS.MINUS) +
-                                        spacingX *
-                                        2 +
+
                                         ImGui.CalcTextSize(ctx, text)
                                 end
-                                local filterW = textW + spacingX + closeButtonSizeW + paddingX * 2
+                                local iconWidth = app.guiHelpers.calcTinyIconSize(ctx, FILTER_ICONS[filter.type])
+                                local filterW = paddingX + iconWidth + spacingX + textW + spacingX + closeButtonSizeW +
+                                    paddingX * 2
                                 if (i ~= 1) then
                                     ImGui.SameLine(ctx)
                                 end
@@ -959,16 +963,25 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                         ImGui.GetColor(ctx, ImGui.Col_Button),
                                         ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
                                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX) --, ImGui.GetCursorPosY(ctx) + paddingY)
+                                    app.guiHelpers.tinyIcon(ctx, 'filterType',
+                                        FILTER_ICONS[filter.type],
+                                        true,
+                                        true, T.FILTER_NAMES[filter.type])
+                                    -- ImGui.SetTooltip(ctx, T.FILTER_NAMES[filter.key])
+                                    ImGui.SameLine(ctx)
+
+                                    -- ImGui.AlignTextToFramePadding(ctx)
+                                    -- ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + iconWidth + spacingX * 2) --, ImGui.GetCursorPosY(ctx) + paddingY)
                                     if filter.type == FILTER_TYPES.TAG then
+                                        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
                                         app.guiHelpers.tinyIcon(ctx, 'tagType',
                                             filter.value and ICONS.PLUS or ICONS.MINUS,
                                             true,
                                             true)
-                                    else
-                                        ImGui.TextColored(ctx, app.gui.st.basecolors.textDark, T.FILTER_NAMES
-                                            [filter.key])
+                                        ImGui.SameLine(ctx)
+                                        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
+                                        -- ImGui.TextColored(ctx, app.gui.st.basecolors.textDark, T.FILTER_NAMES[filter.key])
                                     end
-                                    ImGui.SameLine(ctx)
                                     ImGui.AlignTextToFramePadding(ctx)
                                     ImGui.Text(ctx, filter.itemName)
                                     ImGui.SameLine(ctx)
@@ -1315,6 +1328,15 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                                 ImGui.PopFont(ctx)
                                                 ImGui.SameLine(ctx)
                                             end
+                                            if app.temp.searchMode == SEARCH_MODE.FILTERS then
+                                                -- if result.group == SPECIAL_GROUPS.FAVORITES then
+                                                ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                                                app.gui:pushColors(app.gui.st.col.search.favorite)
+                                                ImGui.Text(ctx, FILTER_ICONS[result.type])
+                                                app.gui:popColors(app.gui.st.col.search.favorite)
+                                                ImGui.PopFont(ctx)
+                                                ImGui.SameLine(ctx)
+                                            end
 
                                             -- draw result name, highlighting the search query
                                             ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 0.0, 0.0)
@@ -1555,7 +1577,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                 local tagNameWidth = ImGui.CalcTextSize(ctx, tagName)
                                 local tagW, tagH = tagNameWidth + paddingX * 2 + triangleW,
                                     ImGui.GetTextLineHeight(ctx) + paddingY * 2
-                                --+app.guiHelpers.calcTinyIconSize(ctx, ICONS.PENCIL)
                                 local col = app.gui.st.col.tag[ImGui.Col_FrameBg]
                                 local tagStatus = app.temp.filter.tags[tag.id]
                                 local hovering = false
@@ -1873,7 +1894,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                             ImGui.EndMenu(ctx)
                                         end
                                     end
-                                    
+
                                     ImGui.PopID(ctx)
                                 end
                             end
@@ -1925,7 +1946,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
             end,
             topBar = function(ctx)
                 app.gui:pushStyles(app.gui.st.vars.topBar)
-                app.gui:pushColors(app.gui.st.col.topBar)
+                app.gui:pushColors(app.gui.st.col.topBar[app.temp.searchMode])
 
                 local menu = {}
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
@@ -2135,7 +2156,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     ImGui.EndChild(ctx)
                     handleMenuButtons(rv, btn)
                 end
-                app.gui:popColors(app.gui.st.col.topBar)
+                app.gui:popColors(app.gui.st.col.topBar[app.temp.searchMode])
                 app.gui:popStyles(app.gui.st.vars.topBar)
             end,
             settings = function(ctx)

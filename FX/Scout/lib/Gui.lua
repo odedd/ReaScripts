@@ -30,11 +30,11 @@ PB_Gui.init = function(self, fonts)
     buflen = strlen(#Buf);
     InputTextCallback_DeleteChars(0, buflen);
 ]])
-ImGui.Attach(self.ctx, self.clearInputIfNeeded)
--- self.blockNextCharacter = ImGui.CreateFunctionFromEEL([[
---     EventChar = 0;
--- ]])
---     ImGui.Attach(self.ctx, self.blockNextCharacter)
+    ImGui.Attach(self.ctx, self.clearInputIfNeeded)
+    -- self.blockNextCharacter = ImGui.CreateFunctionFromEEL([[
+    --     EventChar = 0;
+    -- ]])
+    --     ImGui.Attach(self.ctx, self.blockNextCharacter)
 
     self.st.basecolors = {
         darkestBG = 0x131313ff,
@@ -161,9 +161,18 @@ ImGui.Attach(self.ctx, self.clearInputIfNeeded)
             }
         },
         topBar = {
-            [ImGui.Col_ChildBg] = self.st.basecolors.darkBG,
-            [ImGui.Col_FrameBg] = self.st.basecolors.darkBG,
-            [ImGui.Col_TextDisabled] = self.st.basecolors.midBG
+            [SEARCH_MODE.FILTERS] =
+            {
+                [ImGui.Col_ChildBg] = 0x21191aff, --self.st.basecolors.mainDarkest,
+                [ImGui.Col_FrameBg] = 0x21191aff, --self.st.basecolors.mainDarkest,
+                [ImGui.Col_TextDisabled] = self.st.basecolors.midBG
+            }
+            ,
+            [SEARCH_MODE.MAIN] = {
+                [ImGui.Col_ChildBg] = self.st.basecolors.darkBG,
+                [ImGui.Col_FrameBg] = self.st.basecolors.darkBG,
+                [ImGui.Col_TextDisabled] = self.st.basecolors.midBG
+            }
         },
         topBarActiveFiltersArea = {
             -- [ImGui.Col_ChildBg] = self.st.basecolors.darkestBG,
@@ -394,7 +403,7 @@ ImGui.Attach(self.ctx, self.clearInputIfNeeded)
         end
         if data.divideWidth then
             widgetWidth = widgetWidth / data.divideWidth -
-            ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * (data.divideWidth - 1)
+                ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * (data.divideWidth - 1)
         end
         ImGui.PushItemWidth(ctx, data.width or widgetWidth)
 

@@ -56,8 +56,8 @@ T.SETTINGS = {
         HINT = 'If one does not exist, it will be created when adding sends.',
     },
     GROUP_ORDER = {
-        LABEL = 'Asset priority',
-        HINT = 'The order in which Assets are displayed in the search window.',
+        LABEL = 'Item priority',
+        HINT = 'The order in which items are displayed in the search window.',
     },
     FX_TYPE_ORDER = {
         LABEL = 'FX type priority',
@@ -127,9 +127,9 @@ the dock position.]]):format(Scr.name)
 }
 
 T.IMPORT_SKIP_REASON = {
-    [IMPORT_SKIP_REASON.ASSET_NOT_FOUND] = "Asset not found in current system",
+    [IMPORT_SKIP_REASON.ASSET_NOT_FOUND] = "Filter not found in current system",
     [IMPORT_SKIP_REASON.INCOMPATIBLE_VERSION] = "Incompatible file version",
-    [IMPORT_SKIP_REASON.INVALID_FORMAT] = "Invalid asset format"
+    [IMPORT_SKIP_REASON.INVALID_FORMAT] = "Invalid filter format"
 }
 
 T.SPECIAL_GROUPS = {

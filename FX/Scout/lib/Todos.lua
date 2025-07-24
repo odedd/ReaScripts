@@ -15,12 +15,10 @@
 --       ✓ Presets section added to export/import file format with serialized filter data
 --       ✓ Merge mode support for presets (preserve existing + add new)
 --       ✓ UI labels updated to include presets in export/import dialogs
--- TODO: Keyboard shortcuts for presets/filters
--- TODO: Create actions for presets/filters
+-- DONE: Create actions for presets/filters
+-- DONE: Reset filter button
 -- TODO: Settings window
 -- TODO: Fix Hints
--- TODO: Multiple results via mouse (?)
--- TODO: Reset filter button
 -- TODO: Better visual representation of search mode
 -- TODO: minimal mode (?)
 -- TODO: do something about horizontal scroll for long results
