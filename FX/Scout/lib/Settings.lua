@@ -6,7 +6,7 @@ PB_Settings = OD_Settings:new({
         createInsideFolder = true,
         sendFolderName = 'FX Return Tracks',
         persistantMode = true,
-        projectScanFolders = {'/Users/odeddavidov/Desktop'},
+        projectScanFolders = { '/Users/odeddavidov/Desktop' },
         shortcuts = {
             markFavorite = {
                 key = OD_KEYCODES.F,
@@ -17,9 +17,9 @@ PB_Settings = OD_Settings:new({
             },
             resetFilters = {
                 key = OD_KEYCODES.R,
-                ctrl = false,
-                shift = false,
-                alt = true,
+                ctrl = true,
+                shift = true,
+                alt = false,
                 macCtrl = false
             },
             closeScript = {
@@ -31,9 +31,9 @@ PB_Settings = OD_Settings:new({
             },
             hardCloseScript = {
                 key = OD_KEYCODES.Q,
-                ctrl = false,
-                shift = false,
-                alt = true,
+                ctrl = true,
+                shift = true,
+                alt = false,
                 macCtrl = false
             },
             selectAllResults = {
@@ -73,14 +73,24 @@ PB_Settings = OD_Settings:new({
         -- Default group order using asset type class names (more robust than group names)
         -- Use SPECIAL_GROUPS constants for special groups
         groupOrder = {
-            SPECIAL_GROUPS.RECENTS,      -- Recents (special group) 
-            SPECIAL_GROUPS.FAVORITES,    -- Favorites (special group)
-            SPECIAL_GROUPS.PLUGINS,      -- Placeholder for all FX types (VST3, AU, etc.)
-            "FXChainAssetType",          -- FX Chains asset type
-            "TrackAssetType",            -- Tracks asset type
-            "TrackTemplateAssetType",    -- Track Templates asset type
-            "ActionAssetType",           -- Actions asset type
-            "ProjectAssetType"           -- Projects asset type
+            SPECIAL_GROUPS.RECENTS,   -- Recents (special group)
+            SPECIAL_GROUPS.FAVORITES, -- Favorites (special group)
+            SPECIAL_GROUPS.PLUGINS,   -- Placeholder for all FX types (VST3, AU, etc.)
+            "FXChainAssetType",       -- FX Chains asset type
+            "TrackAssetType",         -- Tracks asset type
+            "TrackTemplateAssetType", -- Track Templates asset type
+            "ActionAssetType",        -- Actions asset type
+            "ProjectAssetType"        -- Projects asset type
+        },
+        groupVisibility = {
+            [SPECIAL_GROUPS.RECENTS] = true,  -- Recents (special group)
+            [SPECIAL_GROUPS.FAVORITES] = true, -- Favorites (special group)
+            [SPECIAL_GROUPS.PLUGINS] = true,  -- Placeholder for all FX types (VST3, AU, etc.)
+            ["FXChainAssetType"] = true,      -- FX Chains asset type
+            ["TrackAssetType"] = true,        -- Tracks asset type
+            ["TrackTemplateAssetType"] = true, -- Track Templates asset type
+            ["ActionAssetType"] = true,       -- Actions asset type
+            ["ProjectAssetType"] = true       -- Projects asset type
         },
         uiScale = 1,
 

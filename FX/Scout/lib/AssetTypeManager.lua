@@ -91,6 +91,9 @@ function AssetTypeManager:createAssetTypeInstances()
         if AssetTypeClass then
             local instance = AssetTypeClass.new(AssetTypeClass, self.context)
 
+            -- Store the class name for visibility checking
+            instance.className = className
+            
             -- Set filterOrder based on manifest order
             instance.filterOrder = filenameToOrder[definition.file]
             self.context.logger:logDebug('Set filterOrder=' ..
@@ -128,9 +131,15 @@ function AssetTypeManager:buildFilterMenu()
     local filterMenu = {}
 
     for _, assetType in ipairs(self.assetTypes) do
-        local menuEntry = assetType:getFilterMenuEntry()
-        for key, value in pairs(menuEntry) do
-            filterMenu[key] = value
+        -- Check if this asset type's class is visible
+        local className = assetType.className
+        if self.context.settings.current.groupVisibility[className] ~= false then
+            local menuEntry = assetType:getFilterMenuEntry()
+            for key, value in pairs(menuEntry) do
+                filterMenu[key] = value
+            end
+        else
+            self.context.logger:logDebug('Skipping filter menu entry for ' .. (assetType.name or 'unknown') .. ' - class "' .. className .. '" is not visible')
         end
     end
 
@@ -142,14 +151,20 @@ function AssetTypeManager:assembleAllAssets()
     local count = 0
 
     for _, assetType in ipairs(self.assetTypes) do
-        local assetData = assetType:getDataWithLogging()
+        -- Check if this asset type's class is visible using the class name as key
+        local className = assetType.className
+        if self.context.settings.current.groupVisibility[className] ~= false then
+            local assetData = assetType:getDataWithLogging()
 
-        for _, data in ipairs(assetData) do
-            local asset = assetType:assembleAsset(data)
-            if asset then -- Asset may be nil if filtered out (e.g., plugin visibility)
-                table.insert(assets, asset)
-                count = count + 1
+            for _, data in ipairs(assetData) do
+                local asset = assetType:assembleAsset(data)
+                if asset then -- Asset may be nil if filtered out (e.g., plugin visibility)
+                    table.insert(assets, asset)
+                    count = count + 1
+                end
             end
+        else
+            self.context.logger:logDebug('Skipping asset type ' .. (assetType.name or 'unknown') .. ' - class "' .. className .. '" is not visible')
         end
     end
 

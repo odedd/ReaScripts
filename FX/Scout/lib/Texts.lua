@@ -55,6 +55,10 @@ T.SETTINGS = {
         LABEL = 'Folder name',
         HINT = 'If one does not exist, it will be created when adding sends.',
     },
+    GROUP_ORDER = {
+        LABEL = 'Asset priority',
+        HINT = 'The order in which Assets are displayed in the search window.',
+    },
     FX_TYPE_ORDER = {
         LABEL = 'FX type priority',
         HINT = 'The order in which FX are displayed in the search window.',
@@ -128,7 +132,8 @@ T.IMPORT_SKIP_REASON = {
     [IMPORT_SKIP_REASON.INVALID_FORMAT] = "Invalid asset format"
 }
 
-T.GROUPS = {
-    FAVORITES = 'Favorites',
-    RECENTS = 'Recents'
+T.SPECIAL_GROUPS = {
+    [SPECIAL_GROUPS.FAVORITES] = 'Favorites',
+    [SPECIAL_GROUPS.RECENTS] = 'Recents',
+    [SPECIAL_GROUPS.PLUGINS] = 'FX'
 }

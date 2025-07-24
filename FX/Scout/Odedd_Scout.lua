@@ -237,11 +237,13 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     end
                     query = OD_DeepCopy(query) or {}
                     if query.clear then
-                        app.temp.searchInput = ''
+                        -- app.temp.searchInput = ''
+                        app.guiHelpers.clearSearchInputText()
                         app.temp.filter = {}
                     end
                     if query.clearText then
-                        app.temp.searchInput = ''
+                        app.guiHelpers.clearSearchInputText()
+                        -- app.temp.searchInput = ''
                         app.temp.filter.text = ''
                     end
                     query.text = query.text or app.temp.filter.text or ''
@@ -1798,80 +1800,82 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         end
                         local function drawFilterMenu(menu, menuId)
                             for k, menuInfo in OD_PairsByOrder(menu) do
-                                ImGui.PushID(ctx, menuId .. '/' .. k)
-                                if k ~= FILTER_TYPES.PRESET or (k == FILTER_TYPES.PRESET and OD_Tablelength(app.engine.presets) > 0) then
-                                    if ImGui.BeginMenu(ctx, T.FILTER_NAMES[k] .. '##filterMenu') then
-                                        -- Special handling for Presets menu
-                                        if k == FILTER_TYPES.PRESET then
-                                            -- "Save Preset..." - only show when filters are active
-                                            local hasActiveFilters = false
-                                            if app.temp.filter then
-                                                -- Check if any filters are active
-                                                for filterKey, filterValue in pairs(app.temp.filter) do
-                                                    if filterKey == 'tags' then
-                                                        if OD_Tablelength(filterValue) > 0 then
+                                if OD_TableLength(menuInfo.items) > 0 then
+                                    ImGui.PushID(ctx, menuId .. '/' .. k)
+                                    if k ~= FILTER_TYPES.PRESET or (k == FILTER_TYPES.PRESET and OD_Tablelength(app.engine.presets) > 0) then
+                                        if ImGui.BeginMenu(ctx, T.FILTER_NAMES[k] .. '##filterMenu') then
+                                            -- Special handling for Presets menu
+                                            if k == FILTER_TYPES.PRESET then
+                                                -- "Save Preset..." - only show when filters are active
+                                                local hasActiveFilters = false
+                                                if app.temp.filter then
+                                                    -- Check if any filters are active
+                                                    for filterKey, filterValue in pairs(app.temp.filter) do
+                                                        if filterKey == 'tags' then
+                                                            if OD_Tablelength(filterValue) > 0 then
+                                                                hasActiveFilters = true
+                                                                break
+                                                            end
+                                                        elseif filterKey ~= 'text' and filterValue ~= nil and filterValue ~= '' then
                                                             hasActiveFilters = true
                                                             break
                                                         end
-                                                    elseif filterKey ~= 'text' and filterValue ~= nil and filterValue ~= '' then
-                                                        hasActiveFilters = true
-                                                        break
                                                     end
                                                 end
-                                            end
 
-                                            -- "Edit Preset >" - show submenu with all presets
-                                            if ImGui.BeginMenu(ctx, 'Edit Preset...##editPreset') then
-                                                for presetId, preset in OD_PairsByOrder(app.engine.presets) do
-                                                    if ImGui.MenuItem(ctx, preset.name .. '##editPreset_' .. presetId) then
-                                                        app.temp.showCreatePresetDialog = true
-                                                        app.temp.presetName = preset.name
-                                                        app.temp.presetWord = preset.word
-                                                        app.temp.editingPresetId = presetId
-                                                        app.temp.originalPresetFilter = preset
-                                                            .filter -- Store original filter
+                                                -- "Edit Preset >" - show submenu with all presets
+                                                if ImGui.BeginMenu(ctx, 'Edit Preset...##editPreset') then
+                                                    for presetId, preset in OD_PairsByOrder(app.engine.presets) do
+                                                        if ImGui.MenuItem(ctx, preset.name .. '##editPreset_' .. presetId) then
+                                                            app.temp.showCreatePresetDialog = true
+                                                            app.temp.presetName = preset.name
+                                                            app.temp.presetWord = preset.word
+                                                            app.temp.editingPresetId = presetId
+                                                            app.temp.originalPresetFilter = preset
+                                                                .filter -- Store original filter
+                                                        end
                                                     end
+                                                    ImGui.EndMenu(ctx)
                                                 end
-                                                ImGui.EndMenu(ctx)
+
+                                                ImGui.Separator(ctx)
                                             end
 
-                                            ImGui.Separator(ctx)
-                                        end
-
-                                        if menuInfo.allQuery then
-                                            local selected = true
-                                            for k, v in pairs(menuInfo.allQuery) do
-                                                if app.temp.filter[k] ~= ((menuInfo.allQuery[k] ~= 'all') and menuInfo.allQuery[k] or nil) then
-                                                    selected = false
-                                                end
-                                            end
-
-                                            if ImGui.MenuItem(ctx, 'All' .. "##filterMenu-All", nil, selected) then
-                                                app.flow.filterResults(menuInfo.allQuery)
-                                            end
-                                            ImGui.Separator(ctx)
-                                        end
-
-                                        for item, value in OD_PairsByOrder(menuInfo.items) do
-                                            if value.submenu then
-                                                drawFilterMenu({ [item] = value.submenu }, menuId .. '-' .. item)
-                                            elseif value.query then
+                                            if menuInfo.allQuery then
                                                 local selected = true
-                                                for k, v in pairs(value.query) do
-                                                    if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then --BUG: this always results to value.query[k]
+                                                for k, v in pairs(menuInfo.allQuery) do
+                                                    if app.temp.filter[k] ~= ((menuInfo.allQuery[k] ~= 'all') and menuInfo.allQuery[k] or nil) then
                                                         selected = false
                                                     end
                                                 end
-                                                if ImGui.MenuItem(ctx, item, nil, selected) then
-                                                    app.flow.filterResults(value.query)
+
+                                                if ImGui.MenuItem(ctx, 'All' .. "##filterMenu-All", nil, selected) then
+                                                    app.flow.filterResults(menuInfo.allQuery)
+                                                end
+                                                ImGui.Separator(ctx)
+                                            end
+
+                                            for item, value in OD_PairsByOrder(menuInfo.items) do
+                                                if value.submenu then
+                                                    drawFilterMenu({ [item] = value.submenu }, menuId .. '-' .. item)
+                                                elseif value.query then
+                                                    local selected = true
+                                                    for k, v in pairs(value.query) do
+                                                        if app.temp.filter[k] ~= (value.query[k] == 'all' and nil or value.query[k]) then --BUG: this always results to value.query[k]
+                                                            selected = false
+                                                        end
+                                                    end
+                                                    if ImGui.MenuItem(ctx, item, nil, selected) then
+                                                        app.flow.filterResults(value.query)
+                                                    end
                                                 end
                                             end
+                                            ImGui.EndMenu(ctx)
                                         end
-                                        ImGui.EndMenu(ctx)
                                     end
+                                    
+                                    ImGui.PopID(ctx)
                                 end
-
-                                ImGui.PopID(ctx)
                             end
                         end
 
@@ -2028,10 +2032,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         inputFlags = inputFlags | ImGui.InputTextFlags_CallbackAlways
                         callback = app.gui.clearInputIfNeeded
                     end
-                    -- if app.temp.blockNextCharacter then
-                    --     inputFlags = inputFlags | ImGui.InputTextFlags_CallbackCharFilter
-                    --     callback = app.gui.blockNextCharacter
-                    -- end
                     rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput" .. app.temp.searchMode,
                         T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput,
                         inputFlags, callback)
@@ -2160,6 +2160,16 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 app.gui:popStyles(app.gui.st.vars.popupsTitle)
 
                 if visible then
+                    if ImGui.IsWindowAppearing(ctx) then
+                        app.temp.groupOrder = {}
+                        app.temp.groupVisibility = {}
+                        for i, group in ipairs(app.settings.current.groupOrder) do
+                            table.insert(app.temp.groupOrder, app.engine.assetGroupNameCache[group])
+                            app.temp.groupVisibility[app.engine.assetGroupNameCache[group]] = app.settings
+                                .current.groupVisibility[group]
+                            -- table.insert(app.temp.groupOrder, app.engine.assetGroupNameCache[group] or group)
+                        end
+                    end
                     app.temp.settingsWindowOpen = true
                     app.settings.current.settingsWindowPos = { ImGui.GetWindowPos(ctx) }
                     ImGui.SeparatorText(ctx, 'General')
@@ -2221,6 +2231,11 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                     if resetCounter then app.temp.captureCounter = 0 end
                     ImGui.SeparatorText(ctx, 'Ordering')
 
+                    app.temp.groupOrder, app.temp.groupVisibility = app.gui:setting(
+                        'orderable_list',
+                        T.SETTINGS.GROUP_ORDER.LABEL, T.SETTINGS.GROUP_ORDER.HINT,
+                        { app.temp.groupOrder, app.temp.groupVisibility })
+
                     app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility = app.gui:setting(
                         'orderable_list',
                         T.SETTINGS.FX_TYPE_ORDER.LABEL, T.SETTINGS.FX_TYPE_ORDER.HINT,
@@ -2273,9 +2288,9 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
                     app.draw.hint(ctx, 'settings')
                     app:drawMsg()
-                    if app.temp.captureCounter > 3 and OD_IsGlobalKeyDown(OD_KEYCODES.ESCAPE) then
-                        OD_ReleaseGlobalKeys()
-                        app.engine:sync(true)
+                    if app.temp.captureCounter > 3 and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+                        -- OD_ReleaseGlobalKeys()
+                        -- app.engine:sync(true)
                         ImGui.CloseCurrentPopup(ctx)
                     else
                         OD_ReleaseGlobalKeys()
@@ -2284,11 +2299,32 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                 else
                     app.temp._capturing = false
                 end
-                if app.temp.settingsWindowOpen and not ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow') then
-                    app.temp.settingsWindowOpen = false
+                if app.temp.settingsWindowOpen and not (open or ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow')) then
+                    app.temp.settingsWindowOpen = nil
                     OD_ReleaseGlobalKeys()
-                    app.engine:sync(true)
+
+                    -- Convert temp group order and visibility back to settings format
+                    if app.temp.groupOrder and app.temp.groupVisibility then
+                        app.settings.current.groupOrder = {}
+                        app.settings.current.groupVisibility = {}
+                        for i, groupName in ipairs(app.temp.groupOrder) do
+                            -- Find the group ID by name
+                            for groupId, cachedName in pairs(app.engine.assetGroupNameCache) do
+                                if cachedName == groupName then
+                                    table.insert(app.settings.current.groupOrder, groupId)
+                                    app.settings.current.groupVisibility[groupId] = app.temp.groupVisibility[groupName]
+                                    break
+                                end
+                            end
+                        end
+                    end
+
                     app.settings:save()
+                    app.engine:init(true)
+                    -- app.engine:assembleAssets(true)
+                    -- app.engine:updateFilterMenus()
+                    -- app.engine:assembleFilterAssets()
+                    app.flow.filterResults()
                 end
             end,
             hint = function(ctx, window)
@@ -2739,8 +2775,8 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
         -- Hook cache invalidation into engine operations
         local originalAssembleAssets = app.engine.assembleAssets
-        app.engine.assembleAssets = function(self)
-            originalAssembleAssets(self)
+        app.engine.assembleAssets = function(self, ...)
+            originalAssembleAssets(self, ...)
             -- Invalidate search caches when assets are reassembled
             app.cacheHelpers:invalidateAllAssetSearchCaches()
         end

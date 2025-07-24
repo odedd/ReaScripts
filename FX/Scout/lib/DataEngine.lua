@@ -22,29 +22,32 @@ PB_DataEngine = {
     end,
     validateFilter = function(self, filter)
         self.app.logger:logDebug('-- PB_DataEngine.validateFilter()')
-        
+
         local validatedFilter = OD_DeepCopy(filter)
         local hasIssues = false
-        
+
         -- Validate FX-related filters
         if validatedFilter.fxFolderId and (not self.fxFolders or not self.fxFolders[validatedFilter.fxFolderId]) then
-            self.app.logger:logError('FX Folder ID ' .. tostring(validatedFilter.fxFolderId) .. ' does not exist, ignoring filter')
+            self.app.logger:logError('FX Folder ID ' ..
+                tostring(validatedFilter.fxFolderId) .. ' does not exist, ignoring filter')
             validatedFilter.fxFolderId = nil
             hasIssues = true
         end
-        
+
         if validatedFilter.fxCategory and (not self.fxCategories or not self.fxCategories[validatedFilter.fxCategory]) then
-            self.app.logger:logError('FX Category "' .. tostring(validatedFilter.fxCategory) .. '" does not exist, ignoring filter')
+            self.app.logger:logError('FX Category "' ..
+                tostring(validatedFilter.fxCategory) .. '" does not exist, ignoring filter')
             validatedFilter.fxCategory = nil
             hasIssues = true
         end
-        
+
         if validatedFilter.fxDeveloper and (not self.fxDevelopers or not self.fxDevelopers[validatedFilter.fxDeveloper]) then
-            self.app.logger:logError('Developer "' .. tostring(validatedFilter.fxDeveloper) .. '" does not exist, ignoring filter')
+            self.app.logger:logError('Developer "' ..
+                tostring(validatedFilter.fxDeveloper) .. '" does not exist, ignoring filter')
             validatedFilter.fxDeveloper = nil
             hasIssues = true
         end
-        
+
         -- Validate tag filters
         if validatedFilter.tags then
             local validTags = {}
@@ -58,7 +61,7 @@ PB_DataEngine = {
             end
             validatedFilter.tags = validTags
         end
-        
+
         return validatedFilter, hasIssues
     end,
     refreshTracks = function(self)
@@ -78,7 +81,7 @@ PB_DataEngine = {
         end
     end,
     lastGuids = {}, -- use to check if a track has been removed or added
-    init = function(self, app)
+    init = function(self, forceRebuildCache)
         self.app.logger:logDebug('-- PB_DataEngine.init()')
         self.masterTrack = reaper.GetMasterTrack(0)
 
@@ -95,18 +98,18 @@ PB_DataEngine = {
         dofile(debug.getinfo(1, "S").source:match("@(.*/)") .. "AssetTypeManager.lua")
         self.assetTypeManager = AssetTypeManager:new(self)
 
-        -- Populate the dynamic filter menu
-        FILTER_MENU[FILTER_TYPES.TYPE].items = self.assetTypeManager:buildFilterMenu()
-
         -- if self.app.logger.profile then Profile.start() end
 
         self:getTags()
         self:getPresets()
 
-        -- Use the new modular assembleAssets
-        self:assembleAssets()
-        self:updateDevelopersFilterMenu()
-        self:updatePresetsFilterMenu()
+        -- Use the new modular assembleAssets (this populates fxDevelopers)
+        self:assembleAssets(forceRebuildCache)
+
+        -- Populate the dynamic filter menus (after tags, presets, and assets are loaded)
+        self:updateFilterMenus()
+
+        -- Build filter assets (after filter menus are populated)
         self:assembleFilterAssets()
         -- if self.app.logger.profile then
         --     Profile.stop()
@@ -170,6 +173,16 @@ PB_DataEngine._getTrack = function(self, track)
 end
 PB_DataEngine.getFXFolders = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.getFXFolders()')
+
+    -- Check if plugins are visible - if not, return empty data
+    if self.app.settings.current.groupVisibility[SPECIAL_GROUPS.PLUGINS] == false then
+        self.app.logger:logDebug('Skipping FX folders - plugins not visible')
+        self.fxFolders = {}
+        self.pluginToFolders = {}
+        FILTER_MENU[FILTER_TYPES.FOLDER].items = {}
+        return
+    end
+
     self.fxFolders = {}
     self.pluginToFolders = {}
 
@@ -252,6 +265,16 @@ end
 
 PB_DataEngine.getFXCategories = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.getFXCategories()')
+
+    -- Check if plugins are visible - if not, return empty data
+    if self.app.settings.current.groupVisibility[SPECIAL_GROUPS.PLUGINS] == false then
+        self.app.logger:logDebug('Skipping FX categories - plugins not visible')
+        self.fxCategories = {}
+        self.pluginToCategories = {}
+        FILTER_MENU[FILTER_TYPES.CATEGORY].items = {}
+        return
+    end
+
     self.fxCategories = {}
     self.pluginToCategories = {}
 
@@ -297,7 +320,6 @@ PB_DataEngine.getFXCategories = function(self)
 
     -- Update FILTER_MENU
     FILTER_MENU[FILTER_TYPES.CATEGORY].items = {}
-
     local categoryNames = {}
     for name in pairs(self.fxCategories) do
         table.insert(categoryNames, name)
@@ -312,44 +334,126 @@ PB_DataEngine.getFXCategories = function(self)
     end
 end
 
+PB_DataEngine.updateFilterMenus = function(self, options)
+    options = options or {}
+    self.app.logger:logDebug('-- PB_DataEngine.updateFilterMenus()')
+
+    -- Default to updating all if no specific options provided
+    local updateAll = not (options.types or options.fxTypes or options.developers or options.presets or options.folders or options.categories)
+
+    if updateAll or options.types then
+        self.app.logger:logDebug('Updating asset type filter menu')
+        FILTER_MENU[FILTER_TYPES.TYPE].items = self.assetTypeManager:buildFilterMenu()
+    end
+
+    if updateAll or options.fxTypes then
+        self.app.logger:logDebug('Updating FX type filter menu')
+        FILTER_MENU[FILTER_TYPES.FX_TYPE].items = {}
+
+        -- Only populate if plugins are visible
+        if self.app.settings.current.groupVisibility[SPECIAL_GROUPS.PLUGINS] ~= false then
+            local visibleCount = 0
+            for i, fx_type_name in ipairs(FX_TYPE) do
+                if self.app.settings.current.fxTypeVisibility[fx_type_name] ~= false then
+                    FILTER_MENU[FILTER_TYPES.FX_TYPE].items[fx_type_name] = {
+                        order = i,
+                        query = {
+                            fx_type = fx_type_name
+                        }
+                    }
+                    visibleCount = visibleCount + 1
+                else
+                    self.app.logger:logDebug('Skipping FX type "' .. fx_type_name .. '" - not visible in settings')
+                end
+            end
+            self.app.logger:logDebug('Updated FX type filter menu with ' .. visibleCount .. ' visible types')
+        else
+            self.app.logger:logDebug('Skipping FX type filter menu - plugins not visible')
+        end
+    end
+
+    if updateAll or options.folders then
+        self.app.logger:logDebug('Updating FX folder filter menu')
+        FILTER_MENU[FILTER_TYPES.FOLDER].items = {}
+        local folderCount = 0
+        for id, fxFolder in OD_PairsByOrder(self.fxFolders) do
+            FILTER_MENU[FILTER_TYPES.FOLDER].items[fxFolder.name] = {
+                order = tonumber(fxFolder.order),
+                query = { fxFolderId = id }
+            }
+            folderCount = folderCount + 1
+        end
+        self.app.logger:logDebug('Updated FX folder filter menu with ' .. folderCount .. ' folders')
+    end
+
+    if updateAll or options.categories then
+        self.app.logger:logDebug('Updating FX category filter menu')
+        FILTER_MENU[FILTER_TYPES.CATEGORY].items = {}
+        local categoryNames = {}
+        for name in pairs(self.fxCategories) do
+            table.insert(categoryNames, name)
+        end
+        table.sort(categoryNames)
+        for index, categoryName in ipairs(categoryNames) do
+            FILTER_MENU[FILTER_TYPES.CATEGORY].items[categoryName] = {
+                order = index,
+                query = { fxCategory = categoryName }
+            }
+        end
+        self.app.logger:logDebug('Updated FX category filter menu with ' .. #categoryNames .. ' categories')
+    end
+
+    if updateAll or options.developers then
+        self.app.logger:logDebug('Updating developers filter menu')
+        FILTER_MENU[FILTER_TYPES.DEVELOPER].items = {}
+        local developerNames = {}
+        for s, c in pairs(self.fxDevelopers) do
+            table.insert(developerNames, s)
+        end
+        table.sort(developerNames)
+        for index, developerName in ipairs(developerNames) do
+            FILTER_MENU[FILTER_TYPES.DEVELOPER].items[developerName] = {
+                order = index,
+                query = { fxDeveloper = developerName }
+            }
+        end
+        self.app.logger:logDebug('Updated developers filter menu with ' .. #developerNames .. ' developers')
+    end
+
+    if updateAll or options.presets then
+        self.app.logger:logDebug('Updating presets filter menu')
+        FILTER_MENU[FILTER_TYPES.PRESET].items = {}
+        local presetNames = {}
+        for id, preset in pairs(self.presets) do
+            table.insert(presetNames, { id = id, name = preset.name, preset = preset, word = preset.word })
+        end
+        table.sort(presetNames, function(a, b) return a.name < b.name end)
+        for index, presetData in ipairs(presetNames) do
+            FILTER_MENU[FILTER_TYPES.PRESET].items[presetData.name] = {
+                order = index,
+                query = { preset = presetData.id }
+            }
+        end
+        self.app.logger:logDebug('Updated presets filter menu with ' .. #presetNames .. ' presets')
+    end
+end
+
 PB_DataEngine.updateDevelopersFilterMenu = function(self)
-    self.app.logger:logDebug('-- PB_DataEngine.updateDevelopersFilterMenu()')
-    FILTER_MENU[FILTER_TYPES.DEVELOPER].items = {}
-
-    local developerNames = {}
-    for s, c in pairs(self.fxDevelopers) do
-        table.insert(developerNames, s)
-    end
-    table.sort(developerNames)
-
-    for index, developerName in ipairs(developerNames) do
-        FILTER_MENU[FILTER_TYPES.DEVELOPER].items[developerName] = {
-            order = index,
-            query = { fxDeveloper = developerName }
-        }
-    end
-
-    self.app.logger:logDebug('Updated developers filter menu with developers', #developerNames)
+    self.app.logger:logDebug(
+        '-- PB_DataEngine.updateDevelopersFilterMenu() - DEPRECATED: Use updateFilterMenus({developers = true}) instead')
+    self:updateFilterMenus({ developers = true })
 end
 
 PB_DataEngine.updatePresetsFilterMenu = function(self)
-    self.app.logger:logDebug('-- PB_DataEngine.updatePresetsFilterMenu()')
-    FILTER_MENU[FILTER_TYPES.PRESET].items = {}
+    self.app.logger:logDebug(
+        '-- PB_DataEngine.updatePresetsFilterMenu() - DEPRECATED: Use updateFilterMenus({presets = true}) instead')
+    self:updateFilterMenus({ presets = true })
+end
 
-    local presetNames = {}
-    for id, preset in pairs(self.presets) do
-        table.insert(presetNames, { id = id, name = preset.name, preset = preset, word = preset.word })
-    end
-    table.sort(presetNames, function(a, b) return a.name < b.name end)
-
-    for index, presetData in ipairs(presetNames) do
-        FILTER_MENU[FILTER_TYPES.PRESET].items[presetData.name] = {
-            order = index,
-            query = { preset = presetData.id } -- Store preset ID in query
-        }
-    end
-
-    self.app.logger:logDebug('Updated presets filter menu with presets', #presetNames)
+PB_DataEngine.updateFXTypeFilterMenu = function(self)
+    self.app.logger:logDebug(
+        '-- PB_DataEngine.updateFXTypeFilterMenu() - DEPRECATED: Use updateFilterMenus({fxTypes = true}) instead')
+    self:updateFilterMenus({ fxTypes = true })
 end
 
 
@@ -659,6 +763,10 @@ PB_DataEngine.markSpecialGroups = function(self)
     local favoriteCount = 0
     local recentCount = 0
 
+    -- Check if special groups are visible
+    local favoritesVisible = self.app.settings.current.groupVisibility[SPECIAL_GROUPS.FAVORITES] ~= false
+    local recentsVisible = self.app.settings.current.groupVisibility[SPECIAL_GROUPS.RECENTS] ~= false
+
     -- Get current lists
     local favorites = self.app.userdata.current.favorites or {}
     local recents = self.app.userdata.current.recents or {}
@@ -693,7 +801,7 @@ PB_DataEngine.markSpecialGroups = function(self)
         local shouldDeleteFromRecents = recentsToDeleteLookup[asset.id]
 
         -- Clear any existing special group markings first
-        if asset.group == SPECIAL_GROUPS.FAVORITES or asset.group == SPECIAL_GROUPS.RECENTS then
+        if asset.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES] or asset.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] then
             if asset.originalGroup then
                 asset.group = asset.originalGroup
                 asset.originalGroup = nil
@@ -709,19 +817,34 @@ PB_DataEngine.markSpecialGroups = function(self)
             -- Asset group should already be restored above
         end
 
-        -- Mark recents first (takes priority over favorites for group assignment)
-        if recentIndex then
+        -- Mark recents (only if recents group is visible)
+        if recentIndex and recentsVisible then
             asset.originalGroup = asset.group
-            asset.group = SPECIAL_GROUPS.RECENTS
+            asset.group = T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS]
             asset.recentOrder = recentIndex
             recentCount = recentCount + 1
             self.app.logger:logDebug('Marked asset as recent: ' .. asset.id .. ' (order: ' .. recentIndex .. ')')
-            -- Mark favorites (only if not recent)
-        elseif favoriteIndex then
+        elseif recentIndex then
+            -- Mark as recent but don't change group (recents group is hidden)
+            asset.recentOrder = recentIndex
+            recentCount = recentCount + 1
+            self.app.logger:logDebug('Marked asset as recent (group hidden): ' ..
+                asset.id .. ' (order: ' .. recentIndex .. ')')
+        end
+
+        -- Mark favorites (only if favorites group is visible and not already moved to recents)
+        if favoriteIndex and favoritesVisible and not (recentIndex and recentsVisible) then
             asset.originalGroup = asset.group
-            asset.group = SPECIAL_GROUPS.FAVORITES
+            asset.group = T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES]
             asset.favoriteOrder = favoriteIndex
             self.app.logger:logDebug('Marked asset as favorite: ' .. asset.id .. ' (order: ' .. favoriteIndex .. ')')
+        elseif favoriteIndex then
+            -- Mark as favorite but don't change group (favorites group is hidden or asset is in recents)
+            asset.favoriteOrder = favoriteIndex
+            if not (recentIndex and recentsVisible) then
+                self.app.logger:logDebug('Marked asset as favorite (group hidden): ' ..
+                    asset.id .. ' (order: ' .. favoriteIndex .. ')')
+            end
         end
 
         -- Set favorite flag for all favorites, regardless of which group they're in
@@ -729,12 +852,17 @@ PB_DataEngine.markSpecialGroups = function(self)
             asset.favorite = true
             favoriteCount = favoriteCount + 1
             if recentIndex then
-                self.app.logger:logDebug('Asset is both favorite and recent: ' .. asset.id .. ' (appears in recents)')
+                self.app.logger:logDebug('Asset is both favorite and recent: ' ..
+                    asset.id .. ' (appears in ' .. (recentsVisible and 'recents' or 'original group') .. ')')
             end
         end
     end
 
-    self.app.logger:logDebug('Marked special groups - Favorites: ' .. favoriteCount .. ', Recents: ' .. recentCount)
+    self.app.logger:logDebug('Marked special groups - Favorites: ' ..
+        favoriteCount ..
+        ', Recents: ' ..
+        recentCount ..
+        ' (Favorites visible: ' .. tostring(favoritesVisible) .. ', Recents visible: ' .. tostring(recentsVisible) .. ')')
 end
 
 PB_DataEngine.tagAssets = function(self)
@@ -753,14 +881,23 @@ PB_DataEngine.assetsWithTag = function(self, tag)
     return assetsWithTag
 end
 
-PB_DataEngine.assembleAssets = function(self)
+PB_DataEngine.assembleAssets = function(self, forceRebuildCache)
     self.app.logger:logDebug('-- PB_DataEngine.assembleAssets()')
 
     local assets, count = self.assetTypeManager:assembleAllAssets()
     self.assets = assets
 
+    -- Clear FX developers data if plugins are not visible
+    if self.app.settings.current.groupVisibility[SPECIAL_GROUPS.PLUGINS] == false then
+        self.app.logger:logDebug('Clearing FX developers - plugins not visible')
+        self.fxDevelopers = {}
+    end
+
     self:tagAssets()
     self:markSpecialGroups()
+    if forceRebuildCache then
+        self:invalidateGroupPriorityCache()
+    end
     self:sortAssets()
     self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
 end
@@ -770,19 +907,28 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
     local scanAll = whichFilters == nil and true or false
     local whichFilters = whichFilters or {}
     local executeFilter = function(self, context)
-        if self.type ~= FILTER_TYPES.TAG then
-            if OD_BfCheck(context, ImGui.Mod_Alt) then
-                self.app.flow.filterResults(self.loadAll)
-            else
-                self.app.flow.filterResults(self.load)
-            end
-        else
+        if self.type == FILTER_TYPES.TAG then
             if OD_BfCheck(context, ImGui.Mod_Alt) then
                 self.app.flow.filterResults({ removeTags = { self.load } })
             elseif OD_BfCheck(context, ImGui.Mod_Ctrl) then
                 self.app.flow.filterResults({ addTags = { [self.load] = false } })
             else
                 self.app.flow.filterResults({ addTags = { [self.load] = true } })
+            end
+        elseif self.type == FILTER_TYPES.PRESET then
+            -- if OD_BfCheck(context or 0, ImGui.Mod_Alt) then
+            --     -- Alt-click: Update preset with current filter
+            --     self.preset:update()
+            --     self.app.logger:logInfo('Updated preset "' .. self.preset.name .. '" with current filter')
+            -- else
+                -- Normal click: Apply preset
+            self.preset:apply()
+            -- end
+        else
+            if OD_BfCheck(context, ImGui.Mod_Alt) then
+                self.app.flow.filterResults(self.loadAll)
+            else
+                self.app.flow.filterResults(self.load)
             end
         end
         if not OD_BfCheck(context, ImGui.Mod_Shift) then
@@ -902,20 +1048,6 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
     end
 
     if scanAll or whichFilters.presets then
-        local executePresetFilter = function(self, context)
-            if OD_BfCheck(context or 0, ImGui.Mod_Alt) then
-                -- Alt-click: Update preset with current filter
-                self.preset:update()
-                self.app.logger:logInfo('Updated preset "' .. self.preset.name .. '" with current filter')
-            else
-                -- Normal click: Apply preset
-                self.preset:apply()
-            end
-            if not OD_BfCheck(context, ImGui.Mod_Shift) then
-                self.app.flow.setSearchMode(SEARCH_MODE.MAIN)
-            end
-        end
-
         for presetId, preset in pairs(self.presets) do
             table.insert(self.filterAssets, {
                 name = preset.name,
@@ -926,7 +1058,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 order = preset.id, -- Use ID as order for now, could be customized later
                 preset = preset,   -- Store reference to preset
                 group = T.FILTER_NAMES[FILTER_TYPES.PRESET],
-                execute = executePresetFilter
+                execute = executeFilter
             })
             assetCount = assetCount + 1
         end
@@ -962,19 +1094,21 @@ PB_DataEngine.sortAssets = function(self)
         end
 
         -- Cache for resolved group names to avoid repeated lookups
-        local groupNameCache = {}
+        self.assetGroupNameCache = {
+            [SPECIAL_GROUPS.PLUGINS] = T.SPECIAL_GROUPS[SPECIAL_GROUPS.PLUGINS]
+        }
 
         -- Helper function to resolve asset type class names to group names (with caching)
-        local function resolveGroupName(item)
-            if groupNameCache[item] then
-                return groupNameCache[item]
+        local function resolveAssetGroupName(item)
+            if self.assetGroupNameCache[item] then
+                return self.assetGroupNameCache[item]
             end
 
             local resolvedName
 
             -- If it's a special group constant, return as-is
             if item == SPECIAL_GROUPS.FAVORITES or item == SPECIAL_GROUPS.RECENTS or item == SPECIAL_GROUPS.PLUGINS then
-                resolvedName = item
+                resolvedName = T.SPECIAL_GROUPS[item]
                 -- If it looks like an asset type class name, resolve it to the actual group name
             elseif item:match("AssetType$") and self.assetTypeManager then
                 local assetType = self.assetTypeManager:getAssetTypeByClassName(item)
@@ -984,10 +1118,7 @@ PB_DataEngine.sortAssets = function(self)
                 resolvedName = item
             end
 
-            -- Cache the result (except for dynamic special groups)
-            if item ~= SPECIAL_GROUPS.FAVORITES and item ~= SPECIAL_GROUPS.RECENTS then
-                groupNameCache[item] = resolvedName
-            end
+            self.assetGroupNameCache[item] = resolvedName
 
             return resolvedName
         end
@@ -1002,7 +1133,7 @@ PB_DataEngine.sortAssets = function(self)
                 end
             else
                 -- Resolve asset type class names to actual group names
-                local resolvedGroup = resolveGroupName(group)
+                local resolvedGroup = resolveAssetGroupName(group)
                 table.insert(finalGroupOrder, resolvedGroup)
             end
         end
@@ -1027,10 +1158,10 @@ PB_DataEngine.sortAssets = function(self)
             return a.order < b.order
         elseif aPriority == bPriority then
             -- Special handling for favorites: sort by favoriteOrder instead of alphabetically
-            if a.group == SPECIAL_GROUPS.FAVORITES and b.group == SPECIAL_GROUPS.FAVORITES then
+            if a.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES] and b.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES] then
                 return (a.favoriteOrder or 0) < (b.favoriteOrder or 0)
                 -- Special handling for recents: sort by recentOrder instead of alphabetically
-            elseif a.group == SPECIAL_GROUPS.RECENTS and b.group == SPECIAL_GROUPS.RECENTS then
+            elseif a.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] and b.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] then
                 return (a.recentOrder or 0) < (b.recentOrder or 0)
             else
                 return a.searchText[1].text < b.searchText[1].text

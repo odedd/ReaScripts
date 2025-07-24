@@ -66,7 +66,7 @@ PLUGIN = {
 -- instead of group display names (e.g., "Projects") for better maintainability
 SPECIAL_GROUPS = {
     FAVORITES = 'Favorites',
-    PLUGINS = 'Plugins',  -- Placeholder for FX types in groupOrder
+    PLUGINS = 'PluginAssetType',  -- Placeholder for FX types in groupOrder. Needs to be equal to the plugin asset type to allow hiding it in results
     RECENTS = 'Recents'         -- For future use
 }
 
@@ -112,14 +112,7 @@ FILTER_MENU = {
         items = {} -- added in DataEngine.lua once folders are loaded
     }
 }
-for i, fx_type_name in ipairs(FX_TYPE) do
-    FILTER_MENU[FILTER_TYPES.FX_TYPE].items[fx_type_name] = {
-        order = i,
-        query = {
-            fx_type = fx_type_name
-        }
-    }
-end
+-- FX type filter menu will be populated dynamically by DataEngine based on fxTypeVisibility settings
 
 -- Import failure reasons
 IMPORT_SKIP_REASON = {
