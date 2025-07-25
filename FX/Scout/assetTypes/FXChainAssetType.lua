@@ -5,7 +5,12 @@ FXChainAssetType = {}
 FXChainAssetType.__index = FXChainAssetType
 setmetatable(FXChainAssetType, BaseAssetType)
 
-FXChainAssetType.new = BaseAssetType:createStandardConstructor("FX Chain", "FX Chains")
+function FXChainAssetType.new(class, context)
+    local instance = BaseAssetType:createStandardConstructor("FX Chain", "FX Chains")(class, context)
+    -- FX Chains are file-based assets (.rfxchain files)
+    instance.shouldMapBaseFilenames = true
+    return instance
+end
 
 function FXChainAssetType:getData()
     local data = {} -- Use consistent local variable naming

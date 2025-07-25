@@ -5,7 +5,12 @@ PluginAssetType = {}
 PluginAssetType.__index = PluginAssetType
 setmetatable(PluginAssetType, BaseAssetType)
 
-PluginAssetType.new = BaseAssetType:createStandardConstructor("FX")
+function PluginAssetType.new(class, context)
+    local instance = BaseAssetType:createStandardConstructor("FX")(class, context)
+    -- Plugins are file-based assets (have file paths)
+    instance.shouldMapBaseFilenames = true
+    return instance
+end
 
 function PluginAssetType:getData()
     local function addPlugin(full_name, fx_type, instrument, ident)

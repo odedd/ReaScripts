@@ -5,7 +5,12 @@ ProjectTemplateAssetType = {}
 ProjectTemplateAssetType.__index = ProjectTemplateAssetType
 setmetatable(ProjectTemplateAssetType, BaseAssetType)
 
-ProjectTemplateAssetType.new = BaseAssetType:createStandardConstructor("Project Template", "Project Templates")
+function ProjectTemplateAssetType.new(class, context)
+    local instance = BaseAssetType:createStandardConstructor("Project Template", "Project Templates")(class, context)
+    -- Project Templates are file-based assets (.rpp files)
+    instance.shouldMapBaseFilenames = true
+    return instance
+end
 
 function ProjectTemplateAssetType:getData()
     local data = {} -- Use consistent local variable naming

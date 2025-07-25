@@ -74,9 +74,10 @@ PB_Settings = OD_Settings:new({
             SPECIAL_GROUPS.PLUGINS,     -- Placeholder for all FX types (VST3, AU, etc.)
             "FXChainAssetType",         -- FX Chains asset type
             "TrackTemplateAssetType",   -- Track Templates asset type
-            "ProjectTemplateAssetType", -- Projects asset type
+            "ProjectTemplateAssetType", -- Project Templates asset type
             "TrackAssetType",           -- Tracks asset type
-            "MarkerAssetType",          -- Projects asset type
+            "TakeAssetType",            -- Takes asset type
+            "MarkerAssetType",          -- Markers asset type
             "ProjectAssetType",         -- Projects asset type
             "ActionAssetType",          -- Actions asset type
         },
@@ -86,11 +87,12 @@ PB_Settings = OD_Settings:new({
             [SPECIAL_GROUPS.PLUGINS] = true,    -- Placeholder for all FX types (VST3, AU, etc.)
             ["FXChainAssetType"] = true,        -- FX Chains asset type
             ["TrackAssetType"] = true,          -- Tracks asset type
+            ["TakeAssetType"] = true,           -- Takes asset type
             ["TrackTemplateAssetType"] = true,  -- Track Templates asset type
             ["ActionAssetType"] = true,         -- Actions asset type
             ["ProjectAssetType"] = true,        -- Projects asset type
-            ["MarkerAssetType"] = true,         -- Projects asset type
-            ["ProjectTemplateAssetType"] = true -- Projects asset type
+            ["MarkerAssetType"] = true,         -- Markers asset type
+            ["ProjectTemplateAssetType"] = true -- Project Templates asset type
         },
         uiScale = 1,
 

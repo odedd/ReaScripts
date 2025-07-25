@@ -118,6 +118,9 @@ function BaseAssetType:createStandardConstructor(name, group)
 
         -- Default: require mapping during import (can be overridden by subclasses)
         instance.requiresMappingOnImport = true
+        
+        -- Default: not file-based (can be overridden by subclasses)
+        instance.shouldMapBaseFilenames = false
 
         return instance
     end

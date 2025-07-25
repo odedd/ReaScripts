@@ -305,25 +305,28 @@ function PB_UserData:import(filename, mergeMode)
                     local imported_basename
                     local assetType = mappedAssetTypeId -- Use mapped asset type for processing
 
-                    if assetType == ASSET_TYPE.PluginAssetType or assetType == ASSET_TYPE.FXChainAssetType or assetType == ASSET_TYPE.TrackTemplateAssetType then
+                    -- Check if this asset type is file-based
+                    local targetAssetType = self.app.engine.assetTypeManager:getAssetTypeById(assetType)
+                    local shouldMapBaseFilenames = targetAssetType and targetAssetType.shouldMapBaseFilenames
+
+                    if shouldMapBaseFilenames then
                         -- For file-based assets, extract basename from path
                         imported_basename = asset:match("([^/\\]+)$")
                         -- For assets with <numbers (like WaveShell), remove the <numbers part
                         if imported_basename and imported_basename:find("<") then
                             imported_basename = imported_basename:match("^(.+)<")
                         end
-                    elseif assetType == ASSET_TYPE.TrackAssetType then
-                        -- For tracks, use the full identifier minus the asset type prefix
-                        imported_basename = asset:match("^%d+%s+(.+)$")
-                    elseif assetType == ASSET_TYPE.ActionAssetType then
-                        -- For actions, use the command identifier directly (now handles named/numeric internally)
-                        imported_basename = asset:match("^%d+%s+(.+)$")
                     else
-                        -- Fallback: try to extract basename from path, then full identifier
-                        imported_basename = asset:match("([^/\\]+)$") or asset:match("^%d+%s+(.+)$")
-                        -- For assets with <numbers (like WaveShell), remove the <numbers part
-                        if imported_basename and imported_basename:find("<") then
-                            imported_basename = imported_basename:match("^(.+)<")
+                        -- For non-file-based assets, use the full identifier minus the asset type prefix
+                        imported_basename = asset:match("^%d+%s+(.+)$")
+                        
+                        -- Fallback: try to extract basename from path if the above didn't work
+                        if not imported_basename then
+                            imported_basename = asset:match("([^/\\]+)$")
+                            -- For assets with <numbers (like WaveShell), remove the <numbers part
+                            if imported_basename and imported_basename:find("<") then
+                                imported_basename = imported_basename:match("^(.+)<")
+                            end
                         end
                     end
 
@@ -715,7 +718,7 @@ function PB_UserData:import(filename, mergeMode)
         end
 
         -- For file-based assets, try exact path match first, then basename fallback
-        if mappedAssetTypeId == ASSET_TYPE.PluginAssetType or mappedAssetTypeId == ASSET_TYPE.FXChainAssetType or mappedAssetTypeId == ASSET_TYPE.TrackTemplateAssetType then
+        if cachedAssetTypeData.assetType.shouldMapBaseFilenames then
             -- Step 1: Try exact path match
             for _, data in ipairs(cachedAssetTypeData.data) do
                 local asset = cachedAssetTypeData.assetType:assembleAsset(data)
@@ -752,26 +755,14 @@ function PB_UserData:import(filename, mergeMode)
                     end
                 end
             end
-        elseif mappedAssetTypeId == ASSET_TYPE.TrackAssetType then
-            -- For tracks, try exact identifier match first
+        elseif not cachedAssetTypeData.assetType.shouldMapBaseFilenames then
+            -- For non-file-based assets, try exact identifier match
             for _, data in ipairs(cachedAssetTypeData.data) do
                 local asset = cachedAssetTypeData.assetType:assembleAsset(data)
                 if asset then
                     local systemIdentifier = asset.id:match("^%d+%s+(.+)$")
                     if systemIdentifier == importedFullPath then
-                        self.app.logger:logDebug('✓ Exact track match found for "' .. importedFullPath .. '"')
-                        return asset.id, mappedAssetTypeId
-                    end
-                end
-            end
-        elseif mappedAssetTypeId == ASSET_TYPE.ActionAssetType then
-            -- For actions, try exact command identifier match
-            for _, data in ipairs(cachedAssetTypeData.data) do
-                local asset = cachedAssetTypeData.assetType:assembleAsset(data)
-                if asset then
-                    local systemCommandId = asset.id:match("^%d+%s+(.+)$")
-                    if systemCommandId == importedFullPath then
-                        self.app.logger:logDebug('✓ Exact action match found for "' .. importedFullPath .. '"')
+                        self.app.logger:logDebug('✓ Exact identifier match found for "' .. importedFullPath .. '"')
                         return asset.id, mappedAssetTypeId
                     end
                 end
@@ -888,28 +879,16 @@ function PB_UserData:import(filename, mergeMode)
                 self.app.logger:logDebug('✗ Asset "' ..
                     imported_basename .. '" (type ' .. (finalAssetType or "unknown") .. ') not found in system assets')
 
-                -- Determine asset type name for logging and update counts
-                local assetTypeGuess = "unknown"
-                if finalAssetType == ASSET_TYPE.PluginAssetType then
-                    assetTypeGuess = "plugin"
-                    assetTypeCounts[ASSET_TYPE.PluginAssetType].skipped = assetTypeCounts[ASSET_TYPE.PluginAssetType]
-                        .skipped + 1
-                elseif finalAssetType == ASSET_TYPE.FXChainAssetType then
-                    assetTypeGuess = "FX chain"
-                    assetTypeCounts[ASSET_TYPE.FXChainAssetType].skipped = assetTypeCounts[ASSET_TYPE.FXChainAssetType]
-                        .skipped + 1
-                elseif finalAssetType == ASSET_TYPE.TrackTemplateAssetType then
-                    assetTypeGuess = "track template"
-                    assetTypeCounts[ASSET_TYPE.TrackTemplateAssetType].skipped = assetTypeCounts
-                        [ASSET_TYPE.TrackTemplateAssetType].skipped + 1
-                elseif finalAssetType == ASSET_TYPE.TrackAssetType then
-                    assetTypeGuess = "track"
-                    assetTypeCounts[ASSET_TYPE.TrackAssetType].skipped = assetTypeCounts[ASSET_TYPE.TrackAssetType]
-                        .skipped + 1
-                elseif finalAssetType == ASSET_TYPE.ActionAssetType then
-                    assetTypeGuess = "action"
-                    assetTypeCounts[ASSET_TYPE.ActionAssetType].skipped = assetTypeCounts[ASSET_TYPE.ActionAssetType]
-                        .skipped + 1
+                -- Get asset type name from the actual asset type definition
+                local assetTypeName = "unknown"
+                local cachedAssetTypeData = getAssetTypeData(finalAssetType)
+                if cachedAssetTypeData and cachedAssetTypeData.assetType then
+                    assetTypeName = cachedAssetTypeData.assetType.name or "unknown"
+                end
+
+                -- Update skip counts
+                if assetTypeCounts[finalAssetType] then
+                    assetTypeCounts[finalAssetType].skipped = assetTypeCounts[finalAssetType].skipped + 1
                 end
 
                 -- Record the skipped asset with its reason
@@ -917,7 +896,7 @@ function PB_UserData:import(filename, mergeMode)
                     basename = imported_basename,
                     originalAssetId = assetData.originalAssetId,
                     reason = IMPORT_SKIP_REASON.ASSET_NOT_FOUND,
-                    assetTypeGuess = assetTypeGuess
+                    assetTypeGuess = assetTypeName
                 })
             end
         end
@@ -965,17 +944,12 @@ function PB_UserData:import(filename, mergeMode)
 
     for assetType, counts in pairs(assetTypeCounts) do
         if counts.mapped > 0 or counts.skipped > 0 then
+            -- Get the actual asset type name from the definition
             local typeName = "unknown"
-            if assetType == ASSET_TYPE.PluginAssetType then
-                typeName = "plugins"
-            elseif assetType == ASSET_TYPE.FXChainAssetType then
-                typeName = "FX chains"
-            elseif assetType == ASSET_TYPE.TrackTemplateAssetType then
-                typeName = "track templates"
-            elseif assetType == ASSET_TYPE.TrackAssetType then
-                typeName = "tracks"
-            elseif assetType == ASSET_TYPE.ActionAssetType then
-                typeName = "actions"
+            local cachedAssetTypeData = getAssetTypeData(assetType)
+            if cachedAssetTypeData and cachedAssetTypeData.assetType then
+                -- Use the plural form (group name) if available, otherwise the singular name
+                typeName = cachedAssetTypeData.assetType.group or cachedAssetTypeData.assetType.name or "unknown"
             end
 
             if counts.mapped > 0 then

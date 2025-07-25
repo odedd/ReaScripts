@@ -5,7 +5,12 @@ TrackTemplateAssetType = {}
 TrackTemplateAssetType.__index = TrackTemplateAssetType
 setmetatable(TrackTemplateAssetType, BaseAssetType)
 
-TrackTemplateAssetType.new = BaseAssetType:createStandardConstructor("Track Template", "Track Templates")
+function TrackTemplateAssetType.new(class, context)
+    local instance = BaseAssetType:createStandardConstructor("Track Template", "Track Templates")(class, context)
+    -- Track Templates are file-based assets (.RTrackTemplate files)
+    instance.shouldMapBaseFilenames = true
+    return instance
+end
 
 function TrackTemplateAssetType:getData()
     local data = {} -- Use consistent local variable naming
