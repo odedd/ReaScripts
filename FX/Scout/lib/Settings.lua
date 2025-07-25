@@ -40,6 +40,7 @@ PB_Settings = OD_Settings:new({
             }
         },
         fxTypeVisibility = {
+            ['Internal'] = true,
             ['VST3'] = true,
             ['VST3i'] = false,
             ['VST'] = true,
@@ -53,6 +54,7 @@ PB_Settings = OD_Settings:new({
             ['LV2i'] = false
         },
         fxTypeOrder = {
+            "Internal",
             "VST3",
             "VST3i",
             "VST",

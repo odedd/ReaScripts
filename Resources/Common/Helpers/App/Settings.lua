@@ -43,9 +43,34 @@ function OD_Settings:getDefault(factory)
     return st
 end
 
-function OD_Settings:load()
+function OD_Settings:load(listsToUpdate)
     local st = self:getDefault()
     OD_MergeTables(self.current, st.default)
+    if listsToUpdate then
+        local updated = false
+        for _, listName in ipairs(listsToUpdate) do
+            local defaultList = self.default[listName]
+            local currentList = self.current[listName]
+            if type(self.default[listName]) == "table" then
+                if OD_IsList(defaultList) then
+                    for i, item in ipairs(defaultList) do
+                        if not OD_HasValue(currentList, item) then
+                            table.insert(currentList, item)
+                            updated = true
+                        end
+                    end
+                -- else
+                --     for item, value in ipairs(defaultList) do
+                --         if not currentList[item] then
+                --             currentList[item] = value
+                --             updated = true
+                --         end
+                --     end
+                end
+            end
+        end
+        if updated then self:save() end
+    end
 end
 
 function OD_Settings:save()

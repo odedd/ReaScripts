@@ -47,7 +47,6 @@ function PluginAssetType:getData()
         if full_name == '' then return false end
 
         local success, name, vendor = extractNameVendor(full_name, fx_type)
-
         if success then
             self.context.logger:logDebug('Parsing successful')
             self.context.logger:logDebug('Name', name)
@@ -56,6 +55,7 @@ function PluginAssetType:getData()
             self.context.logger:logError('Cannot parse plugin name', full_name)
             return false
         end
+
 
         local plugin = {
             full_name = full_name,
