@@ -194,6 +194,29 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
                     table.insert(results, app.temp.searchResults[resultIndex])
                 end
                 return results
+            end,
+            execute = function(self, resultContext, contextData, confirm)
+                local results = self:results()
+
+                -- Group results by asset type
+                local resultsByType = {}
+                for _, result in pairs(results) do
+                    if result.execute then
+                        local assetType = result.type
+                        if not resultsByType[assetType] then
+                            resultsByType[assetType] = {}
+                        end
+                        table.insert(resultsByType[assetType], result)
+                    end
+                end
+
+                -- Execute each asset type group sequentially
+                for assetType, typeResults in pairs(resultsByType) do
+                    local total = #typeResults
+                    for i, result in ipairs(typeResults) do
+                        result:execute(ImGui.GetKeyMods(app.gui.ctx) | (resultContext or 0), contextData, confirm, total, i)
+                    end
+                end
             end
         }
 
@@ -563,27 +586,7 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
                         contextData = contextData
                     }
                 elseif confirm or resultCount < app.settings.current.numberOfResultsThatRequireConfirmation then
-                    local results = app.selection:results()
-                    
-                    -- Group results by asset type
-                    local resultsByType = {}
-                    for _, result in pairs(results) do
-                        if result.execute then
-                            local assetType = result.type
-                            if not resultsByType[assetType] then
-                                resultsByType[assetType] = {}
-                            end
-                            table.insert(resultsByType[assetType], result)
-                        end
-                    end
-                    
-                    -- Execute each asset type group sequentially
-                    for assetType, typeResults in pairs(resultsByType) do
-                        local total = #typeResults
-                        for i, result in ipairs(typeResults) do
-                            result:execute(ImGui.GetKeyMods(ctx) | (resultContext or 0), contextData, confirm, total, i)
-                        end
-                    end
+                    app.selection:execute(resultContext, contextData, confirm)
                 end
             end,
             createAction = function(actionName, cmd)
