@@ -9,8 +9,8 @@ function PluginAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("FX")(class, context)
     -- Plugins are file-based assets (have file paths)
     instance.shouldMapBaseFilenames = true
-    instance.interactionModifiers[0] = 'Add %asset to selected track(s)'
-    instance.interactionModifiers[ImGui.Mod_Alt] = 'Add %asset to selected item(s)'
+    instance.interactionModifiers[0] = 'add %asset to selected track(s)'
+    instance.interactionModifiers[ImGui.Mod_Alt] = 'add %asset to selected item(s)'
     return instance
 end
 

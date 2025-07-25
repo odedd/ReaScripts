@@ -127,7 +127,7 @@ function BaseAssetType:createStandardConstructor(name, group)
         instance.updateOnProjectRefresh = false
 
         instance.interactionModifiers = {
-            [0] = 'select'
+            [0] = 'select %asset'
         }
 
         return instance

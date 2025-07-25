@@ -5,7 +5,13 @@ ActionAssetType = {}
 ActionAssetType.__index = ActionAssetType
 setmetatable(ActionAssetType, BaseAssetType)
 
-ActionAssetType.new = BaseAssetType:createStandardConstructor("Action", "Actions")
+function ActionAssetType.new(class, context)
+    local instance = BaseAssetType:createStandardConstructor("Action", "Actions")(class, context)
+    -- Plugins are file-based assets (have file paths)
+    instance.shouldMapBaseFilenames = true
+    instance.interactionModifiers[0] = 'run %asset'
+    return instance
+end
 
 function ActionAssetType:getData()
     local data = {} -- Use consistent local variable naming
