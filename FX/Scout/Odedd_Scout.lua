@@ -2334,7 +2334,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         ImGui.SeparatorText(ctx, 'Tags, Presets and Favorites')
 
                         -- Export button
-                        app.gui:setting('label', T.SETTINGS.EXPORT_TAGS.LABEL)
                         if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL, divideWidth = 2 }) then
                             local rv, filename = reaper.JS_Dialog_BrowseForSaveFile(
                                 'Export Tags, Presets and Favorites', '',
