@@ -34,7 +34,6 @@ function ActionAssetType:getData()
         table.insert(data, {
             numericId = cmdId,
             namedId = reaper.ReverseNamedCommandLookup(cmdId),
-            order = idx,
             name = name,
             prefix = prefix,
             section = section,
@@ -73,7 +72,6 @@ function ActionAssetType:assembleAsset(action)
         load = actionId,
         searchText = { { text = action.name }, { text = action.prefix or '' } },
         group = self.group,
-        order = action.order
     })
     asset.shortcuts = action.shortcuts
     asset.numericId = action.numericId  -- Store for reference/debugging

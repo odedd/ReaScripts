@@ -244,7 +244,6 @@ function BaseAssetType:createAssetBase(params)
         load = params.load,
         searchText = params.searchText,
         group = params.group,
-        order = params.order or 0,
         context = self.context,
         engine = self.context.engine, -- Add engine reference for backward compatibility
         addTag = self.assetActions.addTag,

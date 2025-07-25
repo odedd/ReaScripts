@@ -39,7 +39,6 @@ function TrackTemplateAssetType:assembleAsset(tt)
         load = tt.load,
         searchText = { { text = tt.file }, { text = tt.path }, { text = tt.ext, hide = true } },
         group = self.group,
-        order = 0
     })
     
     return asset

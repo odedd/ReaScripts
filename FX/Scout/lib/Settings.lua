@@ -72,15 +72,16 @@ PB_Settings = OD_Settings:new({
         },
         showOnlyHighestPriorityPlugin = true,
         groupOrder = {
-            SPECIAL_GROUPS.RECENTS,    -- Recents (special group)
-            SPECIAL_GROUPS.FAVORITES,  -- Favorites (special group)
-            SPECIAL_GROUPS.PLUGINS,    -- Placeholder for all FX types (VST3, AU, etc.)
-            "FXChainAssetType",        -- FX Chains asset type
-            "TrackAssetType",          -- Tracks asset type
-            "TrackTemplateAssetType",  -- Track Templates asset type
-            "ActionAssetType",         -- Actions asset type
-            "ProjectAssetType",        -- Projects asset type
-            "ProjectTemplateAssetType" -- Projects asset type
+            SPECIAL_GROUPS.RECENTS,     -- Recents (special group)
+            SPECIAL_GROUPS.FAVORITES,   -- Favorites (special group)
+            SPECIAL_GROUPS.PLUGINS,     -- Placeholder for all FX types (VST3, AU, etc.)
+            "FXChainAssetType",         -- FX Chains asset type
+            "TrackTemplateAssetType",   -- Track Templates asset type
+            "ProjectTemplateAssetType", -- Projects asset type
+            "TrackAssetType",           -- Tracks asset type
+            "MarkerAssetType",          -- Projects asset type
+            "ProjectAssetType",         -- Projects asset type
+            "ActionAssetType",          -- Actions asset type
         },
         groupVisibility = {
             [SPECIAL_GROUPS.RECENTS] = true,    -- Recents (special group)
@@ -91,6 +92,7 @@ PB_Settings = OD_Settings:new({
             ["TrackTemplateAssetType"] = true,  -- Track Templates asset type
             ["ActionAssetType"] = true,         -- Actions asset type
             ["ProjectAssetType"] = true,        -- Projects asset type
+            ["MarkerAssetType"] = true,         -- Projects asset type
             ["ProjectTemplateAssetType"] = true -- Projects asset type
         },
         uiScale = 1,

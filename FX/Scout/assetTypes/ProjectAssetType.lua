@@ -27,7 +27,6 @@ function ProjectAssetType:getData()
                     fullPath = fullPath,
                     name = name,
                     path = folderPath..'/'..path,
-                    order = #data
                 })
             end
         else
@@ -55,7 +54,6 @@ function ProjectAssetType:assembleAsset(project)
             { text = project.path }
         },
         group = self.group,
-        order = project.order
     })
     
     return asset

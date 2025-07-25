@@ -142,7 +142,6 @@ function PluginAssetType:assembleAsset(plugin)
         load = plugin.ident,
         searchText = { { text = plugin.name }, { text = plugin.vendor or '' } },
         group = plugin.group,
-        order = 0
     })
 
     asset.name = plugin.name

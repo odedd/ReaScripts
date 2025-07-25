@@ -45,7 +45,6 @@ function FXChainAssetType:assembleAsset(chain)
         load = chain.load,
         searchText = { { text = chain.file }, { text = chain.path }, { text = chain.ext, hide = true } },
         group = self.group,
-        order = 0
     })
 
     return asset

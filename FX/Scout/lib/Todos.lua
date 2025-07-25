@@ -22,12 +22,13 @@
 -- DONE: do something about horizontal scroll for long results
 -- DONE: Settings window
 -- DONE: Add project templates
+-- DONE: Add markers/regions
 -- TODO: All execute functions + handling FX instruments
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Fix Hints
 -- TODO: Add tooltips to results with additional information
 -- TODO: Refresh tracks
 -- TODO: Refresh projects?
--- TODO: Add markers/regions
+-- TODO: Add take markers
 -- TODO: Track newly added plugins (?)
 -- TODO: minimal mode (?)

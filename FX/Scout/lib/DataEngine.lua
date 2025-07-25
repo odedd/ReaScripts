@@ -1166,7 +1166,7 @@ PB_DataEngine.sortAssets = function(self)
     table.sort(self.assets, function(a, b)
         local aPriority = groupPriority[a.group] or 1000
         local bPriority = groupPriority[b.group] or 1000
-        if a.type == ASSET_TYPE.TrackAssetType and b.type == ASSET_TYPE.TrackAssetType and aPriority == bPriority then
+        if a.order ~= nil and b.order ~= nil and aPriority == bPriority then
             return a.order < b.order
         elseif aPriority == bPriority then
             -- Special handling for favorites: sort by favoriteOrder instead of alphabetically

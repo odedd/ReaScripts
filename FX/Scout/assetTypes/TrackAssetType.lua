@@ -59,8 +59,8 @@ function TrackAssetType:assembleAsset(track)
         load = track.guid,
         searchText = { { text = track.name } },
         group = self.group,
-        order = track.order
     })
+    asset.order = track.oded
     asset.color = track.color
     
     return asset
