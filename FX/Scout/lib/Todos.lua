@@ -27,7 +27,7 @@
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Fix Hints
 -- TODO: Add tooltips to results with additional information
--- TODO: Refresh tracks
+-- TODO: Refresh project specific assets (tracks, markers/regions)
 -- TODO: Refresh projects?
 -- TODO: Add take markers
 -- TODO: Track newly added plugins (?)
