@@ -210,6 +210,9 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
         }
 
         app.flow = {
+            close = function()
+                app.hide = true
+            end,
             resetTemp = function()
                 app.temp.confirmation = {}
                 app.temp.searchMode = SEARCH_MODE.MAIN
@@ -1996,11 +1999,12 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) then
                             -- if not app.temp.ignoreEscapeKey then
                             if app.temp.searchInput == '' then
-                                app.hide = true
+                                if app.temp.activeFilters and OD_TableLength(app.temp.activeFilters) > 0 then
+                                    app.flow.filterResults({ clear = true })
+                                else
+                                    app.flow.close()
+                                end
                             end
-                            -- end
-                            -- pressed = true
-                            -- app.temp.ignoreEscapeKey = nil
                         elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter, false) then
                             if not app.temp.tagRename then
                                 app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.KEYBOARD)
@@ -2008,9 +2012,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             -- pressed = true
                         elseif app.guiHelpers.isShortcutPressed('selectAllResults', true) then
                             app.selection:selectRange(1, #app.temp.searchResults)
-                            -- pressed = true
-                        elseif app.guiHelpers.isShortcutPressed('resetFilters', true) then
-                            app.flow.filterResults({ clear = true })
                             -- pressed = true
                         elseif app.guiHelpers.isShortcutPressed('hardCloseScript', true) then
                             app.hardExit = true
@@ -2227,6 +2228,9 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                     flags = (ImGui.SliderFlags_AlwaysClamp)
                                 }) /
                             100
+                        app.settings.current.closeAfterExport = not app.gui:setting('checkbox',
+                            T.SETTINGS.CLOSE_AFTER_EXECUTE.LABEL,
+                            T.SETTINGS.CLOSE_AFTER_EXECUTE.HINT, not app.settings.current.closeAfterExport)
                         app.settings.current.sleepMode = app.gui:setting('checkbox',
                             T.SETTINGS.SLEEP_MODE.LABEL,
                             T.SETTINGS.SLEEP_MODE.HINT, app.settings.current.sleepMode,
@@ -2254,14 +2258,6 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                                 })
                             if resetCounter then app.temp.captureCounter = 0 end
                         end
-                        app.settings.current.shortcuts.resetFilters, resetCounter = app.gui:setting('shortcut',
-                            T.SETTINGS.SHORTCUTS.CLEAR_FILTERS.LABEL,
-                            T.SETTINGS.SHORTCUTS.CLEAR_FILTERS.HINT, app.settings.current.shortcuts.resetFilters,
-                            {
-                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                    function(k, v) return k ~= 'resetFilters' end)
-                            })
-                        if resetCounter then app.temp.captureCounter = 0 end
                         app.settings.current.shortcuts.markFavorite, resetCounter = app.gui:setting('shortcut',
                             T.SETTINGS.SHORTCUTS.MARK_FAVORITE.LABEL,
                             T.SETTINGS.SHORTCUTS.MARK_FAVORITE.HINT, app.settings.current.shortcuts.markFavorite,
@@ -2287,6 +2283,13 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                             .HINT, app.settings.current.showOnlyHighestPriorityPlugin)
 
                         ImGui.SeparatorText(ctx, 'Item specific settings')
+                        app.settings.current.showFxUI = app.gui:setting(
+                            'combo',
+                            T.SETTINGS.SHOW_FX_UI.LABEL,
+                            T.SETTINGS.SHOW_FX_UI.HINT,
+                            app.settings.current.showFxUI, {
+                                list = SHOW_FX_UI_LIST
+                            })
                         app.settings.current.createSendsInsideFolder = app.gui:setting('checkbox',
                             T.SETTINGS.CREATE_INSIDE_FODLER.LABEL,
                             T.SETTINGS.CREATE_INSIDE_FODLER.HINT, app.settings.current.createSendsInsideFolder)
@@ -2332,7 +2335,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
                         -- Export button
                         app.gui:setting('label', T.SETTINGS.EXPORT_TAGS.LABEL)
-                        if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL, divideWidth = 2 }, true) then
+                        if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL, divideWidth = 2 }) then
                             local rv, filename = reaper.JS_Dialog_BrowseForSaveFile(
                                 'Export Tags, Presets and Favorites', '',
                                 '',
@@ -2375,10 +2378,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
                         ImGui.EndChild(ctx)
                     end
                     app.draw.hint(ctx, 'settings')
-                    app:drawMsg()
                     if app.temp.captureCounter > 3 and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
-                        -- OD_ReleaseGlobalKeys()
-                        -- app.engine:sync(true)
                         ImGui.CloseCurrentPopup(ctx)
                     else
                         OD_ReleaseGlobalKeys()
@@ -2645,7 +2645,7 @@ elseif r.GetExtState('Odedd_Scout', 'RUNNING') ~= 'TRUE' then
 
                         -- Delete button (only when editing)
                         if isEditing then
-                            if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSavePreset) or app.gui:setting('button', T.EDIT_FILTER_DIALOG.DELETE.LABEL,
+                            if app.gui:setting('button', T.EDIT_FILTER_DIALOG.DELETE.LABEL,
                                     T.EDIT_FILTER_DIALOG.DELETE.HINT, nil,
                                     { label = T.EDIT_FILTER_DIALOG.DELETE.BUTTON, hintWindow = 'editFilterWindow' }) then
                                 local preset = app.engine.presets[app.temp.editingPresetId]

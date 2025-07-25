@@ -77,6 +77,14 @@ T.SETTINGS = {
         LABEL = 'Only show highest priority FX',
         HINT = 'If FX exist in several formats, only show the highest priority ones.'
     },
+    CLOSE_AFTER_EXECUTE = {
+        LABEL = 'Stay open after action',
+        HINT = 'Should Scout stay open after performing an action (adding FX etc...)'
+    },
+    SHOW_FX_UI = {
+        LABEL = 'Open FX UI after adding',
+        HINT = 'Open and float FX after adding'
+    },
     SHORTCUTS = {
         ENTER_SLEEP_MODE = {
             LABEL = 'Enter sleep mode',
@@ -89,10 +97,6 @@ T.SETTINGS = {
         HARD_CLOSE_SCRIPT = {
             LABEL = 'Close script (no sleep)',
             HINT = 'Close script without entering sleep mode.',
-        },
-        CLEAR_FILTERS = {
-            LABEL = 'Clear Filters',
-            HINT = 'Clear all filters.',
         },
         MARK_FAVORITE = {
             LABEL = 'Mark favorite',

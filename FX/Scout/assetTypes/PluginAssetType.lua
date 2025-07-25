@@ -89,6 +89,20 @@ function PluginAssetType:getData()
 end
 
 function PluginAssetType:getExecuteFunction()
+    local openPluginStatus
+    local function setOpenPlugin()
+        if self.context.settings.current.showFxUI ~= nil and self.context.settings.current.showFxUI ~= SHOW_FX_UI.FOLLOW_PREFERENCE then
+            openPluginStatus = tonumber(select(2, r.get_config_var_string('fxfloat_focus')))
+            r.SNM_SetIntConfigVar('fxfloat_focus',
+                OD_BfSet(openPluginStatus, 4, self.context.settings.current.showFxUI == SHOW_FX_UI.OPEN))
+        end
+    end
+
+    local function resetOpenPlugin()
+        if self.context.settings.current.showFxUI ~= nil and self.context.settings.current.showFxUI ~= SHOW_FX_UI.FOLLOW_PREFERENCE then
+            r.SNM_SetIntConfigVar('fxfloat_focus', openPluginStatus)
+        end
+    end
     return function(self, context, contextData, confirm)
         if not OD_BfCheck(context, ImGui.Mod_Alt) then
             local tracks = self.context.engine:getSelectedTracks()
@@ -101,15 +115,20 @@ function PluginAssetType:getExecuteFunction()
                 -- Return false for confirmation dialog - user hasn't confirmed yet, so don't add to recents
                 return false
             else
+                setOpenPlugin()
+
                 local numTracks = r.CountSelectedTracks2(0, true);
                 if numTracks == 0 then return false, 'No tracks selected' end
                 for i = 0, numTracks - 1 do
                     local track = r.GetSelectedTrack2(0, i, true)
                     local fxIndex = r.TrackFX_AddByName(track, self.load, false, -1)
                 end
+                resetOpenPlugin()
                 return true, ('Added %s to %d tracks'):format(self.searchText[1].text, numTracks)
             end
         else
+            setOpenPlugin()
+
             local numItems = r.CountMediaItems(0)
             if numItems == 0 then return false end
 
@@ -122,11 +141,11 @@ function PluginAssetType:getExecuteFunction()
                     end
                 end
             end
+            resetOpenPlugin()
             -- Always return true for ALT context - user attempted to add to takes
             -- (regardless of whether there were selected items or takes)
             return true, ('Added %s to %d items'):format(self.searchText[1].text, numItems)
         end
-
         -- Default return for other contexts
         return false
     end

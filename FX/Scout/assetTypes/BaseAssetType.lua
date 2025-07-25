@@ -67,6 +67,9 @@ function BaseAssetType:executeAndAddToRecents()
                     asset:addToRecents()
                 end
                 assetType.context.logger:logInfo(logMsg)
+                if assetType.context.settings.current.closeAfterExport then
+                    assetType.context.flow.close()
+                end
                 -- Return the actual result from the execute function
                 return result
             elseif success then

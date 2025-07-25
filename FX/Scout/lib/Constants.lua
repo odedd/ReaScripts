@@ -55,6 +55,23 @@ RESULT_CONTEXT = {
     ['DRAGGED_TO_BLANK'] = 8,
 }
 
+SHOW_FX_UI = {
+    FOLLOW_PREFERENCE = 0,
+    OPEN = 1,
+    DONT_OPEN = 2
+}
+
+SHOW_FX_UI_DESCRIPTIONS = {
+    [SHOW_FX_UI.FOLLOW_PREFERENCE] = 'Follow Reaper\'s preferences',
+    [SHOW_FX_UI.OPEN] = 'Always open',
+    [SHOW_FX_UI.DONT_OPEN] = 'Never open'
+}
+
+for i = 0, #SHOW_FX_UI_DESCRIPTIONS do
+    SHOW_FX_UI_LIST = (SHOW_FX_UI_LIST or '') .. SHOW_FX_UI_DESCRIPTIONS[i] .. '\0'
+end
+
+
 TAGS_ROOT_PARENT = -1
 
 PLUGIN = {
