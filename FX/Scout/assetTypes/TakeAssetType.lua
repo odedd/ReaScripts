@@ -9,6 +9,7 @@ function TakeAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Take", "Takes")(class, context)
     -- Takess should be imported even if they can't be mapped to existing takes
     instance.requiresMappingOnImport = false
+    instance.updateOnProjectRefresh = true
     return instance
 end
 

@@ -669,6 +669,7 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
                     app.temp.waitingForDoubleClick = nil
                 end
 
+                
                 -- reset keyboard cuttoff time when getting focus,
                 -- to prevent keys that were pressed before coming into focus from being captured
                 -- app.gui.mainWindow.focused = ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow)
@@ -684,6 +685,7 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
                     ImGui.ShowIDStackToolWindow(ctx)
                 end
                 checkProjectChange()
+                app.engine:sync()
                 handlePageSwitch()
             end,
             saveWindowDimensions = function(ctx)
@@ -2915,7 +2917,6 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
         app.logger:logAppInfo(app.logger.LOG_LEVEL.DEBUG, app)
         app.logger:logTable(app.logger.LOG_LEVEL.DEBUG, 'Settings', app.settings.current)
         app.engine:init()
-        app.engine:sync()
 
         -- Hook cache invalidation into engine operations
         local originalAssembleAssets = app.engine.assembleAssets

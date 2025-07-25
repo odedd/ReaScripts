@@ -64,25 +64,103 @@ PB_DataEngine = {
 
         return validatedFilter, hasIssues
     end,
-    refreshTracks = function(self)
-        -- Helper function to refresh tracks using the modular system
-        if self.assetTypeManager then
-            local trackAssetType = self.assetTypeManager:getAssetTypeById(ASSET_TYPE.TrackAssetType)
-            if trackAssetType then
-                self.tracks = trackAssetType:getData()
-                self.app.logger:logDebug('Refreshed tracks using modular system')
-            else
-                self.app.logger:logError('Could not find track asset type')
-                self.tracks = {}
-            end
-        else
+    refreshProjectRelatedAssets = function(self)
+        self.app.logger:logDebug('-- PB_DataEngine.refreshProjectRelatedAssets()')
+        
+        if not self.assetTypeManager then
             self.app.logger:logError('AssetTypeManager not available')
-            self.tracks = {}
+            return
         end
+
+        -- Find all asset types that need project refresh
+        local assetTypesToRefresh = {}
+        for _, assetType in ipairs(self.assetTypeManager.assetTypes) do
+            if assetType.updateOnProjectRefresh then
+                table.insert(assetTypesToRefresh, assetType)
+                self.app.logger:logDebug('Asset type "' .. assetType.name .. '" will be refreshed')
+            end
+        end
+
+        if #assetTypesToRefresh == 0 then
+            self.app.logger:logDebug('No asset types require project refresh')
+            return
+        end
+
+        -- Store current favorites and recents for preservation
+        local currentFavorites = OD_DeepCopy(self.app.userdata.current.favorites or {})
+        local currentRecents = OD_DeepCopy(self.app.userdata.current.recents or {})
+
+        -- Refresh data for each asset type that needs it
+        local refreshedAssetTypes = {}
+        for _, assetType in ipairs(assetTypesToRefresh) do
+            local newAssets = assetType:getDataWithLogging()
+            if newAssets then
+                -- Store the refreshed assets for later assembly
+                refreshedAssetTypes[assetType.assetTypeId] = {
+                    assetType = assetType,
+                    data = newAssets
+                }
+                self.app.logger:logDebug('Refreshed ' .. #newAssets .. ' assets for ' .. assetType.name)
+            else
+                self.app.logger:logError('Failed to refresh assets for ' .. assetType.name)
+            end
+        end
+
+        -- Remove old assets of refreshed types from main assets array
+        local assetsToKeep = {}
+        for _, asset in ipairs(self.assets) do
+            local shouldKeep = true
+            for assetTypeId, _ in pairs(refreshedAssetTypes) do
+                if asset.type == assetTypeId then
+                    shouldKeep = false
+                    break
+                end
+            end
+            if shouldKeep then
+                table.insert(assetsToKeep, asset)
+            end
+        end
+
+        -- Assemble new assets from refreshed asset types
+        local newAssets = {}
+        for assetTypeId, refreshData in pairs(refreshedAssetTypes) do
+            for _, data in ipairs(refreshData.data) do
+                local asset = refreshData.assetType:assembleAsset(data)
+                if asset then
+                    table.insert(newAssets, asset)
+                end
+            end
+        end
+
+        -- Combine kept assets with new assets
+        self.assets = assetsToKeep
+        for _, asset in ipairs(newAssets) do
+            table.insert(self.assets, asset)
+        end
+
+        -- Re-tag all assets (including new ones)
+        self:tagAssets()
+
+        -- Handle plugin priority filtering if needed (only affects plugins, so safe to run on partial refresh)
+        if self.app.settings.current.showOnlyHighestPriorityPlugin then
+            self:sortAssetsByFXPriorityOnly()
+            self:removeLowPriorityPlugins()
+        end
+
+        -- Re-mark special groups (favorites/recents)
+        self:markSpecialGroups()
+
+        -- Final sort
+        self:sortAssets()
+
+        self.app.flow.filterResults({}, true)
+        self.app.logger:logInfo('Refreshed ' .. #newAssets .. ' project-related assets from ' .. #assetTypesToRefresh .. ' asset types')
     end,
     lastGuids = {}, -- use to check if a track has been removed or added
     init = function(self, forceRebuildCache)
         self.app.logger:logDebug('-- PB_DataEngine.init()')
+        self.currentProjectStateChangeCount = r.GetProjectStateChangeCount(0)
+        self.previousProjectStateChangeCount = self.currentProjectStateChangeCount
         self.masterTrack = reaper.GetMasterTrack(0)
 
         -- Initialize fields that will be populated by asset types
@@ -116,20 +194,18 @@ PB_DataEngine = {
         --     r.ShowConsoleMsg(Profile.report(10))
         -- end
     end,
-    sync = function(self, refresh) -- not sure this is needed
+    sync = function(self)
         self.app.logger:logDebug('-- PB_DataEngine.sync()')
-        self.refresh = refresh or false
-        self.current_project = r.GetProjectStateChangeCount(0) -- if project changed, force full sync
-        if self.current_project ~= self.previous_project then
-            self.app.logger:logDebug('Project changed, forcing full sync')
-            self:refreshTracks()
-            self.previous_project = self.current_project
-            self.refresh = true
+        local refresh = false
+        self.currentProjectStateChangeCount = r.GetProjectStateChangeCount(0) -- if project changed, force full sync
+        if self.currentProjectStateChangeCount ~= self.previousProjectStateChangeCount then
+            self.app.logger:logDebug('Project state changed')
+            self.previousProjectStateChangeCount = self.currentProjectStateChangeCount
+            refresh = true
         end
-
-        if self.refresh then
-            self.app.logger:logDebug('Refreshing to search page')
-            self.app.flow.setPage(APP_PAGE.SEARCH)
+        
+        if refresh then
+            self:refreshProjectRelatedAssets()
         end
     end
 }
@@ -141,21 +217,28 @@ PB_DataEngine.invalidateGroupPriorityCache = function(self)
     self.app.logger:logDebug('Group priority cache invalidated')
 end
 
--- get project tracks into self.tracks, keeping the track's GUID, name and color, and wheather it has receives or not
-
+-- Get selected tracks with their associated assets
 PB_DataEngine.getSelectedTracks = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.getSelectedTracks()')
-    self:refreshTracks()
     local numTracks = r.CountSelectedTracks(0);
     local tracks = {};
     self.app.logger:logDebug('Found selected tracks', numTracks)
+    
+    -- Get track assets from the main assets array
+    local trackAssets = {}
+    for _, asset in ipairs(self.assets) do
+        if asset.type == ASSET_TYPE.TrackAssetType then
+            trackAssets[asset.load] = asset -- Use track GUID as key
+        end
+    end
+    
     for i = 0, numTracks - 1 do
         local track = r.GetSelectedTrack(0, i)
-
-        for i, trk in ipairs(self.tracks) do
-            if track == trk.object then
-                table.insert(tracks, trk)
-            end
+        local trackGuid = reaper.GetTrackGUID(track)
+        
+        local trackAsset = trackAssets[trackGuid]
+        if trackAsset then
+            table.insert(tracks, trackAsset)
         end
     end
     return tracks;
@@ -163,11 +246,15 @@ end
 
 PB_DataEngine._getTrack = function(self, track)
     self.app.logger:logDebug('-- PB_DataEngine._getTrack()')
-    for i, trk in ipairs(self.tracks) do
-        if track == trk.object then
-            return trk
+    local trackGuid = reaper.GetTrackGUID(track)
+    
+    -- Find track asset by GUID
+    for _, asset in ipairs(self.assets) do
+        if asset.type == ASSET_TYPE.TrackAssetType and asset.load == trackGuid then
+            return asset
         end
     end
+    
     self.app.logger:logDebug('Track not found in database')
     return nil
 end

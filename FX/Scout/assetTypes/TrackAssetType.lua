@@ -9,6 +9,7 @@ function TrackAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Track", "Tracks")(class, context)
     -- Tracks should be imported even if they can't be mapped to existing tracks
     instance.requiresMappingOnImport = false
+    instance.updateOnProjectRefresh = true
     return instance
 end
 
@@ -60,7 +61,7 @@ function TrackAssetType:assembleAsset(track)
         searchText = { { text = track.name } },
         group = self.group,
     })
-    asset.order = track.oded
+    asset.order = track.order
     asset.color = track.color
     
     return asset

@@ -9,6 +9,7 @@ function MarkerAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Marker/Region", "Markers/Regions")(class, context)
     -- Markers/Regions should be imported even if they can't be mapped to existing markers/regions
     instance.requiresMappingOnImport = false
+    instance.updateOnProjectRefresh = true
     return instance
 end
 

@@ -121,6 +121,9 @@ function BaseAssetType:createStandardConstructor(name, group)
         
         -- Default: not file-based (can be overridden by subclasses)
         instance.shouldMapBaseFilenames = false
+        
+        -- Default: do not refresh item on project refresh
+        instance.updateOnProjectRefresh = false
 
         return instance
     end
