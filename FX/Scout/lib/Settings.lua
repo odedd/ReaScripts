@@ -113,6 +113,15 @@ PB_Settings = OD_Settings:new({
     dfsetfile = Scr.dfsetfile
 })
 
+function PB_Settings.shortCutToKeyChord(shortcut)
+    if shortcut == nil then return 0 end
+    return OD_GetImGuiKeyCode(ImGui, shortcut.key)|
+        (shortcut.shift and ImGui.Mod_Shift or 0) |
+        (shortcut.ctrl and ImGui.Mod_Ctrl or 0) |
+        (shortcut.macCtrl and ImGui.Mod_Super or 0) |
+        (shortcut.alt and ImGui.Mod_Alt or 0)
+end
+
 function PB_Settings:new(o)
     o = o or {} -- create object if user does not provide one
     setmetatable(o, self)

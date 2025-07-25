@@ -214,7 +214,8 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
                 for assetType, typeResults in pairs(resultsByType) do
                     local total = #typeResults
                     for i, result in ipairs(typeResults) do
-                        result:execute(ImGui.GetKeyMods(app.gui.ctx) | (resultContext or 0), contextData, confirm, total, i)
+                        result:execute(ImGui.GetKeyMods(app.gui.ctx) | (resultContext or 0), contextData, confirm, total,
+                            i)
                     end
                 end
             end
@@ -669,7 +670,7 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
                     app.temp.waitingForDoubleClick = nil
                 end
 
-                
+
                 -- reset keyboard cuttoff time when getting focus,
                 -- to prevent keys that were pressed before coming into focus from being captured
                 -- app.gui.mainWindow.focused = ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow)
@@ -740,11 +741,7 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
             isShortcutPressed = function(key, global)
                 local shortcut = app.settings.current.shortcuts[key]
                 if shortcut and shortcut.key == -1 then return false end
-                local keyChord = OD_GetImGuiKeyCode(ImGui, shortcut.key)|
-                    (shortcut.shift and ImGui.Mod_Shift or 0) |
-                    (shortcut.ctrl and ImGui.Mod_Ctrl or 0) |
-                    (shortcut.macCtrl and ImGui.Mod_Super or 0) |
-                    (shortcut.alt and ImGui.Mod_Alt or 0)
+                local keyChord = app.settings.shortCutToKeyChord(shortcut)
                 return ImGui.Shortcut(app.gui.ctx, keyChord,
                     global and ImGui.InputFlags_RouteAlways or ImGui.InputFlags_None)
             end,
@@ -765,6 +762,13 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
             end,
             clearSearchInputText = function()
                 app.temp.clearSearchInputText = true
+            end,
+            keyModsToText = function(mods)
+                local modKeys = {}
+                if OD_BfCheck(mods, ImGui.Mod_Ctrl) then table.insert(modKeys, OS_is.mac and 'Cmd' or 'Ctrl') end
+                if OD_BfCheck(mods, ImGui.Mod_Alt) then table.insert(modKeys, OS_is.mac and 'Option' or 'alt') end
+                if OD_BfCheck(mods, ImGui.Mod_Shift) then table.insert(modKeys, 'Shift') end
+                return table.concat(modKeys, '+')
             end,
             -- blockNextCharacter = function()
             --     app.temp.blockNextCharacter = true
@@ -1368,7 +1372,7 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
                                             end
                                             if ImGui.IsItemHovered(ctx) then
                                                 hintResult = result
-                                                hintContext = 'Click'
+                                                hintContext = 'Double-Click'
                                             end
                                             ImGui.SameLine(ctx)
 
@@ -1490,9 +1494,14 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
                         end
 
                         if hintResult then
-                            local action = (hintResult.type == ASSET_TYPE.TrackAssetType and 'add a send to track %s' or 'add %s to selected track(s)')
-                                :format(hintResult.searchText[1].text)
-                            local hint = ('%s to %s.'):format(hintContext, action)
+                            local mods = ImGui.GetKeyMods(ctx)
+                            local assetHint = hintResult.interactionModifiers[mods] or hintResult.interactionModifiers
+                            [0]
+                            -- r.ShowConsoleMsg(hintResult.interaction[ImGui.GetKeyMods(ctx) or 'main']..'\n')
+                            local action = assetHint:gsub('%%asset', hintResult.searchText[1].text)
+                            local modifier = (mods ~= 0 and hintResult.interactionModifiers[mods]) and
+                            app.guiHelpers.keyModsToText(ImGui.GetKeyMods(ctx)) .. '-' or ''
+                            local hint = ('%s%s to %s.'):format(modifier, hintContext, action)
                             if app.temp.searchMode == SEARCH_MODE.MAIN then
                                 hint = hint ..
                                     (app.guiHelpers.getShortcutDescription('markFavorite') ~= '' and (' Press %s to %s.'):format(app.guiHelpers.getShortcutDescription('markFavorite'),

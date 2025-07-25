@@ -60,7 +60,7 @@ function BaseAssetType:executeAndAddToRecents()
         if executeFunction then
             -- Execute first and check if successful
             local success, result, logMsg = pcall(executeFunction, asset, ...)
-            
+
             if success and result == true then
                 -- Only add to recents if execution was successful AND returned true
                 if asset.addToRecents then
@@ -74,13 +74,14 @@ function BaseAssetType:executeAndAddToRecents()
                 return result
             elseif success then
                 -- Execution didn't throw error but returned false - don't add to recents
-                assetType.context.logger:logDebug('Execution returned false for asset: ' .. 
-                    (asset.searchText and asset.searchText[1] and asset.searchText[1].text or 'Unknown') ..'.'.. (logMsg and (' Reason: '.. logMsg) or '')) 
+                assetType.context.logger:logDebug('Execution returned false for asset: ' ..
+                    (asset.searchText and asset.searchText[1] and asset.searchText[1].text or 'Unknown') ..
+                    '.' .. (logMsg and (' Reason: ' .. logMsg) or ''))
                 return result
             else
                 -- Log the error and don't add to recents
-                assetType.context.logger:logError('Execution failed for asset: ' .. 
-                    (asset.searchText and asset.searchText[1] and asset.searchText[1].text or 'Unknown') .. 
+                assetType.context.logger:logError('Execution failed for asset: ' ..
+                    (asset.searchText and asset.searchText[1] and asset.searchText[1].text or 'Unknown') ..
                     ' - Error: ' .. tostring(result))
                 return false
             end
@@ -118,12 +119,16 @@ function BaseAssetType:createStandardConstructor(name, group)
 
         -- Default: require mapping during import (can be overridden by subclasses)
         instance.requiresMappingOnImport = true
-        
+
         -- Default: not file-based (can be overridden by subclasses)
         instance.shouldMapBaseFilenames = false
-        
+
         -- Default: do not refresh item on project refresh
         instance.updateOnProjectRefresh = false
+
+        instance.interactionModifiers = {
+            [0] = 'select'
+        }
 
         return instance
     end
@@ -133,18 +138,18 @@ BaseAssetType.assetActions = {
     toggleFavorite = function(self)
         local key = self.type .. ' ' .. self.load
         self.favorite = self.context.tags:toggleAssetFavorite(key)
-        
+
         -- Use the unified special groups marking function to handle group reassignment
         self.engine:markSpecialGroups()
         self.engine:sortAssets()
-        self.context.flow.filterResults(nil, nil, {self})  -- Use multi-target to maintain selection on this asset
+        self.context.flow.filterResults(nil, nil, { self }) -- Use multi-target to maintain selection on this asset
         return self.favorite == true
     end,
     -- Batch toggle favorites for multiple assets (more efficient than calling toggleFavorite multiple times)
     batchToggleFavorites = function(self, assets, willFavorite)
         local favorites = self.context.tags.current.favorites
         local changed = false
-        
+
         for _, asset in ipairs(assets) do
             local key = asset.type .. ' ' .. asset.load
             if willFavorite and not asset.favorite then
@@ -157,7 +162,7 @@ BaseAssetType.assetActions = {
                 changed = true
             end
         end
-        
+
         if changed then
             self.context.tags:save()
             -- Use the unified special groups marking function to handle group reassignment
@@ -165,7 +170,7 @@ BaseAssetType.assetActions = {
             self.engine:sortAssets()
             -- Don't call filterResults here - let the caller handle it with target assets
         end
-        
+
         return changed
     end,
     moveFavorite = function(self, targetPosition)
@@ -213,7 +218,7 @@ BaseAssetType.assetActions = {
         self.context.tags:save()
         self.engine:markSpecialGroups()
         self.engine:sortAssets()
-        self.context.flow.filterResults(nil, nil, {self})  -- Use multi-target to maintain selection on this asset
+        self.context.flow.filterResults(nil, nil, { self }) -- Use multi-target to maintain selection on this asset
 
         self.context.logger:logDebug('Moved favorite "' ..
             key .. '" from position ' .. currentPosition .. ' to position ' .. targetPosition)
@@ -222,15 +227,15 @@ BaseAssetType.assetActions = {
     addToRecents = function(self)
         local key = self.type .. ' ' .. self.load
         self.context.tags:addAssetToRecents(key)
-        
+
         -- Use the unified special groups marking function
         self.engine:markSpecialGroups()
         self.engine:sortAssets()
-        self.context.flow.filterResults(nil, nil, {self})  -- Use multi-target to maintain selection on this asset
+        self.context.flow.filterResults(nil, nil, { self }) -- Use multi-target to maintain selection on this asset
     end,
     addTag = function(self, tag, saveToDB)
         local save = (saveToDB == nil) and true or saveToDB
-        
+
         if not OD_HasValue(self.tags, tag.id) then
             table.insert(self.tags, tag.id)
             self.context.tags:addTagToAsset(self.id, tag.id, save)
@@ -238,7 +243,7 @@ BaseAssetType.assetActions = {
     end,
     removeTag = function(self, tag, saveToDB)
         local save = (saveToDB == nil) and true or saveToDB
-        
+
         if OD_HasValue(self.tags, tag.id) then
             OD_RemoveValue(self.tags, tag.id)
             self.context.tags:removeTagFromAsset(self.id, tag.id, save)
@@ -253,6 +258,7 @@ function BaseAssetType:createAssetBase(params)
         load = params.load,
         searchText = params.searchText,
         group = params.group,
+        interactionModifiers = self.interactionModifiers,
         context = self.context,
         engine = self.context.engine, -- Add engine reference for backward compatibility
         addTag = self.assetActions.addTag,
