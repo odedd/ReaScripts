@@ -66,7 +66,7 @@ PB_DataEngine = {
     end,
     refreshProjectRelatedAssets = function(self)
         self.app.logger:logDebug('-- PB_DataEngine.refreshProjectRelatedAssets()')
-        
+
         if not self.assetTypeManager then
             self.app.logger:logError('AssetTypeManager not available')
             return
@@ -154,7 +154,8 @@ PB_DataEngine = {
         self:sortAssets()
 
         self.app.flow.filterResults({}, true)
-        self.app.logger:logInfo('Refreshed ' .. #newAssets .. ' project-related assets from ' .. #assetTypesToRefresh .. ' asset types')
+        self.app.logger:logInfo('Refreshed ' ..
+        #newAssets .. ' project-related assets from ' .. #assetTypesToRefresh .. ' asset types')
     end,
     lastGuids = {}, -- use to check if a track has been removed or added
     init = function(self, forceRebuildCache)
@@ -203,7 +204,7 @@ PB_DataEngine = {
             self.previousProjectStateChangeCount = self.currentProjectStateChangeCount
             refresh = true
         end
-        
+
         if refresh then
             self:refreshProjectRelatedAssets()
         end
@@ -223,7 +224,7 @@ PB_DataEngine.getSelectedTracks = function(self)
     local numTracks = r.CountSelectedTracks(0);
     local tracks = {};
     self.app.logger:logDebug('Found selected tracks', numTracks)
-    
+
     -- Get track assets from the main assets array
     local trackAssets = {}
     for _, asset in ipairs(self.assets) do
@@ -231,11 +232,11 @@ PB_DataEngine.getSelectedTracks = function(self)
             trackAssets[asset.load] = asset -- Use track GUID as key
         end
     end
-    
+
     for i = 0, numTracks - 1 do
         local track = r.GetSelectedTrack(0, i)
         local trackGuid = reaper.GetTrackGUID(track)
-        
+
         local trackAsset = trackAssets[trackGuid]
         if trackAsset then
             table.insert(tracks, trackAsset)
@@ -247,14 +248,14 @@ end
 PB_DataEngine._getTrack = function(self, track)
     self.app.logger:logDebug('-- PB_DataEngine._getTrack()')
     local trackGuid = reaper.GetTrackGUID(track)
-    
+
     -- Find track asset by GUID
     for _, asset in ipairs(self.assets) do
         if asset.type == ASSET_TYPE.TrackAssetType and asset.load == trackGuid then
             return asset
         end
     end
-    
+
     self.app.logger:logDebug('Track not found in database')
     return nil
 end
@@ -982,22 +983,22 @@ PB_DataEngine.assembleAssets = function(self, forceRebuildCache)
     end
 
     self:tagAssets()
-    
+
     -- IMPORTANT: Plugin priority filtering must happen BEFORE special group processing
     -- because special groups change the asset groups and break FX type priority sorting
     if self.app.settings.current.showOnlyHighestPriorityPlugin then
         self:sortAssetsByFXPriorityOnly() -- Sort by FX priority first
-        self:removeLowPriorityPlugins()    -- Remove duplicates while FX types are intact
+        self:removeLowPriorityPlugins()   -- Remove duplicates while FX types are intact
     end
-    
+
     self:markSpecialGroups() -- Mark favorites/recents (changes asset groups)
-    
+
     if forceRebuildCache then
         self:invalidateGroupPriorityCache()
     end
-    
+
     self:sortAssets() -- Final sort with special groups and group priority cache
-    
+
     self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
 end
 -- whichFilter example: {filters = {FILTER_TYPES.CATEGORY, FILTER_TYPES.DEVELOPER}, tags = true}
@@ -1071,6 +1072,9 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
 
     local assetCount = 0
 
+    local interactionModifiers = { [0] = 'add %asset to current filters' }
+    local presetInteractionModifiers = { [0] = 'load preset %asset' }
+
     if scanAll or whichFilters.filters then
         for filterType, filter in pairs(FILTER_MENU) do
             -- Skip presets here since they're handled separately with more functionality
@@ -1085,7 +1089,8 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                         load = item.query,
                         loadAll = filter.allQuery,
                         group = T.FILTER_NAMES[filterType],
-                        execute = executeFilter
+                        execute = executeFilter,
+                        interactionModifiers = interactionModifiers
                     })
                     assetCount = assetCount + 1
                 end
@@ -1139,7 +1144,9 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                     order = tag.order,
                     load = tag.id,
                     group = T.FILTER_NAMES[FILTER_TYPES.TAG],
-                    execute = executeFilter
+                    execute = executeFilter,
+                    interactionModifiers = interactionModifiers
+
                 })
                 assetCount = assetCount + 1
             end
@@ -1157,7 +1164,9 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 order = preset.id, -- Use ID as order for now, could be customized later
                 preset = preset,   -- Store reference to preset
                 group = T.FILTER_NAMES[FILTER_TYPES.PRESET],
-                execute = executeFilter
+                execute = executeFilter,
+                interactionModifiers = presetInteractionModifiers
+
             })
             assetCount = assetCount + 1
         end
@@ -1275,13 +1284,13 @@ end
 
 PB_DataEngine.sortAssetsByFXPriorityOnly = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.sortAssetsByFXPriorityOnly()')
-    
+
     -- Create FX type priority lookup
     local fxTypePriority = {}
     for i, fxType in ipairs(self.app.settings.current.fxTypeOrder) do
         fxTypePriority[fxType] = i
     end
-    
+
     -- Sort only plugin assets by FX type priority, leave others in original order
     table.sort(self.assets, function(a, b)
         -- If both are plugins, sort by FX type priority
@@ -1293,43 +1302,45 @@ PB_DataEngine.sortAssetsByFXPriorityOnly = function(self)
             else
                 return aPriority < bPriority
             end
-        -- If only one is a plugin, maintain original relative order
+            -- If only one is a plugin, maintain original relative order
         elseif a.fx_type and not b.fx_type then
             return false -- keep non-plugin before plugin
         elseif not a.fx_type and b.fx_type then
-            return true -- keep non-plugin before plugin
+            return true  -- keep non-plugin before plugin
         else
             -- Both are non-plugins, maintain original order
             return false
         end
     end)
-    
+
     self.app.logger:logDebug('Sorted assets by FX priority for duplicate removal')
 end
 
 PB_DataEngine.removeLowPriorityPlugins = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.removeLowPriorityPlugins()')
-    
+
     local assetsIdxToRemove = {}
     local foundPlugins = {}
-    
+
     for i, asset in ipairs(self.assets) do
         if asset.fx_type then
             local id = asset.name .. (asset.vendor or '')
             if foundPlugins[id] then
                 table.insert(assetsIdxToRemove, i)
-                self.app.logger:logDebug('Marking duplicate plugin for removal: ' .. asset.name .. ' (' .. asset.fx_type .. ')')
+                self.app.logger:logDebug('Marking duplicate plugin for removal: ' ..
+                asset.name .. ' (' .. asset.fx_type .. ')')
             else
                 foundPlugins[id] = true
-                self.app.logger:logDebug('Keeping highest priority plugin: ' .. asset.name .. ' (' .. asset.fx_type .. ')')
+                self.app.logger:logDebug('Keeping highest priority plugin: ' ..
+                asset.name .. ' (' .. asset.fx_type .. ')')
             end
         end
     end
-    
+
     for i = #assetsIdxToRemove, 1, -1 do
         table.remove(self.assets, assetsIdxToRemove[i])
     end
-    
+
     self.app.logger:logInfo('Removed ' .. #assetsIdxToRemove .. ' duplicate plugins')
 end
 PB_DataEngine.sortFilterAssets = function(self)
