@@ -66,7 +66,6 @@ end
 r.SetExtState(Scr.ext_name, 'SCRIPT_VERSION', Scr.version, false)
 
 if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
-
     if OD_PrereqsOK({
             reaimgui_version = '0.9.2',
             js_version = 1.310,    -- required for JS_Window_Find and JS_VKeys_GetState
@@ -530,10 +529,10 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
                     -- Check if script was updated while hibernating
                     local currentVersion = r.GetExtState(Scr.ext_name, 'SCRIPT_VERSION')
                     local hibernatingVersion = r.GetExtState(Scr.ext_name, 'HIBERNATING_VERSION')
-                    
+
                     if hibernatingVersion ~= '' and hibernatingVersion ~= currentVersion then
                         -- Version mismatch: script was updated, exit gracefully
-                        app.logger:logInfo('Script version changed while hibernating (' .. 
+                        app.logger:logInfo('Script version changed while hibernating (' ..
                             hibernatingVersion .. ' -> ' .. currentVersion .. '), exiting to allow new version to start')
                         r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
                         r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false)
@@ -541,7 +540,7 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
                         app.hide = true
                         return
                     end
-                    
+
                     -- Normal wakeup
                     r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
                     r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false) -- Clear hibernating version
@@ -2121,17 +2120,17 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
                         end
                     end
                     if rv then
-                        if app.temp.searchMode == SEARCH_MODE.MAIN then
-                            local wordFilter = app.engine.magicWords[app.temp.searchInput:upper():match('(.+)%s$')]
-                            if wordFilter then
-                                app.flow.filterResults(wordFilter)
-                                app.guiHelpers.clearSearchInputText()
-                            else
-                                app.flow.filterResults({ text = app.temp.searchInput })
-                            end
+                        -- if app.temp.searchMode == SEARCH_MODE.MAIN then
+                        local wordFilter = app.engine.magicWords[app.temp.searchInput:upper():match('(.+)%s$')]
+                        if wordFilter then
+                            app.flow.filterResults(wordFilter)
+                            app.guiHelpers.clearSearchInputText()
                         else
                             app.flow.filterResults({ text = app.temp.searchInput })
                         end
+                        -- -- else
+                        -- --     app.flow.filterResults({ text = app.temp.searchInput })
+                        -- end
                     end
                 end
                 local drawIconMenu = function(ctx, buttons)
