@@ -63,7 +63,7 @@ function TakeAssetType:getData()
 end
 
 function TakeAssetType:getExecuteFunction()
-    return function(self, context, contextData)
+    return function(self, context, contextData, confirm, total, index)
         -- Take execution - select only this take's item and set as active take
         
         -- Find the take by GUID
@@ -71,8 +71,9 @@ function TakeAssetType:getExecuteFunction()
         local numTracks = reaper.CountTracks(0)
         
         -- First, clear all current selections
-        reaper.SelectAllMediaItems(0, false)
-        
+        if index == 1 then
+            reaper.SelectAllMediaItems(0, false)
+        end
         for trackIdx = 0, numTracks - 1 do
             local track = reaper.GetTrack(0, trackIdx)
             local numItems = reaper.CountTrackMediaItems(track)

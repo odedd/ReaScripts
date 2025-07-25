@@ -563,9 +563,25 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
                         contextData = contextData
                     }
                 elseif confirm or resultCount < app.settings.current.numberOfResultsThatRequireConfirmation then
-                    for _, result in pairs(app.selection:results()) do
+                    local results = app.selection:results()
+                    
+                    -- Group results by asset type
+                    local resultsByType = {}
+                    for _, result in pairs(results) do
                         if result.execute then
-                            result:execute(ImGui.GetKeyMods(ctx) | (resultContext or 0), contextData, confirm)
+                            local assetType = result.type
+                            if not resultsByType[assetType] then
+                                resultsByType[assetType] = {}
+                            end
+                            table.insert(resultsByType[assetType], result)
+                        end
+                    end
+                    
+                    -- Execute each asset type group sequentially
+                    for assetType, typeResults in pairs(resultsByType) do
+                        local total = #typeResults
+                        for i, result in ipairs(typeResults) do
+                            result:execute(ImGui.GetKeyMods(ctx) | (resultContext or 0), contextData, confirm, total, i)
                         end
                     end
                 end
