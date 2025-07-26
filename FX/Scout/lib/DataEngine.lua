@@ -196,7 +196,7 @@ PB_DataEngine = {
         -- end
     end,
     sync = function(self)
-        self.app.logger:logDebug('-- PB_DataEngine.sync()')
+        -- self.app.logger:logDebug('-- PB_DataEngine.sync()')
         local refresh = false
         self.currentProjectStateChangeCount = r.GetProjectStateChangeCount(0) -- if project changed, force full sync
         if self.currentProjectStateChangeCount ~= self.previousProjectStateChangeCount then

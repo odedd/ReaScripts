@@ -34,38 +34,12 @@ else
     dofile(p .. '../../Resources/Common/Common.lua')
 end
 
-r.ClearConsole()
+-- r.ClearConsole()
 
 OD_Init()
 
-if r.GetExtState(Scr.ext_name, 'WAKEUP') == 'WAITING' then
-    -- Check if script version has changed while hibernating
-    local hibernatingVersion = r.GetExtState(Scr.ext_name, 'HIBERNATING_VERSION')
-    if hibernatingVersion ~= '' and hibernatingVersion ~= Scr.version then
-        -- Version mismatch: script was updated while hibernating
-        -- Clear hibernation state and let new version start fresh
-        r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
-        r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false)
-        r.SetExtState(Scr.ext_name, 'RUNNING', '', false)
-        -- Don't return - continue to start new version
-    else
-        -- Same version: normal wakeup
-        r.SetExtState(Scr.ext_name, 'WAKEUP', 'GO', false)
-        return -- Exit early, hibernating script will wake up
-    end
-elseif r.GetExtState(Scr.ext_name, 'RUNNING') == 'TRUE' then
-    -- Script is already running, just bring it to focus
-    local scriptHwnd = r.JS_Window_Find('Odedd Scout', true) or r.JS_Window_FindTop('Scout', true)
-    if scriptHwnd then
-        r.JS_Window_SetFocus(scriptHwnd)
-    end
-    return
-end
 
--- Starting fresh (not hibernating) - store version and continue
-r.SetExtState(Scr.ext_name, 'SCRIPT_VERSION', Scr.version, false)
-
-if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
+RunApp = function()
     if OD_PrereqsOK({
             reaimgui_version = '0.9.2',
             js_version = 1.310,    -- required for JS_Window_Find and JS_VKeys_GetState
@@ -549,22 +523,17 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
             end,
             waitForWakeup = function()
                 local cmd = r.GetExtState(Scr.ext_name, 'WAKEUP')
-                if cmd ~= 'WAITING' and cmd ~= '' and cmd ~= nil then
+                if cmd == 'EXIT' then
                     -- Check if script was updated while hibernating
-                    local currentVersion = r.GetExtState(Scr.ext_name, 'SCRIPT_VERSION')
-                    local hibernatingVersion = r.GetExtState(Scr.ext_name, 'HIBERNATING_VERSION')
-
-                    if hibernatingVersion ~= '' and hibernatingVersion ~= currentVersion then
-                        -- Version mismatch: script was updated, exit gracefully
-                        app.logger:logInfo('Script version changed while hibernating (' ..
-                            hibernatingVersion .. ' -> ' .. currentVersion .. '), exiting to allow new version to start')
-                        r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
-                        r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false)
-                        r.SetExtState(Scr.ext_name, 'RUNNING', '', false)
-                        app.hide = true
-                        return
-                    end
-
+                    -- local currentVersion = r.GetExtState(Scr.ext_name, 'SCRIPT_VERSION')
+                    -- Version mismatch: script was updated, exit gracefully
+                    app.logger:logInfo('Script version changed while hibernating. Exiting to allow new version to start')
+                    r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
+                    r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false)
+                    r.SetExtState(Scr.ext_name, 'RUNNING', '', false)
+                    return
+                end
+                if cmd ~= 'WAITING' and cmd ~= '' and cmd ~= nil then
                     -- Normal wakeup
                     r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
                     r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false) -- Clear hibernating version
@@ -1496,11 +1465,10 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
                         if hintResult then
                             local mods = ImGui.GetKeyMods(ctx)
                             local assetHint = hintResult.interactionModifiers[mods] or hintResult.interactionModifiers
-                            [0]
-                            -- r.ShowConsoleMsg(hintResult.interaction[ImGui.GetKeyMods(ctx) or 'main']..'\n')
+                                [0]
                             local action = assetHint:gsub('%%asset', hintResult.searchText[1].text)
                             local modifier = (mods ~= 0 and hintResult.interactionModifiers[mods]) and
-                            app.guiHelpers.keyModsToText(ImGui.GetKeyMods(ctx)) .. '-' or ''
+                                app.guiHelpers.keyModsToText(ImGui.GetKeyMods(ctx)) .. '-' or ''
                             local hint = ('%s%s to %s.'):format(modifier, hintContext, action)
                             if app.temp.searchMode == SEARCH_MODE.MAIN then
                                 hint = hint ..
@@ -2903,6 +2871,7 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
         end
 
         function Release()
+            app.logger:logError('Release')
             if app.logger.profile then r.ShowConsoleMsg(Profile.report(10)) end
 
             r.SetExtState('Odedd_Scout', 'RUNNING', '', false)
@@ -2911,7 +2880,7 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
 
         function Exit()
             if app and app.settings then app.settings:save() end
-            app.logger:logInfo('Exited')
+            app.logger:logError('Exited (' .. Scr.version .. ')')
             Release()
         end
 
@@ -2941,8 +2910,45 @@ if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
             -- Invalidate search caches when filter assets are reassembled
             app.cacheHelpers:invalidateAllAssetSearchCaches()
         end
-
         app.flow.setPage(APP_PAGE.SEARCH)
         PDefer(app.loop)
     end
+end
+
+if r.GetExtState(Scr.ext_name, 'WAKEUP') == 'WAITING' or r.GetExtState(Scr.ext_name, 'WAKEUP') == 'EXIT' then
+    -- Check if script version has changed while hibernating
+    local hibernatingVersion = r.GetExtState(Scr.ext_name, 'HIBERNATING_VERSION')
+    if hibernatingVersion ~= '' and hibernatingVersion ~= Scr.version then
+        -- Version mismatch: script was updated while hibernating
+        -- Clear hibernation state and let new version start fresh
+        r.SetExtState(Scr.ext_name, 'WAKEUP', 'EXIT', false)
+        -- r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false)
+        -- r.SetExtState(Scr.ext_name, 'RUNNING', '', false)
+        local function waitForScriptToTerminate()
+            if r.GetExtState(Scr.ext_name, 'WAKEUP') == nil or r.GetExtState(Scr.ext_name, 'WAKEUP') == '' then
+                RunApp()
+            else
+                r.defer(waitForScriptToTerminate)
+            end
+        end
+        waitForScriptToTerminate()
+        -- Don't return - continue to start new version
+    else
+        -- Same version: normal wakeup
+        r.SetExtState(Scr.ext_name, 'WAKEUP', 'GO', false)
+        return -- Exit early, hibernating script will wake up
+    end
+elseif r.GetExtState(Scr.ext_name, 'RUNNING') == 'TRUE' then
+    -- Script is already running, just bring it to focus
+    local scriptHwnd = r.JS_Window_Find('Odedd Scout', true) or r.JS_Window_FindTop('Scout', true)
+    if scriptHwnd then
+        r.JS_Window_SetFocus(scriptHwnd)
+    end
+    return
+end
+
+r.SetExtState(Scr.ext_name, 'SCRIPT_VERSION', Scr.version, false)
+
+if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
+    RunApp()
 end
