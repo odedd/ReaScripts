@@ -2005,7 +2005,7 @@ RunApp = function()
                         table.insert(menu, { icon = 'dock_down', hint = 'Dock' })
                     end
                     table.insert(menu, {
-                        icon = 'question_circle',
+                        icon = 'question',
                         hint = 'Help',
                         active = app.temp.showHelpWindow
                     })
@@ -2192,7 +2192,7 @@ RunApp = function()
                             else
                                 app:msg(T.ERROR.NO_DOCK)
                             end
-                        elseif btn == 'question_circle' then
+                        elseif btn == 'question' then
                             app.temp.showHelpWindow = app.temp.showHelpWindow == nil and true or nil
                         elseif btn == 'gear' then
                             ImGui.OpenPopup(ctx, Scr.name .. ' Settings##settingsWindow')
