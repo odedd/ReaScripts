@@ -2871,7 +2871,7 @@ RunApp = function()
         end
 
         function Release()
-            app.logger:logError('Release')
+            app.logger:logDebug('Release')
             if app.logger.profile then r.ShowConsoleMsg(Profile.report(10)) end
 
             r.SetExtState('Odedd_Scout', 'RUNNING', '', false)
@@ -2880,7 +2880,7 @@ RunApp = function()
 
         function Exit()
             if app and app.settings then app.settings:save() end
-            app.logger:logError('Exited (' .. Scr.version .. ')')
+            app.logger:logInfo('Exited (' .. Scr.version .. ')')
             Release()
         end
 
