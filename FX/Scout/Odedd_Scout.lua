@@ -25,27 +25,26 @@
 r = reaper
 
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
--- r.SetExtState('Odedd_Scout', 'RUNNING', '', false)
 
--- Load Common.lua early to get access to Scr.version and Scr.ext_name
 if r.file_exists(p .. 'Resources/Common/Common.lua') then
     dofile(p .. 'Resources/Common/Common.lua')
 else
     dofile(p .. '../../Resources/Common/Common.lua')
 end
 
--- r.ClearConsole()
+r.ClearConsole()
 
 OD_Init()
 
+r.SetExtState(Scr.ext_name, 'SCRIPT_VERSION', Scr.version, false)
 
 RunApp = function()
-    if OD_PrereqsOK({
+    if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' and OD_PrereqsOK({
             reaimgui_version = '0.9.2',
             js_version = 1.310,    -- required for JS_Window_Find and JS_VKeys_GetState
             reaper_version = 7.03, -- required for set_action_options
         }) then
-        package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
+        package.path = r.ImGui_GetBuiltinPath() .. '/?.lua'
         ImGui = require 'imgui' '0.9.2'
 
         dofile(p .. 'lib/Constants.lua')
@@ -521,32 +520,6 @@ RunApp = function()
                 filterAssets()
                 resetOrRestoreSelection()
             end,
-            waitForWakeup = function()
-                local cmd = r.GetExtState(Scr.ext_name, 'WAKEUP')
-                if cmd == 'EXIT' then
-                    -- Check if script was updated while hibernating
-                    -- local currentVersion = r.GetExtState(Scr.ext_name, 'SCRIPT_VERSION')
-                    -- Version mismatch: script was updated, exit gracefully
-                    app.logger:logInfo('Script version changed while hibernating. Exiting to allow new version to start')
-                    r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
-                    r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false)
-                    r.SetExtState(Scr.ext_name, 'RUNNING', '', false)
-                    return
-                end
-                if cmd ~= 'WAITING' and cmd ~= '' and cmd ~= nil then
-                    -- Normal wakeup
-                    r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
-                    r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false) -- Clear hibernating version
-                    app.flow.setSearchMode(SEARCH_MODE.MAIN, { clear = true })
-                    PDefer(app.loop)
-                else
-                    -- without this code the context gets invalidated, so it needs to be kept alive
-                    local ctx = app.gui.ctx
-                    ImGui.PushFont(ctx, app.gui.st.fonts.default)
-                    ImGui.PopFont(ctx)
-                    PDefer(app.flow.waitForWakeup)
-                end
-            end,
             executeSelectedResults = function(ctx, resultContext, contextData, confirm)
                 local resultCount = app.selection:count()
                 if resultCount >= app.settings.current.numberOfResultsThatRequireConfirmation and not confirm then
@@ -591,6 +564,34 @@ RunApp = function()
                         app.flow.filterResults(filter)
                         r.SetExtState(Scr.ext_name, 'EXTERNAL_COMMAND', '', false)
                     end
+                end
+            end,
+            hibernate = function()
+                local cmd = r.GetExtState(Scr.ext_name, 'WAKEUP')
+                if cmd == 'EXIT' then
+                    -- Check if script was updated while hibernating
+                    -- local currentVersion = r.GetExtState(Scr.ext_name, 'SCRIPT_VERSION')
+                    -- Version mismatch: script was updated, exit gracefully
+                    app.logger:logInfo(('Script version changed while hibernating for %.2f. Exiting to allow new version to start')
+                    :format(r.time_precise() - app.temp.hibernationStart))
+                    r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
+                    r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false)
+                    r.SetExtState(Scr.ext_name, 'RUNNING', '', false)
+                elseif cmd ~= 'WAITING' and cmd ~= '' and cmd ~= nil then
+                    -- Normal wakeup
+                    app.logger:logInfo(('Woke up after hibernating for %.2f seconds'):format(r.time_precise() -
+                    app.temp.hibernationStart))
+                    app.temp.hibernationStart = nil
+                    r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
+                    r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false) -- Clear hibernating version
+                    app.flow.setSearchMode(SEARCH_MODE.MAIN, { clear = true })
+                    PDefer(app.loop)
+                else
+                    -- without this code the context gets invalidated, so it needs to be kept alive
+                    local ctx = app.gui.ctx
+                    ImGui.PushFont(ctx, app.gui.st.fonts.default)
+                    ImGui.PopFont(ctx)
+                    PDefer(app.flow.hibernate)
                 end
             end
         }
@@ -2369,7 +2370,7 @@ RunApp = function()
 
                         -- Export button
                         if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL, divideWidth = 2 }) then
-                            local rv, filename = reaper.JS_Dialog_BrowseForSaveFile(
+                            local rv, filename = r.JS_Dialog_BrowseForSaveFile(
                                 'Export Tags, Presets and Favorites', '',
                                 '',
                                 'Scout Tags files (*.scout)\0*.scout\0\0')
@@ -2389,7 +2390,7 @@ RunApp = function()
                         local importButtonText = overwriteMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL or
                             T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE
                         if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText }, true) then
-                            local rv, filename = reaper.GetUserFileNameForRead('',
+                            local rv, filename = r.GetUserFileNameForRead('',
                                 'Import Tags, Presets and Favorites',
                                 'scout')
                             if rv and filename then
@@ -2837,9 +2838,11 @@ RunApp = function()
             elseif not app.hardExit and app.settings.current.sleepMode then
                 if app and app.settings then app.settings:save() end
                 -- Store current version before hibernating for version checking on wakeup
+                app.logger:logInfo('Entering hibernation')
+                app.temp.hibernationStart = r.time_precise()
                 r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', Scr.version, false)
                 r.SetExtState(Scr.ext_name, 'WAKEUP', 'WAITING', false)
-                PDefer(app.flow.waitForWakeup)
+                PDefer(app.flow.hibernate)
             end
         end
 
@@ -2880,7 +2883,7 @@ RunApp = function()
 
         function Exit()
             if app and app.settings then app.settings:save() end
-            app.logger:logInfo('Exited (' .. Scr.version .. ')')
+            app.logger:logInfo('Exited (v' .. Scr.version .. ')')
             Release()
         end
 
@@ -2891,7 +2894,7 @@ RunApp = function()
         -- START ------------------------------
         ---------------------------------------
         -- app.settings:save()
-        app.logger:logInfo('Started')
+        app.logger:logInfo('Started (v' .. Scr.version .. ')')
         app.logger:logAppInfo(app.logger.LOG_LEVEL.DEBUG, app)
         app.logger:logTable(app.logger.LOG_LEVEL.DEBUG, 'Settings', app.settings.current)
         app.engine:init()
@@ -2915,40 +2918,36 @@ RunApp = function()
     end
 end
 
-if r.GetExtState(Scr.ext_name, 'WAKEUP') == 'WAITING' or r.GetExtState(Scr.ext_name, 'WAKEUP') == 'EXIT' then
-    -- Check if script version has changed while hibernating
-    local hibernatingVersion = r.GetExtState(Scr.ext_name, 'HIBERNATING_VERSION')
-    if hibernatingVersion ~= '' and hibernatingVersion ~= Scr.version then
-        -- Version mismatch: script was updated while hibernating
-        -- Clear hibernation state and let new version start fresh
-        r.SetExtState(Scr.ext_name, 'WAKEUP', 'EXIT', false)
-        -- r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false)
-        -- r.SetExtState(Scr.ext_name, 'RUNNING', '', false)
-        local function waitForScriptToTerminate()
-            if r.GetExtState(Scr.ext_name, 'WAKEUP') == nil or r.GetExtState(Scr.ext_name, 'WAKEUP') == '' then
-                RunApp()
-            else
-                r.defer(waitForScriptToTerminate)
+CheckIfHybernating = function()
+    if r.GetExtState(Scr.ext_name, 'WAKEUP') == 'WAITING' or r.GetExtState(Scr.ext_name, 'WAKEUP') == 'EXIT' then
+        -- Check if script version has changed while hibernating
+        local hibernatingVersion = r.GetExtState(Scr.ext_name, 'HIBERNATING_VERSION')
+        if hibernatingVersion ~= '' and hibernatingVersion ~= Scr.version then
+            -- Version mismatch: script was updated while hibernating
+            -- Clear hibernation state and let new version start fresh
+            r.SetExtState(Scr.ext_name, 'WAKEUP', 'EXIT', false)
+            local function waitForScriptToTerminate()
+                if r.GetExtState(Scr.ext_name, 'WAKEUP') == nil or r.GetExtState(Scr.ext_name, 'WAKEUP') == '' then
+                    RunApp()
+                else
+                    r.defer(waitForScriptToTerminate)
+                end
             end
+            waitForScriptToTerminate()
+        else
+            -- Same version: wakeup running script
+            r.SetExtState(Scr.ext_name, 'WAKEUP', 'GO', false)
+            return -- Exit early, hibernating script will wake up
         end
-        waitForScriptToTerminate()
-        -- Don't return - continue to start new version
-    else
-        -- Same version: normal wakeup
-        r.SetExtState(Scr.ext_name, 'WAKEUP', 'GO', false)
-        return -- Exit early, hibernating script will wake up
+    elseif r.GetExtState(Scr.ext_name, 'RUNNING') == 'TRUE' then
+        -- Script is already running, just bring it to focus
+        local scriptHwnd = r.JS_Window_Find('Odedd Scout', true) or r.JS_Window_FindTop('Scout', true)
+        if scriptHwnd then
+            r.JS_Window_SetFocus(scriptHwnd)
+        end
+        return
     end
-elseif r.GetExtState(Scr.ext_name, 'RUNNING') == 'TRUE' then
-    -- Script is already running, just bring it to focus
-    local scriptHwnd = r.JS_Window_Find('Odedd Scout', true) or r.JS_Window_FindTop('Scout', true)
-    if scriptHwnd then
-        r.JS_Window_SetFocus(scriptHwnd)
-    end
-    return
 end
 
-r.SetExtState(Scr.ext_name, 'SCRIPT_VERSION', Scr.version, false)
-
-if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' then
-    RunApp()
-end
+CheckIfHybernating()
+RunApp()
