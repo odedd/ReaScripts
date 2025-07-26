@@ -13,6 +13,7 @@ PB_Gui.init = function(self, fonts)
     local large = 22
     self:createFonts({
         default = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = default },
+        bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = default },
         -- tiny = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = tiny },
         small = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = small },
         large = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = large },

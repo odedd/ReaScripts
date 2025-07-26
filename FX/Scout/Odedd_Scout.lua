@@ -573,14 +573,14 @@ RunApp = function()
                     -- local currentVersion = r.GetExtState(Scr.ext_name, 'SCRIPT_VERSION')
                     -- Version mismatch: script was updated, exit gracefully
                     app.logger:logInfo(('Script version changed while hibernating for %.2f. Exiting to allow new version to start')
-                    :format(r.time_precise() - app.temp.hibernationStart))
+                        :format(r.time_precise() - app.temp.hibernationStart))
                     r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
                     r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false)
                     r.SetExtState(Scr.ext_name, 'RUNNING', '', false)
                 elseif cmd ~= 'WAITING' and cmd ~= '' and cmd ~= nil then
                     -- Normal wakeup
                     app.logger:logInfo(('Woke up after hibernating for %.2f seconds'):format(r.time_precise() -
-                    app.temp.hibernationStart))
+                        app.temp.hibernationStart))
                     app.temp.hibernationStart = nil
                     r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
                     r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false) -- Clear hibernating version
@@ -2004,7 +2004,16 @@ RunApp = function()
                     else
                         table.insert(menu, { icon = 'dock_down', hint = 'Dock' })
                     end
-                    table.insert(menu, { icon = 'gear', hint = 'Settings' })
+                    table.insert(menu, {
+                        icon = 'question_circle',
+                        hint = 'Help',
+                        active = app.temp.showHelpWindow
+                    })
+                    table.insert(menu, {
+                        icon = 'gear',
+                        hint = 'Settings',
+                        active = ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow')
+                    })
                     table.insert(menu,
                         {
                             icon = 'sidebar',
@@ -2029,7 +2038,7 @@ RunApp = function()
                 local menuW, h = calculateDimensions()
 
                 local handleSpecialKeys = function()
-                    if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then
+                    if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and ImGui.IsWindowFocused(ctx) then
                         -- local pressed = false
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) then
                             -- if not app.temp.ignoreEscapeKey then
@@ -2183,6 +2192,8 @@ RunApp = function()
                             else
                                 app:msg(T.ERROR.NO_DOCK)
                             end
+                        elseif btn == 'question_circle' then
+                            app.temp.showHelpWindow = app.temp.showHelpWindow == nil and true or nil
                         elseif btn == 'gear' then
                             ImGui.OpenPopup(ctx, Scr.name .. ' Settings##settingsWindow')
                         elseif btn == 'sidebar' then
@@ -2447,6 +2458,65 @@ RunApp = function()
                     -- app.engine:updateFilterMenus()
                     -- app.engine:assembleFilterAssets()
                     app.flow.filterResults()
+                end
+            end,
+            help = function(ctx)
+                if app.temp.showHelpWindow then
+                    local w = 430 * app.gui.scale
+                    local h = 530 * app.gui.scale
+                    local maxH = app.gui.screen.size[2] * .8
+                    -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger
+                    -- closing this window. So we increment a counter which will be reset if the shortcut is
+                    -- being captured, so that we can know to ignore the captured key unless some frames have passed.
+                    ImGui.SetNextWindowSize(ctx, w, h, ImGui.Cond_Appearing)
+                    -- ImGui.SetNextWindowPos(ctx, app.gui.screen.size[1] / 2, app.gui.screen.size[2] / 2,
+                    --     ImGui.Cond_Appearing,
+                    --     0.5,
+                    --     0.5)
+                    ImGui.SetNextWindowSizeConstraints(ctx, w, 0.0, FLT_MAX, maxH)
+                    app.gui:pushStyles(app.gui.st.vars.popupsTitle)
+                    local visible, open = ImGui.Begin(ctx, Scr.name .. ' Help##helpWindow', true,
+                        ImGui.WindowFlags_NoDocking |
+                        ImGui.WindowFlags_NoNav |
+                        ImGui.WindowFlags_NoCollapse)
+                    -- ImGui.WindowFlags_NoFocusOnAppearing)
+                    app.gui:popStyles(app.gui.st.vars.popupsTitle)
+
+                    if visible then
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) and ImGui.IsWindowFocused(ctx) then
+                            app.temp.showHelpWindow = nil
+                        end
+                        if ImGui.BeginChild(ctx, '##help') then
+                            if ImGui.CollapsingHeader(ctx, 'Key Commands', false, ImGui.TreeNodeFlags_DefaultOpen | ImGui.Cond_Appearing) then
+                                for i, group in ipairs(app.settings.current.groupOrder) do
+                                    if group ~= SPECIAL_GROUPS.RECENTS and group ~= SPECIAL_GROUPS.FAVORITES then
+                                        ImGui.TextColored(ctx, app.gui.st.basecolors.mainBrightest,
+                                            app.engine.assetGroupNameCache[group])
+                                        for keymod, description in pairs(_G[group].interactionModifiers) do
+                                            local mod = keymod == 0 and 'Click' or
+                                            app.guiHelpers.keyModsToText(keymod) .. '-Click'
+
+                                            ImGui.PushFont(ctx, app.gui.st.fonts.bold)
+                                            ImGui.TextWrapped(ctx, mod .. ': ')
+                                            ImGui.PopFont(ctx)
+                                            ImGui.SameLine(ctx)
+                                            ImGui.TextWrapped(ctx, tostring(description:gsub('%%asset', _G[group].singleName):gsub("^%l", string.upper)))
+                                        end
+                                    end
+                                end
+                            end
+                            ImGui.EndChild(ctx)
+                        end
+                        ImGui.End(ctx)
+                    end
+
+                    if not open or not app.temp.showHelpWindow then
+                        app.temp.showHelpWindow = nil
+                        local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or r.JS_Window_FindTop('Scout', true)
+                        if scriptHwnd then
+                            r.JS_Window_SetFocus(scriptHwnd)
+                        end
+                    end
                 end
             end,
             hint = function(ctx, window)
@@ -2805,6 +2875,7 @@ RunApp = function()
                     app.draw.createPresetDialog(ctx)
                     app.draw.exportActionDialog(ctx)
                     app.draw.settings(ctx)
+                    app.draw.help(ctx)
                     app.draw.welcomeDialog(ctx)
                     app:drawMsg()
                     ImGui.End(ctx)
@@ -2941,7 +3012,7 @@ CheckIfHybernating = function()
         end
     elseif r.GetExtState(Scr.ext_name, 'RUNNING') == 'TRUE' then
         -- Script is already running, just bring it to focus
-        local scriptHwnd = r.JS_Window_Find('Odedd Scout', true) or r.JS_Window_FindTop('Scout', true)
+        local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or r.JS_Window_FindTop('Scout', true)
         if scriptHwnd then
             r.JS_Window_SetFocus(scriptHwnd)
         end

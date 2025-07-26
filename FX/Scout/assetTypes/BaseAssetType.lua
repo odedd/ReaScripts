@@ -130,6 +130,10 @@ function BaseAssetType:createStandardConstructor(name, group)
             [0] = 'select %asset'
         }
 
+        class.interactionModifiers = instance.interactionModifiers
+        class.singleName = instance.name
+        class.pluralName = instance.group
+
         return instance
     end
 end
