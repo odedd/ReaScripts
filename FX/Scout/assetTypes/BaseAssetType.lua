@@ -113,37 +113,43 @@ end
 
 -- Common helper methods:
 
-function BaseAssetType:checkTrackConfirmation(tracks, context, contextData, confirm)
-    -- Check if track count exceeds threshold and confirmation not given
-    if #tracks > self.context.settings.current.numberOfTracksThatRequireConfirmation and confirm ~= true then
+function BaseAssetType:getSelectedTracksWithConfirmation(context, contextData, confirm)
+    -- Similar logic for items if needed by other asset types
+    local numSelectedTracks = r.CountSelectedTracks2(0, true)
+    local tracks = {}
+    for i = 0, numSelectedTracks - 1 do
+        local track = r.GetSelectedTrack2(0, i, true)
+        table.insert(tracks, track)
+    end
+    if #tracks >= self.context.settings.current.numberOfItemsThatRequireConfirmation and not (confirm and confirm.multipleTracks) then
         self.context.temp.confirmMultipleTracks = {
             count = #tracks,
             resultContext = context,
-            contextData = contextData
+            contextData = contextData,
+            confirm = confirm
         }
-        return false -- Needs confirmation
+        return false, ('%s tracks selected, waiting for confirmation'):format(#tracks)
     end
-    return true      -- Proceed
+    return tracks     -- Proceed
 end
 
 function BaseAssetType:getSelectedItemsWithConfirmation(context, contextData, confirm)
     -- Similar logic for items if needed by other asset types
-    local numItems = r.CountMediaItems(0)
+    local numSelectedItems = r.CountSelectedMediaItems(0)
     local items = {}
-    for i = 0, numItems - 1 do
-        local item = r.GetMediaItem(0, i)
-        if r.IsMediaItemSelected(item) then
-            table.insert(items, item)
-        end
+    for i = 0, numSelectedItems - 1 do
+        local item = r.GetSelectedMediaItem(0, i)
+        table.insert(items, item)
     end
 
-    if #items > self.context.settings.current.numberOfItemsThatRequireConfirmation and confirm ~= true then
-        self.context.temp.confirmMultipleItems = {
+    if #items >= self.context.settings.current.numberOfItemsThatRequireConfirmation and not (confirm and confirm.multipleMediaItems) then
+        self.context.temp.confirmMultipleMediaItems = {
             count = #items,
             resultContext = context,
-            contextData = contextData
+            contextData = contextData,
+            confirm = confirm
         }
-        return false -- Needs confirmation
+        return false, ('%s items selected, waiting for confirmation'):format(#items)
     end
     return items     -- Proceed
 end

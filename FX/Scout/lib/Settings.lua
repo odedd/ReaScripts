@@ -102,7 +102,7 @@ PB_Settings = OD_Settings:new({
         -- Internal
         minSideBarWidth = 140,
         lastDockId = nil,
-        numberOfResultsThatRequireConfirmation = 10,
+        numberOfResultsThatRequireConfirmation = 2,
         numberOfTracksThatRequireConfirmation = 6,
         numberOfItemsThatRequireConfirmation = 6,
         numberOfRecents = 5,

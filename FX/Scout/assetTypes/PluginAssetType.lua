@@ -12,36 +12,25 @@ function PluginAssetType.new(class, context)
 
     -- Add interactions using the new system
     instance:addInteraction(0, 'add %asset to selected track(s)', function(asset, context, contextData, confirm)
-        local tracks = asset.context.engine:getSelectedTracks()
+        local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
 
-        -- Use helper method for confirmation check
-        if not instance:checkTrackConfirmation(tracks, context, contextData, confirm) then
-            return false
-        end
-
-        -- Use helper method for plugin UI state
-        local originalUIState = instance:setPluginUIState()
-
-        local numTracks = r.CountSelectedTracks2(0, true);
-        if numTracks == 0 then
+        if selectedTracks and #selectedTracks > 0 then
+            local originalUIState = instance:setPluginUIState()
+            for _, track in ipairs(selectedTracks) do
+                local fxIndex = r.TrackFX_AddByName(track, asset.load, false, -1)
+            end
             instance:resetPluginUIState(originalUIState)
+            return true, ('Added %s to %d tracks'):format(asset.searchText[1].text, #selectedTracks)
+        elseif selectedTracks and #selectedTracks == 0 then
             return false, 'No tracks selected'
         end
-
-        for i = 0, numTracks - 1 do
-            local track = r.GetSelectedTrack2(0, i, true)
-            local fxIndex = r.TrackFX_AddByName(track, asset.load, false, -1)
-        end
-
-        instance:resetPluginUIState(originalUIState)
-        return true, ('Added %s to %d tracks'):format(asset.searchText[1].text, numTracks)
     end)
 
     instance:addInteraction(ImGui.Mod_Alt, 'add %asset to selected item(s)',
         function(asset, context, contextData, confirm)
             local selectedItems = instance:getSelectedItemsWithConfirmation(context, contextData, confirm)
 
-            if selectedItems then
+            if selectedItems and #selectedItems > 0 then
                 local originalUIState = instance:setPluginUIState()
                 for _, item in ipairs(selectedItems) do
                     local take = r.GetActiveTake(item)
@@ -49,13 +38,10 @@ function PluginAssetType.new(class, context)
                         r.TakeFX_AddByName(take, asset.load, 1)
                     end
                 end
-
                 instance:resetPluginUIState(originalUIState)
-                -- Always return true for ALT context - user attempted to add to takes
-                -- (regardless of whether there were selected items or takes)
                 return true, ('Added %s to %d items'):format(asset.searchText[1].text, #selectedItems)
-            else
-                return false
+            elseif selectedItems and #selectedItems == 0 then
+                return false, 'No items selected'
             end
         end)
 

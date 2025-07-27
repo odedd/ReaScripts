@@ -182,7 +182,7 @@ RunApp = function()
                         table.insert(resultsByType[assetType], result)
                     end
                 end
-
+                r.Undo_BeginBlock()
                 -- Execute each asset type group sequentially
                 for assetType, typeResults in pairs(resultsByType) do
                     local total = #typeResults
@@ -191,6 +191,7 @@ RunApp = function()
                             i)
                     end
                 end
+                r.Undo_EndBlock('', -1)
             end
         }
 
@@ -522,7 +523,7 @@ RunApp = function()
             end,
             executeSelectedResults = function(ctx, resultContext, contextData, confirm)
                 local resultCount = app.selection:count()
-                if resultCount >= app.settings.current.numberOfResultsThatRequireConfirmation and not confirm then
+                if resultCount >= app.settings.current.numberOfResultsThatRequireConfirmation and not (confirm and confirm.multipleResults) then
                     app.temp.confirmMultipleResults = {
                         count = resultCount,
                         resultContext = resultContext,
@@ -2494,13 +2495,15 @@ RunApp = function()
                                             app.engine.assetGroupNameCache[group])
                                         for keymod, description in pairs(_G[group].interactionModifiers) do
                                             local mod = keymod == 0 and 'Click' or
-                                            app.guiHelpers.keyModsToText(keymod) .. '-Click'
+                                                app.guiHelpers.keyModsToText(keymod) .. '-Click'
 
                                             ImGui.PushFont(ctx, app.gui.st.fonts.bold)
                                             ImGui.TextWrapped(ctx, mod .. ': ')
                                             ImGui.PopFont(ctx)
                                             ImGui.SameLine(ctx)
-                                            ImGui.TextWrapped(ctx, tostring(description:gsub('%%asset', _G[group].singleName):gsub("^%l", string.upper)))
+                                            ImGui.TextWrapped(ctx,
+                                                tostring(description:gsub('%%asset', _G[group].singleName):gsub("^%l",
+                                                    string.upper)))
                                         end
                                     end
                                 end
@@ -2572,14 +2575,14 @@ RunApp = function()
                         ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
                     ImGui.SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
-                    if ImGui.Button(ctx, okButtonLabel) then
+                    if ImGui.Button(ctx, okButtonLabel) or ImGui.Shortcut(ctx, ImGui.Key_Enter, ImGui.InputFlags_RouteFocused) then
                         okPressed = true
                         open = false
                         ImGui.CloseCurrentPopup(ctx)
                     end
 
                     ImGui.SameLine(ctx)
-                    if ImGui.Button(ctx, cancelButtonLabel) then
+                    if ImGui.Button(ctx, cancelButtonLabel) or ImGui.Shortcut(ctx, ImGui.Key_Escape, ImGui.InputFlags_RouteFocused) then
                         app.popup.secondWarningShown = false
                         open = false
                         ImGui.CloseCurrentPopup(ctx)
@@ -2592,36 +2595,39 @@ RunApp = function()
 
             confirmations = function(ctx)
                 if app.temp.confirmMultipleResults then
-                    if not ImGui.IsPopupOpen(ctx, 'Are you sure?') then
-                        ImGui.OpenPopup(ctx, 'Are you sure?')
+                    if not ImGui.IsPopupOpen(ctx, 'Multiple search results selected') then
+                        ImGui.OpenPopup(ctx, 'Multiple search results selected')
                     end
-                    local open, confirm = app.draw.popup(app.gui.ctx, 'Are you sure?',
+                    local open, confirm = app.draw.popup(app.gui.ctx, 'Multiple search results selected',
                         'You selected ' ..
                         app.temp.confirmMultipleResults.count .. ' items.\nAre you sure you want to continue?')
                     if confirm then
                         app.flow.executeSelectedResults(ctx, app.temp.confirmMultipleResults.resultContext,
-                            app.temp.confirmMultipleResults.contextData, true)
+                            app.temp.confirmMultipleResults.contextData, { multipleResults = true })
                     end
                     if not open then
                         app.temp.confirmMultipleResults = nil
                     end
                 end
-                if app.temp.confirmMultipleTracks or app.temp.confirmMultipleItems then
-                    local text = app.temp.confirmMultipleTracks and 'tracks' or 'items'
-                    local object = app.temp.confirmMultipleTracks or app.temp.confirmMultipleItems
-                    if not ImGui.IsPopupOpen(ctx, 'Are you sure?') then
-                        ImGui.OpenPopup(ctx, 'Are you sure?')
+                if app.temp.confirmMultipleTracks or app.temp.confirmMultipleMediaItems then
+                    local text = app.temp.confirmMultipleTracks and 'tracks' or 'media items'
+                    local object = app.temp.confirmMultipleTracks or app.temp.confirmMultipleMediaItems
+                    if not ImGui.IsPopupOpen(ctx, 'Multiple ' .. text .. ' selected') then
+                        ImGui.OpenPopup(ctx, 'Multiple ' .. text .. ' selected')
                     end
-                    local open, confirm = app.draw.popup(app.gui.ctx, 'Are you sure?',
+                    local open, confirm = app.draw.popup(app.gui.ctx, 'Multiple ' .. text .. ' selected',
                         'There are ' ..
-                        object.count .. ' '.. text .. ' selected.\nAre you sure you want to continue?')
+                        object.count .. ' ' .. text .. ' selected.\nAre you sure you want to continue?')
                     if confirm then
+                        local confirmations = object.confirm or {}
+                        confirmations[app.temp.confirmMultipleTracks and 'multipleTracks' or 'multipleMediaItems'] = true
                         app.flow.executeSelectedResults(ctx, object.resultContext,
-                            object.contextData, true)
+                            object.contextData,
+                            confirmations)
                     end
                     if not open then
                         app.temp.confirmMultipleTracks = nil
-                        app.temp.confirmMultipleItems = nil
+                        app.temp.confirmMultipleMediaItems = nil
                     end
                 end
             end,
