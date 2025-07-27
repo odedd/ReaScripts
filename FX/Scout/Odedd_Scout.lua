@@ -303,7 +303,7 @@ RunApp = function()
                             filter.tags[tagId] = nil
                         end
                     end
-
+                    
                     -- Other filter fields with validation
                     for queryType, queryValue in pairs(query) do
                         if queryType ~= 'text' and queryType ~= 'addTags' and queryType ~= 'removeTags' then
@@ -330,7 +330,7 @@ RunApp = function()
                     local hasTextFilter = #filterWords > 0
                     local hasTypeFilters = validatedFilter.type or validatedFilter.fx_type or
                         validatedFilter.fxDeveloper or validatedFilter.fxFolderId or
-                        validatedFilter.fxCategory
+                        validatedFilter.fxCategory or validatedFilter.untagged
                     local hasTagFilters = next(validatedFilter.tags) ~= nil
 
                     -- If no filters at all, return all assets (or handle based on search mode)
@@ -352,6 +352,7 @@ RunApp = function()
                         typeFilterChecks.fxDeveloper = validatedFilter.fxDeveloper
                         typeFilterChecks.fxFolderId = validatedFilter.fxFolderId
                         typeFilterChecks.fxCategory = validatedFilter.fxCategory
+                        typeFilterChecks.untagged = validatedFilter.untagged
                     end
 
                     -- Cache filter tags for faster access
@@ -372,6 +373,9 @@ RunApp = function()
                                     goto skip
                                 end
                                 if (typeFilterChecks.fx_type and asset.fx_type ~= typeFilterChecks.fx_type) then
+                                    goto skip
+                                end
+                                if (typeFilterChecks.untagged and (#asset.tags > 0)) then
                                     goto skip
                                 end
                                 if (typeFilterChecks.fxDeveloper and (not asset.vendor or asset.vendor ~= typeFilterChecks.fxDeveloper)) then
@@ -1904,19 +1908,19 @@ RunApp = function()
                                                 ImGui.Separator(ctx)
                                             end
 
-                                            if menuInfo.allQuery then
-                                                local selected = true
-                                                for k, v in pairs(menuInfo.allQuery) do
-                                                    if app.temp.filter[k] ~= ((menuInfo.allQuery[k] ~= 'all') and menuInfo.allQuery[k] or nil) then
-                                                        selected = false
-                                                    end
-                                                end
+                                            -- if menuInfo.allQuery then
+                                            --     local selected = true
+                                            --     for k, v in pairs(menuInfo.allQuery) do
+                                            --         if app.temp.filter[k] ~= ((menuInfo.allQuery[k] ~= 'all') and menuInfo.allQuery[k] or nil) then
+                                            --             selected = false
+                                            --         end
+                                            --     end
 
-                                                if ImGui.MenuItem(ctx, 'All' .. "##filterMenu-All", nil, selected) then
-                                                    app.flow.filterResults(menuInfo.allQuery)
-                                                end
-                                                ImGui.Separator(ctx)
-                                            end
+                                            --     if ImGui.MenuItem(ctx, 'All' .. "##filterMenu-All", nil, selected) then
+                                            --         app.flow.filterResults(menuInfo.allQuery)
+                                            --     end
+                                            --     ImGui.Separator(ctx)
+                                            -- end
 
                                             for item, value in OD_PairsByOrder(menuInfo.items) do
                                                 if value.submenu then

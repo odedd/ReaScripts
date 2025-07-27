@@ -16,7 +16,7 @@ do
     local scriptPath = info.source:match("@(.*[/\\])") or ""
     local assetTypesPath = scriptPath:gsub("lib[/\\]?$", "") .. "assetTypes/"
     local manifestPath = assetTypesPath .. "manifest.lua"
-    
+
     -- Load manifest and assign IDs from explicit definitions
     local assetTypeDefinitions = dofile(manifestPath)
     for _, definition in ipairs(assetTypeDefinitions) do
@@ -79,12 +79,12 @@ PLUGIN = {
 }
 
 -- Special group constants
--- Note: groupOrder in settings uses asset type class names (e.g., "ProjectAssetType") 
+-- Note: groupOrder in settings uses asset type class names (e.g., "ProjectAssetType")
 -- instead of group display names (e.g., "Projects") for better maintainability
 SPECIAL_GROUPS = {
     FAVORITES = 'Favorites',
-    PLUGINS = 'PluginAssetType',  -- Placeholder for FX types in groupOrder. Needs to be equal to the plugin asset type to allow hiding it in results
-    RECENTS = 'Recents'         -- For future use
+    PLUGINS = 'PluginAssetType', -- Placeholder for FX types in groupOrder. Needs to be equal to the plugin asset type to allow hiding it in results
+    RECENTS = 'Recents'          -- For future use
 }
 
 -- should be negative to differentiate them from regular assets
@@ -96,6 +96,7 @@ FILTER_TYPES = {
     FOLDER = -5,
     DEVELOPER = -6,
     TAG = -7,
+    OTHER = -8,
 }
 
 FILTER_ICONS = {
@@ -106,11 +107,11 @@ FILTER_ICONS = {
     [FILTER_TYPES.FOLDER] = ICONS.FOLDER,
     [FILTER_TYPES.DEVELOPER] = ICONS.COMPUTER,
     [FILTER_TYPES.TAG] = ICONS.TAG,
-
+    [FILTER_TYPES.OTHER] = ICONS.STAR,
 }
 
 FILTER_MENU = {
-        [FILTER_TYPES.PRESET] = {
+    [FILTER_TYPES.PRESET] = {
         order = 1,
         items = {}
     },
@@ -138,6 +139,16 @@ FILTER_MENU = {
         order = 6,
         allQuery = { fxDeveloper = 'all' },
         items = {} -- added in DataEngine.lua once folders are loaded
+    },
+    [FILTER_TYPES.OTHER] = {
+        order = 6,
+        allQuery = { untagged = 'all' },
+        items = {
+            ['Untagged'] = {
+                order = 1,
+                query = { untagged = true }
+            }
+        } -- added in DataEngine.lua once folders are loaded
     }
 }
 -- FX type filter menu will be populated dynamically by DataEngine based on fxTypeVisibility settings

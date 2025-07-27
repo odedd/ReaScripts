@@ -135,7 +135,8 @@ T.FILTER_NAMES = {
     [FILTER_TYPES.FOLDER] = 'Folder',
     [FILTER_TYPES.CATEGORY] = 'Category',
     [FILTER_TYPES.DEVELOPER] = 'Developer',
-    [FILTER_TYPES.TAG] = 'Tag'
+    [FILTER_TYPES.TAG] = 'Tag',
+    [FILTER_TYPES.OTHER] = 'Other'
 }
 T.ERROR = {
     NO_DOCK = ([[
