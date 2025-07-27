@@ -10,25 +10,106 @@ function PluginAssetType.new(class, context)
     -- Plugins are file-based assets (have file paths)
     instance.shouldMapBaseFilenames = true
 
-    -- Add interactions using the new system
-    instance:addInteraction(0, 'add %asset to selected track(s)', function(asset, context, contextData, confirm)
-        local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
-
-        if selectedTracks and #selectedTracks > 0 then
-            local originalUIState = instance:setPluginUIState()
-            for _, track in ipairs(selectedTracks) do
-                local fxIndex = r.TrackFX_AddByName(track, asset.load, false, -1)
+    local function createSendTrack(asset)
+        local newTrack = nil
+        local numTracks = r.CountTracks(0)
+        if asset.context.settings.current.createSendsInsideFolder then
+            local folderFound = false
+            for i = 0, numTracks - 1 do
+                local scannedTrack = r.GetTrack(0, i)
+                local _, trackName = r.GetTrackName(scannedTrack)
+                if trackName == asset.context.settings.current.sendFolderName then
+                    folderFound = true
+                    newTrack = OD_InsertTrackAtFolder(scannedTrack)
+                    break
+                end
             end
-            instance:resetPluginUIState(originalUIState)
-            return true, ('Added %s to %d tracks'):format(asset.searchText[1].text, #selectedTracks)
-        elseif selectedTracks and #selectedTracks == 0 then
-            return false, 'No tracks selected'
+
+            if not folderFound then
+                r.InsertTrackAtIndex(numTracks, true)
+                local folder = r.GetTrack(0, numTracks)
+                r.GetSetMediaTrackInfo_String(folder, 'P_NAME', asset.context.settings.current
+                    .sendFolderName,
+                    true)
+                newTrack = OD_InsertTrackAtFolder(folder)
+            end
+        else
+            r.InsertTrackAtIndex(numTracks, true)
+            newTrack = r.GetTrack(0, numTracks)
         end
-    end)
+        return newTrack
+    end
+
+    instance:addInteraction(0, 'add %asset to selected track(s)',
+        function(asset, context, contextData, confirm, total, index)
+            local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
+
+            if selectedTracks and #selectedTracks > 0 then
+                local originalUIState = instance:setPluginUIState()
+                for _, track in ipairs(selectedTracks) do
+                    local fxIndex = r.TrackFX_AddByName(track, asset.load, false, -1)
+                end
+                instance:resetPluginUIState(originalUIState)
+                return true, ('Added %s to %d tracks'):format(asset.searchText[1].text, #selectedTracks)
+            elseif selectedTracks and #selectedTracks == 0 then
+                return false, 'No tracks selected'
+            end
+        end)
+
+    instance:addInteraction(ImGui.Mod_Shift,
+        'send to %singular(a new track)%plural(%count new tracks) with %asset%plural( (each FX on a separate track%))',
+        function(asset, context, contextData, confirm, total, index)
+            local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
+            if selectedTracks and #selectedTracks > 0 then
+                local newTrack = createSendTrack(asset)
+                local originalUIState = instance:setPluginUIState()
+                if newTrack then
+                    r.TrackFX_AddByName(newTrack, asset.load, false, -1)
+                end
+                instance:resetPluginUIState(originalUIState)
+
+                for _, track in ipairs(selectedTracks) do
+                    if newTrack then
+                        reaper.GetSetMediaTrackInfo_String(newTrack, "P_NAME", asset.searchText[1].text, true)
+                        local rv = reaper.CreateTrackSend(track, newTrack)
+                    end
+                end
+                return true, ('Sent %d track to a new track with %s'):format(#selectedTracks, asset.searchText[1].text)
+            elseif selectedTracks and #selectedTracks == 0 then
+                return false, 'No tracks selected'
+            end
+        end)
+
+    instance:addInteraction(ImGui.Mod_Ctrl | ImGui.Mod_Shift,
+        'send to a new track with %asset%plural( (all on the same track%))',
+        function(asset, context, contextData, confirm, total, index)
+            local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
+            if selectedTracks and #selectedTracks > 0 then
+                if index == 1 then asset.context.temp.newSendTrack = createSendTrack(asset) end
+                local originalUIState = instance:setPluginUIState()
+                r.TrackFX_AddByName(asset.context.temp.newSendTrack, asset.load, false, -1)
+                instance:resetPluginUIState(originalUIState)
+
+                if index == 1 then
+                    for _, track in ipairs(selectedTracks) do
+                        if asset.context.temp.newSendTrack then
+                            reaper.GetSetMediaTrackInfo_String(asset.context.temp.newSendTrack, "P_NAME",
+                                asset.searchText[1].text .. (total > 1 and ' ( + ' .. total - 1 .. ' more)' or ''), true)
+                            local rv = reaper.CreateTrackSend(track, asset.context.temp.newSendTrack)
+                        end
+                    end
+                end
+                if index == total then asset.context.temp.newSendTrack = nil end
+
+                return true, ('Sent %d track to a new track with %s'):format(#selectedTracks, asset.searchText[1].text)
+            elseif selectedTracks and #selectedTracks == 0 then
+                return false, 'No tracks selected'
+            end
+        end)
 
     instance:addInteraction(ImGui.Mod_Alt, 'add %asset to selected item(s)',
         function(asset, context, contextData, confirm)
-            local selectedItems = instance:getSelectedItemsWithConfirmation(context, contextData, confirm)
+            local selectedItems = instance:getSelectedItemsWithConfirmation(context, contextData, confirm, total, index)
 
             if selectedItems and #selectedItems > 0 then
                 local originalUIState = instance:setPluginUIState()

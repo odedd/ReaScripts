@@ -10,6 +10,43 @@ function TakeAssetType.new(class, context)
     -- Takess should be imported even if they can't be mapped to existing takes
     instance.requiresMappingOnImport = false
     instance.updateOnProjectRefresh = true
+
+    instance:addInteraction(0, 'select take %asset', function(asset, context, contextData, confirm, total, index)
+        local targetGuid = asset.load
+        local numTracks = reaper.CountTracks(0)
+        
+        -- First, clear all current selections
+        if index == 1 then
+            reaper.SelectAllMediaItems(0, false)
+        end
+        for trackIdx = 0, numTracks - 1 do
+            local track = reaper.GetTrack(0, trackIdx)
+            local numItems = reaper.CountTrackMediaItems(track)
+            
+            for itemIdx = 0, numItems - 1 do
+                local item = reaper.GetTrackMediaItem(track, itemIdx)
+                local numTakes = reaper.CountTakes(item)
+                
+                for takeIdx = 0, numTakes - 1 do
+                    local take = reaper.GetTake(item, takeIdx)
+                    if take then
+                        local takeGuid = reaper.BR_GetMediaItemTakeGUID(take)
+                        if takeGuid == targetGuid then
+                            -- Found the take, select ONLY this item and set this as active take
+                            reaper.SetMediaItemSelected(item, true)
+                            reaper.SetActiveTake(take)
+                            -- reaper.UpdateArrange()
+                            return true
+                        end
+                    end
+                end
+            end
+        end
+        
+        return false -- Take not found
+    end)
+
+
     return instance
 end
 
@@ -62,47 +99,6 @@ function TakeAssetType:getData()
     end
     return data
 end
-
-function TakeAssetType:getExecuteFunction()
-    return function(self, context, contextData, confirm, total, index)
-        -- Take execution - select only this take's item and set as active take
-        
-        -- Find the take by GUID
-        local targetGuid = self.load
-        local numTracks = reaper.CountTracks(0)
-        
-        -- First, clear all current selections
-        if index == 1 then
-            reaper.SelectAllMediaItems(0, false)
-        end
-        for trackIdx = 0, numTracks - 1 do
-            local track = reaper.GetTrack(0, trackIdx)
-            local numItems = reaper.CountTrackMediaItems(track)
-            
-            for itemIdx = 0, numItems - 1 do
-                local item = reaper.GetTrackMediaItem(track, itemIdx)
-                local numTakes = reaper.CountTakes(item)
-                
-                for takeIdx = 0, numTakes - 1 do
-                    local take = reaper.GetTake(item, takeIdx)
-                    if take then
-                        local takeGuid = reaper.BR_GetMediaItemTakeGUID(take)
-                        if takeGuid == targetGuid then
-                            -- Found the take, select ONLY this item and set this as active take
-                            reaper.SetMediaItemSelected(item, true)
-                            reaper.SetActiveTake(take)
-                            reaper.UpdateArrange()
-                            return true
-                        end
-                    end
-                end
-            end
-        end
-        
-        return false -- Take not found
-    end
-end
-
 function TakeAssetType:assembleAsset(takeData)
     local asset = self:createAssetBase({
         type = self.assetTypeId,

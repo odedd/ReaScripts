@@ -743,7 +743,7 @@ RunApp = function()
                 local key
                 if OD_BfCheck(mods, RESULT_CONTEXT.KEYBOARD) then key = 'Enter' end
                 if OD_BfCheck(mods, RESULT_CONTEXT.MOUSE) then key = 'Double-Click' end
-                return mod .. (key and ((next(modKeys) and '-' or '')..key) or '')
+                return mod .. (key and ((next(modKeys) and '-' or '') .. key) or '')
             end,
             calcTinyIconSize = function(ctx, icon)
                 app.temp.iconSizes = app.temp.iconSizes or {}
@@ -1318,6 +1318,10 @@ RunApp = function()
                                                     ImGui.GetStyleColor(ctx, ImGui.Col_HeaderActive))
                                             end
                                             if ImGui.Selectable(ctx, '', app.selection:has(row.index) or app.temp.highlightDropAreaFor == row.index, selectableFlags, 0, 0) then
+                                                if not app.temp.waitingForDoubleClick then
+                                                    app.temp.waitingForDoubleClick =
+                                                        r.time_precise()
+                                                end
                                                 if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
                                                     app.selection:selectRange(app.selection.keyboardPos, row.index)
                                                 elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl) then
@@ -1326,14 +1330,9 @@ RunApp = function()
                                                     end
                                                 else
                                                     app.selection:selectOnly(row.index)
-                                                    -- app.selection.keyboardPos = row.index
-                                                    if not app.temp.waitingForDoubleClick then
-                                                        app.temp.waitingForDoubleClick =
-                                                            r.time_precise()
-                                                    end
-                                                    if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
-                                                        app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.MOUSE)
-                                                    end
+                                                end
+                                                if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
+                                                    app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.MOUSE)
                                                 end
                                             end
                                             if app.temp.highlightDropAreaForAllSelectedResults and app.temp.highlightDropAreaForAllSelectedResults < ImGui.GetFrameCount(ctx) or app.temp.highlightDropAreaFor == row.index then
@@ -1467,16 +1466,15 @@ RunApp = function()
 
                         if hintResult then
                             local mods = ImGui.GetKeyMods(ctx)
-                            local assetHint, usedMods = hintResult:getInteractionHintFor(mods, hintContext)
-                            local action = assetHint:gsub('%%asset', hintResult.searchText[1].text)
-                            local actionKey = app.guiHelpers.keyModsToText(usedMods)
-                            local hint = ('%s to %s.'):format(actionKey, action)
-                            if app.temp.searchMode == SEARCH_MODE.MAIN then
-                                hint = hint ..
-                                    (app.guiHelpers.getShortcutDescription('markFavorite') ~= '' and (' Press %s to %s.'):format(app.guiHelpers.getShortcutDescription('markFavorite'),
-                                        hintResult.favorite and 'unfavorite' or 'favorite') or '')
+                            local assetHint, usedMods = hintResult:getInteractionHintFor(mods, hintContext,
+                                app.selection:count())
+                            if assetHint then
+                                local count = app.selection:count()
+                                local action = assetHint
+                                local actionKey = app.guiHelpers.keyModsToText(usedMods)
+                                local hint = ('%s to %s.'):format(actionKey, action)
+                                app:setHint('main', hint)
                             end
-                            app:setHint('main', hint)
                         else
                             app:setHint('main', '')
                         end
@@ -1980,7 +1978,6 @@ RunApp = function()
                     ImGui.SameLine(ctx)
                     drawsideBar()
                 end
-                -- handleSelectedResult()
 
                 app.gui:popColors(app.gui.st.col.searchWindow)
                 app.gui:popStyles(app.gui.st.vars.searchWindow)
@@ -2495,14 +2492,13 @@ RunApp = function()
                                         for keymod, description in pairs(_G[group].interactionHints) do
                                             local mod = keymod == 0 and 'Click' or
                                                 app.guiHelpers.keyModsToText(keymod) .. '-Click'
-
+                                            local text = BaseAssetType:parseInteractionHintTemplate(description, -1,
+                                                _G[group].singleName, _G[group].pluralName):gsub("^%l", string.upper)
                                             ImGui.PushFont(ctx, app.gui.st.fonts.bold)
                                             ImGui.TextWrapped(ctx, mod .. ': ')
                                             ImGui.PopFont(ctx)
                                             ImGui.SameLine(ctx)
-                                            ImGui.TextWrapped(ctx,
-                                                tostring(description:gsub('%%asset', _G[group].singleName):gsub("^%l",
-                                                    string.upper)))
+                                            ImGui.TextWrapped(ctx, text)
                                         end
                                     end
                                 end

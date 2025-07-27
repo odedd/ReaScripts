@@ -65,6 +65,7 @@ PB_DataEngine = {
         return validatedFilter, hasIssues
     end,
     refreshProjectRelatedAssets = function(self)
+        -- BUG after refreshing, project related assets (items, tracks) that were selected are now not selected anymore, perhaps due to their ID changing? Need to check why and fix
         self.app.logger:logDebug('-- PB_DataEngine.refreshProjectRelatedAssets()')
 
         if not self.assetTypeManager then
@@ -218,47 +219,6 @@ PB_DataEngine.invalidateGroupPriorityCache = function(self)
     self.app.logger:logDebug('Group priority cache invalidated')
 end
 
--- Get selected tracks with their associated assets
-PB_DataEngine.getSelectedTracks = function(self)
-    self.app.logger:logDebug('-- PB_DataEngine.getSelectedTracks()')
-    local numTracks = r.CountSelectedTracks(0);
-    local tracks = {};
-    self.app.logger:logDebug('Found selected tracks', numTracks)
-
-    -- Get track assets from the main assets array
-    local trackAssets = {}
-    for _, asset in ipairs(self.assets) do
-        if asset.type == ASSET_TYPE.TrackAssetType then
-            trackAssets[asset.load] = asset -- Use track GUID as key
-        end
-    end
-
-    for i = 0, numTracks - 1 do
-        local track = r.GetSelectedTrack(0, i)
-        local trackGuid = reaper.GetTrackGUID(track)
-
-        local trackAsset = trackAssets[trackGuid]
-        if trackAsset then
-            table.insert(tracks, trackAsset)
-        end
-    end
-    return tracks;
-end
-
-PB_DataEngine._getTrack = function(self, track)
-    self.app.logger:logDebug('-- PB_DataEngine._getTrack()')
-    local trackGuid = reaper.GetTrackGUID(track)
-
-    -- Find track asset by GUID
-    for _, asset in ipairs(self.assets) do
-        if asset.type == ASSET_TYPE.TrackAssetType and asset.load == trackGuid then
-            return asset
-        end
-    end
-
-    self.app.logger:logDebug('Track not found in database')
-    return nil
-end
 PB_DataEngine.getFXFolders = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.getFXFolders()')
 
@@ -526,7 +486,6 @@ PB_DataEngine.updateFilterMenus = function(self, options)
         self.app.logger:logDebug('Updated presets filter menu with ' .. #presetNames .. ' presets')
     end
 end
-
 PB_DataEngine.updateDevelopersFilterMenu = function(self)
     self.app.logger:logDebug(
         '-- PB_DataEngine.updateDevelopersFilterMenu() - DEPRECATED: Use updateFilterMenus({developers = true}) instead')
@@ -544,9 +503,6 @@ PB_DataEngine.updateFXTypeFilterMenu = function(self)
         '-- PB_DataEngine.updateFXTypeFilterMenu() - DEPRECATED: Use updateFilterMenus({fxTypes = true}) instead')
     self:updateFilterMenus({ fxTypes = true })
 end
-
-
-
 -- TAGS AND FAVORITES
 PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
     self.tags = OD_DeepCopy(self.app.userdata.current.tagInfo)
@@ -839,13 +795,11 @@ PB_DataEngine.getPresets = function(self, reassemblePresetFilterAssets)
     -- Update the filter menu whenever presets change
     self:updatePresetsFilterMenu()
 end
-
 PB_DataEngine.refreshPresets = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.refreshPresets()')
     -- Simple wrapper around getPresets for external refresh calls
     self:getPresets(true)
 end
-
 PB_DataEngine.markSpecialGroups = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.markSpecialGroups()')
 
@@ -953,13 +907,11 @@ PB_DataEngine.markSpecialGroups = function(self)
         recentCount ..
         ' (Favorites visible: ' .. tostring(favoritesVisible) .. ', Recents visible: ' .. tostring(recentsVisible) .. ')')
 end
-
 PB_DataEngine.tagAssets = function(self)
     for _, asset in ipairs(self.assets) do
         asset.tags = OD_DeepCopy(self.app.userdata.current.taggedAssets[asset.id]) or {}
     end
 end
-
 PB_DataEngine.assetsWithTag = function(self, tag)
     local assetsWithTag = {}
     for _, asset in ipairs(self.assets) do
@@ -969,7 +921,6 @@ PB_DataEngine.assetsWithTag = function(self, tag)
     end
     return assetsWithTag
 end
-
 PB_DataEngine.assembleAssets = function(self, forceRebuildCache)
     self.app.logger:logDebug('-- PB_DataEngine.assembleAssets()')
 
@@ -1144,8 +1095,10 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                         load = item.query,
                         loadAll = filter.allQuery,
                         group = T.FILTER_NAMES[filterType],
-                        getInteractionHintFor = function(self, mods, context) return interactionHints(filterType, mods,
-                                context) end
+                        getInteractionHintFor = function(self, mods, context)
+                            return interactionHints(filterType, mods,
+                                context)
+                        end
                     }
                     -- Add execute function directly to the asset
                     filterAsset.execute = function(asset, context, contextData, confirm, total, index)
@@ -1204,8 +1157,10 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                     order = tag.order,
                     load = tag.id,
                     group = T.FILTER_NAMES[FILTER_TYPES.TAG],
-                    getInteractionHintFor = function(self, mods, context) return interactionHints(FILTER_TYPES.TAG, mods,
-                            context) end
+                    getInteractionHintFor = function(self, mods, context)
+                        return interactionHints(FILTER_TYPES.TAG, mods,
+                            context)
+                    end
                 }
                 -- Add execute function directly to the asset
                 tagAsset.execute = function(asset, context, contextData, confirm, total, index)
@@ -1228,8 +1183,10 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 order = preset.id, -- Use ID as order for now, could be customized later
                 preset = preset,   -- Store reference to preset
                 group = T.FILTER_NAMES[FILTER_TYPES.PRESET],
-                getInteractionHintFor = function(self, mods, context) return interactionHints(FILTER_TYPES.PRESET, mods,
-                        context) end
+                getInteractionHintFor = function(self, mods, context)
+                    return interactionHints(FILTER_TYPES.PRESET, mods,
+                        context)
+                end
             }
             -- Add execute function directly to the asset
             presetAsset.execute = function(asset, context, contextData, confirm, total, index)
@@ -1349,7 +1306,6 @@ PB_DataEngine.sortAssets = function(self)
 
     self.app.logger:logDebug('Sorted assets', #self.assets)
 end
-
 PB_DataEngine.sortAssetsByFXPriorityOnly = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.sortAssetsByFXPriorityOnly()')
 
@@ -1383,7 +1339,6 @@ PB_DataEngine.sortAssetsByFXPriorityOnly = function(self)
 
     self.app.logger:logDebug('Sorted assets by FX priority for duplicate removal')
 end
-
 PB_DataEngine.removeLowPriorityPlugins = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.removeLowPriorityPlugins()')
 
@@ -1434,8 +1389,6 @@ PB_DataEngine.sortFilterAssets = function(self)
 
     self.app.logger:logDebug('Sorted filter assets', #self.filterAssets)
 end
-
-
 PB_DataEngine.getFilterAssetByKey = function(self, filterType, key, value)
     for _, filterAsset in pairs(self.filterAssets) do
         if filterAsset.type == filterType and tostring(filterAsset[key]) == tostring(value) then

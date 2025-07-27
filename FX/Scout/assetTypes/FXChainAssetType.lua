@@ -25,6 +25,26 @@ function FXChainAssetType.new(class, context)
         end
     end)
 
+    instance:addInteraction(ImGui.Mod_Alt, 'load FX Chain %asset to selected item(s)',
+    function(asset, context, contextData, confirm)
+            local selectedItems = instance:getSelectedItemsWithConfirmation(context, contextData, confirm)
+
+            if selectedItems and #selectedItems > 0 then
+                local originalUIState = instance:setPluginUIState()
+                for _, item in ipairs(selectedItems) do
+                    local take = r.GetActiveTake(item)
+                    if take then
+                        r.TakeFX_AddByName(take, asset.load, 1)
+                    end
+                end
+                instance:resetPluginUIState(originalUIState)
+                return true, ('Added %s to %d items'):format(asset.searchText[1].text, #selectedItems)
+            elseif selectedItems and #selectedItems == 0 then
+                return false, 'No items selected'
+            end
+        end)
+
+
     return instance
 end
 

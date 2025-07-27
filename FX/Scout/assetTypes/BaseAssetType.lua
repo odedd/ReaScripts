@@ -53,24 +53,66 @@ function BaseAssetType:getExecuteFunction(context)
 
     -- Determine which execute function to use based on context (modifier keys)
     if class.executeFunctions and context then
-        executeFunction = class.executeFunctions[context] or class.executeFunctions[OD_BfSet(OD_BfSet(context,RESULT_CONTEXT.KEYBOARD, false), RESULT_CONTEXT.MOUSE, false)] or class.executeFunctions[0]
+        executeFunction = class.executeFunctions[context] or
+        class.executeFunctions[OD_BfSet(OD_BfSet(context, RESULT_CONTEXT.KEYBOARD, false), RESULT_CONTEXT.MOUSE, false)] or
+        class.executeFunctions[0]
     end
 
     return executeFunction
 end
 
-function BaseAssetType:getInteractionHintFor(mods, context)
-    local class = getmetatable(self)
-    local interactionHint = nil
-    local correctContext = 
-    class.interactionHints[mods | context] and (mods | context) or 
-    class.interactionHints[mods] and (mods) or 
-    class.interactionHints[context] and (context) or 
-    class.interactionHints[0] and (0) 
-    interactionHint = class.interactionHints[correctContext]
-    return interactionHint, correctContext | context
-end
+function BaseAssetType:parseInteractionHintTemplate(template, count, asset, manyPlaceholder)
+    local result = template
 
+        -- Handle singular/plural functions with proper nesting support
+        if count == 1 then
+            -- Keep singular content, remove plural functions entirely
+            result = result:gsub("%%singular%((.-)%)", function(content)
+                -- Process escaped parentheses within the content
+                return content:gsub("%%%((.-)%%%)", "(%1)")
+            end)
+            -- Remove plural functions completely
+            result = result:gsub("%%plural%([^)]*%([^)]*%)[^)]*%)", "")                         -- nested parens
+            result = result:gsub("%%plural%([^)]*%)", "")                                       -- simple case
+        else
+            -- Remove singular functions completely
+            result = result:gsub("%%singular%([^)]*%)", "")
+            -- Keep plural content, process escaped parentheses
+            result = result:gsub("%%plural%((.-)%)", function(content)
+                -- Handle both paired and single escaped parentheses
+                content = content:gsub("%%%((.-)%%%)", "(%1)")                         -- paired escapes
+                content = content:gsub("%%%)", ")")                                    -- single closing escape
+                content = content:gsub("%%%(", "(")                                    -- single opening escape
+                return content
+            end)
+        end
+
+        local manyPlaceholder = manyPlaceholder or 'results'
+        local countText = count == -1 and '&&&' or tostring(count)
+        -- Replace variables
+        result = result:gsub("%%asset", count == 1 and asset or (countText .. ' selected '.. manyPlaceholder))
+        result = result:gsub("%%count", countText)
+        if count == -1 then result = result:gsub("&&& ",'') end
+
+        -- Clean up any remaining escaped parentheses
+        result = result:gsub("%%%((.-)%%%)", "(%1)")                         -- paired escapes
+        result = result:gsub("%%%)", ")")                                    -- single closing escape
+        result = result:gsub("%%%(", "(")                                    -- single opening escape
+
+        return result
+end
+function BaseAssetType:getInteractionHintFor(mods, context, count)
+    local count = count or 1
+    local class = self.class
+    local interactionHint = nil
+    local correctContext =
+        class.interactionHints[mods | context] and (mods | context) or
+        class.interactionHints[mods] and (mods) or
+        class.interactionHints[context] and (context) or
+        class.interactionHints[0] and (0)
+    interactionHint = class.interactionHints[correctContext]
+    return class:parseInteractionHintTemplate(interactionHint, count, self.searchText[1].text, class.pluralName), correctContext | context
+end
 
 function BaseAssetType:executeAndAddToRecents()
     return function(asset, context, contextData, confirm, total, index)
@@ -355,14 +397,15 @@ BaseAssetType.assetActions = {
 
 function BaseAssetType:createAssetBase(params)
     return {
+        class = self,
         id = tostring(params.type) .. ' ' .. tostring(params.load),
         type = params.type,
         load = params.load,
         searchText = params.searchText,
         group = params.group,
-        getInteractionHintFor = function(asset, mods, context) return self:getInteractionHintFor(mods, context) end,
+        getInteractionHintFor = function(asset, mods, context, count) return self.getInteractionHintFor(asset, mods, context, count) end,
         context = self.context,
-        engine = self.context.engine,                                   -- Add engine reference for backward compatibility
+        engine = self.context.engine, -- Add engine reference for backward compatibility
         addTag = self.assetActions.addTag,
         removeTag = self.assetActions.removeTag,
         execute = self:executeAndAddToRecents(),
