@@ -2465,6 +2465,7 @@ RunApp = function()
             end,
             help = function(ctx)
                 if app.temp.showHelpWindow then
+                    -- FIXME: Window should resize when changing zoom?
                     local w = 810 * app.gui.scale
                     local h = 530 * app.gui.scale
                     local maxH = app.gui.screen.size[2] * .8
@@ -2476,7 +2477,7 @@ RunApp = function()
                     --     ImGui.Cond_Appearing,
                     --     0.5,
                     --     0.5)
-                    ImGui.SetNextWindowSizeConstraints(ctx, w, 0.0, FLT_MAX, maxH)
+                    ImGui.SetNextWindowSizeConstraints(ctx, w*.7, 0.0, FLT_MAX, maxH)
                     app.gui:pushStyles(app.gui.st.vars.popupsTitle)
                     local visible, open = ImGui.Begin(ctx, Scr.name .. ' Help##helpWindow', true,
                         ImGui.WindowFlags_NoDocking |
@@ -2490,25 +2491,52 @@ RunApp = function()
                             app.temp.showHelpWindow = nil
                         end
                         if ImGui.BeginChild(ctx, '##help') then
-                            if ImGui.CollapsingHeader(ctx, 'Key Commands', false, ImGui.TreeNodeFlags_DefaultOpen | ImGui.Cond_Appearing) then
-                                for i, group in ipairs(app.settings.current.groupOrder) do
-                                    if group ~= SPECIAL_GROUPS.RECENTS and group ~= SPECIAL_GROUPS.FAVORITES then
-                                        ImGui.TextColored(ctx, app.gui.st.basecolors.mainBrightest,
-                                            app.engine.assetGroupNameCache[group])
-                                        for keymod, hint in OD_PairsByOrder(_G[group].interactionHints) do
-                                            local description = hint.text
-                                            local mod = keymod == 0 and 'Click' or
-                                                app.guiHelpers.keyModsToText(keymod) .. '-Click'
-                                            local text = BaseAssetType:parseInteractionHintTemplate(description, -1,
-                                                _G[group].singleName, 'selected '.._G[group].pluralName):gsub("^%l", string.upper)
-                                            ImGui.PushFont(ctx, app.gui.st.fonts.bold)
-                                            ImGui.TextWrapped(ctx, mod .. ': ')
-                                            ImGui.PopFont(ctx)
-                                            ImGui.SameLine(ctx)
-                                            ImGui.TextWrapped(ctx, text)
+                            if ImGui.BeginTabBar(ctx, 'Help Bar') then
+                                local tabFlags = ImGui.TabItemFlags_None
+                                if ImGui.IsWindowAppearing(ctx) then
+                                    tabFlags = tabFlags | ImGui.TabItemFlags_SetSelected
+                                end
+                                if ImGui.BeginTabItem(ctx, 'Key Commands', false, tabFlags) then
+                                    for i, group in ipairs(app.settings.current.groupOrder) do
+                                        if group ~= SPECIAL_GROUPS.RECENTS and group ~= SPECIAL_GROUPS.FAVORITES then
+                                            ImGui.PushID(ctx, i)
+                                            if ImGui.CollapsingHeader(ctx, app.engine.assetGroupNameCache[group], false, ImGui.TreeNodeFlags_DefaultOpen | ImGui.Cond_Appearing) then
+                                                if ImGui.BeginTable(ctx, "keyCommands", 2, nil, 0) then
+                                                    ImGui.TableSetupColumn(ctx, 'Key Commands',ImGui.TableColumnFlags_WidthFixed,180 * app.gui.scale)
+                                                    ImGui.TableSetupColumn(ctx, 'Description',ImGui.TableColumnFlags_WidthStretch)
+                                                    for keymod, hint in OD_PairsByOrder(_G[group].interactionHints) do
+                                                        ImGui.TableNextRow(ctx)
+                                                        ImGui.TableNextColumn(ctx)
+                                                        local description = hint.text
+                                                        local mod = keymod == 0 and 'Click' or
+                                                            app.guiHelpers.keyModsToText(keymod) .. '-Click'
+                                                        local text = BaseAssetType:parseInteractionHintTemplate(description,
+                                                            -1,
+                                                            _G[group].singleName, 'selected ' .. _G[group].pluralName):gsub(
+                                                            "^%l", string.upper)
+                                                        ImGui.PushFont(ctx, app.gui.st.fonts.bold)
+                                                        -- ImGui.TextWrapped(ctx, mod .. ': ')
+                                                        ImGui.TextColored(ctx, app.gui.st.basecolors.mainBrightest,
+                                                            mod .. ': ')
+                                                        ImGui.PopFont(ctx)
+                                                        ImGui.TableNextColumn(ctx)
+
+                                                        -- ImGui.SameLine(ctx)
+                                                        ImGui.TextWrapped(ctx, text)
+                                                    end
+                                                    ImGui.EndTable(ctx)
+                                                end
+                                            end
+                                            ImGui.PopID(ctx)
                                         end
                                     end
+                                    ImGui.EndTabItem(ctx)
+
                                 end
+                                if ImGui.BeginTabItem(ctx, 'Another Menu', false) then
+                                    ImGui.EndTabItem(ctx)
+                                end
+                            ImGui.EndTabBar(ctx)
                             end
                             ImGui.EndChild(ctx)
                         end
