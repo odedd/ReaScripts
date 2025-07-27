@@ -739,11 +739,9 @@ RunApp = function()
                 if OD_BfCheck(mods, ImGui.Mod_Ctrl) then table.insert(modKeys, OS_is.mac and 'Cmd' or 'Ctrl') end
                 if OD_BfCheck(mods, ImGui.Mod_Alt) then table.insert(modKeys, OS_is.mac and 'Option' or 'alt') end
                 if OD_BfCheck(mods, ImGui.Mod_Shift) then table.insert(modKeys, 'Shift') end
-                local mod = table.concat(modKeys, '+')
-                local key
-                if OD_BfCheck(mods, RESULT_CONTEXT.KEYBOARD) then key = 'Enter' end
-                if OD_BfCheck(mods, RESULT_CONTEXT.MOUSE) then key = 'Double-Click' end
-                return mod .. (key and ((next(modKeys) and '-' or '') .. key) or '')
+                if OD_BfCheck(mods, RESULT_CONTEXT.KEYBOARD) then table.insert(modKeys, 'Enter') end
+                if OD_BfCheck(mods, RESULT_CONTEXT.MOUSE) then table.insert(modKeys, 'Double-Click') end
+                return table.concat(modKeys, '+')
             end,
             calcTinyIconSize = function(ctx, icon)
                 app.temp.iconSizes = app.temp.iconSizes or {}
@@ -2459,7 +2457,7 @@ RunApp = function()
             end,
             help = function(ctx)
                 if app.temp.showHelpWindow then
-                    local w = 430 * app.gui.scale
+                    local w = 810 * app.gui.scale
                     local h = 530 * app.gui.scale
                     local maxH = app.gui.screen.size[2] * .8
                     -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger

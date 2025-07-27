@@ -55,6 +55,39 @@ function PluginAssetType.new(class, context)
                 return false, 'No tracks selected'
             end
         end)
+    instance:addInteraction(ImGui.Mod_Alt, 'add %asset to selected item(s)',
+        function(asset, context, contextData, confirm)
+            local selectedItems = instance:getSelectedItemsWithConfirmation(context, contextData, confirm, total, index)
+
+            if selectedItems and #selectedItems > 0 then
+                local originalUIState = instance:setPluginUIState()
+                for _, item in ipairs(selectedItems) do
+                    local take = r.GetActiveTake(item)
+                    if take then
+                        r.TakeFX_AddByName(take, asset.load, 1)
+                    end
+                end
+                instance:resetPluginUIState(originalUIState)
+                return true, ('Added %s to %d items'):format(asset.searchText[1].text, #selectedItems)
+            elseif selectedItems and #selectedItems == 0 then
+                return false, 'No items selected'
+            end
+        end)
+    instance:addInteraction(ImGui.Mod_Alt | ImGui.Mod_Ctrl, 'add %asset to selected track(s) as input FX',
+        function(asset, context, contextData, confirm, total, index)
+            local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
+
+            if selectedTracks and #selectedTracks > 0 then
+                local originalUIState = instance:setPluginUIState()
+                for _, track in ipairs(selectedTracks) do
+                    local fxIndex = r.TrackFX_AddByName(track, asset.load, true, -1)
+                end
+                instance:resetPluginUIState(originalUIState)
+                return true, ('Added %s to %d tracks'):format(asset.searchText[1].text, #selectedTracks)
+            elseif selectedTracks and #selectedTracks == 0 then
+                return false, 'No tracks selected'
+            end
+        end)
 
     instance:addInteraction(ImGui.Mod_Shift,
         'send to %singular(a new track)%plural(%count new tracks) with %asset%plural( (each FX on a separate track%))',
@@ -107,24 +140,7 @@ function PluginAssetType.new(class, context)
             end
         end)
 
-    instance:addInteraction(ImGui.Mod_Alt, 'add %asset to selected item(s)',
-        function(asset, context, contextData, confirm)
-            local selectedItems = instance:getSelectedItemsWithConfirmation(context, contextData, confirm, total, index)
 
-            if selectedItems and #selectedItems > 0 then
-                local originalUIState = instance:setPluginUIState()
-                for _, item in ipairs(selectedItems) do
-                    local take = r.GetActiveTake(item)
-                    if take then
-                        r.TakeFX_AddByName(take, asset.load, 1)
-                    end
-                end
-                instance:resetPluginUIState(originalUIState)
-                return true, ('Added %s to %d items'):format(asset.searchText[1].text, #selectedItems)
-            elseif selectedItems and #selectedItems == 0 then
-                return false, 'No items selected'
-            end
-        end)
 
     return instance
 end
