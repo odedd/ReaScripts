@@ -5,40 +5,11 @@ PluginAssetType = {}
 PluginAssetType.__index = PluginAssetType
 setmetatable(PluginAssetType, BaseAssetType)
 
+local helpers = {}
 function PluginAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("FX")(class, context)
     -- Plugins are file-based assets (have file paths)
     instance.shouldMapBaseFilenames = true
-
-    local function createSendTrack(asset)
-        local newTrack = nil
-        local numTracks = r.CountTracks(0)
-        if asset.context.settings.current.createSendsInsideFolder then
-            local folderFound = false
-            for i = 0, numTracks - 1 do
-                local scannedTrack = r.GetTrack(0, i)
-                local _, trackName = r.GetTrackName(scannedTrack)
-                if trackName == asset.context.settings.current.sendFolderName then
-                    folderFound = true
-                    newTrack = OD_InsertTrackAtFolder(scannedTrack)
-                    break
-                end
-            end
-
-            if not folderFound then
-                r.InsertTrackAtIndex(numTracks, true)
-                local folder = r.GetTrack(0, numTracks)
-                r.GetSetMediaTrackInfo_String(folder, 'P_NAME', asset.context.settings.current
-                    .sendFolderName,
-                    true)
-                newTrack = OD_InsertTrackAtFolder(folder)
-            end
-        else
-            r.InsertTrackAtIndex(numTracks, true)
-            newTrack = r.GetTrack(0, numTracks)
-        end
-        return newTrack
-    end
 
     instance:addInteraction(0, 'add %asset to selected track(s)',
         function(asset, context, contextData, confirm, total, index)
@@ -94,7 +65,7 @@ function PluginAssetType.new(class, context)
         function(asset, context, contextData, confirm, total, index)
             local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
-                local newTrack = createSendTrack(asset)
+                local newTrack = helpers.createSendTrack(asset)
                 local originalUIState = instance:setPluginUIState()
                 if newTrack then
                     r.TrackFX_AddByName(newTrack, asset.load, false, -1)
@@ -107,7 +78,7 @@ function PluginAssetType.new(class, context)
                         local rv = reaper.CreateTrackSend(track, newTrack)
                     end
                 end
-                return true, ('Sent %d track to a new track with %s'):format(#selectedTracks, asset.searchText[1].text)
+                return true, ('Sent %d track(s) to a new track with %s'):format(#selectedTracks, asset.searchText[1].text)
             elseif selectedTracks and #selectedTracks == 0 then
                 return false, 'No tracks selected'
             end
@@ -118,7 +89,7 @@ function PluginAssetType.new(class, context)
         function(asset, context, contextData, confirm, total, index)
             local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
-                if index == 1 then asset.context.temp.newSendTrack = createSendTrack(asset) end
+                if index == 1 then asset.context.temp.newSendTrack = helpers.createSendTrack(asset) end
                 local originalUIState = instance:setPluginUIState()
                 r.TrackFX_AddByName(asset.context.temp.newSendTrack, asset.load, false, -1)
                 instance:resetPluginUIState(originalUIState)
@@ -134,7 +105,7 @@ function PluginAssetType.new(class, context)
                 end
                 if index == total then asset.context.temp.newSendTrack = nil end
 
-                return true, ('Sent %d track to a new track with %s'):format(#selectedTracks, asset.searchText[1].text)
+                return true, ('Sent %d track(s) to a new track with %d FX'):format(#selectedTracks, total)
             elseif selectedTracks and #selectedTracks == 0 then
                 return false, 'No tracks selected'
             end
@@ -273,4 +244,34 @@ function PluginAssetType:assembleAsset(plugin)
     end
 
     return asset
+end
+
+helpers.createSendTrack = function(asset)
+    local newTrack = nil
+    local numTracks = r.CountTracks(0)
+    if asset.context.settings.current.createSendsInsideFolder then
+        local folderFound = false
+        for i = 0, numTracks - 1 do
+            local scannedTrack = r.GetTrack(0, i)
+            local _, trackName = r.GetTrackName(scannedTrack)
+            if trackName == asset.context.settings.current.sendFolderName then
+                folderFound = true
+                newTrack = OD_InsertTrackAtFolder(scannedTrack)
+                break
+            end
+        end
+
+        if not folderFound then
+            r.InsertTrackAtIndex(numTracks, true)
+            local folder = r.GetTrack(0, numTracks)
+            r.GetSetMediaTrackInfo_String(folder, 'P_NAME', asset.context.settings.current
+                .sendFolderName,
+                true)
+            newTrack = OD_InsertTrackAtFolder(folder)
+        end
+    else
+        r.InsertTrackAtIndex(numTracks, true)
+        newTrack = r.GetTrack(0, numTracks)
+    end
+    return newTrack
 end

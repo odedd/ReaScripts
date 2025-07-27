@@ -68,7 +68,7 @@ RunApp = function()
         local projPath, projFileName = OD_GetProjectPaths()
 
         local logger = OD_Logger:new({
-            level = OD_Logger.LOG_LEVEL.ERROR,
+            level = OD_Logger.LOG_LEVEL.INFO,
             output = OD_Logger.LOG_OUTPUT.CONSOLE,
             filename = projPath .. Scr.name .. '_' .. projFileName .. '.log',
             -- filename = p .. Scr.name .. '_' .. projFileName .. '.log',
@@ -2489,11 +2489,12 @@ RunApp = function()
                                     if group ~= SPECIAL_GROUPS.RECENTS and group ~= SPECIAL_GROUPS.FAVORITES then
                                         ImGui.TextColored(ctx, app.gui.st.basecolors.mainBrightest,
                                             app.engine.assetGroupNameCache[group])
-                                        for keymod, description in pairs(_G[group].interactionHints) do
+                                        for keymod, hint in OD_PairsByOrder(_G[group].interactionHints) do
+                                            local description = hint.text
                                             local mod = keymod == 0 and 'Click' or
                                                 app.guiHelpers.keyModsToText(keymod) .. '-Click'
                                             local text = BaseAssetType:parseInteractionHintTemplate(description, -1,
-                                                _G[group].singleName, _G[group].pluralName):gsub("^%l", string.upper)
+                                                _G[group].singleName, 'selected '.._G[group].pluralName):gsub("^%l", string.upper)
                                             ImGui.PushFont(ctx, app.gui.st.fonts.bold)
                                             ImGui.TextWrapped(ctx, mod .. ': ')
                                             ImGui.PopFont(ctx)

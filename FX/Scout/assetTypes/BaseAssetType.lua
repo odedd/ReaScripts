@@ -110,7 +110,7 @@ function BaseAssetType:getInteractionHintFor(mods, context, count)
         class.interactionHints[mods] and (mods) or
         class.interactionHints[context] and (context) or
         class.interactionHints[0] and (0)
-    interactionHint = class.interactionHints[correctContext]
+    interactionHint = class.interactionHints[correctContext].text
     return class:parseInteractionHintTemplate(interactionHint, count, self.searchText[1].text, class.pluralName), correctContext | context
 end
 
@@ -222,7 +222,7 @@ function BaseAssetType:addInteraction(modifier, description, executeFunction)
     if not class.interactionHints then
         class.interactionHints = {}
     end
-    class.interactionHints[modifier] = description
+    class.interactionHints[modifier] = {order = OD_TableLength(class.interactionHints), text = description }
 
     -- Store the execute function for this modifier
     if not class.executeFunctions then
@@ -267,7 +267,7 @@ function BaseAssetType:createStandardConstructor(name, group)
         -- Initialize class-level interactionHints if not already set
         if not class.interactionHints then
             class.interactionHints = {
-                [0] = 'select %asset'
+                [0] = {order = 0, text = 'select %asset'}
             }
         end
 

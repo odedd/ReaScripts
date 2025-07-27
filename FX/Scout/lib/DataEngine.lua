@@ -65,7 +65,7 @@ PB_DataEngine = {
         return validatedFilter, hasIssues
     end,
     refreshProjectRelatedAssets = function(self)
-        -- BUG after refreshing, project related assets (items, tracks) that were selected are now not selected anymore, perhaps due to their ID changing? Need to check why and fix
+        -- BUG: project related items lose the order in recents/favorites after refreshing
         self.app.logger:logDebug('-- PB_DataEngine.refreshProjectRelatedAssets()')
 
         if not self.assetTypeManager then

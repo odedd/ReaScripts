@@ -11,7 +11,7 @@ function TrackAssetType.new(class, context)
     instance.requiresMappingOnImport = false
     instance.updateOnProjectRefresh = true
 
-    instance:addInteraction(0, 'Scroll to and select %asset',
+    instance:addInteraction(0, 'select and scroll to %asset',
         function(asset, context, contextData, confirm, total, index)
             -- local targetGuid = asset.load
 
@@ -26,7 +26,107 @@ function TrackAssetType.new(class, context)
                 r.SetMixerScroll(asset.object)
                 r.Main_OnCommand(40913, 0)
             end
-            return true
+            return true, ('selected %d track(s)'):format(total)
+        end)
+    instance:addInteraction(ImGui.Mod_Ctrl, 'select and scroll to %asset (and %singular(its)%plural(their) children)',
+        function(asset, context, contextData, confirm, total, index)
+            -- local targetGuid = asset.load
+
+            if index == 1 then
+                r.SetOnlyTrackSelected(asset.object)
+            else
+                r.SetTrackSelected(asset.object, true)
+            end
+
+            r.SetMediaTrackInfo_Value(asset.object, 'B_SHOWINMIXER', 1)
+            r.SetMediaTrackInfo_Value(asset.object, 'B_SHOWINTCP', 1)
+
+            local childTracks = OD_GetChildTracks(asset.object)
+            for _, childTrack in ipairs(childTracks) do
+                r.SetTrackSelected(childTrack, true)
+                r.SetMediaTrackInfo_Value(childTrack, 'B_SHOWINMIXER', 1)
+                r.SetMediaTrackInfo_Value(childTrack, 'B_SHOWINTCP', 1)
+            end
+            if index == total then
+                r.SetMixerScroll(asset.object)
+                r.Main_OnCommand(40913, 0)
+            end
+            return true, ('selected %d track(s) and their children'):format(total)
+        end)
+
+    instance:addInteraction(ImGui.Mod_Alt, 'only make %asset visible',
+        function(asset, context, contextData, confirm, total, index)
+            if index == 1 then
+                r.PreventUIRefresh(1)
+                local numTracks = r.CountTracks(0)
+                for i = 0, numTracks - 1 do
+                    local track = r.GetTrack(0, i)
+                    if track ~= asset.object then
+                        r.SetMediaTrackInfo_Value(track, 'B_SHOWINMIXER', 0)
+                        r.SetMediaTrackInfo_Value(track, 'B_SHOWINTCP', 0)
+                    end
+                end
+                r.SetOnlyTrackSelected(asset.object)
+            end
+
+            r.SetMediaTrackInfo_Value(asset.object, 'B_SHOWINMIXER', 1)
+            r.SetMediaTrackInfo_Value(asset.object, 'B_SHOWINTCP', 1)
+            if index == total then
+                r.SetMixerScroll(asset.object)
+                r.PreventUIRefresh(-1)
+                r.Main_OnCommand(40913, 0)
+                -- r.UpdateArrange()
+            end
+            return true,('made %d track(s) visible'):format(total)
+        end)
+
+    instance:addInteraction(ImGui.Mod_Alt | ImGui.Mod_Ctrl,
+        'only make %asset (and %singular(its)%plural(their) children) visible',
+        function(asset, context, contextData, confirm, total, index)
+            if index == 1 then
+                r.PreventUIRefresh(1)
+                local numTracks = r.CountTracks(0)
+                for i = 0, numTracks - 1 do
+                    local track = r.GetTrack(0, i)
+                    r.SetMediaTrackInfo_Value(track, 'B_SHOWINMIXER', 0)
+                    r.SetMediaTrackInfo_Value(track, 'B_SHOWINTCP', 0)
+                end
+                r.SetOnlyTrackSelected(asset.object)
+            end
+
+            -- Make the parent track visible
+            r.SetMediaTrackInfo_Value(asset.object, 'B_SHOWINMIXER', 1)
+            r.SetMediaTrackInfo_Value(asset.object, 'B_SHOWINTCP', 1)
+
+            -- Make all child tracks visible
+            local childTracks = OD_GetChildTracks(asset.object)
+            for _, childTrack in ipairs(childTracks) do
+                r.SetMediaTrackInfo_Value(childTrack, 'B_SHOWINMIXER', 1)
+                r.SetMediaTrackInfo_Value(childTrack, 'B_SHOWINTCP', 1)
+            end
+
+            if index == total then
+                r.SetMixerScroll(asset.object)
+                r.PreventUIRefresh(-1)
+                r.Main_OnCommand(40913, 0)
+                -- r.UpdateArrange()
+            end
+            return true, ('made %d track(s) and their children visible'):format(total)
+        end)
+
+
+
+    instance:addInteraction(ImGui.Mod_Shift, 'send from selected track(s) to %asset',
+        function(asset, context, contextData, confirm, total, index)
+            local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
+            if selectedTracks and #selectedTracks > 0 then
+                for _, track in ipairs(selectedTracks) do
+                    local rv = reaper.CreateTrackSend(track, asset.object)
+                end
+                return true, ('Sent %d track(s) to track %s'):format(#selectedTracks, asset.searchText[1].text)
+            elseif selectedTracks and #selectedTracks == 0 then
+                return false, 'No tracks selected'
+            end
         end)
     return instance
 end
