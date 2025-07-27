@@ -32,6 +32,7 @@ function ProjectTemplateAssetType:getData()
                 fullPath = fullPath,
                 name = name,
                 path = folderPath .. '/' .. path,
+                relativePath = path:gsub('/$','')
             })
         end
     else
@@ -55,7 +56,7 @@ function ProjectTemplateAssetType:assembleAsset(project)
         load = project.fullPath,
         searchText = {
             { text = project.name },
-            { text = project.path }
+            { text = project.relativePath }
         },
         group = self.group,
     })
