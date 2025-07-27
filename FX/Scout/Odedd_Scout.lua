@@ -739,11 +739,12 @@ RunApp = function()
                 if OD_BfCheck(mods, ImGui.Mod_Ctrl) then table.insert(modKeys, OS_is.mac and 'Cmd' or 'Ctrl') end
                 if OD_BfCheck(mods, ImGui.Mod_Alt) then table.insert(modKeys, OS_is.mac and 'Option' or 'alt') end
                 if OD_BfCheck(mods, ImGui.Mod_Shift) then table.insert(modKeys, 'Shift') end
-                return table.concat(modKeys, '+')
+                local mod = table.concat(modKeys, '+')
+                local key
+                if OD_BfCheck(mods, RESULT_CONTEXT.KEYBOARD) then key = 'Enter' end
+                if OD_BfCheck(mods, RESULT_CONTEXT.MOUSE) then key = 'Double-Click' end
+                return mod .. (key and ((next(modKeys) and '-' or '')..key) or '')
             end,
-            -- blockNextCharacter = function()
-            --     app.temp.blockNextCharacter = true
-            -- end,
             calcTinyIconSize = function(ctx, icon)
                 app.temp.iconSizes = app.temp.iconSizes or {}
                 if app.temp.iconSizes[icon] then
@@ -1054,7 +1055,7 @@ RunApp = function()
                         -- handle escape
                         if app.selection.keyboardPos then
                             hintResult = searchResults[app.selection.keyboardPos]
-                            hintContext = 'Enter'
+                            hintContext = RESULT_CONTEXT.KEYBOARD
                             local newIdx = nil
                             if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) and app.selection.keyboardPos < #searchResults then
                                 newIdx =
@@ -1343,7 +1344,7 @@ RunApp = function()
                                             end
                                             if ImGui.IsItemHovered(ctx) then
                                                 hintResult = result
-                                                hintContext = 'Double-Click'
+                                                hintContext = RESULT_CONTEXT.MOUSE
                                             end
                                             ImGui.SameLine(ctx)
 
@@ -1466,12 +1467,10 @@ RunApp = function()
 
                         if hintResult then
                             local mods = ImGui.GetKeyMods(ctx)
-                            local assetHint = hintResult.interactionModifiers[mods] or hintResult.interactionModifiers
-                                [0]
+                            local assetHint, usedMods = hintResult:getInteractionHintFor(mods, hintContext)
                             local action = assetHint:gsub('%%asset', hintResult.searchText[1].text)
-                            local modifier = (mods ~= 0 and hintResult.interactionModifiers[mods]) and
-                                app.guiHelpers.keyModsToText(ImGui.GetKeyMods(ctx)) .. '-' or ''
-                            local hint = ('%s%s to %s.'):format(modifier, hintContext, action)
+                            local actionKey = app.guiHelpers.keyModsToText(usedMods)
+                            local hint = ('%s to %s.'):format(actionKey, action)
                             if app.temp.searchMode == SEARCH_MODE.MAIN then
                                 hint = hint ..
                                     (app.guiHelpers.getShortcutDescription('markFavorite') ~= '' and (' Press %s to %s.'):format(app.guiHelpers.getShortcutDescription('markFavorite'),
@@ -2493,7 +2492,7 @@ RunApp = function()
                                     if group ~= SPECIAL_GROUPS.RECENTS and group ~= SPECIAL_GROUPS.FAVORITES then
                                         ImGui.TextColored(ctx, app.gui.st.basecolors.mainBrightest,
                                             app.engine.assetGroupNameCache[group])
-                                        for keymod, description in pairs(_G[group].interactionModifiers) do
+                                        for keymod, description in pairs(_G[group].interactionHints) do
                                             local mod = keymod == 0 and 'Click' or
                                                 app.guiHelpers.keyModsToText(keymod) .. '-Click'
 
@@ -2654,14 +2653,6 @@ RunApp = function()
                 if app.temp.showCreatePresetDialog then
                     local isEditing = app.temp.editingPresetId ~= nil
                     local title = isEditing and 'Edit Preset' or 'Create Preset'
-                    -- local function updateActionStatus()
-                    --     local content = OD_GetContent(r.GetResourcePath() .. "/" .. "reaper-kb.ini")
-                    --     local statuses = {}
-                    --     local action_name = 'Custom: ' ..
-                    --         Scr.no_ext .. ' - ' .. app.temp.presetName .. '.lua'
-                    --     app.temp.presetActionExists = (content:upper():find(OD_EscapePattern(action_name:upper())) ~= nil)
-                    -- end
-
                     if not ImGui.IsPopupOpen(ctx, title) then
                         ImGui.OpenPopup(ctx, title)
                         if not app.temp.presetName then

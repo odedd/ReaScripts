@@ -155,7 +155,7 @@ PB_DataEngine = {
 
         self.app.flow.filterResults({}, true)
         self.app.logger:logInfo('Refreshed ' ..
-        #newAssets .. ' project-related assets from ' .. #assetTypesToRefresh .. ' asset types')
+            #newAssets .. ' project-related assets from ' .. #assetTypesToRefresh .. ' asset types')
     end,
     lastGuids = {}, -- use to check if a track has been removed or added
     init = function(self, forceRebuildCache)
@@ -1072,9 +1072,25 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
 
     local assetCount = 0
 
-    local interactionModifiers = { [0] = 'add %asset to current filters' }
-    local presetInteractionModifiers = { [0] = 'load preset %asset' }
-    
+    local interactionHints = function(type, mods, context)
+        local usedMods = context
+        local text = 'add %asset to current filters'
+        if type == FILTER_TYPES.PRESET then text = 'load preset %asset' end
+        if type == FILTER_TYPES.TAG then
+            if OD_BfCheck(mods, ImGui.Mod_Ctrl) then
+                text = text:gsub('%%asset', '%%asset (Negative)')
+                usedMods = usedMods | ImGui.Mod_Ctrl
+            else
+                text = text:gsub('%%asset', '%%asset (Positive)')
+            end
+        end
+        if OD_BfCheck(mods, ImGui.Mod_Shift) then
+            text = text .. ' (stay in filter search mode)'
+            usedMods = usedMods | ImGui.Mod_Shift
+        end
+        return text, usedMods
+    end
+
     -- Define execute functions for filter assets
     local filterExecuteFunction = function(asset, context)
         if asset.type == FILTER_TYPES.TAG then
@@ -1102,7 +1118,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
         end
         return true
     end
-    
+
     local presetExecuteFunction = function(asset, context)
         -- Normal click: Apply preset
         asset.preset:apply()
@@ -1128,7 +1144,8 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                         load = item.query,
                         loadAll = filter.allQuery,
                         group = T.FILTER_NAMES[filterType],
-                        interactionModifiers = interactionModifiers
+                        getInteractionHintFor = function(self, mods, context) return interactionHints(filterType, mods,
+                                context) end
                     }
                     -- Add execute function directly to the asset
                     filterAsset.execute = function(asset, context, contextData, confirm, total, index)
@@ -1187,7 +1204,8 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                     order = tag.order,
                     load = tag.id,
                     group = T.FILTER_NAMES[FILTER_TYPES.TAG],
-                    interactionModifiers = interactionModifiers
+                    getInteractionHintFor = function(self, mods, context) return interactionHints(FILTER_TYPES.TAG, mods,
+                            context) end
                 }
                 -- Add execute function directly to the asset
                 tagAsset.execute = function(asset, context, contextData, confirm, total, index)
@@ -1210,7 +1228,8 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 order = preset.id, -- Use ID as order for now, could be customized later
                 preset = preset,   -- Store reference to preset
                 group = T.FILTER_NAMES[FILTER_TYPES.PRESET],
-                interactionModifiers = presetInteractionModifiers
+                getInteractionHintFor = function(self, mods, context) return interactionHints(FILTER_TYPES.PRESET, mods,
+                        context) end
             }
             -- Add execute function directly to the asset
             presetAsset.execute = function(asset, context, contextData, confirm, total, index)
@@ -1377,11 +1396,11 @@ PB_DataEngine.removeLowPriorityPlugins = function(self)
             if foundPlugins[id] then
                 table.insert(assetsIdxToRemove, i)
                 self.app.logger:logDebug('Marking duplicate plugin for removal: ' ..
-                asset.name .. ' (' .. asset.fx_type .. ')')
+                    asset.name .. ' (' .. asset.fx_type .. ')')
             else
                 foundPlugins[id] = true
                 self.app.logger:logDebug('Keeping highest priority plugin: ' ..
-                asset.name .. ' (' .. asset.fx_type .. ')')
+                    asset.name .. ' (' .. asset.fx_type .. ')')
             end
         end
     end

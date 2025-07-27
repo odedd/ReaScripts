@@ -9,6 +9,22 @@ function FXChainAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("FX Chain", "FX Chains")(class, context)
     -- FX Chains are file-based assets (.rfxchain files)
     instance.shouldMapBaseFilenames = true
+
+    instance:addInteraction(0, 'load FX Chain %asset to selected track(s)', function(asset, context, contextData, confirm)
+        local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
+
+        if selectedTracks and #selectedTracks > 0 then
+            local originalUIState = instance:setPluginUIState()
+            for _, track in ipairs(selectedTracks) do
+                local fxIndex = r.TrackFX_AddByName(track, asset.load, false, -1)
+            end
+            instance:resetPluginUIState(originalUIState)
+            return true, ('Added %s to %d tracks'):format(asset.searchText[1].text, #selectedTracks)
+        elseif selectedTracks and #selectedTracks == 0 then
+            return false, 'No tracks selected'
+        end
+    end)
+
     return instance
 end
 
@@ -28,20 +44,6 @@ function FXChainAssetType:getData()
         })
     end
     return data
-end
-
-function FXChainAssetType:getExecuteFunction()
-    return function(self, context, contextData)
-        -- FX Chains are typically loaded into tracks like plugins
-        local numTracks = r.CountSelectedTracks2(0, true);
-        if numTracks == 0 then return false end
-        for i = 0, numTracks - 1 do
-            local track = r.GetSelectedTrack2(0, i, true)
-            local fxIndex = r.TrackFX_AddByName(track, self.load, false, -1)
-        end
-        return true, ('Added %s to %d tracks'):format(self.searchText[1].text, numTracks)
-        -- Default return for other contexts
-    end
 end
 
 function FXChainAssetType:assembleAsset(chain)

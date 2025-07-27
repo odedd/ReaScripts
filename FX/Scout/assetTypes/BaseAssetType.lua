@@ -47,34 +47,36 @@ function BaseAssetType:assembleAsset(assetData)
     error("BaseAssetType:assembleAsset() must be implemented by subclass")
 end
 
-function BaseAssetType:getExecuteFunction()
-    -- Should return the execute function for assets of this type
-    error("BaseAssetType:getExecuteFunction() must be implemented by subclass")
+function BaseAssetType:getExecuteFunction(context)
+    local class = getmetatable(self)
+    local executeFunction = nil
+
+    -- Determine which execute function to use based on context (modifier keys)
+    if class.executeFunctions and context then
+        executeFunction = class.executeFunctions[context] or class.executeFunctions[OD_BfSet(OD_BfSet(context,RESULT_CONTEXT.KEYBOARD, false), RESULT_CONTEXT.MOUSE, false)] or class.executeFunctions[0]
+    end
+
+    return executeFunction
 end
 
+function BaseAssetType:getInteractionHintFor(mods, context)
+    local class = getmetatable(self)
+    local interactionHint = nil
+    local correctContext = 
+    class.interactionHints[mods | context] and (mods | context) or 
+    class.interactionHints[mods] and (mods) or 
+    class.interactionHints[context] and (context) or 
+    class.interactionHints[0] and (0) 
+    interactionHint = class.interactionHints[correctContext]
+    return interactionHint, correctContext | context
+end
+
+
 function BaseAssetType:executeAndAddToRecents()
-    local assetType = self -- Capture the asset type instance
     return function(asset, context, contextData, confirm, total, index)
-        local class = getmetatable(assetType)
-        local executeFunction = nil
+        local assetType = self -- Capture the asset type instance
 
-        -- Determine which execute function to use based on context (modifier keys)
-        if class.executeFunctions and context then
-            -- Check for specific modifier execute functions first
-            -- Look for the most specific match by checking individual modifiers
-            for modifier, func in pairs(class.executeFunctions) do
-                if modifier ~= 0 and OD_BfCheck(context, modifier) then
-                    executeFunction = func
-                    break
-                end
-            end
-        end
-
-        -- Fall back to the default execute function if no specific one found
-        if not executeFunction then
-            executeFunction = class.executeFunctions and class.executeFunctions[0] or assetType:getExecuteFunction()
-        end
-
+        local executeFunction = assetType:getExecuteFunction(context)
         if executeFunction then
             -- Execute first and check if successful
             local success, result, logMsg = pcall(executeFunction, asset, context, contextData, confirm, total, index)
@@ -121,7 +123,7 @@ function BaseAssetType:getSelectedTracksWithConfirmation(context, contextData, c
         local track = r.GetSelectedTrack2(0, i, true)
         table.insert(tracks, track)
     end
-    if #tracks >= self.context.settings.current.numberOfItemsThatRequireConfirmation and not (confirm and confirm.multipleTracks) then
+    if #tracks >= self.context.settings.current.numberOfMediaItemsThatRequireConfirmation and not (confirm and confirm.multipleTracks) then
         self.context.temp.confirmMultipleTracks = {
             count = #tracks,
             resultContext = context,
@@ -130,7 +132,7 @@ function BaseAssetType:getSelectedTracksWithConfirmation(context, contextData, c
         }
         return false, ('%s tracks selected, waiting for confirmation'):format(#tracks)
     end
-    return tracks     -- Proceed
+    return tracks -- Proceed
 end
 
 function BaseAssetType:getSelectedItemsWithConfirmation(context, contextData, confirm)
@@ -142,7 +144,7 @@ function BaseAssetType:getSelectedItemsWithConfirmation(context, contextData, co
         table.insert(items, item)
     end
 
-    if #items >= self.context.settings.current.numberOfItemsThatRequireConfirmation and not (confirm and confirm.multipleMediaItems) then
+    if #items >= self.context.settings.current.numberOfMediaItemsThatRequireConfirmation and not (confirm and confirm.multipleMediaItems) then
         self.context.temp.confirmMultipleMediaItems = {
             count = #items,
             resultContext = context,
@@ -151,7 +153,7 @@ function BaseAssetType:getSelectedItemsWithConfirmation(context, contextData, co
         }
         return false, ('%s items selected, waiting for confirmation'):format(#items)
     end
-    return items     -- Proceed
+    return items -- Proceed
 end
 
 function BaseAssetType:setPluginUIState()
@@ -175,10 +177,10 @@ end
 function BaseAssetType:addInteraction(modifier, description, executeFunction)
     -- Add an interaction modifier to the class
     local class = getmetatable(self)
-    if not class.interactionModifiers then
-        class.interactionModifiers = {}
+    if not class.interactionHints then
+        class.interactionHints = {}
     end
-    class.interactionModifiers[modifier] = description
+    class.interactionHints[modifier] = description
 
     -- Store the execute function for this modifier
     if not class.executeFunctions then
@@ -220,9 +222,9 @@ function BaseAssetType:createStandardConstructor(name, group)
         -- Default: do not refresh item on project refresh
         instance.updateOnProjectRefresh = false
 
-        -- Initialize class-level interactionModifiers if not already set
-        if not class.interactionModifiers then
-            class.interactionModifiers = {
+        -- Initialize class-level interactionHints if not already set
+        if not class.interactionHints then
+            class.interactionHints = {
                 [0] = 'select %asset'
             }
         end
@@ -358,7 +360,7 @@ function BaseAssetType:createAssetBase(params)
         load = params.load,
         searchText = params.searchText,
         group = params.group,
-        interactionModifiers = getmetatable(self).interactionModifiers, -- Access class-level interactionModifiers
+        getInteractionHintFor = function(asset, mods, context) return self:getInteractionHintFor(mods, context) end,
         context = self.context,
         engine = self.context.engine,                                   -- Add engine reference for backward compatibility
         addTag = self.assetActions.addTag,
