@@ -1074,13 +1074,52 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
 
     local interactionModifiers = { [0] = 'add %asset to current filters' }
     local presetInteractionModifiers = { [0] = 'load preset %asset' }
+    
+    -- Define execute functions for filter assets
+    local filterExecuteFunction = function(asset, context)
+        if asset.type == FILTER_TYPES.TAG then
+            if OD_BfCheck(context, ImGui.Mod_Alt) then
+                asset.app.flow.filterResults({ removeTags = { asset.load } })
+            elseif OD_BfCheck(context, ImGui.Mod_Ctrl) then
+                asset.app.flow.filterResults({ addTags = { [asset.load] = false } })
+            else
+                asset.app.flow.filterResults({ addTags = { [asset.load] = true } })
+            end
+        elseif asset.type == FILTER_TYPES.PRESET then
+            -- Normal click: Apply preset
+            asset.preset:apply()
+        else
+            if OD_BfCheck(context, ImGui.Mod_Alt) then
+                asset.app.flow.filterResults(asset.loadAll)
+            else
+                asset.app.flow.filterResults(asset.load)
+            end
+        end
+        if not OD_BfCheck(context, ImGui.Mod_Shift) then
+            asset.app.flow.setSearchMode(SEARCH_MODE.MAIN)
+        else
+            asset.app.flow.filterResults({ clearText = true })
+        end
+        return true
+    end
+    
+    local presetExecuteFunction = function(asset, context)
+        -- Normal click: Apply preset
+        asset.preset:apply()
+        if not OD_BfCheck(context, ImGui.Mod_Shift) then
+            asset.app.flow.setSearchMode(SEARCH_MODE.MAIN)
+        else
+            asset.app.flow.filterResults({ clearText = true })
+        end
+        return true
+    end
 
     if scanAll or whichFilters.filters then
         for filterType, filter in pairs(FILTER_MENU) do
             -- Skip presets here since they're handled separately with more functionality
             if filterType ~= FILTER_TYPES.PRESET and (scanAll or (whichFilters.filters and OD_HasValue(whichFilters.filters, filterType))) then
                 for itemName, item in pairs(filter.items) do
-                    table.insert(self.filterAssets, {
+                    local filterAsset = {
                         engine = self,
                         app = self.app, -- Add app context for executeFilter
                         type = filterType,
@@ -1089,9 +1128,13 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                         load = item.query,
                         loadAll = filter.allQuery,
                         group = T.FILTER_NAMES[filterType],
-                        execute = executeFilter,
                         interactionModifiers = interactionModifiers
-                    })
+                    }
+                    -- Add execute function directly to the asset
+                    filterAsset.execute = function(asset, context, contextData, confirm, total, index)
+                        return filterExecuteFunction(asset, context)
+                    end
+                    table.insert(self.filterAssets, filterAsset)
                     assetCount = assetCount + 1
                 end
             end
@@ -1135,7 +1178,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
             flattenTagsOfParent(TAGS_ROOT_PARENT)
 
             for tagId, tag in pairs(flatTags) do
-                table.insert(self.filterAssets, {
+                local tagAsset = {
                     engine = self,
                     app = self.app, -- Add app context for executeFilter
                     type = FILTER_TYPES.TAG,
@@ -1144,10 +1187,13 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                     order = tag.order,
                     load = tag.id,
                     group = T.FILTER_NAMES[FILTER_TYPES.TAG],
-                    execute = executeFilter,
                     interactionModifiers = interactionModifiers
-
-                })
+                }
+                -- Add execute function directly to the asset
+                tagAsset.execute = function(asset, context, contextData, confirm, total, index)
+                    return filterExecuteFunction(asset, context)
+                end
+                table.insert(self.filterAssets, tagAsset)
                 assetCount = assetCount + 1
             end
         end
@@ -1155,7 +1201,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
 
     if scanAll or whichFilters.presets then
         for presetId, preset in pairs(self.presets) do
-            table.insert(self.filterAssets, {
+            local presetAsset = {
                 name = preset.name,
                 engine = self,
                 app = self.app,
@@ -1164,10 +1210,13 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 order = preset.id, -- Use ID as order for now, could be customized later
                 preset = preset,   -- Store reference to preset
                 group = T.FILTER_NAMES[FILTER_TYPES.PRESET],
-                execute = executeFilter,
                 interactionModifiers = presetInteractionModifiers
-
-            })
+            }
+            -- Add execute function directly to the asset
+            presetAsset.execute = function(asset, context, contextData, confirm, total, index)
+                return presetExecuteFunction(asset, context)
+            end
+            table.insert(self.filterAssets, presetAsset)
             assetCount = assetCount + 1
         end
     end

@@ -2606,19 +2606,22 @@ RunApp = function()
                         app.temp.confirmMultipleResults = nil
                     end
                 end
-                if app.temp.confirmMultipleTracks then
+                if app.temp.confirmMultipleTracks or app.temp.confirmMultipleItems then
+                    local text = app.temp.confirmMultipleTracks and 'tracks' or 'items'
+                    local object = app.temp.confirmMultipleTracks or app.temp.confirmMultipleItems
                     if not ImGui.IsPopupOpen(ctx, 'Are you sure?') then
                         ImGui.OpenPopup(ctx, 'Are you sure?')
                     end
                     local open, confirm = app.draw.popup(app.gui.ctx, 'Are you sure?',
                         'There are ' ..
-                        app.temp.confirmMultipleTracks.count .. ' tracks selected.\nAre you sure you want to continue?')
+                        object.count .. ' '.. text .. ' selected.\nAre you sure you want to continue?')
                     if confirm then
-                        app.flow.executeSelectedResults(ctx, app.temp.confirmMultipleTracks.resultContext,
-                            app.temp.confirmMultipleTracks.contextData, true)
+                        app.flow.executeSelectedResults(ctx, object.resultContext,
+                            object.contextData, true)
                     end
                     if not open then
                         app.temp.confirmMultipleTracks = nil
+                        app.temp.confirmMultipleItems = nil
                     end
                 end
             end,

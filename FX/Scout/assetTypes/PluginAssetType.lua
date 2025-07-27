@@ -9,8 +9,56 @@ function PluginAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("FX")(class, context)
     -- Plugins are file-based assets (have file paths)
     instance.shouldMapBaseFilenames = true
-    instance.interactionModifiers[0] = 'add %asset to selected track(s)'
-    instance.interactionModifiers[ImGui.Mod_Alt] = 'add %asset to selected item(s)'
+
+    -- Add interactions using the new system
+    instance:addInteraction(0, 'add %asset to selected track(s)', function(asset, context, contextData, confirm)
+        local tracks = asset.context.engine:getSelectedTracks()
+
+        -- Use helper method for confirmation check
+        if not instance:checkTrackConfirmation(tracks, context, contextData, confirm) then
+            return false
+        end
+
+        -- Use helper method for plugin UI state
+        local originalUIState = instance:setPluginUIState()
+
+        local numTracks = r.CountSelectedTracks2(0, true);
+        if numTracks == 0 then
+            instance:resetPluginUIState(originalUIState)
+            return false, 'No tracks selected'
+        end
+
+        for i = 0, numTracks - 1 do
+            local track = r.GetSelectedTrack2(0, i, true)
+            local fxIndex = r.TrackFX_AddByName(track, asset.load, false, -1)
+        end
+
+        instance:resetPluginUIState(originalUIState)
+        return true, ('Added %s to %d tracks'):format(asset.searchText[1].text, numTracks)
+    end)
+
+    instance:addInteraction(ImGui.Mod_Alt, 'add %asset to selected item(s)',
+        function(asset, context, contextData, confirm)
+            local selectedItems = instance:getSelectedItemsWithConfirmation(context, contextData, confirm)
+
+            if selectedItems then
+                local originalUIState = instance:setPluginUIState()
+                for _, item in ipairs(selectedItems) do
+                    local take = r.GetActiveTake(item)
+                    if take then
+                        r.TakeFX_AddByName(take, asset.load, 1)
+                    end
+                end
+
+                instance:resetPluginUIState(originalUIState)
+                -- Always return true for ALT context - user attempted to add to takes
+                -- (regardless of whether there were selected items or takes)
+                return true, ('Added %s to %d items'):format(asset.searchText[1].text, #selectedItems)
+            else
+                return false
+            end
+        end)
+
     return instance
 end
 
@@ -93,69 +141,6 @@ function PluginAssetType:getData()
         i = i + 1
     end
     return self.data
-end
-
-function PluginAssetType:getExecuteFunction()
-    local openPluginStatus
-    local function setOpenPlugin()
-        if self.context.settings.current.showFxUI ~= nil and self.context.settings.current.showFxUI ~= SHOW_FX_UI.FOLLOW_PREFERENCE then
-            openPluginStatus = tonumber(select(2, r.get_config_var_string('fxfloat_focus')))
-            r.SNM_SetIntConfigVar('fxfloat_focus',
-                OD_BfSet(openPluginStatus, 4, self.context.settings.current.showFxUI == SHOW_FX_UI.OPEN))
-        end
-    end
-
-    local function resetOpenPlugin()
-        if self.context.settings.current.showFxUI ~= nil and self.context.settings.current.showFxUI ~= SHOW_FX_UI.FOLLOW_PREFERENCE then
-            r.SNM_SetIntConfigVar('fxfloat_focus', openPluginStatus)
-        end
-    end
-    return function(self, context, contextData, confirm)
-        if not OD_BfCheck(context, ImGui.Mod_Alt) then
-            local tracks = self.context.engine:getSelectedTracks()
-            if #tracks > self.context.settings.current.numberOfTracksThatRequireConfirmation and confirm ~= true then
-                self.context.temp.confirmMultipleTracks = {
-                    count = #tracks,
-                    resultContext = context,
-                    contextData = contextData
-                }
-                -- Return false for confirmation dialog - user hasn't confirmed yet, so don't add to recents
-                return false
-            else
-                setOpenPlugin()
-
-                local numTracks = r.CountSelectedTracks2(0, true);
-                if numTracks == 0 then return false, 'No tracks selected' end
-                for i = 0, numTracks - 1 do
-                    local track = r.GetSelectedTrack2(0, i, true)
-                    local fxIndex = r.TrackFX_AddByName(track, self.load, false, -1)
-                end
-                resetOpenPlugin()
-                return true, ('Added %s to %d tracks'):format(self.searchText[1].text, numTracks)
-            end
-        else
-            setOpenPlugin()
-
-            local numItems = r.CountMediaItems(0)
-            if numItems == 0 then return false end
-
-            for i = 0, numItems - 1 do
-                local item = r.GetMediaItem(0, i)
-                if r.IsMediaItemSelected(item) then
-                    local take = r.GetActiveTake(item)
-                    if take then
-                        r.TakeFX_AddByName(take, self.load, 1)
-                    end
-                end
-            end
-            resetOpenPlugin()
-            -- Always return true for ALT context - user attempted to add to takes
-            -- (regardless of whether there were selected items or takes)
-            return true, ('Added %s to %d items'):format(self.searchText[1].text, numItems)
-        end
-        -- Default return for other contexts
-        return false
-    end
 end
 
 function PluginAssetType:assembleAsset(plugin)

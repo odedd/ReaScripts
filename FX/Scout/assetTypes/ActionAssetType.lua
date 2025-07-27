@@ -9,7 +9,24 @@ function ActionAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Action", "Actions")(class, context)
     -- Plugins are file-based assets (have file paths)
     instance.shouldMapBaseFilenames = true
-    instance.interactionModifiers[0] = 'run %asset'
+    
+    -- Add interaction using the new system
+    instance:addInteraction(0, 'run %asset', function(asset, context, contextData)
+        local commandId = asset.load
+        
+        -- If load is a named command ID (string), convert to numeric
+        if type(commandId) == "string" then
+            commandId = reaper.NamedCommandLookup('_'..commandId)
+            if commandId == 0 then
+                asset.context.logger:logError('Named command not found: ' .. asset.load)
+                return false
+            end
+        end
+        
+        r.Main_OnCommand(commandId, 0)
+        return true
+    end)
+    
     return instance
 end
 
@@ -51,23 +68,6 @@ function ActionAssetType:getData()
     return data
 end
 
-function ActionAssetType:getExecuteFunction()
-    return function(self, context, contextData)
-        local commandId = self.load
-        
-        -- If load is a named command ID (string), convert to numeric
-        if type(commandId) == "string" then
-            commandId = reaper.NamedCommandLookup('_'..commandId)
-            if commandId == 0 then
-                self.context.logger:logError('Named command not found: ' .. self.load)
-                return false
-            end
-        end
-        
-        r.Main_OnCommand(commandId, 0)
-        return true
-    end
-end
 
 function ActionAssetType:assembleAsset(action)
     -- Use named command ID if available, otherwise use numeric ID

@@ -54,12 +54,30 @@ end
 
 function BaseAssetType:executeAndAddToRecents()
     local assetType = self -- Capture the asset type instance
-    return function(asset, ...)
-        -- Get the execute function from the asset type
-        local executeFunction = assetType:getExecuteFunction()
+    return function(asset, context, contextData, confirm, total, index)
+        local class = getmetatable(assetType)
+        local executeFunction = nil
+
+        -- Determine which execute function to use based on context (modifier keys)
+        if class.executeFunctions and context then
+            -- Check for specific modifier execute functions first
+            -- Look for the most specific match by checking individual modifiers
+            for modifier, func in pairs(class.executeFunctions) do
+                if modifier ~= 0 and OD_BfCheck(context, modifier) then
+                    executeFunction = func
+                    break
+                end
+            end
+        end
+
+        -- Fall back to the default execute function if no specific one found
+        if not executeFunction then
+            executeFunction = class.executeFunctions and class.executeFunctions[0] or assetType:getExecuteFunction()
+        end
+
         if executeFunction then
             -- Execute first and check if successful
-            local success, result, logMsg = pcall(executeFunction, asset, ...)
+            local success, result, logMsg = pcall(executeFunction, asset, context, contextData, confirm, total, index)
 
             if success and result == true then
                 -- Only add to recents if execution was successful AND returned true
@@ -95,6 +113,76 @@ end
 
 -- Common helper methods:
 
+function BaseAssetType:checkTrackConfirmation(tracks, context, contextData, confirm)
+    -- Check if track count exceeds threshold and confirmation not given
+    if #tracks > self.context.settings.current.numberOfTracksThatRequireConfirmation and confirm ~= true then
+        self.context.temp.confirmMultipleTracks = {
+            count = #tracks,
+            resultContext = context,
+            contextData = contextData
+        }
+        return false -- Needs confirmation
+    end
+    return true      -- Proceed
+end
+
+function BaseAssetType:getSelectedItemsWithConfirmation(context, contextData, confirm)
+    -- Similar logic for items if needed by other asset types
+    local numItems = r.CountMediaItems(0)
+    local items = {}
+    for i = 0, numItems - 1 do
+        local item = r.GetMediaItem(0, i)
+        if r.IsMediaItemSelected(item) then
+            table.insert(items, item)
+        end
+    end
+
+    if #items > self.context.settings.current.numberOfItemsThatRequireConfirmation and confirm ~= true then
+        self.context.temp.confirmMultipleItems = {
+            count = #items,
+            resultContext = context,
+            contextData = contextData
+        }
+        return false -- Needs confirmation
+    end
+    return items     -- Proceed
+end
+
+function BaseAssetType:setPluginUIState()
+    -- Sets up plugin UI state based on settings, returns original state
+    if self.context.settings.current.showFxUI ~= nil and self.context.settings.current.showFxUI ~= SHOW_FX_UI.FOLLOW_PREFERENCE then
+        local originalState = tonumber(select(2, r.get_config_var_string('fxfloat_focus')))
+        r.SNM_SetIntConfigVar('fxfloat_focus',
+            OD_BfSet(originalState, 4, self.context.settings.current.showFxUI == SHOW_FX_UI.OPEN))
+        return originalState
+    end
+    return nil -- No change needed
+end
+
+function BaseAssetType:resetPluginUIState(originalState)
+    -- Restores the original plugin UI state
+    if originalState ~= nil then
+        r.SNM_SetIntConfigVar('fxfloat_focus', originalState)
+    end
+end
+
+function BaseAssetType:addInteraction(modifier, description, executeFunction)
+    -- Add an interaction modifier to the class
+    local class = getmetatable(self)
+    if not class.interactionModifiers then
+        class.interactionModifiers = {}
+    end
+    class.interactionModifiers[modifier] = description
+
+    -- Store the execute function for this modifier
+    if not class.executeFunctions then
+        class.executeFunctions = {}
+    end
+    class.executeFunctions[modifier] = executeFunction
+
+    self.context.logger:logDebug('Added interaction: ' .. description .. ' for modifier ' .. tostring(modifier))
+end
+
 function BaseAssetType:createStandardConstructor(name, group)
     return function(class, context)
         -- Automatically infer asset type ID from the class name
@@ -126,11 +214,13 @@ function BaseAssetType:createStandardConstructor(name, group)
         -- Default: do not refresh item on project refresh
         instance.updateOnProjectRefresh = false
 
-        instance.interactionModifiers = {
-            [0] = 'select %asset'
-        }
+        -- Initialize class-level interactionModifiers if not already set
+        if not class.interactionModifiers then
+            class.interactionModifiers = {
+                [0] = 'select %asset'
+            }
+        end
 
-        class.interactionModifiers = instance.interactionModifiers
         class.singleName = instance.name
         class.pluralName = instance.group
 
@@ -262,9 +352,9 @@ function BaseAssetType:createAssetBase(params)
         load = params.load,
         searchText = params.searchText,
         group = params.group,
-        interactionModifiers = self.interactionModifiers,
+        interactionModifiers = getmetatable(self).interactionModifiers, -- Access class-level interactionModifiers
         context = self.context,
-        engine = self.context.engine, -- Add engine reference for backward compatibility
+        engine = self.context.engine,                                   -- Add engine reference for backward compatibility
         addTag = self.assetActions.addTag,
         removeTag = self.assetActions.removeTag,
         execute = self:executeAndAddToRecents(),

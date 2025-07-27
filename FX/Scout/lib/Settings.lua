@@ -104,6 +104,7 @@ PB_Settings = OD_Settings:new({
         lastDockId = nil,
         numberOfResultsThatRequireConfirmation = 10,
         numberOfTracksThatRequireConfirmation = 6,
+        numberOfItemsThatRequireConfirmation = 6,
         numberOfRecents = 5,
         welcomeScreenShown = false
     },
