@@ -65,7 +65,6 @@ PB_DataEngine = {
         return validatedFilter, hasIssues
     end,
     refreshProjectRelatedAssets = function(self)
-        -- BUG: project related items lose the order in recents/favorites after refreshing
         self.app.logger:logDebug('-- PB_DataEngine.refreshProjectRelatedAssets()')
 
         if not self.assetTypeManager then
@@ -865,6 +864,9 @@ PB_DataEngine.markSpecialGroups = function(self)
             asset.originalGroup = asset.group
             asset.group = T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS]
             asset.recentOrder = recentIndex
+            -- Clear asset.order so sorting uses recentOrder instead of project order
+            asset.originalOrder = asset.order
+            asset.order = nil
             recentCount = recentCount + 1
             self.app.logger:logDebug('Marked asset as recent: ' .. asset.id .. ' (order: ' .. recentIndex .. ')')
         elseif recentIndex then
@@ -880,6 +882,9 @@ PB_DataEngine.markSpecialGroups = function(self)
             asset.originalGroup = asset.group
             asset.group = T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES]
             asset.favoriteOrder = favoriteIndex
+            -- Clear asset.order so sorting uses favoriteOrder instead of project order
+            asset.originalOrder = asset.order
+            asset.order = nil
             self.app.logger:logDebug('Marked asset as favorite: ' .. asset.id .. ' (order: ' .. favoriteIndex .. ')')
         elseif favoriteIndex then
             -- Mark as favorite but don't change group (favorites group is hidden or asset is in recents)
