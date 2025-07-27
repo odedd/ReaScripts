@@ -68,7 +68,7 @@ RunApp = function()
         local projPath, projFileName = OD_GetProjectPaths()
 
         local logger = OD_Logger:new({
-            level = OD_Logger.LOG_LEVEL.INFO,
+            level = OD_Logger.LOG_LEVEL.ERROR,
             output = OD_Logger.LOG_OUTPUT.CONSOLE,
             filename = projPath .. Scr.name .. '_' .. projFileName .. '.log',
             -- filename = p .. Scr.name .. '_' .. projFileName .. '.log',
@@ -1072,6 +1072,12 @@ RunApp = function()
                             if ImGui.IsKeyPressed(ctx, ImGui.Key_PageUp) then
                                 newIdx = math.max(
                                     app.selection.keyboardPos - maxSearchResults, 1)
+                            end
+                            if ImGui.IsKeyPressed(ctx, ImGui.Key_Home) then
+                                newIdx = 1
+                            end
+                            if ImGui.IsKeyPressed(ctx, ImGui.Key_End) then
+                                newIdx = #searchResults
                             end
                             if newIdx then
                                 if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) or ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl) then
