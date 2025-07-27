@@ -65,6 +65,7 @@ PB_DataEngine = {
         return validatedFilter, hasIssues
     end,
     refreshProjectRelatedAssets = function(self)
+        -- BUG: project related items lose the order in recents/favorites after refreshing
         self.app.logger:logDebug('-- PB_DataEngine.refreshProjectRelatedAssets()')
 
         if not self.assetTypeManager then
@@ -86,9 +87,9 @@ PB_DataEngine = {
             return
         end
 
-        -- Store current favorites and recents for preservation
-        local currentFavorites = OD_DeepCopy(self.app.userdata.current.favorites or {})
-        local currentRecents = OD_DeepCopy(self.app.userdata.current.recents or {})
+        -- Store current favorites and recents for preservation (shallow copy is sufficient)
+        local currentFavorites = self.app.userdata.current.favorites or {}
+        local currentRecents = self.app.userdata.current.recents or {}
 
         -- Refresh data for each asset type that needs it
         local refreshedAssetTypes = {}
@@ -106,17 +107,16 @@ PB_DataEngine = {
             end
         end
 
-        -- Remove old assets of refreshed types from main assets array
+        -- Create lookup table for refreshed asset types for O(1) lookup instead of nested loops
+        local refreshedAssetTypesLookup = {}
+        for assetTypeId, _ in pairs(refreshedAssetTypes) do
+            refreshedAssetTypesLookup[assetTypeId] = true
+        end
+
+        -- Remove old assets of refreshed types from main assets array (optimized)
         local assetsToKeep = {}
         for _, asset in ipairs(self.assets) do
-            local shouldKeep = true
-            for assetTypeId, _ in pairs(refreshedAssetTypes) do
-                if asset.type == assetTypeId then
-                    shouldKeep = false
-                    break
-                end
-            end
-            if shouldKeep then
+            if not refreshedAssetTypesLookup[asset.type] then
                 table.insert(assetsToKeep, asset)
             end
         end
@@ -864,9 +864,6 @@ PB_DataEngine.markSpecialGroups = function(self)
             asset.originalGroup = asset.group
             asset.group = T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS]
             asset.recentOrder = recentIndex
-            -- Clear asset.order so sorting uses recentOrder instead of project order
-            asset.originalOrder = asset.order
-            asset.order = nil
             recentCount = recentCount + 1
             self.app.logger:logDebug('Marked asset as recent: ' .. asset.id .. ' (order: ' .. recentIndex .. ')')
         elseif recentIndex then
@@ -882,9 +879,6 @@ PB_DataEngine.markSpecialGroups = function(self)
             asset.originalGroup = asset.group
             asset.group = T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES]
             asset.favoriteOrder = favoriteIndex
-            -- Clear asset.order so sorting uses favoriteOrder instead of project order
-            asset.originalOrder = asset.order
-            asset.order = nil
             self.app.logger:logDebug('Marked asset as favorite: ' .. asset.id .. ' (order: ' .. favoriteIndex .. ')')
         elseif favoriteIndex then
             -- Mark as favorite but don't change group (favorites group is hidden or asset is in recents)
