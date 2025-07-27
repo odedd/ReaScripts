@@ -154,7 +154,7 @@ PB_DataEngine = {
         -- Final sort
         self:sortAssets()
 
-        self.app.flow.filterResults({}, true)
+        self.app.flow.filterResults(nil, nil, true)
         self.app.logger:logInfo('Refreshed ' ..
             #newAssets .. ' project-related assets from ' .. #assetTypesToRefresh .. ' asset types')
     end,

@@ -90,7 +90,7 @@ function BaseAssetType:parseInteractionHintTemplate(template, count, asset, many
         local manyPlaceholder = manyPlaceholder or 'results'
         local countText = count == -1 and '&&&' or tostring(count)
         -- Replace variables
-        result = result:gsub("%%asset", count == 1 and asset or (countText .. ' selected '.. manyPlaceholder))
+        result = result:gsub("%%asset", count == 1 and asset or (countText .. ' '.. manyPlaceholder))
         result = result:gsub("%%count", countText)
         if count == -1 then result = result:gsub("&&& ",'') end
 

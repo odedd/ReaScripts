@@ -245,15 +245,19 @@ RunApp = function()
                 app.temp.searchInput = ''
                 app.flow.filterResults(filter or { text = '' })
             end,
-            filterResults = function(query, skipReset, targetAssets)
+            filterResults = function(query, skipReset, maintainSelection)
                 local reset = (skipReset == nil) and true or (not skipReset)
                 local assets = app.temp.searchMode == SEARCH_MODE.MAIN and app.engine.assets or app.engine.filterAssets
                 local tagsTable = app.engine.tags
-                local oldResults, oldKeyboardPosResult, validatedFilter, hasIssues, filter
+                local oldResults, oldKeyboardPosResult, validatedFilter, hasIssues, filter, maintainTargets
                 local init = function()
                     if not reset then
                         oldResults = app.selection:results()
                         oldKeyboardPosResult = oldResults[app.selection.keyboardPos]
+                    end
+                    if maintainSelection then
+                        -- Handle target assets selection (can be single asset, multiple assets, or nil)
+                        maintainTargets = maintainSelection and app.selection:results() or nil
                     end
                     query = OD_DeepCopy(query) or {}
                     if query.clear then
@@ -462,20 +466,18 @@ RunApp = function()
                 end
                 local resetOrRestoreSelection = function()
                     if reset then
-                        -- Handle target assets selection (can be single asset, multiple assets, or nil)
-                        local targets = targetAssets
                         -- If targetAssets is a single asset (not a table), convert it to a table
-                        if targets and type(targets) ~= "table" then
-                            targets = { targets }
+                        if maintainTargets and type(maintainTargets) ~= "table" then
+                            maintainTargets = { maintainTargets }
                         end
 
-                        if targets and #targets > 0 and #app.temp.searchResults > 0 then
+                        if maintainTargets and #maintainTargets > 0 and #app.temp.searchResults > 0 then
                             app.selection:empty()
                             local firstTargetIndex = nil
 
                             for i, result in ipairs(app.temp.searchResults) do
-                                for _, targetAsset in ipairs(targets) do
-                                    if result == targetAsset then
+                                for _, targetAsset in ipairs(maintainTargets) do
+                                    if result.type == targetAsset.type and result.load == targetAsset.load then
                                         app.selection:add(i)
                                         if not firstTargetIndex then
                                             firstTargetIndex = i
@@ -2069,7 +2071,7 @@ RunApp = function()
 
                                 if changed then
                                     -- Use filterResults to maintain selection on all affected assets
-                                    app.flow.filterResults(nil, nil, selectedResults)
+                                    app.flow.filterResults(nil, nil, true)
                                 end
                             end
                         end

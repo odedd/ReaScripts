@@ -10,6 +10,24 @@ function TrackAssetType.new(class, context)
     -- Tracks should be imported even if they can't be mapped to existing tracks
     instance.requiresMappingOnImport = false
     instance.updateOnProjectRefresh = true
+
+    instance:addInteraction(0, 'Scroll to and select %asset',
+        function(asset, context, contextData, confirm, total, index)
+            -- local targetGuid = asset.load
+
+            if index == 1 then
+                r.SetOnlyTrackSelected(asset.object)
+            else
+                r.SetTrackSelected(asset.object, true)
+            end
+            r.SetMediaTrackInfo_Value(asset.object, 'B_SHOWINMIXER', 1)
+            r.SetMediaTrackInfo_Value(asset.object, 'B_SHOWINTCP', 1)
+            if index == total then
+                r.SetMixerScroll(asset.object)
+                r.Main_OnCommand(40913, 0)
+            end
+            return true
+        end)
     return instance
 end
 
@@ -21,10 +39,10 @@ function TrackAssetType:getData()
         local trackName = select(2, reaper.GetTrackName(track))
         local trackGuid = reaper.GetTrackGUID(track)
         self.context.logger:logDebug('Track added', trackName)
-        
+
         -- Capture context from asset type scope
         local context = self.context
-        
+
         local trackData = {
             object = track,
             engine = context.engine,
@@ -45,15 +63,6 @@ function TrackAssetType:getData()
     return data
 end
 
-function TrackAssetType:getExecuteFunction()
-    return function(self, context, contextData)
-        -- Track execution - currently no default action implemented
-        -- Could implement track selection: r.SetOnlyTrackSelected(self.load)
-        -- For now, return true since there's no actual action to fail
-        return true
-    end
-end
-
 function TrackAssetType:assembleAsset(track)
     local asset = self:createAssetBase({
         type = self.assetTypeId,
@@ -62,7 +71,8 @@ function TrackAssetType:assembleAsset(track)
         group = self.group,
     })
     asset.order = track.order
+    asset.object = track.object
     asset.color = track.color
-    
+
     return asset
 end
