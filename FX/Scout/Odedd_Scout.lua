@@ -745,8 +745,7 @@ RunApp = function()
                 if OD_BfCheck(mods, ImGui.Mod_Ctrl) then table.insert(modKeys, OS_is.mac and 'Cmd' or 'Ctrl') end
                 if OD_BfCheck(mods, ImGui.Mod_Alt) then table.insert(modKeys, OS_is.mac and 'Option' or 'alt') end
                 if OD_BfCheck(mods, ImGui.Mod_Shift) then table.insert(modKeys, 'Shift') end
-                if OD_BfCheck(mods, RESULT_CONTEXT.KEYBOARD) then
-                elseif OD_BfCheck(mods, RESULT_CONTEXT.DRAGGED_TO_BLANK) then
+                if OD_BfCheck(mods, RESULT_CONTEXT.DRAGGED_TO_BLANK) then
                     table.insert(modKeys, 'Drag to empty area')
                 elseif OD_BfCheck(mods, RESULT_CONTEXT.DRAGGED_TO_TRACK) then
                     table.insert(modKeys, 'Drag to track')
