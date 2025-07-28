@@ -50,9 +50,10 @@ SEARCH_MODE = {
 RESULT_CONTEXT = {
     ['NONE'] = 0,
     ['KEYBOARD'] = 1,
-    ['MOUSE'] = 2,
-    ['DRAGGED_TO_TRACK'] = 4,
-    ['DRAGGED_TO_BLANK'] = 8,
+    ['MOUSE_CLICK'] = 2,
+    ['MOUSE_DOUBLE_CLICK'] = 4,
+    ['DRAGGED_TO_TRACK'] = 8,
+    ['DRAGGED_TO_BLANK'] = 16,
 }
 
 SHOW_FX_UI = {

@@ -26,6 +26,26 @@ function PluginAssetType.new(class, context)
                 return false, 'No tracks selected'
             end
         end)
+    instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_BLANK'], 'add %asset to a new track%plural( (all on one track))',
+        function(asset, context, contextData, confirm, total, index)
+            if index == 1 then
+                local numTracks = r.CountTracks(0)
+                r.InsertTrackAtIndex(numTracks, true)
+                asset.context.temp.newTrack = r.GetTrack(0, numTracks)
+            end
+            local originalUIState = instance:setPluginUIState()
+            local fxIndex = r.TrackFX_AddByName(asset.context.temp.newTrack, asset.load, false, -1)
+            instance:resetPluginUIState(originalUIState)
+            if index == total then asset.context.temp.newTrack = nil end
+            return true, ('Added %d FX to a new track'):format(total)
+        end)
+    instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_TRACK'], 'add %asset to track',
+        function(asset, context, contextData, confirm, total, index)
+            local originalUIState = instance:setPluginUIState()
+            local fxIndex = r.TrackFX_AddByName(contextData, asset.load, false, -1)
+            instance:resetPluginUIState(originalUIState)
+            return true, ('Added %d FX to a new track'):format(total)
+        end)
     instance:addInteraction(ImGui.Mod_Alt, 'add %asset to selected item(s)',
         function(asset, context, contextData, confirm)
             local selectedItems = instance:getSelectedItemsWithConfirmation(context, contextData, confirm, total, index)
@@ -78,7 +98,8 @@ function PluginAssetType.new(class, context)
                         local rv = reaper.CreateTrackSend(track, newTrack)
                     end
                 end
-                return true, ('Sent %d track(s) to a new track with %s'):format(#selectedTracks, asset.searchText[1].text)
+                return true,
+                    ('Sent %d track(s) to a new track with %s'):format(#selectedTracks, asset.searchText[1].text)
             elseif selectedTracks and #selectedTracks == 0 then
                 return false, 'No tracks selected'
             end

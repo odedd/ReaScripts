@@ -54,7 +54,7 @@ function BaseAssetType:getExecuteFunction(context)
     -- Determine which execute function to use based on context (modifier keys)
     if class.executeFunctions and context then
         executeFunction = class.executeFunctions[context] or
-        class.executeFunctions[OD_BfSet(OD_BfSet(context, RESULT_CONTEXT.KEYBOARD, false), RESULT_CONTEXT.MOUSE, false)] or
+        class.executeFunctions[OD_BfSet(OD_BfSet(OD_BfSet(context, RESULT_CONTEXT.KEYBOARD, false), RESULT_CONTEXT.MOUSE_CLICK, false), RESULT_CONTEXT.MOUSE_DOUBLE_CLICK, false)] or
         class.executeFunctions[0]
     end
 

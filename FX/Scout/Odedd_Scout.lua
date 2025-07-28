@@ -303,7 +303,7 @@ RunApp = function()
                             filter.tags[tagId] = nil
                         end
                     end
-                    
+
                     -- Other filter fields with validation
                     for queryType, queryValue in pairs(query) do
                         if queryType ~= 'text' and queryType ~= 'addTags' and queryType ~= 'removeTags' then
@@ -745,8 +745,16 @@ RunApp = function()
                 if OD_BfCheck(mods, ImGui.Mod_Ctrl) then table.insert(modKeys, OS_is.mac and 'Cmd' or 'Ctrl') end
                 if OD_BfCheck(mods, ImGui.Mod_Alt) then table.insert(modKeys, OS_is.mac and 'Option' or 'alt') end
                 if OD_BfCheck(mods, ImGui.Mod_Shift) then table.insert(modKeys, 'Shift') end
-                if OD_BfCheck(mods, RESULT_CONTEXT.KEYBOARD) then table.insert(modKeys, 'Enter') end
-                if OD_BfCheck(mods, RESULT_CONTEXT.MOUSE) then table.insert(modKeys, 'Double-Click') end
+                if OD_BfCheck(mods, RESULT_CONTEXT.KEYBOARD) then
+                elseif OD_BfCheck(mods, RESULT_CONTEXT.DRAGGED_TO_BLANK) then
+                    table.insert(modKeys, 'Drag to empty area')
+                elseif OD_BfCheck(mods, RESULT_CONTEXT.DRAGGED_TO_TRACK) then
+                    table.insert(modKeys, 'Drag to track')
+                else
+                    if OD_BfCheck(mods, RESULT_CONTEXT.KEYBOARD) then table.insert(modKeys, 'Enter') end
+                    if OD_BfCheck(mods, RESULT_CONTEXT.MOUSE_CLICK) then table.insert(modKeys, 'Click') end
+                    if OD_BfCheck(mods, RESULT_CONTEXT.MOUSE_DOUBLE_CLICK) then table.insert(modKeys, 'Double-Click') end
+                end
                 return table.concat(modKeys, '+')
             end,
             calcTinyIconSize = function(ctx, icon)
@@ -1342,7 +1350,7 @@ RunApp = function()
                                                     app.selection:selectOnly(row.index)
                                                 end
                                                 if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
-                                                    app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.MOUSE)
+                                                    app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.MOUSE_DOUBLE_CLICK)
                                                 end
                                             end
                                             if app.temp.highlightDropAreaForAllSelectedResults and app.temp.highlightDropAreaForAllSelectedResults < ImGui.GetFrameCount(ctx) or app.temp.highlightDropAreaFor == row.index then
@@ -1353,7 +1361,7 @@ RunApp = function()
                                             end
                                             if ImGui.IsItemHovered(ctx) then
                                                 hintResult = result
-                                                hintContext = RESULT_CONTEXT.MOUSE
+                                                hintContext = RESULT_CONTEXT.MOUSE_DOUBLE_CLICK
                                             end
                                             ImGui.SameLine(ctx)
 
@@ -2481,7 +2489,7 @@ RunApp = function()
                     --     ImGui.Cond_Appearing,
                     --     0.5,
                     --     0.5)
-                    ImGui.SetNextWindowSizeConstraints(ctx, w*.7, 0.0, FLT_MAX, maxH)
+                    ImGui.SetNextWindowSizeConstraints(ctx, w * .7, 0.0, FLT_MAX, maxH)
                     app.gui:pushStyles(app.gui.st.vars.popupsTitle)
                     local visible, open = ImGui.Begin(ctx, Scr.name .. ' Help##helpWindow', true,
                         ImGui.WindowFlags_NoDocking |
@@ -2506,17 +2514,21 @@ RunApp = function()
                                             ImGui.PushID(ctx, i)
                                             if ImGui.CollapsingHeader(ctx, app.engine.assetGroupNameCache[group], false, ImGui.TreeNodeFlags_DefaultOpen | ImGui.Cond_Appearing) then
                                                 if ImGui.BeginTable(ctx, "keyCommands", 2, nil, 0) then
-                                                    ImGui.TableSetupColumn(ctx, 'Key Commands',ImGui.TableColumnFlags_WidthFixed,180 * app.gui.scale)
-                                                    ImGui.TableSetupColumn(ctx, 'Description',ImGui.TableColumnFlags_WidthStretch)
+                                                    ImGui.TableSetupColumn(ctx, 'Key Commands',
+                                                        ImGui.TableColumnFlags_WidthFixed, 180 * app.gui.scale)
+                                                    ImGui.TableSetupColumn(ctx, 'Description',
+                                                        ImGui.TableColumnFlags_WidthStretch)
                                                     for keymod, hint in OD_PairsByOrder(_G[group].interactionHints) do
                                                         ImGui.TableNextRow(ctx)
                                                         ImGui.TableNextColumn(ctx)
                                                         local description = hint.text
                                                         local mod = keymod == 0 and 'Click' or
-                                                            app.guiHelpers.keyModsToText(keymod) .. '-Click'
-                                                        local text = BaseAssetType:parseInteractionHintTemplate(description,
+                                                            app.guiHelpers.keyModsToText(keymod | RESULT_CONTEXT.MOUSE_CLICK)
+                                                        local text = BaseAssetType:parseInteractionHintTemplate(
+                                                            description,
                                                             -1,
-                                                            _G[group].singleName, 'selected ' .. _G[group].pluralName):gsub(
+                                                            _G[group].singleName, 'selected ' .. _G[group].pluralName)
+                                                        :gsub(
                                                             "^%l", string.upper)
                                                         ImGui.PushFont(ctx, app.gui.st.fonts.bold)
                                                         -- ImGui.TextWrapped(ctx, mod .. ': ')
@@ -2535,12 +2547,11 @@ RunApp = function()
                                         end
                                     end
                                     ImGui.EndTabItem(ctx)
-
                                 end
                                 if ImGui.BeginTabItem(ctx, 'Another Menu', false) then
                                     ImGui.EndTabItem(ctx)
                                 end
-                            ImGui.EndTabBar(ctx)
+                                ImGui.EndTabBar(ctx)
                             end
                             ImGui.EndChild(ctx)
                         end
