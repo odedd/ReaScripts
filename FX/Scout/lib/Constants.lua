@@ -181,10 +181,8 @@ end
 local cmdId = getScriptId(script_name)
 
 if cmdId then
-    if r.GetExtState(context, 'defer') ~= '1' then
-        local intId = r.NamedCommandLookup('_'..cmdId)
-        if intId ~= 0 then r.Main_OnCommand(intId,0) end
-    end
+    local intId = r.NamedCommandLookup('_'..cmdId)
+    if intId ~= 0 then r.Main_OnCommand(intId,0) end
     r.SetExtState(context, 'EXTERNAL_COMMAND',cmd, false)
 else
     r.MB(script_name..' not installed', script_name,0)

@@ -251,6 +251,7 @@ RunApp = function()
                 local tagsTable = app.engine.tags
                 local oldResults, oldKeyboardPosResult, validatedFilter, hasIssues, filter, maintainTargets
                 local init = function()
+                    app.temp.filter = app.temp.filter or {}
                     if not reset then
                         oldResults = app.selection:results()
                         oldKeyboardPosResult = oldResults[app.selection.keyboardPos]
@@ -759,9 +760,11 @@ RunApp = function()
             end,
             calcTinyIconSize = function(ctx, icon)
                 app.temp.iconSizes = app.temp.iconSizes or {}
-                if app.temp.iconSizes[icon] then
+                app.temp.iconSizesCacheZoom = app.temp.iconSizesCacheZoom or {}
+                if app.temp.iconSizes[icon] and app.temp.iconSizesCacheZoom[icon] == app.gui.scale then
                     return table.unpack(app.temp.iconSizes[icon])
                 else
+                    app.temp.iconSizesCacheZoom[icon] = app.gui.scale
                     ImGui.PushFont(ctx, app.gui.st.fonts.icons_tiny)
                     local iconW, iconH = ImGui.CalcTextSize(ctx, icon)
                     app.temp.iconSizes[icon] = table.pack(iconW, iconH)
@@ -771,13 +774,13 @@ RunApp = function()
             end,
             tinyIcon = function(ctx, id, icon, highlighted, disabled, hint, hintLevel)
                 local clicked = false
-                local textW, textH = ImGui.CalcTextSize(ctx, 'I')
+                local textH = ImGui.GetTextLineHeight(ctx)
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
                 local iconW, iconH = app.guiHelpers.calcTinyIconSize(ctx, icon) --ImGui.CalcTextSize(ctx, icon)
 
+                ImGui.BeginGroup(ctx)
                 local x, y = ImGui.GetCursorPos(ctx)
                 ImGui.SetCursorPosY(ctx, y + paddingY + (textH - iconH) / 2)
-                -- ImGui.AlignTextToFramePadding(ctx)
                 if ImGui.InvisibleButton(ctx, 'x##' .. id, iconW, iconH) then
                     clicked = true
                 end
@@ -794,13 +797,11 @@ RunApp = function()
                         col = app.gui.st.col.activeFilterButton[ImGui.Col_ButtonHovered]
                     end
                 end
-                -- ImGui.SetCursorPosY(ctx, y + paddingY + (textH - closeButtonSizeH) / 2)
                 ImGui.SetCursorPos(ctx, x, y + paddingY + (textH - iconH) / 2)
                 ImGui.PushFont(ctx, app.gui.st.fonts.icons_tiny)
                 ImGui.TextColored(ctx, col, icon)
                 ImGui.PopFont(ctx)
-                ImGui.SetCursorPos(ctx, x + iconW, y)
-                ImGui.Dummy(ctx, 0, 0)
+                ImGui.EndGroup(ctx)
                 if not disabled then return clicked end
             end,
             iconButton = function(ctx, icon, colClass, hint, font)
@@ -998,8 +999,8 @@ RunApp = function()
                                         ImGui.CalcTextSize(ctx, text)
                                 end
                                 local iconWidth = app.guiHelpers.calcTinyIconSize(ctx, FILTER_ICONS[filter.type])
-                                local tagIconWidth = filter.type == FILTER_TYPES.TAG and (app.guiHelpers.calcTinyIconSize(ctx, (filter.value and ICONS.PLUS or ICONS.MINUS)) - spacingX) or 0
-                                local filterW = paddingX + iconWidth + tagIconWidth + spacingX * 2 + textW + spacingX + closeButtonSizeW +
+                                local tagIconWidth = filter.type == FILTER_TYPES.TAG and (app.guiHelpers.calcTinyIconSize(ctx, (filter.value and ICONS.PLUS or ICONS.MINUS)) + spacingX) or 0
+                                local filterW = paddingX + iconWidth + tagIconWidth + spacingX + textW + spacingX * 2 + closeButtonSizeW +
                                     paddingX
                                 if (i ~= 1) then
                                     ImGui.SameLine(ctx)
@@ -1022,23 +1023,24 @@ RunApp = function()
                                         FILTER_ICONS[filter.type],
                                         true,
                                         true)
-                                    ImGui.SameLine(ctx)
+                                    ImGui.SameLine(ctx, 0, spacingX)
 
                                     -- ImGui.AlignTextToFramePadding(ctx)
                                     -- ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + iconWidth + spacingX * 2) --, ImGui.GetCursorPosY(ctx) + paddingY)
                                     if filter.type == FILTER_TYPES.TAG then
-                                        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
+                                        -- ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
                                         app.guiHelpers.tinyIcon(ctx, 'tagType',
                                             filter.value and ICONS.PLUS or ICONS.MINUS,
                                             true,
                                             true)
-                                        ImGui.SameLine(ctx)
-                                        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
+                                        ImGui.SameLine(ctx, 0, spacingX)
+                                        -- ImGui.Dummy(ctx, 0, 0)
+                                        -- ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
                                         -- ImGui.TextColored(ctx, app.gui.st.basecolors.textDark, T.FILTER_NAMES[filter.key])
                                     end
                                     ImGui.AlignTextToFramePadding(ctx)
                                     ImGui.Text(ctx, filter.itemName)
-                                    ImGui.SameLine(ctx)
+                                    ImGui.SameLine(ctx, 0, spacingX*2)
                                     if app.guiHelpers.tinyIcon(ctx, 'removeFilter', ICONS.CLOSE, nil, nil, T.HINTS.ACTIVE_FILTER_REMOVE, 2) then
                                         if filter.type == FILTER_TYPES.TAG then
                                             app.flow.filterResults({ removeTags = { filter.item.id } })

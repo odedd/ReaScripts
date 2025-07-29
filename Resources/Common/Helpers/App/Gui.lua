@@ -105,15 +105,6 @@ OD_Gui.recalculateZoom = function(self, scale)
     OD_Gui.updateCachedTextHeightsToScale(self)
 end
 
-OD_Gui.reloadZoomFonts = function(self) -- FIND A SMART WAY TO USE THIS
-    for key, font in pairs(self.originalFonts) do
-        r.ImGui_Detach(self.ctx, self.st.fonts[key])
-        self:addFont(key, font.file, font.size, true)
-        r.ImGui_Attach(self.ctx, self.st.fonts[key])
-    end
-    self:updateCachedTextHeightsToScale()
-end
-
 OD_Gui.updateCachedTextHeightsToScale = function(self)
 
     if self.st.fonts.default then
