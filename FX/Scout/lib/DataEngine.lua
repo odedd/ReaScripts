@@ -1063,7 +1063,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                         load = item.query,
                         loadAll = filter.allQuery,
                         group = T.FILTER_NAMES[filterType],
-                        getInteractionHintFor = function(self, mods, context, count)
+                        getInteractionHintFor = function(self, mods, context, contextData, count)
                             return interactionHints(filterType, mods,
                                 context, count, itemName, T.FILTER_NAMES_PLURAL[filterType])
                         end
@@ -1125,7 +1125,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                     order = tag.order,
                     load = tag.id,
                     group = T.FILTER_NAMES[FILTER_TYPES.TAG],
-                    getInteractionHintFor = function(self, mods, context, count)
+                    getInteractionHintFor = function(self, mods, context, contextData, count)
                         return interactionHints(FILTER_TYPES.TAG, mods,
                             context, count, tag.name,T.FILTER_NAMES_PLURAL[FILTER_TYPES.TAG])
                     end
@@ -1152,7 +1152,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 order = preset.id, -- Use ID as order for now, could be customized later
                 preset = preset,   -- Store reference to preset
                 group = T.FILTER_NAMES[FILTER_TYPES.PRESET],
-                getInteractionHintFor = function(self, mods, context, count)
+                getInteractionHintFor = function(self, mods, context, contextData, count)
                     return interactionHints(FILTER_TYPES.PRESET, mods,
                         context, count, preset.name, T.FILTER_NAMES_PLURAL[FILTER_TYPES.PRESET])
                 end

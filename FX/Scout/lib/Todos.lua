@@ -25,12 +25,13 @@
 -- DONE: Add markers/regions
 -- DONE: Think of a way to handle execution of multiple items together rather than sequentially (but not always - example: multiple track selection VS run actions sequentially)
 -- DONE: Refresh project specific assets (tracks, markers/regions)
+-- TODO: Fix Hints (in progress)
 -- TODO: All execute functions + handling FX instruments
 -- TODO: Create Default Presets with Magic Words for types
--- TODO: Fix Hints
--- TODO: Add tooltips to results with additional information
 -- TODO: Refresh projects?
 -- TODO: Add take markers
 -- TODO: Track newly added plugins (?)
--- TODO: minimal mode (?)
 -- TODO: Import progress bar (coroutine?)
+-- TODO: minimal mode (?)
+-- TODO: disable selecting multiple filters of the same type? (this is a petty one)
+-- TODO: Add tooltips to results with additional information (maybe not?)
