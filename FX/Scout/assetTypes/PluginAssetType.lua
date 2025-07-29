@@ -12,7 +12,7 @@ function PluginAssetType.new(class, context)
     instance.shouldMapBaseFilenames = true
 
     instance:addInteraction(0, 'add %asset to selected track(s)',
-        function(asset, context, contextData, confirm, total, index)
+        function(asset, mods, context, contextData, confirm, total, index)
             local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
 
             if selectedTracks and #selectedTracks > 0 then
@@ -26,8 +26,8 @@ function PluginAssetType.new(class, context)
                 return false, 'No tracks selected'
             end
         end)
-    instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_TRACK'], 'add %asset to track',
-        function(asset, context, contextData, confirm, total, index)
+    instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_TRACK'], 'add %asset to dragged track',
+        function(asset, mods, context, contextData, confirm, total, index)
             local originalUIState = instance:setPluginUIState()
             local fxIndex = r.TrackFX_AddByName(contextData, asset.load, false, -1)
             instance:resetPluginUIState(originalUIState)
@@ -35,7 +35,7 @@ function PluginAssetType.new(class, context)
         end)
     instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_BLANK'],
         'add %asset to %singular(a new track)%plural(%count new tracks (each on its own track))',
-        function(asset, context, contextData, confirm, total, index)
+        function(asset, mods, context, contextData, confirm, total, index)
             local numTracks = r.CountTracks(0)
             r.InsertTrackAtIndex(numTracks, true)
             local newTrack = r.GetTrack(0, numTracks)
@@ -45,8 +45,8 @@ function PluginAssetType.new(class, context)
             return true, ('Added %d FX to new track (each on its own track)'):format(total)
         end)
     instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_BLANK']| ImGui.Mod_Ctrl,
-        'add %asset to a new track %plural( (all on one track))',
-        function(asset, context, contextData, confirm, total, index)
+        'add %asset to a new track%plural( (all on one track))',
+        function(asset, mods, context, contextData, confirm, total, index)
             if index == 1 then
                 local numTracks = r.CountTracks(0)
                 r.InsertTrackAtIndex(numTracks, true)
@@ -59,7 +59,7 @@ function PluginAssetType.new(class, context)
             return true, ('Added %d FX to a new track'):format(total)
         end)
     instance:addInteraction(ImGui.Mod_Alt, 'add %asset to selected item(s)',
-        function(asset, context, contextData, confirm)
+        function(asset, mods, context, contextData, confirm)
             local selectedItems = instance:getSelectedItemsWithConfirmation(context, contextData, confirm, total, index)
 
             if selectedItems and #selectedItems > 0 then
@@ -77,7 +77,7 @@ function PluginAssetType.new(class, context)
             end
         end)
     instance:addInteraction(ImGui.Mod_Alt | ImGui.Mod_Ctrl, 'add %asset to selected track(s) as input FX',
-        function(asset, context, contextData, confirm, total, index)
+        function(asset, mods, context, contextData, confirm, total, index)
             local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
 
             if selectedTracks and #selectedTracks > 0 then
@@ -94,7 +94,7 @@ function PluginAssetType.new(class, context)
 
     instance:addInteraction(ImGui.Mod_Shift,
         'send to %singular(a new track)%plural(%count new tracks) with %asset%plural( (each FX on a separate track%))',
-        function(asset, context, contextData, confirm, total, index)
+        function(asset, mods, context, contextData, confirm, total, index)
             local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
                 local newTrack = helpers.createSendTrack(asset)
@@ -119,7 +119,7 @@ function PluginAssetType.new(class, context)
 
     instance:addInteraction(ImGui.Mod_Ctrl | ImGui.Mod_Shift,
         'send to a new track with %asset%plural( (all on the same track%))',
-        function(asset, context, contextData, confirm, total, index)
+        function(asset, mods, context, contextData, confirm, total, index)
             local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
                 if index == 1 then asset.context.temp.newSendTrack = helpers.createSendTrack(asset) end

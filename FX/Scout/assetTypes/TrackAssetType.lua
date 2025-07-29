@@ -12,7 +12,7 @@ function TrackAssetType.new(class, context)
     instance.updateOnProjectRefresh = true
 
     instance:addInteraction(0, 'select and scroll to %asset',
-        function(asset, context, contextData, confirm, total, index)
+        function(asset, mods, context, contextData, confirm, total, index)
             -- local targetGuid = asset.load
 
             if index == 1 then
@@ -29,7 +29,7 @@ function TrackAssetType.new(class, context)
             return true, ('selected %d track(s)'):format(total)
         end)
     instance:addInteraction(ImGui.Mod_Ctrl, 'select and scroll to %asset (and %singular(its)%plural(their) children)',
-        function(asset, context, contextData, confirm, total, index)
+        function(asset, mods, context, contextData, confirm, total, index)
             -- local targetGuid = asset.load
 
             if index == 1 then
@@ -55,7 +55,7 @@ function TrackAssetType.new(class, context)
         end)
 
     instance:addInteraction(ImGui.Mod_Alt, 'only make %asset visible',
-        function(asset, context, contextData, confirm, total, index)
+        function(asset, mods, context, contextData, confirm, total, index)
             if index == 1 then
                 r.PreventUIRefresh(1)
                 local numTracks = r.CountTracks(0)
@@ -82,7 +82,7 @@ function TrackAssetType.new(class, context)
 
     instance:addInteraction(ImGui.Mod_Alt | ImGui.Mod_Ctrl,
         'only make %asset (and %singular(its)%plural(their) children) visible',
-        function(asset, context, contextData, confirm, total, index)
+        function(asset, mods, context, contextData, confirm, total, index)
             if index == 1 then
                 r.PreventUIRefresh(1)
                 local numTracks = r.CountTracks(0)
@@ -117,7 +117,7 @@ function TrackAssetType.new(class, context)
 
 
     instance:addInteraction(ImGui.Mod_Shift, 'send from selected track(s) to %asset',
-        function(asset, context, contextData, confirm, total, index)
+        function(asset, mods, context, contextData, confirm, total, index)
             local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
                 for _, track in ipairs(selectedTracks) do

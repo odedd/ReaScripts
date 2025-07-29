@@ -31,7 +31,7 @@ function TrackTemplateAssetType:getData()
 end
 
 function TrackTemplateAssetType:getExecuteFunction()
-    return function(self, context, contextData)
+    return function(self, mods, context, contextData)
         -- Track template execution - load the specific template file
         -- Use Main_openProject with track template parameter
         return true -- Main_openProject doesn't return meaningful success value

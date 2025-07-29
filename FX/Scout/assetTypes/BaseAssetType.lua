@@ -47,15 +47,23 @@ function BaseAssetType:assembleAsset(assetData)
     error("BaseAssetType:assembleAsset() must be implemented by subclass")
 end
 
-function BaseAssetType:getExecuteFunction(context)
+function BaseAssetType:determineCorrectContext(mods, context)
+    local context = context or 0
+    local correctContext =
+        self.interactionHints[mods | context] and (mods | context) or
+        self.interactionHints[mods] and (mods) or
+        self.interactionHints[context] and (context) or
+        self.interactionHints[0] and (0)
+    return correctContext
+end
+function BaseAssetType:getExecuteFunction(mods, context)
     local class = getmetatable(self)
     local executeFunction = nil
 
     -- Determine which execute function to use based on context (modifier keys)
-    if class.executeFunctions and context then
-        executeFunction = class.executeFunctions[context] or
-        class.executeFunctions[OD_BfSet(OD_BfSet(OD_BfSet(context, RESULT_CONTEXT.KEYBOARD, false), RESULT_CONTEXT.MOUSE_CLICK, false), RESULT_CONTEXT.MOUSE_DOUBLE_CLICK, false)] or
-        class.executeFunctions[0]
+    if class.executeFunctions and mods then
+        local correctContext = class:determineCorrectContext(mods, context)
+        executeFunction = class.executeFunctions[correctContext]
     end
 
     return executeFunction
@@ -102,26 +110,22 @@ function BaseAssetType:parseInteractionHintTemplate(template, count, asset, many
         return result
 end
 function BaseAssetType:getInteractionHintFor(mods, context, count)
-    local count = count or 1
     local class = self.class
+    local count = count or 1
     local interactionHint = nil
-    local correctContext =
-        class.interactionHints[mods | context] and (mods | context) or
-        class.interactionHints[mods] and (mods) or
-        class.interactionHints[context] and (context) or
-        class.interactionHints[0] and (0)
+    local correctContext = class:determineCorrectContext(mods, context)
     interactionHint = class.interactionHints[correctContext].text
     return class:parseInteractionHintTemplate(interactionHint, count, self.searchText[1].text, class.pluralName), correctContext | context
 end
 
 function BaseAssetType:executeAndAddToRecents()
-    return function(asset, context, contextData, confirm, total, index)
+    return function(asset, mods, context, contextData, confirm, total, index)
         local assetType = self -- Capture the asset type instance
 
-        local executeFunction = assetType:getExecuteFunction(context)
+        local executeFunction = assetType:getExecuteFunction(mods, context)
         if executeFunction then
             -- Execute first and check if successful
-            local success, result, logMsg = pcall(executeFunction, asset, context, contextData, confirm, total, index)
+            local success, result, logMsg = pcall(executeFunction, asset, mods, context, contextData, confirm, total, index)
 
             if success and result == true then
                 -- Only add to recents if execution was successful AND returned true

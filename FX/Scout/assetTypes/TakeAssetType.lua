@@ -11,7 +11,7 @@ function TakeAssetType.new(class, context)
     instance.requiresMappingOnImport = false
     instance.updateOnProjectRefresh = true
 
-    instance:addInteraction(0, 'select take %asset', function(asset, context, contextData, confirm, total, index)
+    instance:addInteraction(0, 'select take %asset', function(asset, mods, context, contextData, confirm, total, index)
         local targetGuid = asset.load
         local numTracks = reaper.CountTracks(0)
         

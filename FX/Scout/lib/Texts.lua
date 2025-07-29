@@ -138,6 +138,16 @@ T.FILTER_NAMES = {
     [FILTER_TYPES.TAG] = 'Tag',
     [FILTER_TYPES.OTHER] = 'Other'
 }
+T.FILTER_NAMES_PLURAL = {
+    [FILTER_TYPES.PRESET] = 'Presets',
+    [FILTER_TYPES.TYPE] = 'Result Types',
+    [FILTER_TYPES.FX_TYPE] = 'FX Types',
+    [FILTER_TYPES.FOLDER] = 'Folders',
+    [FILTER_TYPES.CATEGORY] = 'Categories',
+    [FILTER_TYPES.DEVELOPER] = 'Developers',
+    [FILTER_TYPES.TAG] = 'Tags',
+    [FILTER_TYPES.OTHER] = 'Others'
+}
 T.ERROR = {
     NO_DOCK = ([[
 No previous dock found.
@@ -174,3 +184,22 @@ no way forscripts to set it on their own, you have to select new
 instance manually.]]
 
 T.TURN_ON_SLEEP_MODE = 'Do you wish to turn on sleep mode? (Say yes!)'
+
+T.HINTS = {
+    FILTER_DEFAULT = 'Show items whose %s is %s.',
+    PRESET_DEFAULT = 'Load preset %s.',
+    EDIT_PRESET_DEFAULT = 'Edit preset %s.',
+    OTHER_FILTERS = {
+        ['Untagged'] = 'Show items that have no tags.'
+    },
+    TAG_DEFAULT = 'Tag \'%s\'. Double-Click to rename.',
+    TAG_POSITIVE = 'Show items that include tag \'%s\'.',
+    TAG_NEGATIVE = 'Show items that do not include tag \'%s\'.',
+    TAG_REMOVE = 'Remove tag \'%s\' from filter list.',
+    DRAG_RESULT_TO_ADD_TAG = 'Add tag \'%s\' to %s. Hold %s to remove tag.',
+    DRAG_RESULT_TO_REMOVE_TAG = 'Remove tag \'%s\' from %s.',
+    DRAG_RESULT_DEFAULT = 'Drag to tag list to add/remove tags or to a track.',
+    DRAG_TAG_DEFAULT = 'Drag to another tag to reorder or to an item to add/remove tag.',
+    DRAG_TAG_INTO_TAG = 'Move tag \'%s\' into tag \'%s\'.',
+    DRAG_TAG_TO_POSITION_RELATIVE_TO_TAG = 'Move tag \'%s\' %s tag \'%s\'.',
+}

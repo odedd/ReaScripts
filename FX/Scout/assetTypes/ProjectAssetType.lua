@@ -38,7 +38,7 @@ function ProjectAssetType:getData()
 end
 
 function ProjectAssetType:getExecuteFunction()
-    return function(self, context, contextData)
+    return function(self, mods, context, contextData)
         -- Open the project file in Reaper
         r.Main_openProject(self.load)
         return true

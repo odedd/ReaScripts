@@ -50,7 +50,7 @@ function MarkerAssetType:getData()
 end
 
 function MarkerAssetType:getExecuteFunction()
-    return function(self, context, contextData)
+    return function(self, mods, context, contextData)
         if OD_BfCheck(context, ImGui.Mod_Shift) and self.isrgn then
             r.GetSet_LoopTimeRange(true, OD_BfCheck(context, ImGui.Mod_Alt), self.pos, self.regend, true)
             if OD_BfCheck(context, ImGui.Mod_Alt) then

@@ -43,7 +43,7 @@ function ProjectTemplateAssetType:getData()
 end
 
 function ProjectTemplateAssetType:getExecuteFunction()
-    return function(self, context, contextData)
+    return function(self, mods, context, contextData)
         -- Open the project file in Reaper
         r.Main_openProject("template:" .. self.load)
         return true

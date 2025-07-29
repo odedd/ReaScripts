@@ -187,7 +187,7 @@ RunApp = function()
                 for assetType, typeResults in pairs(resultsByType) do
                     local total = #typeResults
                     for i, result in ipairs(typeResults) do
-                        result:execute(ImGui.GetKeyMods(app.gui.ctx) | (resultContext or 0), contextData, confirm, total,
+                        result:execute(ImGui.GetKeyMods(app.gui.ctx), resultContext or 0, contextData, confirm, total,
                             i)
                     end
                 end
@@ -712,6 +712,7 @@ RunApp = function()
                     end
                     if ImGui.IsWindowAppearing(ctx) then
                         ImGui.SetConfigVar(ctx, ImGui.ConfigVar_DockingNoSplit, 1)
+                        ImGui.SetConfigVar(ctx, ImGui.ConfigVar_HoverDelayNormal, 0.6)
                     end
                 end
             end,
@@ -768,7 +769,7 @@ RunApp = function()
                     return table.unpack(app.temp.iconSizes[icon])
                 end
             end,
-            tinyIcon = function(ctx, id, icon, highlighted, disabled, toolTip)
+            tinyIcon = function(ctx, id, icon, highlighted, disabled, toolTip, hint)
                 local clicked = false
                 local textW, textH = ImGui.CalcTextSize(ctx, 'I')
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
@@ -788,6 +789,9 @@ RunApp = function()
                     end
                 end
                 if ImGui.IsItemHovered(ctx) and not disabled then
+                    if hint then
+                        app:setHint('main', hint)
+                    end
                     ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
                     if ImGui.IsItemActive(ctx) then
                         col = app.gui.st.col.activeFilterButton[ImGui.Col_ButtonActive]
@@ -815,7 +819,7 @@ RunApp = function()
                     clicked = true
                 end
                 if hint then
-                    app:setHoveredHint('main', hint, nil, nil, 1)
+                    app:setHoveredHint('main', hint)
                 end
                 if ImGui.IsItemHovered(ctx) then
                     ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
@@ -1106,6 +1110,8 @@ RunApp = function()
                                 ImGui.DragDropFlags_AcceptBeforeDelivery |
                                 ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
                             if tagDropped then
+                                local payloadTag = app.engine.tags[tonumber(tagPayload)]
+
                                 if app.selection:has(row.index) and not app.temp.highlightDropAreaForAllSelectedResults then
                                     app.temp.highlightDropAreaForAllSelectedResults = ImGui.GetFrameCount(
                                         ctx)
@@ -1114,9 +1120,17 @@ RunApp = function()
                                     app.temp.highlightDropAreaForAllSelectedResults = nil
                                     app.temp.highlightDropAreaFor = row.index
                                 end
-                                if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
-                                    local payloadTag = app.engine.tags[tonumber(tagPayload)]
+                                local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
+                                local numItemsSelected = app.selection:count()
+                                local resultName = app.temp.highlightDropAreaFor and
+                                    searchResults[app.temp.highlightDropAreaFor].searchText[1].text or
+                                    (numItemsSelected == 1 and app.selection:results()[1].searchText[1].text or app.selection:count() .. ' items')
+                                app:setHint('main',
+                                    (remove and T.HINTS.DRAG_RESULT_TO_REMOVE_TAG or T.HINTS.DRAG_RESULT_TO_ADD_TAG)
+                                    :format(payloadTag.name, resultName,
+                                        OS_is.mac and 'Option' or 'Alt'), nil, nil, 2)
 
+                                if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
                                     local results
                                     local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
 
@@ -1141,58 +1155,33 @@ RunApp = function()
                             ImGui.EndDragDropTarget(ctx)
                         end
                         if ImGui.BeginDragDropSource(ctx) then
+                            app:setHint('main', T.HINTS.DRAG_RESULT_DEFAULT)
                             if not ImGui.GetDragDropPayload(ctx) and not app.selection:has(row.index) then
                                 app.selection:selectOnly(row.index)
-                                -- app.selection.keyboardPos = row.index
                             end
-                            local listTracks = false
                             local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
                             ImGui.SetDragDropPayload(ctx, 'ASSET', remove and 'remove' or 'add')
-                            if app.temp.dragDropTagTargetName then
-                                ImGui.Text(ctx,
-                                    (remove and 'Remove' or 'Add') ..
-                                    ' tag \'' ..
-                                    app.temp.dragDropTagTargetName .. '\' ' .. (remove and 'from:' or 'to:'))
-                                ImGui.Separator(ctx)
-                                listTracks = true
-                            end
+                            local numItemsSelected = app.selection:count()
+                            local firstResult = app.selection:results()[1]
+                            local resultName = (numItemsSelected == 1) and firstResult.searchText[1].text or
+                                numItemsSelected .. ' items'
                             local winX, winY = table.unpack(app.gui.mainWindow.pos)
                             local winW, winH = table.unpack(app.gui.mainWindow.size)
                             local x, y = ImGui.GetCursorScreenPos(ctx)
                             if not (x >= winX and x <= winX + winW and y >= winY and y <= winY + winH) then
                                 local track, context, position = r.BR_TrackAtMouseCursor()
-                                if track then
-                                    ImGui.Text(ctx,
-                                        'Add to track ' .. select(2, r.GetTrackName(track)) .. ':\n')
-                                    app.temp.dragToTrack = track
-                                else
-                                    ImGui.Text(ctx, 'Create new track with:\n')
-                                    app.temp.dragToTrack = -1
-                                end
-                                ImGui.Separator(ctx)
-                                listTracks = true
+                                local mods = ImGui.GetKeyMods(ctx)
+                                local hintContext = track and RESULT_CONTEXT.DRAGGED_TO_TRACK or
+                                    RESULT_CONTEXT['DRAGGED_TO_BLANK']
+                                local assetHint = (firstResult:getInteractionHintFor(mods, hintContext,
+                                    app.selection:count())):gsub("^%l", string.upper)
+                                app:setHint('main', assetHint, nil, nil, 2)
+                                app.temp.dragToTrack = track or
+                                    -1 -- either store the dragged track or -1 to signify blank
                             else
                                 app.temp.dragToTrack = nil
-                                -- listTracks = false
                             end
-                            if listTracks then
-                                local count = 0
-                                for itemIndex, _ in pairs(app.selection.items) do
-                                    count = count + 1
-                                    if count > 5 then
-                                        ImGui.Text(ctx, '+ ' .. (app.selection:count() - count + 1) .. ' more...')
-                                        break
-                                    end
-                                    ImGui.Text(ctx, app.temp.searchResults[itemIndex].searchText[1].text)
-                                end
-                            else
-                                ImGui.Text(ctx, 'Drag to a track, to an empty area or to a tag')
-                            end
-                            if app.temp.dragDropTagTargetName and not remove then
-                                ImGui.Separator(ctx)
-                                ImGui.Text(ctx, 'Hold Alt to remove tag')
-                            end
-                            app.temp.dragDropTagTargetName = nil
+                            ImGui.Text(ctx, resultName)
                             ImGui.EndDragDropSource(ctx)
                         end
                         if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragToTrack then
@@ -1349,7 +1338,8 @@ RunApp = function()
                                                     app.selection:selectOnly(row.index)
                                                 end
                                                 if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
-                                                    app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.MOUSE_DOUBLE_CLICK)
+                                                    app.flow.executeSelectedResults(ctx,
+                                                        RESULT_CONTEXT.MOUSE_DOUBLE_CLICK)
                                                 end
                                             end
                                             if app.temp.highlightDropAreaForAllSelectedResults and app.temp.highlightDropAreaForAllSelectedResults < ImGui.GetFrameCount(ctx) or app.temp.highlightDropAreaFor == row.index then
@@ -1358,10 +1348,10 @@ RunApp = function()
                                             if app.temp.searchMode == SEARCH_MODE.MAIN then
                                                 handleResultDragDrop(row)
                                             end
-                                            if ImGui.IsItemHovered(ctx) then
-                                                hintResult = result
-                                                hintContext = RESULT_CONTEXT.MOUSE_DOUBLE_CLICK
-                                            end
+                                            -- if ImGui.IsItemHovered(ctx) then
+                                            --     hintResult = result
+                                            --     hintContext = RESULT_CONTEXT.MOUSE_DOUBLE_CLICK
+                                            -- end
                                             ImGui.SameLine(ctx)
 
                                             -- if result.type == ASSET_TYPE.TrackAssetType and result.color then
@@ -1490,7 +1480,7 @@ RunApp = function()
                                 local action = assetHint
                                 local actionKey = app.guiHelpers.keyModsToText(usedMods)
                                 local hint = ('%s to %s.'):format(actionKey, action)
-                                app:setHint('main', hint)
+                                app:setHint('main', hint, nil, nil, -1)
                             end
                         else
                             app:setHint('main', '')
@@ -1508,7 +1498,7 @@ RunApp = function()
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
                     ImGui.InvisibleButton(ctx, '##separator', spacingX * 2, sideBarH)
                     if ImGui.IsItemHovered(ctx) then
-                        app:setHoveredHint('main', 'Drag to change tag list width', nil, nil, 1)
+                        app:setHoveredHint('main', 'Drag to change tag list width')
                         ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
                     end
                     if ImGui.IsItemActive(ctx) then
@@ -1567,10 +1557,15 @@ RunApp = function()
                                                 ImGui.DragDropFlags_AcceptBeforeDelivery |
                                                 ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
                                         end
+                                        if (tagDropped or assetDropped) and ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_AllowWhenBlockedByActiveItem | ImGui.HoveredFlags_DelayNormal | ImGui.HoveredFlags_NoSharedDelay) then
+                                            tag:toggleOpen(true)
+                                        end
                                         if tagDropped then
                                             local payloadTag = app.engine.tags[tonumber(tagPayload)]
-
                                             if position == 'inside' then
+                                                app:setHint('main',
+                                                    (T.HINTS.DRAG_TAG_INTO_TAG):format(payloadTag.name, tag.name), nil,
+                                                    nil, 2)
                                                 ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX,
                                                     scrY - height - offsetY,
                                                     scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
@@ -1578,6 +1573,10 @@ RunApp = function()
                                                     app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
                                                     nil, 1.5 * app.gui.scale)
                                             else
+                                                app:setHint('main',
+                                                    (T.HINTS.DRAG_TAG_TO_POSITION_RELATIVE_TO_TAG):format(
+                                                        payloadTag.name, position or '', tag.name), nil,
+                                                    nil, 2)
                                                 ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX,
                                                     scrY - height - offsetY + dragTargetLineOffsetY, scrX + w,
                                                     scrY - height - offsetY + dragTargetLineOffsetY,
@@ -1589,7 +1588,14 @@ RunApp = function()
                                             end
                                         end
                                         if assetDropped then
-                                            app.temp.dragDropTagTargetName = tag.name
+                                            local remove = (assetPayload == 'remove')
+                                            local numItemsSelected = app.selection:count()
+                                            local resultName = (numItemsSelected == 1) and
+                                                app.selection:results()[1].searchText[1].text or
+                                                numItemsSelected .. ' items'
+                                            app:setHint('main',
+                                                (remove and T.HINTS.DRAG_RESULT_TO_REMOVE_TAG or T.HINTS.DRAG_RESULT_TO_ADD_TAG)
+                                                :format(tag.name, resultName, OS_is.mac and 'Option' or 'Alt'))
                                             ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX,
                                                 scrY - height - offsetY,
                                                 scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
@@ -1597,7 +1603,6 @@ RunApp = function()
                                                 app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
                                                 nil, 1.5 * app.gui.scale)
                                             if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
-                                                local remove = (assetPayload == 'remove')
                                                 for i, result in ipairs(app.selection:results()) do
                                                     if remove then
                                                         result:removeTag(tag, false)
@@ -1656,6 +1661,7 @@ RunApp = function()
                                         app.temp.showDeleteTagConfirmation = nil
                                         ImGui.OpenPopup(ctx, 'Tag Context Menu')
                                     end
+                                    app:setHint('main', (T.HINTS.TAG_DEFAULT):format(tag.name))
                                 end
                                 if ImGui.BeginPopup(ctx, 'Tag Context Menu') then
                                     ImGui.Text(ctx, tag.name)
@@ -1762,18 +1768,18 @@ RunApp = function()
                                     if tagStatus ~= nil then
                                         ImGui.SameLine(ctx)
                                         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                                        if app.guiHelpers.tinyIcon(ctx, 'removeTag', hovering and ICONS.CLOSE or (tagStatus and ICONS.PLUS or ICONS.MINUS)) then
+                                        if app.guiHelpers.tinyIcon(ctx, 'removeTag', hovering and ICONS.CLOSE or (tagStatus and ICONS.PLUS or ICONS.MINUS), nil, nil, nil, (T.HINTS.TAG_REMOVE):format(tag.name)) then
                                             app.flow.filterResults({ removeTags = { tag.id } })
                                         end
                                     elseif hovering then
                                         ImGui.SameLine(ctx)
                                         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                                        if app.guiHelpers.tinyIcon(ctx, 'addPositiveTag', ICONS.PLUS) then
+                                        if app.guiHelpers.tinyIcon(ctx, 'addPositiveTag', ICONS.PLUS, nil, nil, nil, (T.HINTS.TAG_POSITIVE):format(tag.name)) then
                                             app.flow.filterResults({ addTags = { [tag.id] = true } })
                                         end
                                         ImGui.SameLine(ctx)
                                         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                                        if app.guiHelpers.tinyIcon(ctx, 'addNegative', ICONS.MINUS) then
+                                        if app.guiHelpers.tinyIcon(ctx, 'addNegative', ICONS.MINUS, nil, nil, nil, (T.HINTS.TAG_NEGATIVE):format(tag.name)) then
                                             app.flow.filterResults({ addTags = { [tag.id] = false } })
                                         end
                                     end
@@ -1786,41 +1792,8 @@ RunApp = function()
                                 ImGui.InvisibleButton(ctx, 'drag', tagW, tagH)
                                 if ImGui.BeginDragDropSource(ctx) then
                                     ImGui.SetDragDropPayload(ctx, 'TAG', tostring(tag.id))
-                                    -- ImGui.Text(ctx, tag.name)
-                                    if app.temp.highlightDropAreaForAllSelectedResults or app.temp.highlightDropAreaFor then
-                                        if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
-                                            ImGui.Text(ctx,
-                                                'Remove tag \'' ..
-                                                tag.name ..
-                                                '\' from' ..
-                                                (app.temp.highlightDropAreaFor and (' ' .. searchResults[app.temp.highlightDropAreaFor].searchText[1].text) or
-                                                    ':'))
-                                        else
-                                            ImGui.Text(ctx,
-                                                'Add tag \'' ..
-                                                tag.name ..
-                                                '\' to' ..
-                                                (app.temp.highlightDropAreaFor and (' ' .. searchResults[app.temp.highlightDropAreaFor].searchText[1].text) or ':'))
-                                        end
-                                        if app.temp.highlightDropAreaForAllSelectedResults then
-                                            ImGui.Separator(ctx)
-                                            for i, result in ipairs(app.selection:results()) do
-                                                if i > 5 then
-                                                    ImGui.Text(ctx, '+ ' .. (app.selection:count() - i + 1) .. ' more...')
-                                                    break
-                                                end
-                                                ImGui.Text(ctx, result.searchText[1].text)
-                                            end
-                                        end
-                                        if not ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
-                                            ImGui.Separator(ctx)
-                                            ImGui.Text(ctx, 'Hold alt to remove tag')
-                                        end
-                                    else
-                                        drawTagNode(tag, false, false, true)
-                                    end
-                                    ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY * 2)
-                                    ImGui.Dummy(ctx, 0, 0)
+                                    app:setHint('main', T.HINTS.DRAG_TAG_DEFAULT)
+                                    ImGui.Text(ctx, tag.name)
                                     ImGui.EndDragDropSource(ctx)
                                 end
 
@@ -1908,26 +1881,15 @@ RunApp = function()
                                                             app.temp.originalPresetFilter = preset
                                                                 .filter -- Store original filter
                                                         end
+                                                        if ImGui.IsItemHovered(ctx) then
+                                                            app:setHint('main', (T.HINTS.EDIT_PRESET_DEFAULT):format(preset.name))
+                                                        end
                                                     end
                                                     ImGui.EndMenu(ctx)
                                                 end
 
                                                 ImGui.Separator(ctx)
                                             end
-
-                                            -- if menuInfo.allQuery then
-                                            --     local selected = true
-                                            --     for k, v in pairs(menuInfo.allQuery) do
-                                            --         if app.temp.filter[k] ~= ((menuInfo.allQuery[k] ~= 'all') and menuInfo.allQuery[k] or nil) then
-                                            --             selected = false
-                                            --         end
-                                            --     end
-
-                                            --     if ImGui.MenuItem(ctx, 'All' .. "##filterMenu-All", nil, selected) then
-                                            --         app.flow.filterResults(menuInfo.allQuery)
-                                            --     end
-                                            --     ImGui.Separator(ctx)
-                                            -- end
 
                                             for item, value in OD_PairsByOrder(menuInfo.items) do
                                                 if value.submenu then
@@ -1941,6 +1903,16 @@ RunApp = function()
                                                     end
                                                     if ImGui.MenuItem(ctx, item, value.shortcut, selected) then
                                                         app.flow.filterResults(value.query)
+                                                    end
+                                                    if ImGui.IsItemHovered(ctx) then
+                                                        if k == FILTER_TYPES.PRESET then
+                                                            app:setHint('main', (T.HINTS.PRESET_DEFAULT):format(item))
+                                                        elseif k == FILTER_TYPES.OTHER then
+                                                            app:setHint('main', T.HINTS.OTHER_FILTERS[item])
+                                                        else
+                                                            app:setHint('main',
+                                                                (T.HINTS.FILTER_DEFAULT):format(T.FILTER_NAMES[k], item))
+                                                        end
                                                     end
                                                 end
                                             end
@@ -1969,7 +1941,7 @@ RunApp = function()
                             app.temp.tagRename = newTag.id
                             app.temp.tagRenameBuffer = newTag.name
                         end
-                        app:setHoveredHint('main', 'Create new tag', nil, nil, 1)
+                        app:setHoveredHint('main', 'Create new tag')
                         ImGui.PopFont(ctx)
                         ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
                         ImGui.SetNextWindowScroll(ctx, 0, -1)
@@ -2522,13 +2494,15 @@ RunApp = function()
                                                         ImGui.TableNextColumn(ctx)
                                                         local description = hint.text
                                                         local mod = keymod == 0 and 'Click' or
-                                                            app.guiHelpers.keyModsToText(keymod | RESULT_CONTEXT.MOUSE_CLICK)
+                                                            app.guiHelpers.keyModsToText(keymod |
+                                                                RESULT_CONTEXT.MOUSE_CLICK)
                                                         local text = BaseAssetType:parseInteractionHintTemplate(
-                                                            description,
-                                                            -1,
-                                                            _G[group].singleName, 'selected ' .. _G[group].pluralName)
-                                                        :gsub(
-                                                            "^%l", string.upper)
+                                                                description,
+                                                                -1,
+                                                                _G[group].singleName, 'selected ' .. _G[group]
+                                                                .pluralName)
+                                                            :gsub(
+                                                                "^%l", string.upper)
                                                         ImGui.PushFont(ctx, app.gui.st.fonts.bold)
                                                         -- ImGui.TextWrapped(ctx, mod .. ': ')
                                                         ImGui.TextColored(ctx, app.gui.st.basecolors.mainBrightest,

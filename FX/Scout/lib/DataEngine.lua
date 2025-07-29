@@ -956,37 +956,6 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
     self.app.logger:logDebug('-- PB_DataEngine.assembleFilterAssets()')
     local scanAll = whichFilters == nil and true or false
     local whichFilters = whichFilters or {}
-    local executeFilter = function(self, context)
-        if self.type == FILTER_TYPES.TAG then
-            if OD_BfCheck(context, ImGui.Mod_Alt) then
-                self.app.flow.filterResults({ removeTags = { self.load } })
-            elseif OD_BfCheck(context, ImGui.Mod_Ctrl) then
-                self.app.flow.filterResults({ addTags = { [self.load] = false } })
-            else
-                self.app.flow.filterResults({ addTags = { [self.load] = true } })
-            end
-        elseif self.type == FILTER_TYPES.PRESET then
-            -- if OD_BfCheck(context or 0, ImGui.Mod_Alt) then
-            --     -- Alt-click: Update preset with current filter
-            --     self.preset:update()
-            --     self.app.logger:logInfo('Updated preset "' .. self.preset.name .. '" with current filter')
-            -- else
-            -- Normal click: Apply preset
-            self.preset:apply()
-            -- end
-        else
-            if OD_BfCheck(context, ImGui.Mod_Alt) then
-                self.app.flow.filterResults(self.loadAll)
-            else
-                self.app.flow.filterResults(self.load)
-            end
-        end
-        if not OD_BfCheck(context, ImGui.Mod_Shift) then
-            self.app.flow.setSearchMode(SEARCH_MODE.MAIN)
-        else
-            self.app.flow.filterResults({ clearText = true })
-        end
-    end
 
     if scanAll then
         self.filterAssets = {}
@@ -1022,10 +991,10 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
 
     local assetCount = 0
 
-    local interactionHints = function(type, mods, context)
+    local interactionHints = function(type, mods, context, count, assetName, assetNamePlural)
         local usedMods = context
         local text = 'add %asset to current filters'
-        if type == FILTER_TYPES.PRESET then text = 'load preset %asset' end
+        if type == FILTER_TYPES.PRESET then text = 'load %singular(preset )%asset' end
         if type == FILTER_TYPES.TAG then
             if OD_BfCheck(mods, ImGui.Mod_Ctrl) then
                 text = text:gsub('%%asset', '%%asset (Negative)')
@@ -1038,7 +1007,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
             text = text .. ' (stay in filter search mode)'
             usedMods = usedMods | ImGui.Mod_Shift
         end
-        return text, usedMods
+        return BaseAssetType:parseInteractionHintTemplate(text, count, assetName, (assetNamePlural):lower()), usedMods
     end
 
     -- Define execute functions for filter assets
@@ -1094,14 +1063,14 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                         load = item.query,
                         loadAll = filter.allQuery,
                         group = T.FILTER_NAMES[filterType],
-                        getInteractionHintFor = function(self, mods, context)
+                        getInteractionHintFor = function(self, mods, context, count)
                             return interactionHints(filterType, mods,
-                                context)
+                                context, count, itemName, T.FILTER_NAMES_PLURAL[filterType])
                         end
                     }
                     -- Add execute function directly to the asset
-                    filterAsset.execute = function(asset, context, contextData, confirm, total, index)
-                        return filterExecuteFunction(asset, context)
+                    filterAsset.execute = function(asset, mods, context, contextData, confirm, total, index)
+                        return filterExecuteFunction(asset, mods | context)
                     end
                     table.insert(self.filterAssets, filterAsset)
                     assetCount = assetCount + 1
@@ -1156,14 +1125,14 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                     order = tag.order,
                     load = tag.id,
                     group = T.FILTER_NAMES[FILTER_TYPES.TAG],
-                    getInteractionHintFor = function(self, mods, context)
+                    getInteractionHintFor = function(self, mods, context, count)
                         return interactionHints(FILTER_TYPES.TAG, mods,
-                            context)
+                            context, count, tag.name,T.FILTER_NAMES_PLURAL[FILTER_TYPES.TAG])
                     end
                 }
                 -- Add execute function directly to the asset
-                tagAsset.execute = function(asset, context, contextData, confirm, total, index)
-                    return filterExecuteFunction(asset, context)
+                tagAsset.execute = function(asset, mods, context, contextData, confirm, total, index)
+                    return filterExecuteFunction(asset, mods | context)
                 end
                 table.insert(self.filterAssets, tagAsset)
                 assetCount = assetCount + 1
@@ -1175,6 +1144,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
         for presetId, preset in pairs(self.presets) do
             local presetAsset = {
                 name = preset.name,
+                load = preset.name,
                 engine = self,
                 app = self.app,
                 type = FILTER_TYPES.PRESET,
@@ -1182,14 +1152,14 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 order = preset.id, -- Use ID as order for now, could be customized later
                 preset = preset,   -- Store reference to preset
                 group = T.FILTER_NAMES[FILTER_TYPES.PRESET],
-                getInteractionHintFor = function(self, mods, context)
+                getInteractionHintFor = function(self, mods, context, count)
                     return interactionHints(FILTER_TYPES.PRESET, mods,
-                        context)
+                        context, count, preset.name, T.FILTER_NAMES_PLURAL[FILTER_TYPES.PRESET])
                 end
             }
             -- Add execute function directly to the asset
-            presetAsset.execute = function(asset, context, contextData, confirm, total, index)
-                return presetExecuteFunction(asset, context)
+            presetAsset.execute = function(asset, mods, context, contextData, confirm, total, index)
+                return presetExecuteFunction(asset, mods | context)
             end
             table.insert(self.filterAssets, presetAsset)
             assetCount = assetCount + 1
