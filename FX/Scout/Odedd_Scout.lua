@@ -769,7 +769,7 @@ RunApp = function()
                     return table.unpack(app.temp.iconSizes[icon])
                 end
             end,
-            tinyIcon = function(ctx, id, icon, highlighted, disabled, toolTip, hint)
+            tinyIcon = function(ctx, id, icon, highlighted, disabled, hint, hintLevel)
                 local clicked = false
                 local textW, textH = ImGui.CalcTextSize(ctx, 'I')
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
@@ -783,14 +783,9 @@ RunApp = function()
                 end
                 local col = highlighted and app.gui.st.basecolors.textDark or
                     (disabled and app.gui.st.basecolors.textDark or app.gui.st.col.activeFilterButton[ImGui.Col_Button])
-                if toolTip then
-                    if ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
-                        ImGui.SetTooltip(ctx, toolTip)
-                    end
-                end
                 if ImGui.IsItemHovered(ctx) and not disabled then
                     if hint then
-                        app:setHint('main', hint)
+                        app:setHint('main', hint, nil, nil, hintLevel)
                     end
                     ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
                     if ImGui.IsItemActive(ctx) then
@@ -959,19 +954,23 @@ RunApp = function()
                         if app.guiHelpers.iconButton(ctx, 'CLOSE', app.gui.st.col.buttons.activeFilterAction) then
                             app.flow.filterResults({ clear = true })
                         end
+                        app:setHoveredHint('main', T.HINTS.RESET_FILTERS)
                         if app.guiHelpers.iconButton(ctx, 'DISK', app.gui.st.col.buttons.activeFilterAction) then
                             ImGui.OpenPopup(ctx, 'Save Filter Set Context Menu')
                         end
+                        app:setHoveredHint('main', T.HINTS.SAVE_FILTERS)
                         if ImGui.BeginPopup(ctx, 'Save Filter Set Context Menu') then
                             if ImGui.MenuItem(ctx, 'Save preset...') then
                                 app.temp.showCreatePresetDialog = true
                                 app.temp.presetName = ""
                                 app.temp.presetWord = ""
                             end
+                            app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_PRESET)
                             if ImGui.MenuItem(ctx, 'Create reaper action...') then
                                 app.temp.showExportActionDialog = true
                                 app.temp.actionName = ""
                             end
+                            app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_ACTION)
                             ImGui.EndPopup(ctx)
                         end
                         ImGui.SameLine(ctx)
@@ -992,14 +991,15 @@ RunApp = function()
                                 local textW, textH = ImGui.CalcTextSize(ctx, text)
                                 if filter.type == FILTER_TYPES.TAG then
                                     text = filter.itemName
-                                    textW = app.guiHelpers.calcTinyIconSize(ctx,
-                                            filter.value and ICONS.PLUS or ICONS.MINUS) +
+                                    -- textW = app.guiHelpers.calcTinyIconSize(ctx,
+                                    --         filter.value and ICONS.PLUS or ICONS.MINUS) +
 
                                         ImGui.CalcTextSize(ctx, text)
                                 end
                                 local iconWidth = app.guiHelpers.calcTinyIconSize(ctx, FILTER_ICONS[filter.type])
-                                local filterW = paddingX + iconWidth + spacingX + textW + spacingX + closeButtonSizeW +
-                                    paddingX * 2
+                                local tagIconWidth = filter.type == FILTER_TYPES.TAG and (app.guiHelpers.calcTinyIconSize(ctx, (filter.value and ICONS.PLUS or ICONS.MINUS)) - spacingX) or 0
+                                local filterW = paddingX + iconWidth + tagIconWidth + spacingX * 2 + textW + spacingX + closeButtonSizeW +
+                                    paddingX
                                 if (i ~= 1) then
                                     ImGui.SameLine(ctx)
                                 end
@@ -1020,8 +1020,7 @@ RunApp = function()
                                     app.guiHelpers.tinyIcon(ctx, 'filterType',
                                         FILTER_ICONS[filter.type],
                                         true,
-                                        true, T.FILTER_NAMES[filter.type])
-                                    -- ImGui.SetTooltip(ctx, T.FILTER_NAMES[filter.key])
+                                        true)
                                     ImGui.SameLine(ctx)
 
                                     -- ImGui.AlignTextToFramePadding(ctx)
@@ -1039,7 +1038,7 @@ RunApp = function()
                                     ImGui.AlignTextToFramePadding(ctx)
                                     ImGui.Text(ctx, filter.itemName)
                                     ImGui.SameLine(ctx)
-                                    if app.guiHelpers.tinyIcon(ctx, 'removeFilter', ICONS.CLOSE) then
+                                    if app.guiHelpers.tinyIcon(ctx, 'removeFilter', ICONS.CLOSE, nil, nil, T.HINTS.ACTIVE_FILTER_REMOVE, 2) then
                                         if filter.type == FILTER_TYPES.TAG then
                                             app.flow.filterResults({ removeTags = { filter.item.id } })
                                         else
@@ -1050,6 +1049,9 @@ RunApp = function()
                                     ImGui.Dummy(ctx, 0, 0)
                                     ImGui.EndChild(ctx)
                                 end
+                                -- if ImGui.IsItemHovered(ctx) then
+                                    app:setHoveredHint('main', (T.HINTS.ACTIVE_FILTER_DEFAULT):format(T.FILTER_NAMES[filter.type], filter.itemName), nil, nil, 0)
+                                -- end
                                 ImGui.PopID(ctx)
                             end
                             ImGui.EndChild(ctx)
@@ -1492,7 +1494,7 @@ RunApp = function()
                                 app:setHint('main', hint, nil, nil, -1)
                             end
                         else
-                            app:setHint('main', '')
+                            app:setHint('main', '', nil, nil, -1)
                         end
 
                         ImGui.EndChild(ctx)
@@ -1777,18 +1779,18 @@ RunApp = function()
                                     if tagStatus ~= nil then
                                         ImGui.SameLine(ctx)
                                         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                                        if app.guiHelpers.tinyIcon(ctx, 'removeTag', hovering and ICONS.CLOSE or (tagStatus and ICONS.PLUS or ICONS.MINUS), nil, nil, nil, (T.HINTS.TAG_REMOVE):format(tag.name)) then
+                                        if app.guiHelpers.tinyIcon(ctx, 'removeTag', hovering and ICONS.CLOSE or (tagStatus and ICONS.PLUS or ICONS.MINUS), nil, nil, (T.HINTS.TAG_REMOVE):format(tag.name)) then
                                             app.flow.filterResults({ removeTags = { tag.id } })
                                         end
                                     elseif hovering then
                                         ImGui.SameLine(ctx)
                                         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                                        if app.guiHelpers.tinyIcon(ctx, 'addPositiveTag', ICONS.PLUS, nil, nil, nil, (T.HINTS.TAG_POSITIVE):format(tag.name)) then
+                                        if app.guiHelpers.tinyIcon(ctx, 'addPositiveTag', ICONS.PLUS, nil, nil, (T.HINTS.TAG_POSITIVE):format(tag.name)) then
                                             app.flow.filterResults({ addTags = { [tag.id] = true } })
                                         end
                                         ImGui.SameLine(ctx)
                                         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                                        if app.guiHelpers.tinyIcon(ctx, 'addNegative', ICONS.MINUS, nil, nil, nil, (T.HINTS.TAG_NEGATIVE):format(tag.name)) then
+                                        if app.guiHelpers.tinyIcon(ctx, 'addNegative', ICONS.MINUS, nil, nil, (T.HINTS.TAG_NEGATIVE):format(tag.name)) then
                                             app.flow.filterResults({ addTags = { [tag.id] = false } })
                                         end
                                     end
@@ -1890,10 +1892,8 @@ RunApp = function()
                                                             app.temp.originalPresetFilter = preset
                                                                 .filter -- Store original filter
                                                         end
-                                                        if ImGui.IsItemHovered(ctx) then
-                                                            app:setHint('main',
-                                                                (T.HINTS.EDIT_PRESET_DEFAULT):format(preset.name))
-                                                        end
+                                                        app:setHoveredHint('main',
+                                                            (T.HINTS.EDIT_PRESET_DEFAULT):format(preset.name))
                                                     end
                                                     ImGui.EndMenu(ctx)
                                                 end
@@ -1921,7 +1921,8 @@ RunApp = function()
                                                             app:setHint('main', T.HINTS.OTHER_FILTERS[item])
                                                         else
                                                             app:setHint('main',
-                                                                (T.HINTS.FILTER_DEFAULT):format(T.FILTER_NAMES[k], item))
+                                                                (T.HINTS.LOAD_FILTER_DEFAULT):format(T.FILTER_NAMES[k],
+                                                                    item))
                                                         end
                                                     end
                                                 end
@@ -2219,7 +2220,6 @@ RunApp = function()
                 local w = 730 * app.gui.scale
                 local h = 850 * app.gui.scale
                 local maxH = app.gui.screen.size[2] * .8
-                local hintHeight = app.gui.st.sizes.hintHeight
                 -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger
                 -- closing this window. So we increment a counter which will be reset if the shortcut is
                 -- being captured, so that we can know to ignore the captured key unless some frames have passed.

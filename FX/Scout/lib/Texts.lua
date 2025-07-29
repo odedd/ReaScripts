@@ -186,7 +186,13 @@ instance manually.]]
 T.TURN_ON_SLEEP_MODE = 'Do you wish to turn on sleep mode? (Say yes!)'
 
 T.HINTS = {
-    FILTER_DEFAULT = 'Show items whose %s is %s.',
+    RESET_FILTERS = 'Clear all filters.',
+    SAVE_FILTERS = 'Save filter set.',
+    SAVE_FILTERS_PRESET = 'Save filter set as a preset.',
+    SAVE_FILTERS_ACTION = 'Export filter set as a Reaper action.',
+    ACTIVE_FILTER_DEFAULT = '%s: %s',
+    ACTIVE_FILTER_REMOVE = 'Remove filter.',
+    LOAD_FILTER_DEFAULT = 'Show items whose %s is %s.',
     PRESET_DEFAULT = 'Load preset %s.',
     EDIT_PRESET_DEFAULT = 'Edit preset %s.',
     OTHER_FILTERS = {
