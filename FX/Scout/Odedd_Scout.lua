@@ -748,7 +748,7 @@ RunApp = function()
                 if OD_BfCheck(mods, ImGui.Mod_Shift) then table.insert(modKeys, 'Shift') end
                 if OD_BfCheck(mods, RESULT_CONTEXT.DRAGGED_TO_BLANK) then
                     table.insert(modKeys, 'Drag to empty area')
-                elseif OD_BfCheck(mods, RESULT_CONTEXT.DRAGGED_TO_TRACK) then
+                elseif OD_BfCheck(mods, RESULT_CONTEXT.DRAGGED_TO_OBJECT) then
                     table.insert(modKeys, 'Drag to track')
                 else
                     if OD_BfCheck(mods, RESULT_CONTEXT.KEYBOARD) then table.insert(modKeys, 'Enter') end
@@ -1169,34 +1169,43 @@ RunApp = function()
                             local winW, winH = table.unpack(app.gui.mainWindow.size)
                             local x, y = ImGui.GetCursorScreenPos(ctx)
                             if not (x >= winX and x <= winX + winW and y >= winY and y <= winY + winH) then
-                                local track, context, position = r.BR_TrackAtMouseCursor()
+                                local object = r.BR_ItemAtMouseCursor() or r.BR_TrackAtMouseCursor()
                                 local mods = ImGui.GetKeyMods(ctx)
-                                local hintContext = track and RESULT_CONTEXT.DRAGGED_TO_TRACK or
-                                    RESULT_CONTEXT['DRAGGED_TO_BLANK']
-                                local assetHint = (firstResult:getInteractionHintFor(mods, hintContext,
+                                local hintContext = object and RESULT_CONTEXT.DRAGGED_TO_OBJECT or
+                                    RESULT_CONTEXT.DRAGGED_TO_BLANK
+                                local assetHint = (firstResult:getInteractionHintFor(mods, hintContext, object,
                                     app.selection:count())):gsub("^%l", string.upper)
                                 app:setHint('main', assetHint, nil, nil, 2)
-                                app.temp.dragToTrack = track or
+                                app.temp.dragToObject = object or
                                     -1 -- either store the dragged track or -1 to signify blank
                             else
-                                app.temp.dragToTrack = nil
+                                app.temp.dragToObject = nil
                             end
                             ImGui.Text(ctx, resultName)
                             ImGui.EndDragDropSource(ctx)
                         end
-                        if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragToTrack then
-                            if app.temp.dragToTrack == -1 then
+                        if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragToObject then
+                            if app.temp.dragToObject == -1 then
                                 app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.DRAGGED_TO_BLANK)
                                 app.logger:logDebug('Will create a new track with ' ..
                                     app.selection:count() .. ' plugin(s)\n')
                             else
-                                app.logger:logDebug('Will add ' ..
-                                    app.selection:count() ..
-                                    ' plugins to track ' .. select(2, r.GetTrackName(app.temp.dragToTrack)) .. '\n')
-                                app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.DRAGGED_TO_TRACK, app.temp
-                                    .dragToTrack)
+                                if app.logger.level >= app.logger.LOG_LEVEL.DEBUG then
+                                    local itemName
+                                    if app.temp.dragToObject and r.ValidatePtr(app.temp.dragToObject, "MediaItem*") then
+                                        local take = r.GetActiveTake(app.temp.dragToObject)
+                                        itemName = r.GetTakeName(take)
+                                    else
+                                        itemName = select(2, r.GetTrackName(app.temp.dragToObject))
+                                    end
+                                    app.logger:logDebug('Will add ' ..
+                                        app.selection:count() ..
+                                        ' plugins to track ' .. itemName .. '\n')
+                                end
+                                app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.DRAGGED_TO_OBJECT, app.temp
+                                    .dragToObject)
                             end
-                            app.temp.dragToTrack = nil
+                            app.temp.dragToObject = nil
                         end
                     end
                     local handleScrolling = function()
@@ -1473,7 +1482,7 @@ RunApp = function()
 
                         if hintResult then
                             local mods = ImGui.GetKeyMods(ctx)
-                            local assetHint, usedMods = hintResult:getInteractionHintFor(mods, hintContext,
+                            local assetHint, usedMods = hintResult:getInteractionHintFor(mods, hintContext, nil,
                                 app.selection:count())
                             if assetHint then
                                 local count = app.selection:count()
@@ -1882,7 +1891,8 @@ RunApp = function()
                                                                 .filter -- Store original filter
                                                         end
                                                         if ImGui.IsItemHovered(ctx) then
-                                                            app:setHint('main', (T.HINTS.EDIT_PRESET_DEFAULT):format(preset.name))
+                                                            app:setHint('main',
+                                                                (T.HINTS.EDIT_PRESET_DEFAULT):format(preset.name))
                                                         end
                                                     end
                                                     ImGui.EndMenu(ctx)
@@ -2486,7 +2496,7 @@ RunApp = function()
                                             if ImGui.CollapsingHeader(ctx, app.engine.assetGroupNameCache[group], false, ImGui.TreeNodeFlags_DefaultOpen | ImGui.Cond_Appearing) then
                                                 if ImGui.BeginTable(ctx, "keyCommands", 2, nil, 0) then
                                                     ImGui.TableSetupColumn(ctx, 'Key Commands',
-                                                        ImGui.TableColumnFlags_WidthFixed, 180 * app.gui.scale)
+                                                        ImGui.TableColumnFlags_WidthFixed, 210 * app.gui.scale)
                                                     ImGui.TableSetupColumn(ctx, 'Description',
                                                         ImGui.TableColumnFlags_WidthStretch)
                                                     for keymod, hint in OD_PairsByOrder(_G[group].interactionHints) do
@@ -2498,7 +2508,7 @@ RunApp = function()
                                                                 RESULT_CONTEXT.MOUSE_CLICK)
                                                         local text = BaseAssetType:parseInteractionHintTemplate(
                                                                 description,
-                                                                -1,
+                                                                -1, nil,
                                                                 _G[group].singleName, 'selected ' .. _G[group]
                                                                 .pluralName)
                                                             :gsub(

@@ -26,25 +26,19 @@ function PluginAssetType.new(class, context)
                 return false, 'No tracks selected'
             end
         end)
-    instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_TRACK'], 'add %asset to dragged track',
+    instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_OBJECT'], 'add %asset to dragged %dragTargetObject',
         function(asset, mods, context, contextData, confirm, total, index)
             local originalUIState = instance:setPluginUIState()
-            local fxIndex = r.TrackFX_AddByName(contextData, asset.load, false, -1)
+            if contextData and r.ValidatePtr(contextData, "MediaItem*") then
+                local take = r.GetActiveTake(contextData)
+                local fxIndex = r.TakeFX_AddByName(take, asset.load, 1)
+            else -- if not item then track
+                local fxIndex = r.TrackFX_AddByName(contextData, asset.load, false, -1)
+            end
             instance:resetPluginUIState(originalUIState)
             return true, ('Added %d FX to a new track'):format(total)
         end)
     instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_BLANK'],
-        'add %asset to %singular(a new track)%plural(%count new tracks (each on its own track))',
-        function(asset, mods, context, contextData, confirm, total, index)
-            local numTracks = r.CountTracks(0)
-            r.InsertTrackAtIndex(numTracks, true)
-            local newTrack = r.GetTrack(0, numTracks)
-            local originalUIState = instance:setPluginUIState()
-            local fxIndex = r.TrackFX_AddByName(newTrack, asset.load, false, -1)
-            instance:resetPluginUIState(originalUIState)
-            return true, ('Added %d FX to new track (each on its own track)'):format(total)
-        end)
-    instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_BLANK']| ImGui.Mod_Ctrl,
         'add %asset to a new track%plural( (all on one track))',
         function(asset, mods, context, contextData, confirm, total, index)
             if index == 1 then
@@ -57,6 +51,17 @@ function PluginAssetType.new(class, context)
             instance:resetPluginUIState(originalUIState)
             if index == total then asset.context.temp.newTrack = nil end
             return true, ('Added %d FX to a new track'):format(total)
+        end)
+    instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_BLANK']| ImGui.Mod_Ctrl,
+        'add %asset to %singular(a new track)%plural(%count new tracks (each on its own track))',
+        function(asset, mods, context, contextData, confirm, total, index)
+            local numTracks = r.CountTracks(0)
+            r.InsertTrackAtIndex(numTracks, true)
+            local newTrack = r.GetTrack(0, numTracks)
+            local originalUIState = instance:setPluginUIState()
+            local fxIndex = r.TrackFX_AddByName(newTrack, asset.load, false, -1)
+            instance:resetPluginUIState(originalUIState)
+            return true, ('Added %d FX to new track (each on its own track)'):format(total)
         end)
     instance:addInteraction(ImGui.Mod_Alt, 'add %asset to selected item(s)',
         function(asset, mods, context, contextData, confirm)
@@ -93,31 +98,6 @@ function PluginAssetType.new(class, context)
         end)
 
     instance:addInteraction(ImGui.Mod_Shift,
-        'send to %singular(a new track)%plural(%count new tracks) with %asset%plural( (each FX on a separate track%))',
-        function(asset, mods, context, contextData, confirm, total, index)
-            local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
-            if selectedTracks and #selectedTracks > 0 then
-                local newTrack = helpers.createSendTrack(asset)
-                local originalUIState = instance:setPluginUIState()
-                if newTrack then
-                    r.TrackFX_AddByName(newTrack, asset.load, false, -1)
-                end
-                instance:resetPluginUIState(originalUIState)
-
-                for _, track in ipairs(selectedTracks) do
-                    if newTrack then
-                        reaper.GetSetMediaTrackInfo_String(newTrack, "P_NAME", asset.searchText[1].text, true)
-                        local rv = reaper.CreateTrackSend(track, newTrack)
-                    end
-                end
-                return true,
-                    ('Sent %d track(s) to a new track with %s'):format(#selectedTracks, asset.searchText[1].text)
-            elseif selectedTracks and #selectedTracks == 0 then
-                return false, 'No tracks selected'
-            end
-        end)
-
-    instance:addInteraction(ImGui.Mod_Ctrl | ImGui.Mod_Shift,
         'send to a new track with %asset%plural( (all on the same track%))',
         function(asset, mods, context, contextData, confirm, total, index)
             local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
@@ -145,6 +125,31 @@ function PluginAssetType.new(class, context)
         end)
 
 
+
+    instance:addInteraction(ImGui.Mod_Shift | ImGui.Mod_Ctrl,
+        'send to %singular(a new track)%plural(%count new tracks) with %asset%plural( (each FX on a separate track%))',
+        function(asset, mods, context, contextData, confirm, total, index)
+            local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
+            if selectedTracks and #selectedTracks > 0 then
+                local newTrack = helpers.createSendTrack(asset)
+                local originalUIState = instance:setPluginUIState()
+                if newTrack then
+                    r.TrackFX_AddByName(newTrack, asset.load, false, -1)
+                end
+                instance:resetPluginUIState(originalUIState)
+
+                for _, track in ipairs(selectedTracks) do
+                    if newTrack then
+                        reaper.GetSetMediaTrackInfo_String(newTrack, "P_NAME", asset.searchText[1].text, true)
+                        local rv = reaper.CreateTrackSend(track, newTrack)
+                    end
+                end
+                return true,
+                    ('Sent %d track(s) to a new track with %s'):format(#selectedTracks, asset.searchText[1].text)
+            elseif selectedTracks and #selectedTracks == 0 then
+                return false, 'No tracks selected'
+            end
+        end)
 
     return instance
 end

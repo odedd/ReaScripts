@@ -69,7 +69,7 @@ function BaseAssetType:getExecuteFunction(mods, context)
     return executeFunction
 end
 
-function BaseAssetType:parseInteractionHintTemplate(template, count, asset, manyPlaceholder)
+function BaseAssetType:parseInteractionHintTemplate(template, count, targetObject, assetName, manyPlaceholder)
     local result = template
 
         -- Handle singular/plural functions with proper nesting support
@@ -98,8 +98,15 @@ function BaseAssetType:parseInteractionHintTemplate(template, count, asset, many
         local manyPlaceholder = manyPlaceholder or 'results'
         local countText = count == -1 and '&&&' or tostring(count)
         -- Replace variables
-        result = result:gsub("%%asset", count == 1 and asset or (countText .. ' '.. manyPlaceholder))
+        result = result:gsub("%%asset", count == 1 and assetName or (countText .. ' '.. manyPlaceholder))
         result = result:gsub("%%count", countText)
+        if targetObject and r.ValidatePtr(targetObject, "MediaItem*") then
+            result = result:gsub("%%dragTargetObject", "item")
+        elseif targetObject and r.ValidatePtr(targetObject, "Track*") then
+            result = result:gsub("%%dragTargetObject", "track")
+        else
+            result = result:gsub("%%dragTargetObject", "track/item")
+        end
         if count == -1 then result = result:gsub("&&& ",'') end
 
         -- Clean up any remaining escaped parentheses
@@ -109,13 +116,13 @@ function BaseAssetType:parseInteractionHintTemplate(template, count, asset, many
 
         return result
 end
-function BaseAssetType:getInteractionHintFor(mods, context, count)
+function BaseAssetType:getInteractionHintFor(mods, context, contextData, count)
     local class = self.class
     local count = count or 1
     local interactionHint = nil
     local correctContext = class:determineCorrectContext(mods, context)
     interactionHint = class.interactionHints[correctContext].text
-    return class:parseInteractionHintTemplate(interactionHint, count, self.searchText[1].text, class.pluralName), correctContext | context
+    return class:parseInteractionHintTemplate(interactionHint, count, contextData, self.searchText[1].text, class.pluralName), correctContext | context
 end
 
 function BaseAssetType:executeAndAddToRecents()
@@ -407,7 +414,7 @@ function BaseAssetType:createAssetBase(params)
         load = params.load,
         searchText = params.searchText,
         group = params.group,
-        getInteractionHintFor = function(asset, mods, context, count) return self.getInteractionHintFor(asset, mods, context, count) end,
+        getInteractionHintFor = function(asset, mods, context, contextData, count) return self.getInteractionHintFor(asset, mods, context, contextData, count) end,
         context = self.context,
         engine = self.context.engine, -- Add engine reference for backward compatibility
         addTag = self.assetActions.addTag,

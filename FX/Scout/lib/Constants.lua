@@ -52,7 +52,7 @@ RESULT_CONTEXT = {
     ['KEYBOARD'] = 1,
     ['MOUSE_CLICK'] = 2,
     ['MOUSE_DOUBLE_CLICK'] = 4,
-    ['DRAGGED_TO_TRACK'] = 8,
+    ['DRAGGED_TO_OBJECT'] = 8,
     ['DRAGGED_TO_BLANK'] = 16,
 }
 

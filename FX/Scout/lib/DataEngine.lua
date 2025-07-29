@@ -1007,7 +1007,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
             text = text .. ' (stay in filter search mode)'
             usedMods = usedMods | ImGui.Mod_Shift
         end
-        return BaseAssetType:parseInteractionHintTemplate(text, count, assetName, (assetNamePlural):lower()), usedMods
+        return BaseAssetType:parseInteractionHintTemplate(text, count, nil, assetName, (assetNamePlural):lower()), usedMods
     end
 
     -- Define execute functions for filter assets
