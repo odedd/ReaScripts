@@ -1348,10 +1348,10 @@ RunApp = function()
                                             if app.temp.searchMode == SEARCH_MODE.MAIN then
                                                 handleResultDragDrop(row)
                                             end
-                                            -- if ImGui.IsItemHovered(ctx) then
-                                            --     hintResult = result
-                                            --     hintContext = RESULT_CONTEXT.MOUSE_DOUBLE_CLICK
-                                            -- end
+                                            if ImGui.IsItemHovered(ctx) then
+                                                hintResult = result
+                                                hintContext = RESULT_CONTEXT.MOUSE_DOUBLE_CLICK
+                                            end
                                             ImGui.SameLine(ctx)
 
                                             -- if result.type == ASSET_TYPE.TrackAssetType and result.color then
