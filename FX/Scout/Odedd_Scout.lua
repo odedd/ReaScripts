@@ -960,6 +960,7 @@ RunApp = function()
                         end
                         app:setHoveredHint('main', T.HINTS.SAVE_FILTERS)
                         if ImGui.BeginPopup(ctx, 'Save Filter Set Context Menu') then
+                            app:setHint('main','')
                             if ImGui.MenuItem(ctx, 'Save preset...') then
                                 app.temp.showCreatePresetDialog = true
                                 app.temp.presetName = ""
@@ -1675,18 +1676,21 @@ RunApp = function()
                                     app:setHint('main', (T.HINTS.TAG_DEFAULT):format(tag.name))
                                 end
                                 if ImGui.BeginPopup(ctx, 'Tag Context Menu') then
+                                    app:setHint('main', '')
                                     ImGui.Text(ctx, tag.name)
                                     ImGui.Separator(ctx)
                                     if ImGui.MenuItem(ctx, 'Rename') then
                                         app.temp.tagRename = tag.id
                                         app.temp.tagRenameBuffer = tag.name
                                     end
+                                    app:setHoveredHint('main', T.HINTS.TAG_CONTEXT_MENU_RENAME)
                                     if ImGui.MenuItem(ctx, 'Create Nested Tag') then
                                         tag:toggleOpen(true)
                                         local newTag = app.userdata:createTag('New Tag', tag)
                                         app.temp.tagRename = newTag.id
                                         app.temp.tagRenameBuffer = newTag.name
                                     end
+                                    app:setHoveredHint('main', (T.HINTS.TAG_CONTEXT_MENU_CREATE_NESTED_TAG):format(tag.name))
                                     ImGui.Separator(ctx)
                                     if app.temp.showDeleteTagConfirmation then
                                         if r.time_precise() - app.temp.showDeleteTagConfirmation > 3 then
@@ -1701,6 +1705,8 @@ RunApp = function()
                                             app.temp.showDeleteTagConfirmation = r.time_precise()
                                         end
                                     end
+                                    app:setHoveredHint('main', (T.HINTS.TAG_CONTEXT_MENU_DELETE):format(tag.name))
+                                    
                                     ImGui.EndPopup(ctx)
                                 end
                                 -- end

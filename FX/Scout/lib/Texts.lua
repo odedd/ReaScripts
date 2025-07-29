@@ -198,7 +198,10 @@ T.HINTS = {
     OTHER_FILTERS = {
         ['Untagged'] = 'Show items that have no tags.'
     },
-    TAG_DEFAULT = 'Tag \'%s\'. Double-Click to rename.',
+    TAG_DEFAULT = 'Tag \'%s\'. Double-Click to rename. Right-Click for more options.',
+    TAG_CONTEXT_MENU_RENAME = 'Rename tag',
+    TAG_CONTEXT_MENU_CREATE_NESTED_TAG = 'Created a new tag within %s',
+    TAG_CONTEXT_MENU_DELETE = 'Delete %s and its nested tags. CANNOT BE UNDONE.',
     TAG_POSITIVE = 'Show items that include tag \'%s\'.',
     TAG_NEGATIVE = 'Show items that do not include tag \'%s\'.',
     TAG_REMOVE = 'Remove tag \'%s\' from filter list.',
