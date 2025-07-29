@@ -65,7 +65,7 @@ PB_DataEngine = {
         return validatedFilter, hasIssues
     end,
     refreshProjectRelatedAssets = function(self)
-        -- BUG: project related items lose the order in recents/favorites after refreshing
+        -- FIXME: optimize performance - only sort if project related assets or their order changed, and only sort those that did - not the entire catalog, notice that project refreshes can't move items to special groups, but only move them around in their own group, so some partial refresh might be easily possible
         self.app.logger:logDebug('-- PB_DataEngine.refreshProjectRelatedAssets()')
 
         if not self.assetTypeManager then
