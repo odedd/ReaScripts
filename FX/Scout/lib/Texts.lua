@@ -9,7 +9,7 @@ T.EXPORT_ACTION_DIALOG = {
         EXPORT = {
         LABEL = '',
         BUTTON = 'Export as Action',
-        SUCCESS = 'Successfully created action:\n%s',
+        SUCCESS = 'Successfully created action:\n\n%s',
         HINT = 'temp',
     },
     CLOSE = {

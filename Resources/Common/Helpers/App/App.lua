@@ -146,17 +146,17 @@ function OD_Gui_App:drawPopup(popupType, title, data)
         local bottom_lines = 1
         local closeKey = data.closeKey or r.ImGui_Key_Enter()
         local cancelKey = data.cancelKey or r.ImGui_Key_Escape()
-
         r.ImGui_SetNextWindowSize(ctx, math.max(220, textWidth) +
-            r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4, textHeight + 90)
+        r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4, textHeight + 90 * (self.gui.scale or 1))
         r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
         r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_WindowTitleAlign(), 0.5, 0.5)
-        if self.gui.st.vars.popups then
-            self.gui:pushStyles(self.gui.st.vars.popups)
-        end
-        if self.gui.st.vars.popupsTitle then
-            self.gui:pushStyles(self.gui.st.vars.popupsTitle)
-        end
+        
+                if self.gui.st.vars.popups then
+                    self.gui:pushStyles(self.gui.st.vars.popups)
+                end
+                if self.gui.st.vars.popupsTitle then
+                    self.gui:pushStyles(self.gui.st.vars.popupsTitle)
+                end
         if r.ImGui_BeginPopupModal(ctx, title, false, r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
             if self.gui.st.vars.popupsTitle then
                 self.gui:popStyles(self.gui.st.vars.popupsTitle)

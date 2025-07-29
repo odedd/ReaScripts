@@ -2844,7 +2844,8 @@ RunApp = function()
                         local canExportAction = trimmedActionName ~= ""
 
                         if not canExportAction then ImGui.BeginDisabled(ctx) end
-                        if app.gui:setting('button', T.EXPORT_ACTION_DIALOG.EXPORT.LABEL,
+                        -- FIXME: Pressing enter prevents the msg from appearing
+                        if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canExportAction) or app.gui:setting('button', T.EXPORT_ACTION_DIALOG.EXPORT.LABEL,
                                 T.EXPORT_ACTION_DIALOG.EXPORT.HINT, nil,
                                 { label = T.EXPORT_ACTION_DIALOG.EXPORT.BUTTON, hintWindow = 'editFilterWindow' }) then
                             local createdActionName = app.flow.createFilterAction(trimmedActionName, app.temp.filter)
