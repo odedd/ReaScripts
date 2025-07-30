@@ -1870,6 +1870,7 @@ RunApp = function()
                                     ImGui.PushID(ctx, menuId .. '/' .. k)
                                     if k ~= FILTER_TYPES.PRESET or (k == FILTER_TYPES.PRESET and OD_Tablelength(app.engine.presets) > 0) then
                                         if ImGui.BeginMenu(ctx, T.FILTER_NAMES[k] .. '##filterMenu') then
+                                            app:setHint('main','')
                                             -- Special handling for Presets menu
                                             if k == FILTER_TYPES.PRESET then
                                                 -- "Save Preset..." - only show when filters are active
@@ -2920,7 +2921,7 @@ RunApp = function()
         }
 
         function app.loop()
-            r.SetExtState('Odedd_Scout', 'RUNNING', 'TRUE', false)
+            r.SetExtState(Scr.ext_name, 'RUNNING', 'TRUE', false)
 
             local ctx = app.gui.ctx
             app.hide = false
@@ -2984,7 +2985,7 @@ RunApp = function()
             app.logger:logDebug('Release')
             if app.logger.profile then r.ShowConsoleMsg(Profile.report(10)) end
 
-            r.SetExtState('Odedd_Scout', 'RUNNING', '', false)
+            r.SetExtState(Scr.ext_name, 'RUNNING', '', false)
             OD_ReleaseGlobalKeys()
         end
 
