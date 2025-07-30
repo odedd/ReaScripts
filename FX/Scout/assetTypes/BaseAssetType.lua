@@ -130,7 +130,7 @@ function BaseAssetType:getInteractionHintFor(mods, context, contextData, count)
 end
 
 function BaseAssetType:executeAndAddToRecents()
-    return function(asset, mods, context, contextData, confirm, total, index)
+    return function(asset, mods, context, contextData, confirm, total, index, tempStore)
         local assetType = self -- Capture the asset type instance
 
         local executeFunction = assetType:getExecuteFunction(mods, context)
@@ -138,12 +138,13 @@ function BaseAssetType:executeAndAddToRecents()
             -- some actions change track selection, so selected tracks need to be stored only once, before the first action. 
             -- since this information (index, total) is only available here, executeFunctionSelectedTracks is nulled here 
             -- so that getSelectedTracksWithConfirmation can set it once
-            if index == 1 then asset.context.temp.executeFunctionSelectedTracks = nil end
+            -- tempStore = tempStore or asset.context.temp.executeFunctionTempStore
+            if index == 1 then asset.context.temp.executeFunctionTempStore = {} end
             -- Execute first and check if successful
             local success, result, logMsg = pcall(executeFunction, asset, mods, context, contextData, confirm, total,
-                index)
+                index, asset.context.temp.executeFunctionTempStore)
 
-            if index == total then asset.context.temp.executeFunctionSelectedTracks = nil end
+            if index == total then asset.context.temp.executeFunctionTempStore = {} end
 
             if success and result == true then
                 -- Only add to recents if execution was successful AND returned true
