@@ -2099,9 +2099,7 @@ RunApp = function()
                     if not ImGui.IsAnyItemActive(ctx) and not app.temp.waitingForDoubleClick and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.tagRename and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows) then
                         ImGui.SetKeyboardFocusHere(ctx, 0)
                     end
-
                     handleSpecialKeys()
-
                     local callback = nil
                     local inputFlags = ImGui.InputTextFlags_EscapeClearsAll
                     if app.temp.selectSearchInputTextOnNextFrame then
@@ -2121,6 +2119,7 @@ RunApp = function()
                         app.temp.selectSearchInputText = nil
                         app.temp.selectSearchInputTextOnNextFrame = true
                     end
+                    -- handleSpecialKeys()
                     -- app.temp.blockNextCharacter = nil
                     app.temp.clearSearchInputText = nil
                     if ImGui.IsItemFocused(ctx) then
@@ -2844,7 +2843,6 @@ RunApp = function()
                         local canExportAction = trimmedActionName ~= ""
 
                         if not canExportAction then ImGui.BeginDisabled(ctx) end
-                        -- FIXME: Pressing enter prevents the msg from appearing
                         if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canExportAction) or app.gui:setting('button', T.EXPORT_ACTION_DIALOG.EXPORT.LABEL,
                                 T.EXPORT_ACTION_DIALOG.EXPORT.HINT, nil,
                                 { label = T.EXPORT_ACTION_DIALOG.EXPORT.BUTTON, hintWindow = 'editFilterWindow' }) then

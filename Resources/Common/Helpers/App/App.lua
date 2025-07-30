@@ -182,7 +182,7 @@ function OD_Gui_App:drawPopup(popupType, title, data)
             end
             r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
-            if r.ImGui_Button(ctx, okButtonLabel) or r.ImGui_IsKeyPressed(ctx, closeKey) then
+            if r.ImGui_Button(ctx, okButtonLabel) or (r.ImGui_IsItemFocused(ctx) and r.ImGui_IsKeyPressed(ctx, closeKey)) then
                 okPressed = true
                 r.ImGui_CloseCurrentPopup(ctx)
             end
