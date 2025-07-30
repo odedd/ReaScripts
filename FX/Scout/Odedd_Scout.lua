@@ -36,7 +36,7 @@ LOG_LEVEL = OD_Logger.LOG_LEVEL.ERROR
 
 OD_Init()
 
-if LOG_LEVEL > 0 then
+if LOG_LEVEL > OD_Logger.LOG_LEVEL.NONE then
     r.ClearConsole()
 end
 

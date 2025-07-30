@@ -26,8 +26,8 @@
 -- DONE: Think of a way to handle execution of multiple items together rather than sequentially (but not always - example: multiple track selection VS run actions sequentially)
 -- DONE: Refresh project specific assets (tracks, markers/regions)
 -- DONE: Fix Hints
+-- DONE: Randomly execute one result
 -- TODO: Settings window - add Convert Folders/Categories to tags
--- TODO: Randomly execute one result
 -- TODO: All execute functions + handling FX instruments
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Refresh projects?
