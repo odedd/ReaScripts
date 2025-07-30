@@ -20,7 +20,7 @@ function TrackTemplateAssetType.new(class, context)
         end)
     instance:addInteraction(ImGui.Mod_Shift, 'send to %singular(a )new track%plural(s) with template \'%asset\'',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
-            local selectedTracks = instance:getSelectedTracksWithConfirmation(tempStore, context, contextData, confirm)
+            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
                 local tempGuids = {}
                 local dummyTrack, dummyTrackFolderDepth, depthDelta
