@@ -1053,8 +1053,16 @@ RunApp = function()
                                     ImGui.EndChild(ctx)
                                 end
                                 -- if ImGui.IsItemHovered(ctx) then
-                                    app:setHoveredHint('main', (T.HINTS.ACTIVE_FILTER_DEFAULT):format(T.FILTER_NAMES[filter.type], filter.itemName), nil, nil, 0)
-                                -- end
+                                if filter.type == FILTER_TYPES.TAG then
+                                    if filter.value then
+                                    app:setHoveredHint('main', (T.HINTS.TAG_POSITIVE):format(filter.itemName), nil, nil, 0)
+                                else
+                                    app:setHoveredHint('main', (T.HINTS.TAG_NEGATIVE):format(filter.itemName), nil, nil, 0)
+                                    end
+                                else
+                                    app:setHoveredHint('main', (T.HINTS.LOAD_FILTER_DEFAULT):format(T.FILTER_NAMES[filter.type], filter.itemName), nil, nil, 0)
+                                end
+                                    -- end
                                 ImGui.PopID(ctx)
                             end
                             ImGui.EndChild(ctx)
@@ -1266,6 +1274,7 @@ RunApp = function()
                             if ImGui.Button(ctx, text) then
                                 app.flow.filterResults({ clear = true })
                             end
+                            app:setHoveredHint('main', T.HINTS.RESET_FILTERS)
                             ImGui.EndChild(ctx)
                         end
                     end
@@ -1925,7 +1934,11 @@ RunApp = function()
                                                     end
                                                     if ImGui.IsItemHovered(ctx) then
                                                         if k == FILTER_TYPES.PRESET then
-                                                            app:setHint('main', (T.HINTS.PRESET_DEFAULT):format(item))
+                                                            if value.shortcut then
+                                                                app:setHint('main', (T.HINTS.PRESET_WITH_WORD_DEFAULT):format(item, value.shortcut))
+                                                            else
+                                                                app:setHint('main', (T.HINTS.PRESET_DEFAULT):format(item))
+                                                            end
                                                         elseif k == FILTER_TYPES.OTHER then
                                                             app:setHint('main', T.HINTS.OTHER_FILTERS[item])
                                                         else
@@ -2371,9 +2384,10 @@ RunApp = function()
                                 ImGui.Text(ctx, path)
                                 ImGui.EndChild(ctx)
                             end
-                            if tooLong and ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
-                                ImGui.SetTooltip(ctx, path)
-                            end
+                            app:setHoveredHint('settings', path)
+                            -- if tooLong and ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
+                            --     ImGui.SetTooltip(ctx, path)
+                            -- end
                             -- path = app.gui:setting('folder', path,T.SETTINGS.PROJECT_SCAN_FOLDER.HINT, path, {}, true)
                         end
                         if removePath then
@@ -2713,15 +2727,15 @@ RunApp = function()
                         if ImGui.IsWindowAppearing(ctx) then
                             ImGui.SetKeyboardFocusHere(ctx, 0)
                         end
-                        app.temp.presetName = app.gui:setting('text', T.EDIT_FILTER_DIALOG.PRESET_NAME.LABEL,
-                            T.EDIT_FILTER_DIALOG.PRESET_NAME.HINT, app.temp.presetName,
+                        app.temp.presetName = app.gui:setting('text', T.EDIT_PRESET_DIALOG.PRESET_NAME.LABEL,
+                            T.EDIT_PRESET_DIALOG.PRESET_NAME.HINT, app.temp.presetName,
                             { hintWindow = 'editFilterWindow' })
                         local trimmedName = OD_Trim(app.temp.presetName)
                         local canSavePreset = trimmedName ~= ""
                         local errorMessage = ""
 
-                        app.temp.presetWord = app.gui:setting('text', T.EDIT_FILTER_DIALOG.PRESET_WORD.LABEL,
-                            T.EDIT_FILTER_DIALOG.PRESET_WORD.HINT, app.temp.presetWord,
+                        app.temp.presetWord = app.gui:setting('text', T.EDIT_PRESET_DIALOG.PRESET_WORD.LABEL,
+                            T.EDIT_PRESET_DIALOG.PRESET_WORD.HINT, app.temp.presetWord,
                             { hintWindow = 'editFilterWindow' })
 
                         local trimmedMagicWord = OD_Trim(app.temp.presetWord)
@@ -2753,9 +2767,9 @@ RunApp = function()
                             ImGui.BeginDisabled(ctx)
                         end
 
-                        if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSavePreset) or app.gui:setting('button', T.EDIT_FILTER_DIALOG.SAVE_PRESET.LABEL,
-                                T.EDIT_FILTER_DIALOG.SAVE_PRESET.HINT, nil,
-                                { label = isEditing and T.EDIT_FILTER_DIALOG.SAVE_PRESET.BUTTON_EDIT or T.EDIT_FILTER_DIALOG.SAVE_PRESET.BUTTON_CREATE, hintWindow = 'editFilterWindow' }) then
+                        if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSavePreset) or app.gui:setting('button', T.EDIT_PRESET_DIALOG.SAVE_PRESET.LABEL,
+                                T.EDIT_PRESET_DIALOG.SAVE_PRESET.HINT, nil,
+                                { label = isEditing and T.EDIT_PRESET_DIALOG.SAVE_PRESET.BUTTON_EDIT or T.EDIT_PRESET_DIALOG.SAVE_PRESET.BUTTON_CREATE, hintWindow = 'editFilterWindow' }) then
                             -- Create new preset - use current active filters
                             if not isEditing then
                                 local preset = app.userdata:createPreset(trimmedName, app.temp.filter, trimmedMagicWord)
@@ -2777,18 +2791,19 @@ RunApp = function()
                             ImGui.EndDisabled(ctx)
                         end
 
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EDIT_FILTER_DIALOG.CLOSE.LABEL,
-                                T.EDIT_FILTER_DIALOG.CLOSE.HINT, nil,
-                                { label = T.EDIT_FILTER_DIALOG.CLOSE.BUTTON, hintWindow = 'editFilterWindow' }) then
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EDIT_PRESET_DIALOG.CLOSE.LABEL,
+                                T.EDIT_PRESET_DIALOG.CLOSE.HINT, nil,
+                                { label = T.EDIT_PRESET_DIALOG.CLOSE.BUTTON, hintWindow = 'editFilterWindow' }) then
                             app.temp.showCreatePresetDialog = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
 
                         -- Delete button (only when editing)
                         if isEditing then
-                            if app.gui:setting('button', T.EDIT_FILTER_DIALOG.DELETE.LABEL,
-                                    T.EDIT_FILTER_DIALOG.DELETE.HINT, nil,
-                                    { label = T.EDIT_FILTER_DIALOG.DELETE.BUTTON, hintWindow = 'editFilterWindow' }) then
+                            app.gui:pushColors(app.gui.st.col.buttons.deletePreset)
+                            if app.gui:setting('button', T.EDIT_PRESET_DIALOG.DELETE.LABEL,
+                                    T.EDIT_PRESET_DIALOG.DELETE.HINT, nil,
+                                    { label = T.EDIT_PRESET_DIALOG.DELETE.BUTTON, hintWindow = 'editFilterWindow' }) then
                                 local preset = app.engine.presets[app.temp.editingPresetId]
                                 if preset then
                                     app.userdata:deletePreset(app.temp.editingPresetId)
@@ -2797,6 +2812,8 @@ RunApp = function()
                                 app.temp.showCreatePresetDialog = false
                                 ImGui.CloseCurrentPopup(ctx)
                             end
+                            app.gui:popColors(app.gui.st.col.buttons.deletePreset)
+
                         end
 
                         app.draw.hint(ctx, 'editFilterWindow')

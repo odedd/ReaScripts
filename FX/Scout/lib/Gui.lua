@@ -109,7 +109,13 @@ PB_Gui.init = function(self, fonts)
                 default = { [ImGui.Col_Text] = self.st.basecolors.midHovered },
                 hovered = { [ImGui.Col_Text] = self.st.basecolors.mainBright },
                 active = { [ImGui.Col_Text] = self.st.basecolors.mainBrighter },
-            }
+            },
+            deletePreset = {
+            [ImGui.Col_Button] = 0x991d30ff,
+            [ImGui.Col_ButtonHovered] = 0xa3273aff,
+            [ImGui.Col_ButtonActive] = 0xba364aff,
+        },
+        
         },
         tagButtons = {
             [ImGui.Col_Text] = self.st.basecolors.main,
@@ -394,7 +400,7 @@ PB_Gui.init = function(self, fonts)
                 ImGui.SameLine(ctx)
                 ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
                 ImGui.PushFont(ctx, self.st.fonts.icons_small)
-                ImGui.TextColored(ctx,self.st.basecolors.textDarker, ICONS.QUESTION_CIRCLE)
+                ImGui.TextColored(ctx, self.st.basecolors.textDarker, ICONS.QUESTION_CIRCLE)
                 ImGui.PopFont(ctx)
                 if ImGui.IsItemHovered(ctx) then
                     ImGui.SetTooltip(ctx, data.help)
@@ -412,7 +418,7 @@ PB_Gui.init = function(self, fonts)
                 ImGui.SetCursorPos(ctx, x, y)
             end
             ImGui.SetCursorPosX(ctx, thirdWidth)
-            widgetWidth = data.width or ImGui.GetContentRegionAvail(ctx)--itemWidth
+            widgetWidth = data.width or ImGui.GetContentRegionAvail(ctx) --itemWidth
         else
             ImGui.SameLine(ctx)
             widgetWidth = ImGui.GetContentRegionAvail(ctx)

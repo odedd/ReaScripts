@@ -2,47 +2,47 @@
 T = {}
 
 T.EXPORT_ACTION_DIALOG = {
-    NAME = {--TODO: Update this
+    NAME = {
         LABEL = 'Action Name',
-        HINT = 'A name for the new action',
+        HINT = 'Will be prefixed by \''..Scr.no_ext..'\'.',
     },
         EXPORT = {
         LABEL = '',
         BUTTON = 'Export as Action',
         SUCCESS = 'Successfully created action:\n\n%s',
-        HINT = 'temp',
+        HINT = 'Add to Reaper action list',
     },
     CLOSE = {
         LABEL = '',
         BUTTON = 'Close',
-        HINT = 'temp',
+        HINT = 'Close without creating action',
     }
 }
 
-T.EDIT_FILTER_DIALOG = {
-    PRESET_NAME = {--TODO: Update this
+T.EDIT_PRESET_DIALOG = {
+    PRESET_NAME = {
         LABEL = 'Preset Name',
         HINT = 'A name for the new preset',
     },
-    PRESET_WORD = {--TODO: Update this
+    PRESET_WORD = {
         LABEL = 'Magic Word',
-        HINT = 'A name for the new magic word',
+        HINT = 'Typing word + space loads preset',
     },
     SAVE_PRESET = {
         LABEL = '',
         BUTTON_CREATE = 'Save as Preset',
         BUTTON_EDIT = 'Save',
-        HINT = 'temp',
+        HINT = 'Save preset',
     },
     DELETE = {
         LABEL = '',
         BUTTON = 'Delete',
-        HINT = 'temp',
+        HINT = 'Delete preset',
     },
     CLOSE = {
         LABEL = '',
         BUTTON = 'Close',
-        HINT = 'temp',
+        HINT = 'Clse without saving',
     }
 }
 
@@ -190,10 +190,11 @@ T.HINTS = {
     SAVE_FILTERS = 'Save filter set.',
     SAVE_FILTERS_PRESET = 'Save filter set as a preset.',
     SAVE_FILTERS_ACTION = 'Export filter set as a Reaper action.',
-    ACTIVE_FILTER_DEFAULT = '%s: %s',
+    -- ACTIVE_FILTER_DEFAULT = '%s: %s',
     ACTIVE_FILTER_REMOVE = 'Remove filter.',
     LOAD_FILTER_DEFAULT = 'Show items whose %s is %s.',
     PRESET_DEFAULT = 'Load preset %s.',
+    PRESET_WITH_WORD_DEFAULT = 'Load preset %s. You can also type \'%s\' followed by space to load it.',
     EDIT_PRESET_DEFAULT = 'Edit preset %s.',
     OTHER_FILTERS = {
         ['Untagged'] = 'Show items that have no tags.'
@@ -210,5 +211,5 @@ T.HINTS = {
     DRAG_RESULT_DEFAULT = 'Drag to tag list to add/remove tags or to a track.',
     DRAG_TAG_DEFAULT = 'Drag to another tag to reorder or to an item to add/remove tag.',
     DRAG_TAG_INTO_TAG = 'Move tag \'%s\' into tag \'%s\'.',
-    DRAG_TAG_TO_POSITION_RELATIVE_TO_TAG = 'Move tag \'%s\' %s tag \'%s\'.',
+    DRAG_TAG_TO_POSITION_RELATIVE_TO_TAG = 'Move tag \'%s\' %s tag \'%s\'.'
 }
