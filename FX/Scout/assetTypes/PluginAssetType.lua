@@ -11,7 +11,7 @@ function PluginAssetType.new(class, context)
     -- Plugins are file-based assets (have file paths)
     instance.shouldMapBaseFilenames = true
 
-    instance:addInteraction(0, 'add %asset to selected track(s)',
+    instance:addInteraction(0, 'add %asset to selected track(s) or create a new track if none is selected',
         function(asset, mods, context, contextData, confirm, total, index)
             local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
 
@@ -23,7 +23,16 @@ function PluginAssetType.new(class, context)
                 instance:resetPluginUIState(originalUIState)
                 return true, ('Added %s to %d tracks'):format(asset.searchText[1].text, #selectedTracks)
             elseif selectedTracks and #selectedTracks == 0 then
-                return false, 'No tracks selected'
+                if index == 1 then
+                    local numTracks = r.CountTracks(0)
+                    r.InsertTrackAtIndex(numTracks, true)
+                    asset.context.temp.newTrack = r.GetTrack(0, numTracks)
+                end
+                local originalUIState = instance:setPluginUIState()
+                local fxIndex = r.TrackFX_AddByName(asset.context.temp.newTrack, asset.load, false, -1)
+                instance:resetPluginUIState(originalUIState)
+                if index == total then asset.context.temp.newTrack = nil end
+                return true, ('Added %d FX to a new track'):format(total)
             end
         end)
     instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_OBJECT'], 'add %asset to dragged %dragTargetObject',
