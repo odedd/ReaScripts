@@ -32,9 +32,13 @@ else
     dofile(p .. '../../Resources/Common/Common.lua')
 end
 
-r.ClearConsole()
+LOG_LEVEL = OD_Logger.LOG_LEVEL.ERROR
 
 OD_Init()
+
+if LOG_LEVEL > 0 then
+    r.ClearConsole()
+end
 
 r.SetExtState(Scr.ext_name, 'SCRIPT_VERSION', Scr.version, false)
 
@@ -68,7 +72,7 @@ RunApp = function()
         local projPath, projFileName = OD_GetProjectPaths()
 
         local logger = OD_Logger:new({
-            level = OD_Logger.LOG_LEVEL.ERROR,
+            level = LOG_LEVEL,
             output = OD_Logger.LOG_OUTPUT.CONSOLE,
             filename = projPath .. Scr.name .. '_' .. projFileName .. '.log',
             -- filename = p .. Scr.name .. '_' .. projFileName .. '.log',
@@ -540,6 +544,11 @@ RunApp = function()
                     app.selection:execute(resultContext, contextData, confirm)
                 end
             end,
+            executeRandomResult = function()
+                -- local randomResult = app.temp.searchResults[math.random(#app.temp.searchResults)]
+                app.selection:selectOnly(math.random(#app.temp.searchResults))
+                app.selection:execute(RESULT_CONTEXT['IGNORE_KEYS'])
+            end,
             createAction = function(actionName, cmd)
                 local snActionName = OD_SanitizeFilename(actionName)
                 local filename = ('%s - %s'):format(Scr.no_ext, snActionName)
@@ -560,8 +569,10 @@ RunApp = function()
                 end
                 return filename .. '.lua'
             end,
-            createFilterAction = function(actionName, filter)
-                return app.flow.createAction(actionName, "APPLY_FILTER \'..\n[[" .. pickle(filter) .. "\n]]..\'")
+            createFilterAction = function(actionName, actionType, filter)
+                if EXPORT_ACTIONS[actionType] then
+                    return app.flow.createAction(actionName, EXPORT_ACTIONS[actionType] .. " \'..\n[[" .. pickle(filter) .. "\n]]..\'")
+                end
             end,
             checkExternalCommand = function()
                 local raw_cmd = r.GetExtState(Scr.ext_name, 'EXTERNAL_COMMAND')
@@ -571,6 +582,21 @@ RunApp = function()
                         local filter = unpickle(arg)
                         app.flow.filterResults(filter)
                         r.SetExtState(Scr.ext_name, 'EXTERNAL_COMMAND', '', false)
+                    end
+                    if cmd == "RUN_RANDOM" then
+                        local filter = unpickle(arg)
+                        local shouldClose = (r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE')
+                        r.SetExtState(Scr.ext_name, 'EXTERNAL_COMMAND', '', false)
+                        if shouldClose then
+                            app.flow.filterResults(filter)
+                            app.flow.executeRandomResult()
+                            app.flow.close()
+                        else
+                            local currentFilter = OD_DeepCopy(app.temp.filter)
+                            app.flow.filterResults(filter, true, true)
+                            app.flow.executeRandomResult()
+                            app.temp.filter = currentFilter
+                        end
                     end
                 end
             end,
@@ -590,6 +616,7 @@ RunApp = function()
                     app.logger:logInfo(('Woke up after hibernating for %.2f seconds'):format(r.time_precise() -
                         app.temp.hibernationStart))
                     app.temp.hibernationStart = nil
+                    r.SetExtState(Scr.ext_name, 'RUNNING', 'WAKING UP', false)    -- This is needed for the wakeup check in checkExternalCommand's RUN_RANDOM, even though it's not referenced directly
                     r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
                     r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false) -- Clear hibernating version
                     app.flow.setSearchMode(SEARCH_MODE.MAIN, { clear = true })
@@ -961,20 +988,24 @@ RunApp = function()
                         end
                         app:setHoveredHint('main', T.HINTS.SAVE_FILTERS)
                         if ImGui.BeginPopup(ctx, 'Save Filter Set Context Menu') then
-                            app:setHint('main','')
+                            app:setHint('main', '')
                             if ImGui.MenuItem(ctx, 'Save preset...') then
                                 app.temp.showCreatePresetDialog = true
                                 app.temp.presetName = ""
                                 app.temp.presetWord = ""
                             end
                             app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_PRESET)
-                            if ImGui.MenuItem(ctx, 'Create reaper action...') then
+                            if ImGui.MenuItem(ctx, 'Create Reaper action...') then
                                 app.temp.showExportActionDialog = true
                                 app.temp.actionName = ""
                             end
                             app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_ACTION)
                             ImGui.EndPopup(ctx)
                         end
+                        if app.guiHelpers.iconButton(ctx, 'DICE', app.gui.st.col.buttons.activeFilterAction) then
+                            app.flow.executeRandomResult()
+                        end
+                        app:setHoveredHint('main', T.HINTS.RANDOM_ACTION)
                         ImGui.SameLine(ctx)
                         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
                         app.gui:pushStyles(app.gui.st.vars.topBarActiveFiltersArea)
@@ -996,11 +1027,14 @@ RunApp = function()
                                     -- textW = app.guiHelpers.calcTinyIconSize(ctx,
                                     --         filter.value and ICONS.PLUS or ICONS.MINUS) +
 
-                                        ImGui.CalcTextSize(ctx, text)
+                                    ImGui.CalcTextSize(ctx, text)
                                 end
                                 local iconWidth = app.guiHelpers.calcTinyIconSize(ctx, FILTER_ICONS[filter.type])
-                                local tagIconWidth = filter.type == FILTER_TYPES.TAG and (app.guiHelpers.calcTinyIconSize(ctx, (filter.value and ICONS.PLUS or ICONS.MINUS)) + spacingX) or 0
-                                local filterW = paddingX + iconWidth + tagIconWidth + spacingX + textW + spacingX * 2 + closeButtonSizeW +
+                                local tagIconWidth = filter.type == FILTER_TYPES.TAG and
+                                    (app.guiHelpers.calcTinyIconSize(ctx, (filter.value and ICONS.PLUS or ICONS.MINUS)) + spacingX) or
+                                    0
+                                local filterW = paddingX + iconWidth + tagIconWidth + spacingX + textW + spacingX * 2 +
+                                    closeButtonSizeW +
                                     paddingX
                                 if (i ~= 1) then
                                     ImGui.SameLine(ctx)
@@ -1040,7 +1074,7 @@ RunApp = function()
                                     end
                                     ImGui.AlignTextToFramePadding(ctx)
                                     ImGui.Text(ctx, filter.itemName)
-                                    ImGui.SameLine(ctx, 0, spacingX*2)
+                                    ImGui.SameLine(ctx, 0, spacingX * 2)
                                     if app.guiHelpers.tinyIcon(ctx, 'removeFilter', ICONS.CLOSE, nil, nil, T.HINTS.ACTIVE_FILTER_REMOVE, 2) then
                                         if filter.type == FILTER_TYPES.TAG then
                                             app.flow.filterResults({ removeTags = { filter.item.id } })
@@ -1055,14 +1089,18 @@ RunApp = function()
                                 -- if ImGui.IsItemHovered(ctx) then
                                 if filter.type == FILTER_TYPES.TAG then
                                     if filter.value then
-                                    app:setHoveredHint('main', (T.HINTS.TAG_POSITIVE):format(filter.itemName), nil, nil, 0)
-                                else
-                                    app:setHoveredHint('main', (T.HINTS.TAG_NEGATIVE):format(filter.itemName), nil, nil, 0)
+                                        app:setHoveredHint('main', (T.HINTS.TAG_POSITIVE):format(filter.itemName), nil,
+                                            nil, 0)
+                                    else
+                                        app:setHoveredHint('main', (T.HINTS.TAG_NEGATIVE):format(filter.itemName), nil,
+                                            nil, 0)
                                     end
                                 else
-                                    app:setHoveredHint('main', (T.HINTS.LOAD_FILTER_DEFAULT):format(T.FILTER_NAMES[filter.type], filter.itemName), nil, nil, 0)
+                                    app:setHoveredHint('main',
+                                        (T.HINTS.LOAD_FILTER_DEFAULT):format(T.FILTER_NAMES[filter.type], filter
+                                            .itemName), nil, nil, 0)
                                 end
-                                    -- end
+                                -- end
                                 ImGui.PopID(ctx)
                             end
                             ImGui.EndChild(ctx)
@@ -1701,7 +1739,8 @@ RunApp = function()
                                         app.temp.tagRename = newTag.id
                                         app.temp.tagRenameBuffer = newTag.name
                                     end
-                                    app:setHoveredHint('main', (T.HINTS.TAG_CONTEXT_MENU_CREATE_NESTED_TAG):format(tag.name))
+                                    app:setHoveredHint('main',
+                                        (T.HINTS.TAG_CONTEXT_MENU_CREATE_NESTED_TAG):format(tag.name))
                                     ImGui.Separator(ctx)
                                     if app.temp.showDeleteTagConfirmation then
                                         if r.time_precise() - app.temp.showDeleteTagConfirmation > 3 then
@@ -1717,7 +1756,7 @@ RunApp = function()
                                         end
                                     end
                                     app:setHoveredHint('main', (T.HINTS.TAG_CONTEXT_MENU_DELETE):format(tag.name))
-                                    
+
                                     ImGui.EndPopup(ctx)
                                 end
                                 -- end
@@ -1879,7 +1918,7 @@ RunApp = function()
                                     ImGui.PushID(ctx, menuId .. '/' .. k)
                                     if k ~= FILTER_TYPES.PRESET or (k == FILTER_TYPES.PRESET and OD_Tablelength(app.engine.presets) > 0) then
                                         if ImGui.BeginMenu(ctx, T.FILTER_NAMES[k] .. '##filterMenu') then
-                                            app:setHint('main','')
+                                            app:setHint('main', '')
                                             -- Special handling for Presets menu
                                             if k == FILTER_TYPES.PRESET then
                                                 -- "Save Preset..." - only show when filters are active
@@ -1935,7 +1974,9 @@ RunApp = function()
                                                     if ImGui.IsItemHovered(ctx) then
                                                         if k == FILTER_TYPES.PRESET then
                                                             if value.shortcut then
-                                                                app:setHint('main', (T.HINTS.PRESET_WITH_WORD_DEFAULT):format(item, value.shortcut))
+                                                                app:setHint('main',
+                                                                    (T.HINTS.PRESET_WITH_WORD_DEFAULT):format(item,
+                                                                        value.shortcut))
                                                             else
                                                                 app:setHint('main', (T.HINTS.PRESET_DEFAULT):format(item))
                                                             end
@@ -2079,6 +2120,11 @@ RunApp = function()
                         elseif app.guiHelpers.isShortcutPressed('hardCloseScript', true) then
                             app.hardExit = true
                             -- pressed = true
+                        elseif app.guiHelpers.isShortcutPressed('runRandomResult', true) then
+                            if #app.temp.searchResults > 0 then
+                                app.flow.executeRandomResult()
+                            end
+                            -- pressed = true
                         elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.guiHelpers.isShortcutPressed('markFavorite', true) and app.selection.keyboardPos then
                             -- pressed = true
                             -- Toggle favorite status for all selected assets
@@ -2147,9 +2193,11 @@ RunApp = function()
                     end
                     if rv then
                         -- if app.temp.searchMode == SEARCH_MODE.MAIN then
-                        local wordFilter = app.engine.magicWords[app.temp.searchInput:upper():match('(.+)%s$')]
+                        local wordKey, wordAction = app.temp.searchInput:upper():match('(.+)([%s%?])$')
+                        local wordFilter = app.engine.magicWords[wordKey]
                         if wordFilter then
                             app.flow.filterResults(wordFilter)
+                            if wordAction == '?' then app.flow.executeRandomResult() end
                             app.guiHelpers.clearSearchInputText()
                         else
                             app.flow.filterResults({ text = app.temp.searchInput })
@@ -2291,9 +2339,9 @@ RunApp = function()
                                     flags = (ImGui.SliderFlags_AlwaysClamp)
                                 }) /
                             100
-                        app.settings.current.closeAfterExport = not app.gui:setting('checkbox',
+                        app.settings.current.closeAfterExecute = not app.gui:setting('checkbox',
                             T.SETTINGS.CLOSE_AFTER_EXECUTE.LABEL,
-                            T.SETTINGS.CLOSE_AFTER_EXECUTE.HINT, not app.settings.current.closeAfterExport)
+                            T.SETTINGS.CLOSE_AFTER_EXECUTE.HINT, not app.settings.current.closeAfterExecute)
                         app.settings.current.sleepMode = app.gui:setting('checkbox',
                             T.SETTINGS.SLEEP_MODE.LABEL,
                             T.SETTINGS.SLEEP_MODE.HINT, app.settings.current.sleepMode,
@@ -2328,6 +2376,13 @@ RunApp = function()
                                 existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                                     function(k, v) return k ~= 'markFavorite' end)
                             })
+                        app.settings.current.shortcuts.runRandomResult, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.RANDOM_RESULT.LABEL,
+                            T.SETTINGS.SHORTCUTS.RANDOM_RESULT.HINT, app.settings.current.shortcuts.runRandomResult,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'runRandomResult' end)
+                            })
                         if resetCounter then app.temp.captureCounter = 0 end
                         ImGui.SeparatorText(ctx, 'Ordering')
 
@@ -2351,7 +2406,7 @@ RunApp = function()
                             T.SETTINGS.SHOW_FX_UI.LABEL,
                             T.SETTINGS.SHOW_FX_UI.HINT,
                             app.settings.current.showFxUI, {
-                                list = SHOW_FX_UI_LIST
+                                list = T.SHOW_FX_UI_LIST
                             })
                         app.settings.current.createSendsInsideFolder = app.gui:setting('checkbox',
                             T.SETTINGS.CREATE_INSIDE_FODLER.LABEL,
@@ -2813,7 +2868,6 @@ RunApp = function()
                                 ImGui.CloseCurrentPopup(ctx)
                             end
                             app.gui:popColors(app.gui.st.col.buttons.deletePreset)
-
                         end
 
                         app.draw.hint(ctx, 'editFilterWindow')
@@ -2836,10 +2890,11 @@ RunApp = function()
                         ImGui.OpenPopup(ctx, 'Export Reaper Action')
                         if not app.temp.actionName then
                             app.temp.actionName = ""
+                            app.temp.exportActionType = EXPORT_ACTION_TYPE.APPLY_FILTER
                         end
                     end
 
-                    ImGui.SetNextWindowSize(ctx, 350 * app.gui.scale, 0, ImGui.Cond_Always)
+                    ImGui.SetNextWindowSize(ctx, 550 * app.gui.scale, 0, ImGui.Cond_Always)
                     ImGui.SetNextWindowPos(ctx, app.gui.mainWindow.pos[1] + (app.gui.mainWindow.size[1] / 2),
                         app.gui.mainWindow.pos[2] + (app.gui.mainWindow.size[2] / 2), ImGui.Cond_Appearing, 0.5, 0.5)
                     app.gui:pushStyles(app.gui.st.vars.popupsTitle)
@@ -2852,10 +2907,22 @@ RunApp = function()
                         if ImGui.IsWindowAppearing(ctx) then
                             ImGui.SetKeyboardFocusHere(ctx, 0)
                         end
+                        ImGui.TextWrapped(ctx, T.EXPORT_ACTION_DIALOG.INFO)
+                        ImGui.Spacing(ctx)
+
+                        app.temp.exportActionType = app.gui:setting(
+                            'combo',
+                            T.EXPORT_ACTION_DIALOG.ACTION_TYPE.LABEL,
+                            T.EXPORT_ACTION_DIALOG.ACTION_TYPE.HINT,
+                            app.temp.exportActionType, {
+                                list = T.EXPORT_ACTION_TYPE_LIST,
+                                hintWindow = 'editFilterWindow'
+                            })
 
                         app.temp.actionName = app.gui:setting('text', T.EXPORT_ACTION_DIALOG.NAME.LABEL,
                             T.EXPORT_ACTION_DIALOG.NAME.HINT, app.temp.actionName,
                             { hintWindow = 'editFilterWindow' })
+
 
                         local trimmedActionName = OD_Trim(app.temp.actionName)
                         local canExportAction = trimmedActionName ~= ""
@@ -2864,7 +2931,8 @@ RunApp = function()
                         if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canExportAction) or app.gui:setting('button', T.EXPORT_ACTION_DIALOG.EXPORT.LABEL,
                                 T.EXPORT_ACTION_DIALOG.EXPORT.HINT, nil,
                                 { label = T.EXPORT_ACTION_DIALOG.EXPORT.BUTTON, hintWindow = 'editFilterWindow' }) then
-                            local createdActionName = app.flow.createFilterAction(trimmedActionName, app.temp.filter)
+                            local createdActionName = app.flow.createFilterAction(trimmedActionName,
+                                app.temp.exportActionType, app.temp.filter)
                             if createdActionName then
                                 app:msg((T.EXPORT_ACTION_DIALOG.EXPORT.SUCCESS):format(createdActionName))
                             end
@@ -2885,9 +2953,8 @@ RunApp = function()
 
                     if not open then
                         app.temp.showExportActionDialog = false
-                        app.temp.presetName = nil
-                        app.temp.editingPresetId = nil
-                        app.temp.originalPresetFilter = nil
+                        app.temp.actionName = nil
+                        app.temp.exportActionType = nil
                     end
                 end
             end,
@@ -2938,25 +3005,30 @@ RunApp = function()
         }
 
         function app.loop()
-            r.SetExtState(Scr.ext_name, 'RUNNING', 'TRUE', false)
-
             local ctx = app.gui.ctx
+
+
             app.hide = false
             app.guiHelpers.initFrame(ctx)
-            app.gui:pushColors(app.gui.st.col.main)
-            app.gui:pushStyles(app.gui.st.vars.main)
-            ImGui.PushFont(ctx, app.gui.st.fonts.default)
-            if app.logger.profile then Profile.start() end
 
-            app.draw.mainWindow(ctx)
-
-            if app.logger.profile then
-                Profile.stop()
-            end
-            ImGui.PopFont(ctx)
-            app.gui:popColors(app.gui.st.col.main)
-            app.gui:popStyles(app.gui.st.vars.main)
             app.flow.checkExternalCommand()
+            r.SetExtState(Scr.ext_name, 'RUNNING', 'TRUE', false)
+
+            if not app.hide then
+                app.gui:pushColors(app.gui.st.col.main)
+                app.gui:pushStyles(app.gui.st.vars.main)
+                ImGui.PushFont(ctx, app.gui.st.fonts.default)
+                if app.logger.profile then Profile.start() end
+
+                app.draw.mainWindow(ctx)
+
+                if app.logger.profile then
+                    Profile.stop()
+                end
+                ImGui.PopFont(ctx)
+                app.gui:popColors(app.gui.st.col.main)
+                app.gui:popStyles(app.gui.st.vars.main)
+            end
 
             if not app.hide and not app.hardExit then
                 PDefer(app.loop)

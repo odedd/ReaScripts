@@ -49,6 +49,7 @@ end
 
 function BaseAssetType:determineCorrectContext(mods, context)
     local context = context or 0
+    if OD_BfCheck(context, RESULT_CONTEXT.IGNORE_KEYS) then return 0 end
     local correctContext =
         self.interactionHints[mods | context] and (mods | context) or
         self.interactionHints[mods] and (mods) or
@@ -140,7 +141,7 @@ function BaseAssetType:executeAndAddToRecents()
                     asset:addToRecents()
                 end
                 assetType.context.logger:logInfo(logMsg)
-                if assetType.context.settings.current.closeAfterExport then
+                if assetType.context.settings.current.closeAfterExecute then
                     assetType.context.flow.close()
                 end
                 -- Return the actual result from the execute function

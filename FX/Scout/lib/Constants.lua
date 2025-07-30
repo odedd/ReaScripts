@@ -49,11 +49,12 @@ SEARCH_MODE = {
 
 RESULT_CONTEXT = {
     ['NONE'] = 0,
-    ['KEYBOARD'] = 1,
-    ['MOUSE_CLICK'] = 2,
-    ['MOUSE_DOUBLE_CLICK'] = 4,
-    ['DRAGGED_TO_OBJECT'] = 8,
-    ['DRAGGED_TO_BLANK'] = 16,
+    ['IGNORE_KEYS'] = 1,
+    ['KEYBOARD'] = 2,
+    ['MOUSE_CLICK'] = 4,
+    ['MOUSE_DOUBLE_CLICK'] = 8,
+    ['DRAGGED_TO_OBJECT'] = 16,
+    ['DRAGGED_TO_BLANK'] = 32,
 }
 
 SHOW_FX_UI = {
@@ -62,16 +63,15 @@ SHOW_FX_UI = {
     DONT_OPEN = 2
 }
 
-SHOW_FX_UI_DESCRIPTIONS = {
-    [SHOW_FX_UI.FOLLOW_PREFERENCE] = 'Follow Reaper\'s preferences',
-    [SHOW_FX_UI.OPEN] = 'Always open',
-    [SHOW_FX_UI.DONT_OPEN] = 'Never open'
+EXPORT_ACTION_TYPE = {
+    APPLY_FILTER = 0,
+    RUN_RANDOM = 1
 }
 
-for i = 0, #SHOW_FX_UI_DESCRIPTIONS do
-    SHOW_FX_UI_LIST = (SHOW_FX_UI_LIST or '') .. SHOW_FX_UI_DESCRIPTIONS[i] .. '\0'
-end
-
+EXPORT_ACTIONS = {
+    [EXPORT_ACTION_TYPE.APPLY_FILTER] = 'APPLY_FILTER',
+    [EXPORT_ACTION_TYPE.RUN_RANDOM] = 'RUN_RANDOM',
+}
 
 TAGS_ROOT_PARENT = -1
 

@@ -37,6 +37,13 @@ PB_Settings = OD_Settings:new({
                 shift = true,
                 alt = false,
                 macCtrl = false
+            },
+            runRandomResult = {
+                key = OD_KEYCODES.R,
+                ctrl = true,
+                shift = true,
+                alt = false,
+                macCtrl = false
             }
         },
         fxTypeVisibility = {

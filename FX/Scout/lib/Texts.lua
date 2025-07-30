@@ -2,11 +2,19 @@
 T = {}
 
 T.EXPORT_ACTION_DIALOG = {
-    NAME = {
-        LABEL = 'Action Name',
-        HINT = 'Will be prefixed by \''..Scr.no_ext..'\'.',
+    INFO = 'Create a Reaper action that will either open ' ..
+        Scr.name ..
+        ' with the saved filter, or randomly select one of the filter\'s results and run it.'
+    ,
+    ACTION_TYPE = {
+        LABEL = 'Action',
+        HINT = 'Select what the action should do.',
     },
-        EXPORT = {
+    NAME = {
+        LABEL = 'Name',
+        HINT = 'Will be prefixed by \'' .. Scr.no_ext .. '\'.',
+    },
+    EXPORT = {
         LABEL = '',
         BUTTON = 'Export as Action',
         SUCCESS = 'Successfully created action:\n\n%s',
@@ -98,6 +106,10 @@ T.SETTINGS = {
             LABEL = 'Close script (no sleep)',
             HINT = 'Close script without entering sleep mode.',
         },
+        RANDOM_RESULT = {
+            LABEL = 'Run random result',
+            HINT = 'Randomly select one of the results and run it.',
+        },
         MARK_FAVORITE = {
             LABEL = 'Mark favorite',
             HINT = 'Mark search result as favorite.',
@@ -159,6 +171,27 @@ After that, %s will remember
 the dock position.]]):format(Scr.name)
 }
 
+T.EXPORT_ACTION_TYPE_DESCRIPTIONS = {
+    [EXPORT_ACTION_TYPE.APPLY_FILTER] = 'Load current filter',
+    [EXPORT_ACTION_TYPE.RUN_RANDOM] = 'Load filter + run random result'
+}
+
+for i = 0, #T.EXPORT_ACTION_TYPE_DESCRIPTIONS do
+    T.EXPORT_ACTION_TYPE_LIST = (T.EXPORT_ACTION_TYPE_LIST or '') .. T.EXPORT_ACTION_TYPE_DESCRIPTIONS[i] .. '\0'
+end
+
+
+T.SHOW_FX_UI_DESCRIPTIONS = {
+    [SHOW_FX_UI.FOLLOW_PREFERENCE] = 'Follow Reaper\'s preferences',
+    [SHOW_FX_UI.OPEN] = 'Always open',
+    [SHOW_FX_UI.DONT_OPEN] = 'Never open'
+}
+
+for i = 0, #T.SHOW_FX_UI_DESCRIPTIONS do
+    T.SHOW_FX_UI_LIST = (T.SHOW_FX_UI_LIST or '') .. T.SHOW_FX_UI_DESCRIPTIONS[i] .. '\0'
+end
+
+
 T.IMPORT_SKIP_REASON = {
     [IMPORT_SKIP_REASON.ASSET_NOT_FOUND] = "Filter not found in current system",
     [IMPORT_SKIP_REASON.INCOMPATIBLE_VERSION] = "Incompatible file version",
@@ -171,16 +204,16 @@ T.SPECIAL_GROUPS = {
     [SPECIAL_GROUPS.PLUGINS] = 'FX'
 }
 
-T.SLEEP_MODE_EXPLANATION = 
+T.SLEEP_MODE_EXPLANATION =
 [[TL;DR - The script loads fastest when 'sleep mode' is turned on.
 For it to work, the next time the script runs, select 'new instance'.
 If you accidentally selected something else, please delete the script
 and add it again.
 
-Sleep mode reduces loading times considerably by keeping the script 
-runningin the background (with minimal resource use) and makes the 
-experience much faster and smoother. However, since there's currently 
-no way forscripts to set it on their own, you have to select new 
+Sleep mode reduces loading times considerably by keeping the script
+runningin the background (with minimal resource use) and makes the
+experience much faster and smoother. However, since there's currently
+no way forscripts to set it on their own, you have to select new
 instance manually.]]
 
 T.TURN_ON_SLEEP_MODE = 'Do you wish to turn on sleep mode? (Say yes!)'
@@ -188,6 +221,7 @@ T.TURN_ON_SLEEP_MODE = 'Do you wish to turn on sleep mode? (Say yes!)'
 T.HINTS = {
     RESET_FILTERS = 'Clear all filters.',
     SAVE_FILTERS = 'Save filter set.',
+    RANDOM_ACTION = 'Randomly select one of the results and run it.',
     SAVE_FILTERS_PRESET = 'Save filter set as a preset.',
     SAVE_FILTERS_ACTION = 'Export filter set as a Reaper action.',
     -- ACTIVE_FILTER_DEFAULT = '%s: %s',

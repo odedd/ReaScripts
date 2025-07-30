@@ -5,6 +5,7 @@ ICONS = {
     ['SIDEBAR'] = 'b',
     ['BRIEFCASE'] = 'B',
     ['PENCIL'] = 'C',
+    ['DICE'] = 'd',
     ['DOCK_DOWN'] = 'D',
     ['UNDOCK'] = 'E',
     ['FOLDER'] = 'f',
