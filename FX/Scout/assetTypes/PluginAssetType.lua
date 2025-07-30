@@ -13,7 +13,7 @@ function PluginAssetType.new(class, context)
 
     instance:addInteraction(0, 'add %asset to selected track(s) or create a new track if none is selected',
         function(asset, mods, context, contextData, confirm, total, index)
-            local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
+            local selectedTracks = instance:getSelectedTracksWithConfirmation(asset.context.temp, context, contextData, confirm)
 
             if selectedTracks and #selectedTracks > 0 then
                 local originalUIState = instance:setPluginUIState()
@@ -92,7 +92,7 @@ function PluginAssetType.new(class, context)
         end)
     instance:addInteraction(ImGui.Mod_Alt | ImGui.Mod_Ctrl, 'add %asset to selected track(s) as input FX',
         function(asset, mods, context, contextData, confirm, total, index)
-            local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
+            local selectedTracks = instance:getSelectedTracksWithConfirmation(asset.context.temp, context, contextData, confirm)
 
             if selectedTracks and #selectedTracks > 0 then
                 local originalUIState = instance:setPluginUIState()
@@ -109,7 +109,7 @@ function PluginAssetType.new(class, context)
     instance:addInteraction(ImGui.Mod_Shift,
         'send to a new track with %asset%plural( (all on the same track%))',
         function(asset, mods, context, contextData, confirm, total, index)
-            local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
+            local selectedTracks = instance:getSelectedTracksWithConfirmation(asset.context.temp, context, contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
                 if index == 1 then asset.context.temp.newSendTrack = helpers.createSendTrack(asset) end
                 local originalUIState = instance:setPluginUIState()
@@ -138,7 +138,7 @@ function PluginAssetType.new(class, context)
     instance:addInteraction(ImGui.Mod_Shift | ImGui.Mod_Ctrl,
         'send to %singular(a new track)%plural(%count new tracks) with %asset%plural( (each FX on a separate track%))',
         function(asset, mods, context, contextData, confirm, total, index)
-            local selectedTracks = instance:getSelectedTracksWithConfirmation(context, contextData, confirm)
+            local selectedTracks = instance:getSelectedTracksWithConfirmation(asset.context.temp, context, contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
                 local newTrack = helpers.createSendTrack(asset)
                 local originalUIState = instance:setPluginUIState()

@@ -57,6 +57,7 @@ function BaseAssetType:determineCorrectContext(mods, context)
         self.interactionHints[0] and (0)
     return correctContext
 end
+
 function BaseAssetType:getExecuteFunction(mods, context)
     local class = getmetatable(self)
     local executeFunction = nil
@@ -73,57 +74,59 @@ end
 function BaseAssetType:parseInteractionHintTemplate(template, count, targetObject, assetName, manyPlaceholder)
     local result = template
 
-        -- Handle singular/plural functions with proper nesting support
-        if count == 1 then
-            -- Keep singular content, remove plural functions entirely
-            result = result:gsub("%%singular%((.-)%)", function(content)
-                -- Process escaped parentheses within the content
-                return content:gsub("%%%((.-)%%%)", "(%1)")
-            end)
-            -- Remove plural functions completely
-            result = result:gsub("%%plural%([^)]*%([^)]*%)[^)]*%)", "")                         -- nested parens
-            result = result:gsub("%%plural%([^)]*%)", "")                                       -- simple case
-        else
-            -- Remove singular functions completely
-            result = result:gsub("%%singular%([^)]*%)", "")
-            -- Keep plural content, process escaped parentheses
-            result = result:gsub("%%plural%((.-)%)", function(content)
-                -- Handle both paired and single escaped parentheses
-                content = content:gsub("%%%((.-)%%%)", "(%1)")                         -- paired escapes
-                content = content:gsub("%%%)", ")")                                    -- single closing escape
-                content = content:gsub("%%%(", "(")                                    -- single opening escape
-                return content
-            end)
-        end
+    -- Handle singular/plural functions with proper nesting support
+    if count == 1 then
+        -- Keep singular content, remove plural functions entirely
+        result = result:gsub("%%singular%((.-)%)", function(content)
+            -- Process escaped parentheses within the content
+            return content:gsub("%%%((.-)%%%)", "(%1)")
+        end)
+        -- Remove plural functions completely
+        result = result:gsub("%%plural%([^)]*%([^)]*%)[^)]*%)", "")     -- nested parens
+        result = result:gsub("%%plural%([^)]*%)", "")                   -- simple case
+    else
+        -- Remove singular functions completely
+        result = result:gsub("%%singular%([^)]*%)", "")
+        -- Keep plural content, process escaped parentheses
+        result = result:gsub("%%plural%((.-)%)", function(content)
+            -- Handle both paired and single escaped parentheses
+            content = content:gsub("%%%((.-)%%%)", "(%1)")     -- paired escapes
+            content = content:gsub("%%%)", ")")                -- single closing escape
+            content = content:gsub("%%%(", "(")                -- single opening escape
+            return content
+        end)
+    end
 
-        local manyPlaceholder = manyPlaceholder or 'results'
-        local countText = count == -1 and '&&&' or tostring(count)
-        -- Replace variables
-        result = result:gsub("%%asset", count == 1 and assetName or (countText .. ' '.. manyPlaceholder))
-        result = result:gsub("%%count", countText)
-        if targetObject and r.ValidatePtr(targetObject, "MediaItem*") then
-            result = result:gsub("%%dragTargetObject", "item")
-        elseif targetObject and r.ValidatePtr(targetObject, "Track*") then
-            result = result:gsub("%%dragTargetObject", "track")
-        else
-            result = result:gsub("%%dragTargetObject", "track/item")
-        end
-        if count == -1 then result = result:gsub("&&& ",'') end
+    local manyPlaceholder = manyPlaceholder or 'results'
+    local countText = count == -1 and '&&&' or tostring(count)
+    -- Replace variables
+    result = result:gsub("%%asset", count == 1 and assetName or (countText .. ' ' .. manyPlaceholder))
+    result = result:gsub("%%count", countText)
+    if targetObject and r.ValidatePtr(targetObject, "MediaItem*") then
+        result = result:gsub("%%dragTargetObject", "item")
+    elseif targetObject and r.ValidatePtr(targetObject, "Track*") then
+        result = result:gsub("%%dragTargetObject", "track")
+    else
+        result = result:gsub("%%dragTargetObject", "track/item")
+    end
+    if count == -1 then result = result:gsub("&&& ", '') end
 
-        -- Clean up any remaining escaped parentheses
-        result = result:gsub("%%%((.-)%%%)", "(%1)")                         -- paired escapes
-        result = result:gsub("%%%)", ")")                                    -- single closing escape
-        result = result:gsub("%%%(", "(")                                    -- single opening escape
+    -- Clean up any remaining escaped parentheses
+    result = result:gsub("%%%((.-)%%%)", "(%1)")     -- paired escapes
+    result = result:gsub("%%%)", ")")                -- single closing escape
+    result = result:gsub("%%%(", "(")                -- single opening escape
 
-        return result
+    return result
 end
+
 function BaseAssetType:getInteractionHintFor(mods, context, contextData, count)
     local class = self.class
     local count = count or 1
     local interactionHint = nil
     local correctContext = class:determineCorrectContext(mods, context)
     interactionHint = class.interactionHints[correctContext].text
-    return class:parseInteractionHintTemplate(interactionHint, count, contextData, self.searchText[1].text, class.pluralName), correctContext | context
+    return class:parseInteractionHintTemplate(interactionHint, count, contextData, self.searchText[1].text,
+        class.pluralName), correctContext | context
 end
 
 function BaseAssetType:executeAndAddToRecents()
@@ -132,8 +135,15 @@ function BaseAssetType:executeAndAddToRecents()
 
         local executeFunction = assetType:getExecuteFunction(mods, context)
         if executeFunction then
+            -- some actions change track selection, so selected tracks need to be stored only once, before the first action. 
+            -- since this information (index, total) is only available here, executeFunctionSelectedTracks is nulled here 
+            -- so that getSelectedTracksWithConfirmation can set it once
+            if index == 1 then asset.context.temp.executeFunctionSelectedTracks = nil end
             -- Execute first and check if successful
-            local success, result, logMsg = pcall(executeFunction, asset, mods, context, contextData, confirm, total, index)
+            local success, result, logMsg = pcall(executeFunction, asset, mods, context, contextData, confirm, total,
+                index)
+
+            if index == total then asset.context.temp.executeFunctionSelectedTracks = nil end
 
             if success and result == true then
                 -- Only add to recents if execution was successful AND returned true
@@ -169,24 +179,26 @@ end
 
 -- Common helper methods:
 
-function BaseAssetType:getSelectedTracksWithConfirmation(context, contextData, confirm)
+function BaseAssetType:getSelectedTracksWithConfirmation(tempStorage, context, contextData, confirm)
     -- Similar logic for items if needed by other asset types
-    local numSelectedTracks = r.CountSelectedTracks2(0, true)
-    local tracks = {}
-    for i = 0, numSelectedTracks - 1 do
-        local track = r.GetSelectedTrack2(0, i, true)
-        table.insert(tracks, track)
+    if not tempStorage.executeFunctionSelectedTracks then
+        tempStorage.executeFunctionSelectedTracks = {}
+        local numSelectedTracks = r.CountSelectedTracks2(0, true)
+        for i = 0, numSelectedTracks - 1 do
+            local track = r.GetSelectedTrack2(0, i, true)
+            table.insert(tempStorage.executeFunctionSelectedTracks, track)
+        end
     end
-    if #tracks >= self.context.settings.current.numberOfMediaItemsThatRequireConfirmation and not (confirm and confirm.multipleTracks) then
+    if #tempStorage.executeFunctionSelectedTracks >= self.context.settings.current.numberOfMediaItemsThatRequireConfirmation and not (confirm and confirm.multipleTracks) then
         self.context.temp.confirmMultipleTracks = {
-            count = #tracks,
+            count = #tempStorage.executeFunctionSelectedTracks,
             resultContext = context,
             contextData = contextData,
             confirm = confirm
         }
-        return false, ('%s tracks selected, waiting for confirmation'):format(#tracks)
+        return false, ('%s tracks selected, waiting for confirmation'):format(#tempStorage.executeFunctionSelectedTracks)
     end
-    return tracks -- Proceed
+    return tempStorage.executeFunctionSelectedTracks -- Proceed
 end
 
 function BaseAssetType:getSelectedItemsWithConfirmation(context, contextData, confirm)
@@ -234,7 +246,7 @@ function BaseAssetType:addInteraction(modifier, description, executeFunction)
     if not class.interactionHints then
         class.interactionHints = {}
     end
-    class.interactionHints[modifier] = {order = OD_TableLength(class.interactionHints), text = description }
+    class.interactionHints[modifier] = { order = OD_TableLength(class.interactionHints), text = description }
 
     -- Store the execute function for this modifier
     if not class.executeFunctions then
@@ -279,7 +291,7 @@ function BaseAssetType:createStandardConstructor(name, group)
         -- Initialize class-level interactionHints if not already set
         if not class.interactionHints then
             class.interactionHints = {
-                [0] = {order = 0, text = 'select %asset'}
+                [0] = { order = 0, text = 'select %asset' }
             }
         end
 
@@ -415,7 +427,8 @@ function BaseAssetType:createAssetBase(params)
         load = params.load,
         searchText = params.searchText,
         group = params.group,
-        getInteractionHintFor = function(asset, mods, context, contextData, count) return self.getInteractionHintFor(asset, mods, context, contextData, count) end,
+        getInteractionHintFor = function(asset, mods, context, contextData, count) return self.getInteractionHintFor(
+            asset, mods, context, contextData, count) end,
         context = self.context,
         engine = self.context.engine, -- Add engine reference for backward compatibility
         addTag = self.assetActions.addTag,
