@@ -27,6 +27,7 @@
 -- DONE: Refresh project specific assets (tracks, markers/regions)
 -- DONE: Fix Hints
 -- DONE: Randomly execute one result
+-- TODO: Handle hints for selection that spans many asset types
 -- TODO: Settings window - add Convert Folders/Categories to tags
 -- TODO: All execute functions + handling FX instruments
 -- TODO: Create Default Presets with Magic Words for types
