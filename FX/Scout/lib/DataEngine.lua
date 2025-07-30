@@ -65,7 +65,6 @@ PB_DataEngine = {
         return validatedFilter, hasIssues
     end,
     refreshProjectRelatedAssets = function(self)
-        -- FIXME: optimize performance - only sort if project related assets or their order changed, and only sort those that did - not the entire catalog, notice that project refreshes can't move items to special groups, but only move them around in their own group, so some partial refresh might be easily possible
         self.app.logger:logDebug('-- PB_DataEngine.refreshProjectRelatedAssets()')
 
         if not self.assetTypeManager then
@@ -113,50 +112,158 @@ PB_DataEngine = {
             refreshedAssetTypesLookup[assetTypeId] = true
         end
 
-        -- Remove old assets of refreshed types from main assets array (optimized)
-        local assetsToKeep = {}
+        -- Separate unchanged assets from assets that need to be refreshed
+        local unchangedAssets = {}
         for _, asset in ipairs(self.assets) do
             if not refreshedAssetTypesLookup[asset.type] then
-                table.insert(assetsToKeep, asset)
+                table.insert(unchangedAssets, asset)
             end
         end
 
         -- Assemble new assets from refreshed asset types
-        local newAssets = {}
+        local refreshedAssets = {}
         for assetTypeId, refreshData in pairs(refreshedAssetTypes) do
             for _, data in ipairs(refreshData.data) do
                 local asset = refreshData.assetType:assembleAsset(data)
                 if asset then
-                    table.insert(newAssets, asset)
+                    table.insert(refreshedAssets, asset)
                 end
             end
         end
 
-        -- Combine kept assets with new assets
-        self.assets = assetsToKeep
-        for _, asset in ipairs(newAssets) do
-            table.insert(self.assets, asset)
+        -- Re-tag refreshed assets (unchanged assets keep their existing tags)
+        for _, asset in ipairs(refreshedAssets) do
+            asset.tags = OD_DeepCopy(self.app.userdata.current.taggedAssets[asset.id]) or {}
         end
 
-        -- Re-tag all assets (including new ones)
-        self:tagAssets()
+        -- PROBABLY NOT NEEDED SINCE PLUGINS DON'T REFRESH
+        -- -- Handle plugin priority filtering if needed (only affects plugins, so safe to run on partial refresh)
+        -- if self.app.settings.current.showOnlyHighestPriorityPlugin then
+        --     self:sortAssetsByFXPriorityOnly()
+        --     self:removeLowPriorityPlugins()
+        -- end
 
-        -- Handle plugin priority filtering if needed (only affects plugins, so safe to run on partial refresh)
-        if self.app.settings.current.showOnlyHighestPriorityPlugin then
-            self:sortAssetsByFXPriorityOnly()
-            self:removeLowPriorityPlugins()
+        -- Re-mark special groups for refreshed assets only
+        -- (unchanged assets already have correct special group markings)
+        local allRefreshedAssets = refreshedAssets
+        for _, asset in ipairs(allRefreshedAssets) do
+            local favoriteIndex = nil
+            local recentIndex = nil
+            
+            -- Find if this asset is in favorites/recents
+            for i, favoriteId in ipairs(currentFavorites) do
+                if favoriteId == asset.id then
+                    favoriteIndex = i
+                    break
+                end
+            end
+            
+            for i, recentId in ipairs(currentRecents) do
+                if recentId == asset.id then
+                    recentIndex = i
+                    break
+                end
+            end
+
+            -- Apply special group markings
+            local favoritesVisible = self.app.settings.current.groupVisibility[SPECIAL_GROUPS.FAVORITES] ~= false
+            local recentsVisible = self.app.settings.current.groupVisibility[SPECIAL_GROUPS.RECENTS] ~= false
+
+            -- Mark recents (only if recents group is visible)
+            if recentIndex and recentsVisible then
+                asset.originalGroup = asset.group
+                asset.group = T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS]
+                asset.recentOrder = recentIndex
+            elseif recentIndex then
+                -- Mark as recent but don't change group (recents group is hidden)
+                asset.recentOrder = recentIndex
+            end
+
+            -- Mark favorites (only if favorites group is visible and not already moved to recents)
+            if favoriteIndex and favoritesVisible and not (recentIndex and recentsVisible) then
+                asset.originalGroup = asset.group
+                asset.group = T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES]
+                asset.favoriteOrder = favoriteIndex
+            elseif favoriteIndex then
+                -- Mark as favorite but don't change group (favorites group is hidden or asset is in recents)
+                asset.favoriteOrder = favoriteIndex
+            end
+
+            -- Set favorite flag for all favorites, regardless of which group they're in
+            if favoriteIndex then
+                asset.favorite = true
+            end
         end
 
-        -- Re-mark special groups (favorites/recents)
-        self:markSpecialGroups()
+        -- Sort only the refreshed assets using targeted sorting
+        self:sortAssetsPartial(refreshedAssets)
 
-        -- Final sort
-        self:sortAssets()
+        -- Merge unchanged and refreshed assets in correct order
+        -- We need to maintain the overall group ordering while inserting refreshed assets
+        local finalAssets = {}
+        local refreshedAssetsByGroup = {}
+        
+        -- Group refreshed assets by their group for efficient insertion
+        for _, asset in ipairs(refreshedAssets) do
+            if not refreshedAssetsByGroup[asset.group] then
+                refreshedAssetsByGroup[asset.group] = {}
+            end
+            table.insert(refreshedAssetsByGroup[asset.group], asset)
+        end
+
+        -- Build group priority lookup (reuse existing cache if available)
+        if not self._groupPriorityCache then
+            -- Build cache if not available
+            local originalAssets = self.assets
+            self.assets = {}
+            self:sortAssets()
+            self.assets = originalAssets
+        end
+        local groupPriority = self._groupPriorityCache
+
+        -- Merge assets maintaining group order
+        local unchangedIndex = 1
+        local currentGroupPriority = -1
+        
+        for _, asset in ipairs(unchangedAssets) do
+            local assetGroupPriority = groupPriority[asset.group] or 1000
+            
+            -- Insert any refreshed assets that should come before this unchanged asset
+            while currentGroupPriority < assetGroupPriority do
+                currentGroupPriority = currentGroupPriority + 1
+                -- Find group name for this priority level
+                for groupName, priority in pairs(groupPriority) do
+                    if priority == currentGroupPriority and refreshedAssetsByGroup[groupName] then
+                        for _, refreshedAsset in ipairs(refreshedAssetsByGroup[groupName]) do
+                            table.insert(finalAssets, refreshedAsset)
+                        end
+                        refreshedAssetsByGroup[groupName] = nil -- Mark as processed
+                        break
+                    end
+                end
+            end
+            
+            -- Insert the unchanged asset
+            table.insert(finalAssets, asset)
+            currentGroupPriority = assetGroupPriority
+        end
+        
+        -- Insert any remaining refreshed assets (those with higher priority than all unchanged assets)
+        for groupName, assets in pairs(refreshedAssetsByGroup) do
+            if assets then
+                for _, asset in ipairs(assets) do
+                    table.insert(finalAssets, asset)
+                end
+            end
+        end
+
+        -- Update the main assets array
+        self.assets = finalAssets
 
         self.app.flow.filterResults(nil, nil, true)
         self.app.logger:logInfo('Refreshed ' ..
-            #newAssets .. ' project-related assets from ' .. #assetTypesToRefresh .. ' asset types')
-    end,
+            #refreshedAssets .. ' project-related assets from ' .. #assetTypesToRefresh .. ' asset types (optimized sorting)')
+        end,
     lastGuids = {}, -- use to check if a track has been removed or added
     init = function(self, forceRebuildCache)
         self.app.logger:logDebug('-- PB_DataEngine.init()')
@@ -1007,7 +1114,8 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
             text = text .. ' (stay in filter search mode)'
             usedMods = usedMods | ImGui.Mod_Shift
         end
-        return BaseAssetType:parseInteractionHintTemplate(text, count, nil, assetName, (assetNamePlural):lower()), usedMods
+        return BaseAssetType:parseInteractionHintTemplate(text, count, nil, assetName, (assetNamePlural):lower()),
+            usedMods
     end
 
     -- Define execute functions for filter assets
@@ -1127,7 +1235,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                     group = T.FILTER_NAMES[FILTER_TYPES.TAG],
                     getInteractionHintFor = function(self, mods, context, contextData, count)
                         return interactionHints(FILTER_TYPES.TAG, mods,
-                            context, count, tag.name,T.FILTER_NAMES_PLURAL[FILTER_TYPES.TAG])
+                            context, count, tag.name, T.FILTER_NAMES_PLURAL[FILTER_TYPES.TAG])
                     end
                 }
                 -- Add execute function directly to the asset
@@ -1274,6 +1382,45 @@ PB_DataEngine.sortAssets = function(self)
     end)
 
     self.app.logger:logDebug('Sorted assets', #self.assets)
+end
+
+PB_DataEngine.sortAssetsPartial = function(self, assetsToSort)
+    self.app.logger:logDebug('-- PB_DataEngine.sortAssetsPartial() - sorting ' .. #assetsToSort .. ' assets')
+
+    -- Ensure group priority cache is available (reuse from sortAssets)
+    if not self._groupPriorityCache then
+        self.app.logger:logDebug('Group priority cache not available, building it')
+        -- Call sortAssets to build cache, but don't actually sort anything
+        local originalAssets = self.assets
+        self.assets = {}
+        self:sortAssets()
+        self.assets = originalAssets
+    end
+
+    local groupPriority = self._groupPriorityCache
+
+    table.sort(assetsToSort, function(a, b)
+        local aPriority = groupPriority[a.group] or 1000
+        local bPriority = groupPriority[b.group] or 1000
+        if a.order ~= nil and b.order ~= nil and aPriority == bPriority then
+            return a.order < b.order
+        elseif aPriority == bPriority then
+            -- Special handling for favorites: sort by favoriteOrder instead of alphabetically
+            if a.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES] and b.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES] then
+                return (a.favoriteOrder or 0) < (b.favoriteOrder or 0)
+                -- Special handling for recents: sort by recentOrder instead of alphabetically
+            elseif a.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] and b.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] then
+                return (a.recentOrder or 0) < (b.recentOrder or 0)
+            else
+                return a.searchText[1].text < b.searchText[1].text
+            end
+        else
+            return aPriority < bPriority
+        end
+    end)
+
+    self.app.logger:logDebug('Sorted ' .. #assetsToSort .. ' assets partially')
+    return assetsToSort
 end
 PB_DataEngine.sortAssetsByFXPriorityOnly = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.sortAssetsByFXPriorityOnly()')
