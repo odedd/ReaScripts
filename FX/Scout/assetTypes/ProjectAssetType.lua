@@ -6,7 +6,7 @@ ProjectAssetType.__index = ProjectAssetType
 setmetatable(ProjectAssetType, BaseAssetType)
 
 function ProjectAssetType.new(class, context)
-    local instance = BaseAssetType:createStandardConstructor("Project Template", "Project Templates")(class, context)
+    local instance = BaseAssetType:createStandardConstructor("Project", "Projects")(class, context)
     instance:addInteraction(0, 'open %asset',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
             r.Main_openProject(asset.load)

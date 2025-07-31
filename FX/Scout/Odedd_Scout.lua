@@ -1425,7 +1425,7 @@ RunApp = function()
                                                 handleResultDragDrop(row)
                                             end
                                             if ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
-                                                -- local hint = app.guiHelpers.getHintFor(result, RESULT_CONTEXT.MOUSE_DOUBLE_CLICK, 1) 
+                                                -- local hint = app.guiHelpers.getHintFor(result, RESULT_CONTEXT.MOUSE_DOUBLE_CLICK, 1)
                                                 -- if hint then
                                                 --     ImGui.SetTooltip(ctx, hint)
                                                 -- end
@@ -2300,31 +2300,30 @@ RunApp = function()
             end,
             settings = function(ctx)
                 local w = 730 * app.gui.scale
-                local h = 850 * app.gui.scale
+                local h = 950 * app.gui.scale
                 local maxH = app.gui.screen.size[2] * .8
                 -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger
                 -- closing this window. So we increment a counter which will be reset if the shortcut is
                 -- being captured, so that we can know to ignore the captured key unless some frames have passed.
                 app.temp.captureCounter = app.temp.captureCounter and app.temp.captureCounter + 1 or 0
-                ImGui.SetNextWindowSize(ctx, w, h)
-                -- if app.settings.current.settingsWindowPos == nil then
-                ImGui.SetNextWindowPos(ctx, app.gui.screen.size[1] / 2, app.gui.screen.size[2] / 2,
-                    ImGui.Cond_Appearing,
-                    0.5,
-                    0.5)
-                -- else
+                ImGui.SetNextWindowSize(ctx, w, 0.0)
+                -- ImGui.SetNextWindowPos(ctx, app.gui.screen.size[1] / 2, app.gui.screen.size[2] / 2,
+                --     ImGui.Cond_Appearing,
+                --     0.5,
+                --     0.5)
+                -- -- else
                 ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, maxH)
-                -- ImGui.SetNextWindowSize(ctx, w, ,h))
 
                 -- end
                 app.gui:pushStyles(app.gui.st.vars.popupsTitle)
                 local visible, open = ImGui.BeginPopupModal(ctx, Scr.name .. ' Settings##settingsWindow', true,
-                    ImGui.WindowFlags_NoDocking)
+                    ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_AlwaysAutoResize)
                 -- ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoScrollWithMouse)
                 app.gui:popStyles(app.gui.st.vars.popupsTitle)
 
                 if visible then
-                    if ImGui.BeginChild(ctx, 'SettingsMainArea', 0.0, -app.gui.st.sizes.hintHeight) then --math.min(500*app.gui.scale, h - hintHeight)) then
+                    if ImGui.BeginChild(ctx, 'SettingsMainArea', w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) -
+                ImGui.GetStyleVar(ctx, ImGui.StyleVar_ScrollbarSize), 0.0, ImGui.ChildFlags_AlwaysAutoResize | ImGui.ChildFlags_AutoResizeY) then --math.min(500*app.gui.scale, h - hintHeight)) then
                         if ImGui.IsWindowAppearing(ctx) then
                             app.temp.groupOrder = {}
                             app.temp.groupVisibility = {}
