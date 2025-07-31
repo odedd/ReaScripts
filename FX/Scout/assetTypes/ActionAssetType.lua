@@ -10,30 +10,31 @@ function ActionAssetType.new(class, context)
     -- Plugins are file-based assets (have file paths)
     instance.shouldMapBaseFilenames = true
     instance.trackAddDate = true
-    
+
     -- Add interaction using the new system
-    instance:addInteraction(0, 'run %asset', function(asset, mods, context, contextData)
-        local commandId = asset.load
-        
-        -- If load is a named command ID (string), convert to numeric
-        if type(commandId) == "string" then
-            commandId = reaper.NamedCommandLookup('_'..commandId)
-            if commandId == 0 then
-                asset.context.logger:logError('Named command not found: ' .. asset.load)
-                return false
+    instance:addInteraction(0, 'run %asset',
+        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+            local commandId = asset.load
+
+            -- If load is a named command ID (string), convert to numeric
+            if type(commandId) == "string" then
+                commandId = reaper.NamedCommandLookup('_' .. commandId)
+                if commandId == 0 then
+                    asset.context.logger:logError('Named command not found: ' .. asset.load)
+                    return false
+                end
             end
-        end
-        
-        r.Main_OnCommand(commandId, 0)
-        return true
-    end)
-    
+
+            r.Main_OnCommand(commandId, 0)
+            return true
+        end)
+
     return instance
 end
 
 function ActionAssetType:getData()
     local data = {} -- Use consistent local variable naming
-    
+
     local idx = 0
     local section = 0 --implement different section if needed
     while true do
@@ -65,15 +66,14 @@ function ActionAssetType:getData()
         })
         idx = idx + 1
     end
-    
+
     return data
 end
-
 
 function ActionAssetType:assembleAsset(action)
     -- Use named command ID if available, otherwise use numeric ID
     local actionId = action.namedId and action.namedId ~= "" and action.namedId or action.numericId
-    
+
     local asset = self:createAssetBase({
         type = self.assetTypeId,
         load = actionId,
@@ -81,7 +81,7 @@ function ActionAssetType:assembleAsset(action)
         group = self.group,
     })
     asset.shortcuts = action.shortcuts
-    asset.numericId = action.numericId  -- Store for reference/debugging
-    asset.namedId = action.namedId      -- Store for reference/debugging
+    asset.numericId = action.numericId -- Store for reference/debugging
+    asset.namedId = action.namedId     -- Store for reference/debugging
     return asset
 end

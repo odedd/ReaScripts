@@ -86,6 +86,7 @@ PB_Settings = OD_Settings:new({
             "TrackAssetType",           -- Tracks asset type
             "TakeAssetType",            -- Takes asset type
             "MarkerAssetType",          -- Markers asset type
+            "RegionAssetType",          -- Markers asset type
             "ProjectAssetType",         -- Projects asset type
             "ActionAssetType",          -- Actions asset type
         },
@@ -100,6 +101,7 @@ PB_Settings = OD_Settings:new({
             ["ActionAssetType"] = true,         -- Actions asset type
             ["ProjectAssetType"] = true,        -- Projects asset type
             ["MarkerAssetType"] = true,         -- Markers asset type
+            ["RegionAssetType"] = true,         -- Markers asset type
             ["ProjectTemplateAssetType"] = true -- Project Templates asset type
         },
         uiScale = 1,

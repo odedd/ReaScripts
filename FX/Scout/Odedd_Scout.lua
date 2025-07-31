@@ -1420,7 +1420,7 @@ RunApp = function()
                                             ImGui.SameLine(ctx)
 
                                             -- if result.type == ASSET_TYPE.TrackAssetType and result.color then
-                                            if result.type == ASSET_TYPE.TrackAssetType then
+                                            if result.color then
                                                 local size = fontLineHeight -
                                                     select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
                                                 ImGui.ColorButton(ctx, 'color', result.color,

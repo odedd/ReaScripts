@@ -6,10 +6,112 @@ MarkerAssetType.__index = MarkerAssetType
 setmetatable(MarkerAssetType, BaseAssetType)
 
 function MarkerAssetType.new(class, context)
-    local instance = BaseAssetType:createStandardConstructor("Marker/Region", "Markers/Regions")(class, context)
+    local instance = BaseAssetType:createStandardConstructor("Marker", "Markers")(class, context)
     -- Markers/Regions should be imported even if they can't be mapped to existing markers/regions
     instance.requiresMappingOnImport = false
     instance.updateOnProjectRefresh = true
+
+    instance:addInteraction(0, 'go to %asset',
+        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+            reaper.GoToMarker(0, asset.markerIdx, false)
+            return true
+        end)
+
+    instance:addInteraction(ImGui.Mod_Shift, 'select time between %asset and the next marker',
+        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+            local mIdx = 0
+            local nextMarkerPos = nil
+            while true do
+                local retval, isrgn, pos, regend, name, markrgnindexnumber = r.EnumProjectMarkers2(0, mIdx)
+                if retval == 0 then
+                    break
+                end
+                if pos > asset.pos then
+                    if nextMarkerPos and pos < nextMarkerPos then
+                        nextMarkerPos = pos
+                    elseif not nextMarkerPos then
+                        nextMarkerPos = pos
+                    end
+                end
+                mIdx = mIdx + 1
+            end
+            r.GetSet_LoopTimeRange(true, true, asset.pos, nextMarkerPos or asset.pos, true)
+            return true
+        end)
+
+    instance:addInteraction(ImGui.Mod_Shift  | ImGui.Mod_Alt,
+        'go to %asset and select time between it and the next marker',
+        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+            local mIdx = 0
+            local nextMarkerPos = nil
+            while true do
+                local retval, isrgn, pos, regend, name, markrgnindexnumber = r.EnumProjectMarkers2(0, mIdx)
+                if retval == 0 then
+                    break
+                end
+                if pos > asset.pos then
+                    if nextMarkerPos and pos < nextMarkerPos then
+                        nextMarkerPos = pos
+                    elseif not nextMarkerPos then
+                        nextMarkerPos = pos
+                    end
+                end
+                mIdx = mIdx + 1
+            end
+            r.GetSet_LoopTimeRange(true, true, asset.pos, nextMarkerPos or asset.pos, true)
+            reaper.GoToMarker(0, asset.markerIdx, false)
+            return true
+        end)
+
+    instance:addInteraction(ImGui.Mod_Shift | ImGui.Mod_Ctrl,
+        'select time between %asset and the next marker. Set to repeat',
+        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+            local mIdx = 0
+            local nextMarkerPos = nil
+            while true do
+                local retval, isrgn, pos, regend, name, markrgnindexnumber = r.EnumProjectMarkers2(0, mIdx)
+                if retval == 0 then
+                    break
+                end
+                if pos > asset.pos then
+                    if nextMarkerPos and pos < nextMarkerPos then
+                        nextMarkerPos = pos
+                    elseif not nextMarkerPos then
+                        nextMarkerPos = pos
+                    end
+                end
+                mIdx = mIdx + 1
+            end
+            r.GetSet_LoopTimeRange(true, true, asset.pos, nextMarkerPos or asset.pos, true)
+            reaper.GetSetRepeat(1)
+            return true
+        end)
+
+    instance:addInteraction(ImGui.Mod_Shift | ImGui.Mod_Ctrl | ImGui.Mod_Alt,
+        'go to %asset and select time between it and the next marker. Set to repeat',
+        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+            local mIdx = 0
+            local nextMarkerPos = nil
+            while true do
+                local retval, isrgn, pos, regend, name, markrgnindexnumber = r.EnumProjectMarkers2(0, mIdx)
+                if retval == 0 then
+                    break
+                end
+                if pos > asset.pos then
+                    if nextMarkerPos and pos < nextMarkerPos then
+                        nextMarkerPos = pos
+                    elseif not nextMarkerPos then
+                        nextMarkerPos = pos
+                    end
+                end
+                mIdx = mIdx + 1
+            end
+            r.GetSet_LoopTimeRange(true, true, asset.pos, nextMarkerPos or asset.pos, true)
+            reaper.GetSetRepeat(1)
+            reaper.GoToMarker(0, asset.markerIdx, false)
+            return true
+        end)
+
     return instance
 end
 
@@ -20,65 +122,45 @@ function MarkerAssetType:getData()
     local numMarkers = 0
     local projectName = r.GetProjectName(0)
     while true do
-        local retval, isrgn, pos, regend, name, markrgnindexnumber = r.EnumProjectMarkers2(0, mIdx)
+        local retval, isrgn, pos, regend, name, markrgnindexnumber, color = r.EnumProjectMarkers3(0, mIdx)
         if retval == 0 then
             break
         end
-        numMarkers = numMarkers + 1
-        local markerType = isrgn and 'Region' or 'Marker'
-        local markerId = (isrgn and 'R' or 'M') .. markrgnindexnumber
+        if not isrgn then
+            numMarkers = numMarkers + 1
+            local markerId = 'M' .. markrgnindexnumber
 
-        -- Capture context from asset type scope
-        local context = self.context
+            -- Capture context from asset type scope
+            local context = self.context
 
-        local markerData = {
-            engine = context.engine,
-            order = mIdx,
-            name = name,
-            pos = pos,
-            isrgn = isrgn,
-            regend = regend,
-            uuid = projectName .. markerId,
-            markerId = markerId,
-            markerIdx = markrgnindexnumber,
-            markerType = markerType
-        }
-        table.insert(data, markerData)
+            local markerData = {
+                engine = context.engine,
+                order = mIdx,
+                name = name,
+                pos = pos,
+                color = ImGui.ColorConvertNative(color) * 0x100 | 0xff,
+                uuid = projectName .. markerId,
+                markerId = markerId,
+                markerIdx = markrgnindexnumber,
+            }
+            table.insert(data, markerData)
+        end
         mIdx = mIdx + 1
     end
     return data
-end
-
-function MarkerAssetType:getExecuteFunction()
-    return function(self, mods, context, contextData)
-        if OD_BfCheck(context, ImGui.Mod_Shift) and self.isrgn then
-            r.GetSet_LoopTimeRange(true, OD_BfCheck(context, ImGui.Mod_Alt), self.pos, self.regend, true)
-            if OD_BfCheck(context, ImGui.Mod_Alt) then
-                reaper.GoToRegion(0, self.markerIdx, false)
-            end
-        else
-            if self.isrgn then
-                reaper.GoToRegion(0, self.markerIdx, false)
-            else
-                reaper.GoToMarker(0, self.markerIdx, false)
-            end
-        end
-        return true
-    end
 end
 
 function MarkerAssetType:assembleAsset(marker)
     local asset = self:createAssetBase({
         type = self.assetTypeId,
         load = marker.uuid,
-        searchText = { { text = marker.name }, { text = marker.markerType }, { text = marker.markerId } },
+        searchText = { { text = marker.name }, { text = marker.markerId } },
         group = self.group,
     })
 
     asset.order = marker.order
-    asset.isrgn = marker.isrgn
     asset.pos = marker.pos
-    asset.regend = marker.regend
+    asset.color = marker.color
     asset.markerIdx = marker.markerIdx
     return asset
 end
