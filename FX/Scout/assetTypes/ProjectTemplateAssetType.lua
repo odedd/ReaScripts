@@ -9,6 +9,11 @@ function ProjectTemplateAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Project Template", "Project Templates")(class, context)
     -- Project Templates are file-based assets (.rpp files)
     instance.shouldMapBaseFilenames = true
+    instance:addInteraction(0, 'create a new project based on %asset', function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        r.Main_openProject("template:" .. asset.load)
+        return true
+    end)
+
     return instance
 end
 
@@ -40,14 +45,6 @@ function ProjectTemplateAssetType:getData()
     end
 
     return data
-end
-
-function ProjectTemplateAssetType:getExecuteFunction()
-    return function(self, mods, context, contextData)
-        -- Open the project file in Reaper
-        r.Main_openProject("template:" .. self.load)
-        return true
-    end
 end
 
 function ProjectTemplateAssetType:assembleAsset(project)

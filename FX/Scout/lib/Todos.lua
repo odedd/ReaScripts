@@ -5,16 +5,6 @@
 ---------------------------------------
 
 -- DONE: Add presets to userdata import/export
---       ✓ FX Folder filters: exported as-is, validated at runtime
---       ✓ Category filters: exported as-is, validated at runtime  
---       ✓ Developer filters: exported as-is, validated at runtime
---       ✓ Tag filters: validate that referenced tags exist during import, skip preset if any tag missing
---       ✓ Search text filters: imported as-is (safe)
---       ✓ Import order: tags imported before presets to ensure tag dependencies are met
---       ✓ Provide clear warnings about which presets were skipped and why (missing tags)
---       ✓ Presets section added to export/import file format with serialized filter data
---       ✓ Merge mode support for presets (preserve existing + add new)
---       ✓ UI labels updated to include presets in export/import dialogs
 -- DONE: Create actions for presets/filters
 -- DONE: Reset filter button
 -- DONE: Better visual representation of search mode
@@ -28,13 +18,25 @@
 -- DONE: Fix Hints
 -- DONE: Randomly execute one result
 -- DONE: Track newly added plugins
+-- DONE: All execute functions
+-- TODO: handle FX instruments
 -- TODO: Handle hints for selection that spans many asset types
 -- TODO: Settings window - add Convert Folders/Categories to tags
--- TODO: All execute functions + handling FX instruments
 -- TODO: Create Default Presets with Magic Words for types
--- TODO: Refresh projects?
 -- TODO: Add take markers
 -- TODO: Import progress bar (coroutine?)
 -- TODO: minimal mode (?)
--- TODO: disable selecting multiple filters of the same type? (this is a petty one)
--- TODO: Add tooltips to results with additional information (maybe not?)
+
+---------------------------------------
+-- AFTER LAUNCH -----------------------
+---------------------------------------
+
+-- Some asset types make no sense in multiple selections (markers/regions/projects/project templates). Make selecting them impossible via a switch in their assetType so that it is more robust.
+
+---------------------------------------
+-- MAYBE LATER ------------------------
+---------------------------------------
+
+-- disable selecting multiple filters of the same type? (this is a petty one)
+-- Add tooltips to results with additional information? (no. Maybe think of another way to show all info about an asset?)
+-- Refresh projects? (not for now)
