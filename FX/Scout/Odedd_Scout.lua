@@ -790,6 +790,17 @@ RunApp = function()
                 end
                 return table.concat(modKeys, '+')
             end,
+            getHintFor = function(asset, context, count)
+                local mods = ImGui.GetKeyMods(app.gui.ctx)
+                local assetHint, usedMods = asset:getInteractionHintFor(mods, context, nil,
+                    count)
+                if assetHint then
+                    local action = assetHint
+                    local actionKey = app.guiHelpers.keyModsToText(usedMods)
+                    local hint = ('%s to %s.'):format(actionKey, action)
+                    return hint
+                end
+            end,
             calcTinyIconSize = function(ctx, icon)
                 app.temp.iconSizes = app.temp.iconSizes or {}
                 app.temp.iconSizesCacheZoom = app.temp.iconSizesCacheZoom or {}
@@ -1413,9 +1424,13 @@ RunApp = function()
                                             if app.temp.searchMode == SEARCH_MODE.MAIN then
                                                 handleResultDragDrop(row)
                                             end
-                                            if ImGui.IsItemHovered(ctx) then
-                                                hintResult = result
-                                                hintContext = RESULT_CONTEXT.MOUSE_DOUBLE_CLICK
+                                            if ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
+                                                -- local hint = app.guiHelpers.getHintFor(result, RESULT_CONTEXT.MOUSE_DOUBLE_CLICK, 1) 
+                                                -- if hint then
+                                                --     ImGui.SetTooltip(ctx, hint)
+                                                -- end
+                                                -- hintResult = result
+                                                -- hintContext = RESULT_CONTEXT.MOUSE_DOUBLE_CLICK
                                             end
                                             ImGui.SameLine(ctx)
 
@@ -1537,14 +1552,8 @@ RunApp = function()
                         end
 
                         if hintResult then
-                            local mods = ImGui.GetKeyMods(ctx)
-                            local assetHint, usedMods = hintResult:getInteractionHintFor(mods, hintContext, nil,
-                                app.selection:count())
-                            if assetHint then
-                                local count = app.selection:count()
-                                local action = assetHint
-                                local actionKey = app.guiHelpers.keyModsToText(usedMods)
-                                local hint = ('%s to %s.'):format(actionKey, action)
+                            local hint = app.guiHelpers.getHintFor(hintResult, hintContext, app.selection:count())
+                            if hint then
                                 app:setHint('main', hint, nil, nil, -1)
                             end
                         else
