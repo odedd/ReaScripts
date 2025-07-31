@@ -12,6 +12,7 @@ function PluginAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("FX")(class, context)
     -- Plugins are file-based assets (have file paths)
     instance.shouldMapBaseFilenames = true
+    instance.trackAddDate = true
     instance = helpers.addPluginActions(instance)
     return instance
 end

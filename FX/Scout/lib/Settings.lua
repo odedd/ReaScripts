@@ -9,6 +9,7 @@ PB_Settings = OD_Settings:new({
         projectScanFolders = {},
         showFxUI = SHOW_FX_UI.FOLLOW_PREFERENCE,
         closeAfterExecute = true,
+        newlyAddedAssetsDays = 30,
         shortcuts = {
             markFavorite = {
                 key = OD_KEYCODES.F,

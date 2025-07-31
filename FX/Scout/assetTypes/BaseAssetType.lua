@@ -82,17 +82,17 @@ function BaseAssetType:parseInteractionHintTemplate(template, count, targetObjec
             return content:gsub("%%%((.-)%%%)", "(%1)")
         end)
         -- Remove plural functions completely
-        result = result:gsub("%%plural%([^)]*%([^)]*%)[^)]*%)", "")     -- nested parens
-        result = result:gsub("%%plural%([^)]*%)", "")                   -- simple case
+        result = result:gsub("%%plural%([^)]*%([^)]*%)[^)]*%)", "") -- nested parens
+        result = result:gsub("%%plural%([^)]*%)", "")               -- simple case
     else
         -- Remove singular functions completely
         result = result:gsub("%%singular%([^)]*%)", "")
         -- Keep plural content, process escaped parentheses
         result = result:gsub("%%plural%((.-)%)", function(content)
             -- Handle both paired and single escaped parentheses
-            content = content:gsub("%%%((.-)%%%)", "(%1)")     -- paired escapes
-            content = content:gsub("%%%)", ")")                -- single closing escape
-            content = content:gsub("%%%(", "(")                -- single opening escape
+            content = content:gsub("%%%((.-)%%%)", "(%1)") -- paired escapes
+            content = content:gsub("%%%)", ")")            -- single closing escape
+            content = content:gsub("%%%(", "(")            -- single opening escape
             return content
         end)
     end
@@ -112,9 +112,9 @@ function BaseAssetType:parseInteractionHintTemplate(template, count, targetObjec
     if count == -1 then result = result:gsub("&&& ", '') end
 
     -- Clean up any remaining escaped parentheses
-    result = result:gsub("%%%((.-)%%%)", "(%1)")     -- paired escapes
-    result = result:gsub("%%%)", ")")                -- single closing escape
-    result = result:gsub("%%%(", "(")                -- single opening escape
+    result = result:gsub("%%%((.-)%%%)", "(%1)") -- paired escapes
+    result = result:gsub("%%%)", ")")            -- single closing escape
+    result = result:gsub("%%%(", "(")            -- single opening escape
 
     return result
 end
@@ -135,8 +135,8 @@ function BaseAssetType:executeAndAddToRecents()
 
         local executeFunction = assetType:getExecuteFunction(mods, context)
         if executeFunction then
-            -- some actions change track selection, so selected tracks need to be stored only once, before the first action. 
-            -- since this information (index, total) is only available here, executeFunctionSelectedTracks is nulled here 
+            -- some actions change track selection, so selected tracks need to be stored only once, before the first action.
+            -- since this information (index, total) is only available here, executeFunctionSelectedTracks is nulled here
             -- so that getSelectedTracksWithConfirmation can set it once
             -- tempStore = tempStore or asset.context.temp.executeFunctionTempStore
             if index == 1 then asset.context.temp.executeFunctionTempStore = {} end
@@ -226,6 +226,9 @@ function BaseAssetType:createStandardConstructor(name, group)
         -- Default: do not refresh item on project refresh
         instance.updateOnProjectRefresh = false
 
+        -- Default: do not track item add Date
+        instance.trackAddDate = false
+
         -- Initialize class-level interactionHints if not already set
         if not class.interactionHints then
             class.interactionHints = {
@@ -241,9 +244,11 @@ function BaseAssetType:createStandardConstructor(name, group)
 end
 
 BaseAssetType.assetActions = {
+    -- key = function(self)
+    --     return self.type .. ' ' .. self.load
+    -- end,
     toggleFavorite = function(self)
-        local key = self.type .. ' ' .. self.load
-        self.favorite = self.context.tags:toggleAssetFavorite(key)
+        self.favorite = self.context.tags:toggleAssetFavorite(self.key)
 
         -- Use the unified special groups marking function to handle group reassignment
         self.engine:markSpecialGroups()
@@ -257,13 +262,12 @@ BaseAssetType.assetActions = {
         local changed = false
 
         for _, asset in ipairs(assets) do
-            local key = asset.type .. ' ' .. asset.load
             if willFavorite and not asset.favorite then
-                table.insert(favorites, 1, key)
+                table.insert(favorites, 1, self.key)
                 asset.favorite = true
                 changed = true
             elseif not willFavorite and asset.favorite then
-                OD_RemoveValue(favorites, key)
+                OD_RemoveValue(favorites, self.key)
                 asset.favorite = false
                 changed = true
             end
@@ -281,11 +285,11 @@ BaseAssetType.assetActions = {
     end,
     moveFavorite = function(self, targetPosition)
         local favorite = self.context.tags.current.favorites
-        local key = self.type .. ' ' .. self.load
+        -- local key = self.type .. ' ' .. self.load
 
         -- Check if this asset is actually a favorite
-        if not OD_HasValue(favorite, key) then
-            self.context.logger:logError('Cannot move non-favorite asset: ' .. key)
+        if not OD_HasValue(favorite, self.key) then
+            self.context.logger:logError('Cannot move non-favorite asset: ' .. self.key)
             return false
         end
 
@@ -331,8 +335,7 @@ BaseAssetType.assetActions = {
         return true
     end,
     addToRecents = function(self)
-        local key = self.type .. ' ' .. self.load
-        self.context.tags:addAssetToRecents(key)
+        self.context.tags:addAssetToRecents(self.key)
 
         -- Use the unified special groups marking function
         self.engine:markSpecialGroups()
@@ -365,8 +368,11 @@ function BaseAssetType:createAssetBase(params)
         load = params.load,
         searchText = params.searchText,
         group = params.group,
-        getInteractionHintFor = function(asset, mods, context, contextData, count) return self.getInteractionHintFor(
-            asset, mods, context, contextData, count) end,
+        getInteractionHintFor = function(asset, mods, context, contextData, count)
+            return self.getInteractionHintFor(
+            asset, mods, context, contextData, count)
+        end,
+        key = params.type .. ' ' .. params.load,
         context = self.context,
         engine = self.context.engine, -- Add engine reference for backward compatibility
         addTag = self.assetActions.addTag,

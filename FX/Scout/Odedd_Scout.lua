@@ -32,7 +32,7 @@ else
     dofile(p .. '../../Resources/Common/Common.lua')
 end
 
-LOG_LEVEL = OD_Logger.LOG_LEVEL.NONE
+LOG_LEVEL = OD_Logger.LOG_LEVEL.INFO
 
 OD_Init()
 
@@ -1541,6 +1541,9 @@ RunApp = function()
                                 local action = assetHint
                                 local actionKey = app.guiHelpers.keyModsToText(usedMods)
                                 local hint = ('%s to %s.'):format(actionKey, action)
+                                if hintResult.addedAt then
+                                    hint = os.date('%x', hintResult.addedAt)
+                                end
                                 app:setHint('main', hint, nil, nil, -1)
                             end
                         else

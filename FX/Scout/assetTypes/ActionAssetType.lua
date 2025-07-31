@@ -9,6 +9,7 @@ function ActionAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Action", "Actions")(class, context)
     -- Plugins are file-based assets (have file paths)
     instance.shouldMapBaseFilenames = true
+    instance.trackAddDate = true
     
     -- Add interaction using the new system
     instance:addInteraction(0, 'run %asset', function(asset, mods, context, contextData)

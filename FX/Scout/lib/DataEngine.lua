@@ -149,7 +149,7 @@ PB_DataEngine = {
         for _, asset in ipairs(allRefreshedAssets) do
             local favoriteIndex = nil
             local recentIndex = nil
-            
+
             -- Find if this asset is in favorites/recents
             for i, favoriteId in ipairs(currentFavorites) do
                 if favoriteId == asset.id then
@@ -157,7 +157,7 @@ PB_DataEngine = {
                     break
                 end
             end
-            
+
             for i, recentId in ipairs(currentRecents) do
                 if recentId == asset.id then
                     recentIndex = i
@@ -202,7 +202,7 @@ PB_DataEngine = {
         -- We need to maintain the overall group ordering while inserting refreshed assets
         local finalAssets = {}
         local refreshedAssetsByGroup = {}
-        
+
         -- Group refreshed assets by their group for efficient insertion
         for _, asset in ipairs(refreshedAssets) do
             if not refreshedAssetsByGroup[asset.group] then
@@ -224,10 +224,10 @@ PB_DataEngine = {
         -- Merge assets maintaining group order
         local unchangedIndex = 1
         local currentGroupPriority = -1
-        
+
         for _, asset in ipairs(unchangedAssets) do
             local assetGroupPriority = groupPriority[asset.group] or 1000
-            
+
             -- Insert any refreshed assets that should come before this unchanged asset
             while currentGroupPriority < assetGroupPriority do
                 currentGroupPriority = currentGroupPriority + 1
@@ -242,12 +242,12 @@ PB_DataEngine = {
                     end
                 end
             end
-            
+
             -- Insert the unchanged asset
             table.insert(finalAssets, asset)
             currentGroupPriority = assetGroupPriority
         end
-        
+
         -- Insert any remaining refreshed assets (those with higher priority than all unchanged assets)
         for groupName, assets in pairs(refreshedAssetsByGroup) do
             if assets then
@@ -262,8 +262,9 @@ PB_DataEngine = {
 
         self.app.flow.filterResults(nil, nil, true)
         self.app.logger:logInfo('Refreshed ' ..
-            #refreshedAssets .. ' project-related assets from ' .. #assetTypesToRefresh .. ' asset types (optimized sorting)')
-        end,
+            #refreshedAssets ..
+            ' project-related assets from ' .. #assetTypesToRefresh .. ' asset types (optimized sorting)')
+    end,
     lastGuids = {}, -- use to check if a track has been removed or added
     init = function(self, forceRebuildCache)
         self.app.logger:logDebug('-- PB_DataEngine.init()')
@@ -1054,6 +1055,8 @@ PB_DataEngine.assembleAssets = function(self, forceRebuildCache)
         self:invalidateGroupPriorityCache()
     end
 
+    self:markAssetDates()
+
     self:sortAssets() -- Final sort with special groups and group priority cache
 
     self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
@@ -1383,7 +1386,6 @@ PB_DataEngine.sortAssets = function(self)
 
     self.app.logger:logDebug('Sorted assets', #self.assets)
 end
-
 PB_DataEngine.sortAssetsPartial = function(self, assetsToSort)
     self.app.logger:logDebug('-- PB_DataEngine.sortAssetsPartial() - sorting ' .. #assetsToSort .. ' assets')
 
@@ -1512,4 +1514,107 @@ PB_DataEngine.getFilterAssetByKey = function(self, filterType, key, value)
         end
     end
     return false
+end
+PB_DataEngine.markAssetDates = function(self)
+    local filename = Scr.dir .. Scr.no_ext .. ' dates.ini'
+    self.app.logger:logDebug('-- PB_DataEngine:markAssetDates() to', filename)
+
+    -- Check for AssetTypeManager that could cause "attempt to index a nil value" errors
+    if not self.app.engine.assetTypeManager then
+        local errorMsg = "self.app.engine.assetTypeManager is nil - make sure to call db:init() first"
+        self.app.logger:logError(errorMsg)
+        return false, errorMsg, {}, 0, 0
+    end
+
+    local function writeNewAssets(assets, firstRun)
+        local file = io.open(filename, 'a+')
+        if not file then
+            self.app.logger:logError('Failed to open file for appending', filename)
+            return false
+        end
+
+        local newTime = firstRun and 0 or os.time()
+        local assetCount = 0
+        for assetKey, asset in pairs(assets) do
+            if not asset.addedAt then
+                -- Sanitize asset ID and write with proper escaping
+                asset.addedAt = newTime
+                local sanitizedAsset = OD_EscapeCSV(assetKey)
+                file:write(string.format('%s:%s\n', sanitizedAsset, newTime))
+                assetCount = assetCount + 1
+            end
+        end
+        file:close()
+        self.app.logger:logInfo(('Found %d new assets (of tracked types)'):format(assetCount))
+        return assets
+    end
+    local function getDatesForAssets(assetsToCheck)
+        local file = io.open(filename, 'r')
+        if not file then
+            self.app.logger:logDebug(('Failed to open file %s for reading. All %d new assets will be added to the dates file')
+                :format(filename, OD_TableLength(assetsToCheck)))
+            return assetsToCheck, true
+        end
+
+        local newAssetsCount = 0
+
+        for line in file:lines() do
+            local colonPos = OD_FindUnescapedChar(line, ":")
+
+            if colonPos then
+                local assetKey = OD_UnescapeCSV(line:sub(1, colonPos - 1))
+                local dateAdded = line:sub(colonPos + 1)
+
+                if assetKey and dateAdded and assetKey ~= "" and dateAdded ~= "" then
+                    if assetsToCheck[assetKey] then
+                        assetsToCheck[assetKey].addedAt = tonumber(dateAdded)
+                        self.app.logger:logDebug(('Found add date for %s (%s)'):format(assetKey,
+                            os.date('%x', tonumber(dateAdded))))
+                    else
+                        self.app.logger:logDebug(('Found missing asset (%s)'):format(assetKey))
+                        newAssetsCount = newAssetsCount + 1
+                    end
+                end
+            else
+                self.app.logger:logError('No colon separator found in line', line)
+            end
+        end
+        file:close()
+
+        self.app.logger:logDebug(('%d new assets found add will be added to the dates file'):format(newAssetsCount))
+        return assetsToCheck, false
+    end
+    local function getAssetsToCheck()
+        -- Find all asset types that need tracking their add date
+        local assetTypesToCheck = {}
+        for _, assetType in ipairs(self.assetTypeManager.assetTypes) do
+            if assetType.trackAddDate then
+                table.insert(assetTypesToCheck, assetType.assetTypeId)
+                self.app.logger:logDebug('Asset type "' .. assetType.name .. '" will be checked for add date')
+            end
+        end
+
+        if #assetTypesToCheck == 0 then
+            self.app.logger:logDebug('No asset types require tracking add date')
+            return
+        end
+
+        local assetsToCheck = {}
+        local numOfAssetsToCheck = 0
+        for _, assetType in ipairs(assetTypesToCheck) do
+            for _, asset in ipairs(self.assets) do
+                if asset.type == assetType then
+                    assetsToCheck[asset.key] = asset
+                    numOfAssetsToCheck = numOfAssetsToCheck + 1
+                end
+            end
+        end
+        self.app.logger:logDebug(('Will check %d assets for add date'):format(numOfAssetsToCheck))
+
+        return assetsToCheck
+    end
+
+    local assetsToCheck = getAssetsToCheck()
+    local assets, firstRun = getDatesForAssets(assetsToCheck)
+    writeNewAssets(assets, firstRun)
 end
