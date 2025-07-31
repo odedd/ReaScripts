@@ -7,6 +7,7 @@ setmetatable(ProjectAssetType, BaseAssetType)
 
 function ProjectAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Project", "Projects")(class, context)
+    instance.allowMultiple = false
     instance:addInteraction(0, 'open %asset',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
             r.Main_openProject(asset.load)
@@ -14,27 +15,12 @@ function ProjectAssetType.new(class, context)
         end)
     -- -- This is dependent on a setting which apparently is not exposed to get_config_var_string - "Create new project tab when opening media from explorer/finder",
     -- -- so I can't guarantee it always works. Better to comment it out until an API exists.
-    -- instance:addInteraction(ImGui.Mod_Shift, 'open %asset (always in a new tab)',
-    --     function(asset, mods, context, contextData, confirm, total, index, tempStore)
-
-    --         local reaper_cmd
-    --         if OS_is.mac then
-    --             reaper_cmd = string.format(
-    --                 [[%s/REAPER.app/Contents/MacOS/REAPER "%s"]],
-    --                 reaper.GetExePath(), asset.load
-    --             )
-    --         else
-    --             -- TODO: Test in windows
-    --             reaper_cmd = string.format(
-    --                 [[start "" "%s/reaper.exe" "%s"]],
-    --                 reaper.GetExePath(), asset.load
-    --             )
-    --         end
-
-    --         os.execute(reaper_cmd)
-
-    --         return true
-    --     end)
+    instance:addInteraction(ImGui.Mod_Shift, 'open %asset in a new tab',
+        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+            reaper.Main_OnCommand(40859, 0)
+            r.Main_openProject(asset.load)
+            return true
+        end)
 
     return instance
 end

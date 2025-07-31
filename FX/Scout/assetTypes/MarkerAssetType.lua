@@ -10,6 +10,7 @@ function MarkerAssetType.new(class, context)
     -- Markers/Regions should be imported even if they can't be mapped to existing markers/regions
     instance.requiresMappingOnImport = false
     instance.updateOnProjectRefresh = true
+    instance.allowMultiple = false
 
     instance:addInteraction(0, 'go to %asset',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)

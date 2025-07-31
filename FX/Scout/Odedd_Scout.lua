@@ -32,7 +32,7 @@ else
     dofile(p .. '../../Resources/Common/Common.lua')
 end
 
-LOG_LEVEL = OD_Logger.LOG_LEVEL.NONE
+LOG_LEVEL = OD_Logger.LOG_LEVEL.INFO
 
 OD_Init()
 
@@ -2299,31 +2299,42 @@ RunApp = function()
                 app.gui:popStyles(app.gui.st.vars.topBar)
             end,
             settings = function(ctx)
+                app.gui:pushStyles(app.gui.st.vars.popupsTitle)
+                -- local numOfPreferences = 14
+                -- local numOfSeparators = 5
+                -- local numOfAssetTypes = #app.engine.assetTypeManager.assetTypes + 2
+                -- local lineHeightWithSpacing = ImGui.GetTextLineHeightWithSpacing(ctx)
+                local lineHeight = ImGui.GetTextLineHeight(ctx)
+                local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
+                -- local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
                 local w = 730 * app.gui.scale
-                local h = 950 * app.gui.scale
-                local maxH = app.gui.screen.size[2] * .8
+                local h = 890 * app.gui.scale + #app.settings.current.projectScanFolders * (lineHeight+paddingY)
+                -- local h = select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)) * 2
+                -- h = h + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) + lineHeight
+                -- h = h + (numOfPreferences + numOfSeparators + #app.settings.current.projectScanFolders) *
+                --     (lineHeight+paddingY)
+                -- h = h + numOfAssetTypes * lineHeightWithSpacing + spacingY * 2
+                -- h = h + app.gui.st.sizes.hintHeight
+                local maxH = app.gui.screen.size[2] * .9
                 -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger
                 -- closing this window. So we increment a counter which will be reset if the shortcut is
                 -- being captured, so that we can know to ignore the captured key unless some frames have passed.
                 app.temp.captureCounter = app.temp.captureCounter and app.temp.captureCounter + 1 or 0
-                ImGui.SetNextWindowSize(ctx, w, 0.0)
-                -- ImGui.SetNextWindowPos(ctx, app.gui.screen.size[1] / 2, app.gui.screen.size[2] / 2,
-                --     ImGui.Cond_Appearing,
-                --     0.5,
-                --     0.5)
-                -- -- else
-                ImGui.SetNextWindowSizeConstraints(ctx, 0.0, 0.0, FLT_MAX, maxH)
-
+                ImGui.SetNextWindowSize(ctx, w, h)
+                ImGui.SetNextWindowSizeConstraints(ctx, w, 0.0, w, maxH)
+                local shouldScroll = true
+                if maxH > h then shouldScroll = false end
                 -- end
-                app.gui:pushStyles(app.gui.st.vars.popupsTitle)
+                -- ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding, 0)
                 local visible, open = ImGui.BeginPopupModal(ctx, Scr.name .. ' Settings##settingsWindow', true,
-                    ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_AlwaysAutoResize)
-                -- ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoScrollWithMouse)
+                ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoScrollWithMouse |
+                ImGui.WindowFlags_NoResize)
+                -- ImGui.PopStyleVar(ctx, 1)
                 app.gui:popStyles(app.gui.st.vars.popupsTitle)
 
                 if visible then
-                    if ImGui.BeginChild(ctx, 'SettingsMainArea', w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) -
-                ImGui.GetStyleVar(ctx, ImGui.StyleVar_ScrollbarSize), 0.0, ImGui.ChildFlags_AlwaysAutoResize | ImGui.ChildFlags_AutoResizeY) then --math.min(500*app.gui.scale, h - hintHeight)) then
+                    local w = w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)*2
+                    if ImGui.BeginChild(ctx, 'SettingsMainArea', w, -app.gui.st.sizes.hintHeight) then --math.min(500*app.gui.scale, h - hintHeight)) then
                         if ImGui.IsWindowAppearing(ctx) then
                             app.temp.groupOrder = {}
                             app.temp.groupVisibility = {}
@@ -2331,11 +2342,9 @@ RunApp = function()
                                 table.insert(app.temp.groupOrder, app.engine.assetGroupNameCache[group])
                                 app.temp.groupVisibility[app.engine.assetGroupNameCache[group]] = app.settings
                                     .current.groupVisibility[group]
-                                -- table.insert(app.temp.groupOrder, app.engine.assetGroupNameCache[group] or group)
                             end
                         end
                         app.temp.settingsWindowOpen = true
-                        -- app.settings.current.settingsWindowPos = { ImGui.GetWindowPos(ctx) }
                         ImGui.SeparatorText(ctx, 'General')
                         app.settings.current.uiScale = app.gui:setting('dragdouble', T.SETTINGS.UI_SCALE.LABEL,
                                 T.SETTINGS.UI_SCALE.HINT,
@@ -2398,6 +2407,9 @@ RunApp = function()
                         if resetCounter then app.temp.captureCounter = 0 end
                         ImGui.SeparatorText(ctx, 'Ordering')
 
+                        app.settings.current.showOnlyHighestPriorityPlugin = app.gui:setting('checkbox',
+                            T.SETTINGS.SHOW_ONLY_HIGHEST_PRIORITY_FX.LABEL, T.SETTINGS.SHOW_ONLY_HIGHEST_PRIORITY_FX
+                            .HINT, app.settings.current.showOnlyHighestPriorityPlugin)
                         app.temp.groupOrder, app.temp.groupVisibility = app.gui:setting(
                             'orderable_list',
                             T.SETTINGS.GROUP_ORDER.LABEL, T.SETTINGS.GROUP_ORDER.HINT,
@@ -2408,9 +2420,6 @@ RunApp = function()
                             'FXTypeOrder', T.SETTINGS.FX_TYPE_ORDER.HINT,
                             { app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility }, {}, true)
 
-                        app.settings.current.showOnlyHighestPriorityPlugin = app.gui:setting('checkbox',
-                            T.SETTINGS.SHOW_ONLY_HIGHEST_PRIORITY_FX.LABEL, T.SETTINGS.SHOW_ONLY_HIGHEST_PRIORITY_FX
-                            .HINT, app.settings.current.showOnlyHighestPriorityPlugin)
 
                         ImGui.SeparatorText(ctx, 'Item specific settings')
                         app.settings.current.recentlyAddedDays = app.gui:setting('dragdouble',
@@ -2611,11 +2620,12 @@ RunApp = function()
                                                         local mod = keymod == 0 and 'Click' or
                                                             app.guiHelpers.keyModsToText(keymod |
                                                                 RESULT_CONTEXT.MOUSE_CLICK)
+                                                        local assetType = app.engine.assetTypeManager:getAssetTypeByClassName(group)
+
                                                         local text = BaseAssetType:parseInteractionHintTemplate(
                                                                 description,
                                                                 -1, nil,
-                                                                _G[group].singleName, 'selected ' .. _G[group]
-                                                                .pluralName)
+                                                                assetType.name, (assetType.allowMultiple and (assetType.group):gsub('s$','(s)'):lower() or (assetType.name):lower()))
                                                             :gsub(
                                                                 "^%l", string.upper)
                                                         ImGui.PushFont(ctx, app.gui.st.fonts.bold)

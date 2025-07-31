@@ -7,6 +7,8 @@ setmetatable(RegionAssetType, BaseAssetType)
 
 function RegionAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Region", "Regions")(class, context)
+    instance.allowMultiple = false
+
     -- Regions should be imported even if they can't be mapped to existing regions
     instance.requiresMappingOnImport = false
     instance.updateOnProjectRefresh = true

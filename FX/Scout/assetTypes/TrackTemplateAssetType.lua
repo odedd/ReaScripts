@@ -18,7 +18,7 @@ function TrackTemplateAssetType.new(class, context)
             r.Main_openProject(asset.load)
             return true, ('loaded track template %s'):format(asset.searchText[1].text)
         end)
-    instance:addInteraction(ImGui.Mod_Shift, 'send to %singular(a )new track%plural(s) with template \'%asset\'',
+    instance:addInteraction(ImGui.Mod_Shift, 'send to %singular(a )new track%plural(s) with %singular(template \'%asset\')%plural(%asset)',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
             local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then

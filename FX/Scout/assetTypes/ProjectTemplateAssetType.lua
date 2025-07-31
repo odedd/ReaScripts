@@ -9,10 +9,20 @@ function ProjectTemplateAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Project Template", "Project Templates")(class, context)
     -- Project Templates are file-based assets (.rpp files)
     instance.shouldMapBaseFilenames = true
+    instance.allowMultiple = false
+    
     instance:addInteraction(0, 'create a new project based on %asset', function(asset, mods, context, contextData, confirm, total, index, tempStore)
         r.Main_openProject("template:" .. asset.load)
         return true
     end)
+
+        instance:addInteraction(ImGui.Mod_Shift, 'create a new project based on %asset in a new tab',
+        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+
+            reaper.Main_OnCommandEx(40859, 0, 0)
+            r.Main_openProject("template:" ..asset.load)
+            return true
+        end)
 
     return instance
 end

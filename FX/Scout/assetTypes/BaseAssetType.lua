@@ -126,7 +126,7 @@ function BaseAssetType:getInteractionHintFor(mods, context, contextData, count)
     local correctContext = class:determineCorrectContext(mods, context)
     interactionHint = class.interactionHints[correctContext].text
     return class:parseInteractionHintTemplate(interactionHint, count, contextData, self.searchText[1].text,
-        class.pluralName), correctContext | context
+        (self.pluralName):lower()), correctContext | context
 end
 
 function BaseAssetType:executeAndAddToRecents()
@@ -141,9 +141,17 @@ function BaseAssetType:executeAndAddToRecents()
             -- tempStore = tempStore or asset.context.temp.executeFunctionTempStore
             if index == 1 then asset.context.temp.executeFunctionTempStore = {} end
             -- Execute first and check if successful
-            local success, result, logMsg = pcall(executeFunction, asset, mods, context, contextData, confirm, total,
-                index, asset.context.temp.executeFunctionTempStore)
-
+            local success, result, logMsg
+            if index == 1 or (assetType.allowMultiple and index > 1) then
+                success, result, logMsg = pcall(executeFunction, asset, mods, context, contextData, confirm, total,
+                    index, asset.context.temp.executeFunctionTempStore)
+            else
+                success = true
+                result = false
+                logMsg = 'Asset does not accept multiple selections - executed first asset only.'
+            end
+            logMsg = logMsg or ''
+            
             if index == total then asset.context.temp.executeFunctionTempStore = {} end
 
             if success and result == true then
@@ -229,15 +237,16 @@ function BaseAssetType:createStandardConstructor(name, group)
         -- Default: do not track item add Date
         instance.trackAddDate = false
 
+        -- Default: do not track item add Date
+        instance.allowMultiple = true
+
+        instance.pluralName = inferredGroup
         -- Initialize class-level interactionHints if not already set
         if not class.interactionHints then
             class.interactionHints = {
                 [0] = { order = 0, text = 'select %asset' }
             }
         end
-
-        class.singleName = instance.name
-        class.pluralName = instance.group
 
         return instance
     end
@@ -368,9 +377,10 @@ function BaseAssetType:createAssetBase(params)
         load = params.load,
         searchText = params.searchText,
         group = params.group,
+        pluralName = self.pluralName,
         getInteractionHintFor = function(asset, mods, context, contextData, count)
             return self.getInteractionHintFor(
-            asset, mods, context, contextData, count)
+                asset, mods, context, contextData, count)
         end,
         key = params.type .. ' ' .. params.load,
         context = self.context,
