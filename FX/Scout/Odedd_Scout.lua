@@ -2422,6 +2422,12 @@ RunApp = function()
                             app.settings.current.showFxUI, {
                                 list = T.SHOW_FX_UI_LIST
                             })
+                        app.settings.current.addInstrumentsAsInstrumentTracks = app.gui:setting(
+                            'checkbox',
+                            T.SETTINGS.USE_VIRTUAL_INSTRUMENT_TRACKS.LABEL,
+                            T.SETTINGS.USE_VIRTUAL_INSTRUMENT_TRACKS.HINT,
+                            app.settings.current.addInstrumentsAsInstrumentTracks
+                        )
                         app.settings.current.createSendsInsideFolder = app.gui:setting('checkbox',
                             T.SETTINGS.CREATE_INSIDE_FODLER.LABEL,
                             T.SETTINGS.CREATE_INSIDE_FODLER.HINT, app.settings.current.createSendsInsideFolder)

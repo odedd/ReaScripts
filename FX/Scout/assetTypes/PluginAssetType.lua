@@ -66,12 +66,12 @@ function PluginAssetType:getData()
             return false
         end
 
-
         local plugin = {
             full_name = full_name,
             fx_type = fx_type,
             name = name,
             vendor = vendor,
+            instrument = instrument,
             ident = ident,
         }
         table.insert(self.data, plugin)
@@ -112,6 +112,7 @@ function PluginAssetType:assembleAsset(plugin)
 
     asset.name = plugin.name
     asset.vendor = plugin.vendor
+    asset.instrument = plugin.instrument
     asset.fx_type = plugin.fx_type
     asset.categories = {}
     asset.folders = {}

@@ -10,6 +10,7 @@ PB_Settings = OD_Settings:new({
         showFxUI = SHOW_FX_UI.FOLLOW_PREFERENCE,
         closeAfterExecute = true,
         recentlyAddedDays = 30,
+        addInstrumentsAsInstrumentTracks = true,
         shortcuts = {
             markFavorite = {
                 key = OD_KEYCODES.F,

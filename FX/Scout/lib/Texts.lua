@@ -67,6 +67,10 @@ T.SETTINGS = {
         LABEL = 'Use sleep mode',
         HINT = 'If one does not exist, it will be created when adding sends.',
     },
+    USE_VIRTUAL_INSTRUMENT_TRACKS = {
+        LABEL = 'Use virtual instrument tracks',
+        HINT = 'When selecting instruments, create/convert to virtual instrument tracks.',
+    },
     PROJECT_SCAN_FOLDER = {
         LABEL = 'Project scanning folder',
         LABEL_BUTTON = 'Add...',

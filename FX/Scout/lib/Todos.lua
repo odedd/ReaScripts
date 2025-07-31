@@ -19,7 +19,8 @@
 -- DONE: Randomly execute one result
 -- DONE: Track newly added plugins
 -- DONE: All execute functions
--- TODO: handle FX instruments
+-- DONE: handle FX instruments
+-- TODO: fix resizing settings and help windows
 -- TODO: Handle hints for selection that spans many asset types
 -- TODO: Settings window - add Convert Folders/Categories to tags
 -- TODO: Create Default Presets with Magic Words for types
