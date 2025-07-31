@@ -73,6 +73,10 @@ T.SETTINGS = {
         HINT = 'Where Scout needs to search for projects. Will also scan subfolders.',
         HINT_DELETE = 'Remove this folder',
     },
+    RECENTLY_ADDED_DAYS = {
+        LABEL = 'Days counted as recent',
+        HINT = 'How long should actions and FX be considered recently added.',
+    },
     GROUP_ORDER = {
         LABEL = 'Item and FX priority',
         HINT = 'The order in which items are displayed in the search window.',
@@ -203,6 +207,11 @@ T.SPECIAL_GROUPS = {
     [SPECIAL_GROUPS.PLUGINS] = 'FX'
 }
 
+T.RECENTLY_ADDED_EXPLANATION = 
+[[The script can only track FX and actions added after it was first 
+run. Anything added before that - even if within the selected time 
+range - will not appear as recently added.]]
+
 T.SLEEP_MODE_EXPLANATION =
 [[TL;DR - The script loads fastest when 'sleep mode' is turned on.
 For it to work, the next time the script runs, select 'new instance'.
@@ -230,7 +239,8 @@ T.HINTS = {
     PRESET_WITH_WORD_DEFAULT = 'Load preset %s. You can also type \'%s\' followed by space to load it.',
     EDIT_PRESET_DEFAULT = 'Edit preset %s.',
     OTHER_FILTERS = {
-        ['Untagged'] = 'Show items that have no tags.'
+        ['Untagged'] = 'Show items that have no tags.',
+        ['Recently Added'] = 'Show actions and FX that were added recently.'
     },
     TAG_DEFAULT = 'Tag \'%s\'. Double-Click to rename. Right-Click for more options.',
     TAG_CONTEXT_MENU_RENAME = 'Rename tag',

@@ -32,7 +32,7 @@ else
     dofile(p .. '../../Resources/Common/Common.lua')
 end
 
-LOG_LEVEL = OD_Logger.LOG_LEVEL.INFO
+LOG_LEVEL = OD_Logger.LOG_LEVEL.NONE
 
 OD_Init()
 
@@ -335,7 +335,7 @@ RunApp = function()
                     local hasTextFilter = #filterWords > 0
                     local hasTypeFilters = validatedFilter.type or validatedFilter.fx_type or
                         validatedFilter.fxDeveloper or validatedFilter.fxFolderId or
-                        validatedFilter.fxCategory or validatedFilter.untagged
+                        validatedFilter.fxCategory or validatedFilter.untagged or validatedFilter.recentlyAdded
                     local hasTagFilters = next(validatedFilter.tags) ~= nil
 
                     -- If no filters at all, return all assets (or handle based on search mode)
@@ -358,6 +358,7 @@ RunApp = function()
                         typeFilterChecks.fxFolderId = validatedFilter.fxFolderId
                         typeFilterChecks.fxCategory = validatedFilter.fxCategory
                         typeFilterChecks.untagged = validatedFilter.untagged
+                        typeFilterChecks.recentlyAdded = validatedFilter.recentlyAdded
                     end
 
                     -- Cache filter tags for faster access
@@ -381,6 +382,9 @@ RunApp = function()
                                     goto skip
                                 end
                                 if (typeFilterChecks.untagged and (#asset.tags > 0)) then
+                                    goto skip
+                                end
+                                if (typeFilterChecks.recentlyAdded and (not asset.addedAt or asset.addedAt < (os.time() - app.settings.current.recentlyAddedDays * 86400))) then
                                     goto skip
                                 end
                                 if (typeFilterChecks.fxDeveloper and (not asset.vendor or asset.vendor ~= typeFilterChecks.fxDeveloper)) then
@@ -571,7 +575,8 @@ RunApp = function()
             end,
             createFilterAction = function(actionName, actionType, filter)
                 if EXPORT_ACTIONS[actionType] then
-                    return app.flow.createAction(actionName, EXPORT_ACTIONS[actionType] .. " \'..\n[[" .. pickle(filter) .. "\n]]..\'")
+                    return app.flow.createAction(actionName,
+                        EXPORT_ACTIONS[actionType] .. " \'..\n[[" .. pickle(filter) .. "\n]]..\'")
                 end
             end,
             checkExternalCommand = function()
@@ -913,19 +918,18 @@ RunApp = function()
                             for itemName, item in pairs(FILTER_MENU[filterKey].items) do
                                 for queryKey, queryValue in pairs(item.query) do
                                     if app.temp.filter[queryKey] == queryValue then
-                                        local key = filterKey
+                                        local key = filterKey .. item.order
                                         table.insert(currentActiveKeys, key)
                                         activeFilters[key] = activeFilters[key] or {}
                                         activeFilters[key].key = key
                                         activeFilters[key].type = filterKey
                                         activeFilters[key].item = item
                                         activeFilters[key].itemName = itemName
-                                        activeFilters[key].allQuery = FILTER_MENU[filterKey].allQuery
+                                        activeFilters[key].allQuery = item.allQuery or FILTER_MENU[filterKey].allQuery
                                         if activeFilters[key].order == nil then
                                             activeFilters[key].order = OD_Tablelength(
                                                 activeFilters)
                                         end
-                                        break
                                     end
                                 end
                             end
@@ -2404,6 +2408,16 @@ RunApp = function()
                             .HINT, app.settings.current.showOnlyHighestPriorityPlugin)
 
                         ImGui.SeparatorText(ctx, 'Item specific settings')
+                        app.settings.current.recentlyAddedDays = app.gui:setting('dragdouble',
+                            T.SETTINGS.RECENTLY_ADDED_DAYS.LABEL,
+                            T.SETTINGS.RECENTLY_ADDED_DAYS.HINT, app.settings.current.recentlyAddedDays,
+                            {
+                                speed = 1,
+                                min = 1,
+                                max = 60,
+                                format = "%.0f",
+                                help = T.RECENTLY_ADDED_EXPLANATION
+                            })
                         app.settings.current.showFxUI = app.gui:setting(
                             'combo',
                             T.SETTINGS.SHOW_FX_UI.LABEL,

@@ -27,13 +27,13 @@
 -- DONE: Refresh project specific assets (tracks, markers/regions)
 -- DONE: Fix Hints
 -- DONE: Randomly execute one result
+-- DONE: Track newly added plugins
 -- TODO: Handle hints for selection that spans many asset types
 -- TODO: Settings window - add Convert Folders/Categories to tags
 -- TODO: All execute functions + handling FX instruments
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Refresh projects?
 -- TODO: Add take markers
--- TODO: Track newly added plugins (?)
 -- TODO: Import progress bar (coroutine?)
 -- TODO: minimal mode (?)
 -- TODO: disable selecting multiple filters of the same type? (this is a petty one)

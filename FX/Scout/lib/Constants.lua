@@ -143,11 +143,16 @@ FILTER_MENU = {
     },
     [FILTER_TYPES.OTHER] = {
         order = 6,
-        allQuery = { untagged = 'all' },
         items = {
             ['Untagged'] = {
                 order = 1,
+                allQuery = { untagged = 'all' },
                 query = { untagged = true }
+            },
+            ['Recently Added'] = {
+                order = 2,
+                allQuery = { recentlyAdded = 'all' },
+                query = { recentlyAdded = true }
             }
         } -- added in DataEngine.lua once folders are loaded
     }

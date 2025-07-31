@@ -1172,7 +1172,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                         searchText = { { text = itemName } },
                         order = item.order,
                         load = item.query,
-                        loadAll = filter.allQuery,
+                        loadAll = item.allQuery or filter.allQuery,
                         group = T.FILTER_NAMES[filterType],
                         getInteractionHintFor = function(self, mods, context, contextData, count)
                             return interactionHints(filterType, mods,
