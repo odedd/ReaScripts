@@ -32,7 +32,7 @@ else
     dofile(p .. '../../Resources/Common/Common.lua')
 end
 
-LOG_LEVEL = OD_Logger.LOG_LEVEL.INFO
+LOG_LEVEL = OD_Logger.LOG_LEVEL.NONE
 
 OD_Init()
 
