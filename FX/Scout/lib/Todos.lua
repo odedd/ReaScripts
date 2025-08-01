@@ -21,7 +21,7 @@
 -- DONE: All execute functions
 -- DONE: handle FX instruments
 -- DONE: fix resizing settings and help windows
--- TODO: Handle hints for selection that spans many asset types
+-- DONE: Handle hints for selection that spans many asset types
 -- TODO: Settings window - add Convert Folders/Categories to tags
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Add take markers

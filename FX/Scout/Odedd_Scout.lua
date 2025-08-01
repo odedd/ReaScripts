@@ -863,6 +863,32 @@ RunApp = function()
             end,
             getHintFor = function(asset, context, count)
                 local mods = ImGui.GetKeyMods(app.gui.ctx)
+                
+                -- Check if selection spans multiple asset types
+                if count > 1 then
+                    local selectedResults = app.selection:results()
+                    local assetTypes = {}
+                    
+                    -- Collect unique asset type groups
+                    for _, result in ipairs(selectedResults) do
+                        if result.class and result.class.group then
+                            assetTypes[result.class.group] = true
+                        end
+                    end
+                    
+                    -- If multiple asset types, show generic hint
+                    local typeCount = 0
+                    for _ in pairs(assetTypes) do
+                        typeCount = typeCount + 1
+                    end
+                    
+                    if typeCount > 1 then
+                        local actionKey = app.guiHelpers.keyModsToText(mods | context)
+                        return T.HINTS.MULTI_TYPE_SELECTION:format(actionKey, count)
+                    end
+                end
+                
+                -- Default behavior for single type selections
                 local assetHint, usedMods = asset:getInteractionHintFor(mods, context, nil,
                     count)
                 if assetHint then

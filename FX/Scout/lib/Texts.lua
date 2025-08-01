@@ -236,6 +236,7 @@ T.HINTS = {
     RANDOM_ACTION = 'Randomly select one of the results and run it.',
     SAVE_FILTERS_PRESET = 'Save filter set as a preset.',
     SAVE_FILTERS_ACTION = 'Export filter set as a Reaper action.',
+    MULTI_TYPE_SELECTION = '%s to execute %d items.',
     -- ACTIVE_FILTER_DEFAULT = '%s: %s',
     ACTIVE_FILTER_REMOVE = 'Remove filter.',
     LOAD_FILTER_DEFAULT = 'Show items whose %s is %s.',
