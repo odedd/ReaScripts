@@ -1199,9 +1199,12 @@ RunApp = function()
                     ImGui.PopFont(ctx)
                 end
                 local drawResultsTable = function()
-                    local searchResultsH = select(2, ImGui.GetContentRegionAvail(ctx)) -
-                        fontLineHeight                                                   -- Height available for search results
-                    local maxSearchResults = math.floor(searchResultsH / fontLineHeight) -- Max results in available space
+                    -- Round fontLineHeight to avoid floating point precision issues with scrolling
+                    local actualLineHeight = math.floor(fontLineHeight + 0.5)
+                    
+                    -- Also round searchResultsH for consistency at non-integer zoom levels
+                    local searchResultsH = math.floor(select(2, ImGui.GetContentRegionAvail(ctx)) - actualLineHeight + 0.5)
+                    local maxSearchResults = math.floor(searchResultsH / actualLineHeight) -- Max results in available space
 
                     local handleKeyboardNavigation = function()
                         -- handle escape
@@ -1368,25 +1371,24 @@ RunApp = function()
                             if selectedRow then
                                 app.temp.scrollIfNeeded = false
                                 app.temp.tableScrollY = app.temp.tableScrollY or 0
-                                -- if below current view
-                                if selectedRow.totalIndex * fontLineHeight >=
-                                    app.temp.tableScrollY + searchResultsH then
-                                    local skip = flatRows[selectedRow.totalIndex].type == 'group'
-                                    ImGui.SetNextWindowScroll(ctx, 0,
-                                        (selectedRow.totalIndex) * fontLineHeight - searchResultsH +
-                                        (skip and fontLineHeight or 0))
-                                    -- if above current view
-                                elseif selectedRow.totalIndex * fontLineHeight <=
-                                    app.temp.tableScrollY + fontLineHeight then
-                                    local skip
-                                    if selectedRow.totalIndex == 1 then
-                                        skip = false
-                                    else
-                                        skip = (flatRows[selectedRow.totalIndex].type == 'group')
-                                    end
-                                    ImGui.SetNextWindowScroll(ctx, 0,
-                                        (selectedRow.totalIndex - 1) * fontLineHeight -
-                                        (skip and fontLineHeight or 0))
+                                
+                                -- Use the same line height for scrolling as for rendering
+                                local rowPosition = (selectedRow.totalIndex - 1) * actualLineHeight
+                                local currentScroll = app.temp.tableScrollY
+                                
+                                -- Check if item is fully visible
+                                local itemTop = rowPosition
+                                local itemBottom = rowPosition + actualLineHeight
+                                local viewTop = currentScroll
+                                local viewBottom = currentScroll + searchResultsH
+                                
+                                -- If item extends below the visible area, scroll to show it fully
+                                if itemBottom > viewBottom then
+                                    -- Scroll so the item's bottom aligns with the bottom of searchResultsH
+                                    ImGui.SetNextWindowScroll(ctx, 0, itemBottom - searchResultsH)
+                                -- If item is above the visible area, scroll to show it at the top
+                                elseif itemTop < viewTop then
+                                    ImGui.SetNextWindowScroll(ctx, 0, math.max(0, itemTop))
                                 end
                             end
                         end
@@ -1420,7 +1422,7 @@ RunApp = function()
                         end
 
                         handleKeyboardNavigation()
-                        ImGui.SetCursorPosY(ctx, upperRowY + fontLineHeight)
+                        ImGui.SetCursorPosY(ctx, upperRowY + actualLineHeight)
 
                         local firstGroup = nil
                         if #searchResults > 0 then
@@ -1457,7 +1459,7 @@ RunApp = function()
                             if ImGui.BeginTable(ctx, "##searchResults", 1, tableFlags, 0, searchResultsH) then
                                 app.temp.tableScrollY = ImGui.GetScrollY(ctx)
 
-                                ImGui.ListClipper_Begin(app.gui.searchResultsClipper, #flatRows)
+                                ImGui.ListClipper_Begin(app.gui.searchResultsClipper, #flatRows, actualLineHeight)
                                 firstGroup = nil
                                 while ImGui.ListClipper_Step(app.gui.searchResultsClipper) do
                                     local display_start, display_end = ImGui.ListClipper_GetDisplayRange(app.gui
@@ -1466,7 +1468,7 @@ RunApp = function()
                                     while rowIdx <= display_end do
                                         local row = flatRows[rowIdx]
                                         if row.type == "group" then
-                                            ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
+                                            ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, actualLineHeight)
                                             ImGui.TableSetColumnIndex(ctx, 0)
                                             ImGui.SeparatorText(ctx, row.group)
                                         elseif row.type == "result" then
@@ -1475,7 +1477,7 @@ RunApp = function()
                                                 firstGroup = result.group
                                             end
                                             ImGui.PushID(ctx, 'result' .. row.index)
-                                            ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
+                                            ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, actualLineHeight)
                                             ImGui.TableSetColumnIndex(ctx, 0)
                                             if app.temp.highlightDropAreaForAllSelectedResults and app.temp.highlightDropAreaForAllSelectedResults < ImGui.GetFrameCount(ctx) or app.temp.highlightDropAreaFor == row.index then
                                                 ImGui.PushStyleColor(ctx, ImGui.Col_Header,
@@ -1518,7 +1520,7 @@ RunApp = function()
 
                                             -- if result.type == ASSET_TYPE.TrackAssetType and result.color then
                                             if result.color then
-                                                local size = fontLineHeight -
+                                                local size = actualLineHeight -
                                                     select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2
                                                 ImGui.ColorButton(ctx, 'color', result.color,
                                                     ImGui.ColorEditFlags_NoBorder | ImGui.ColorEditFlags_NoTooltip, size,
