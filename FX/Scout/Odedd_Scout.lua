@@ -1029,7 +1029,13 @@ RunApp = function()
                     clicked = true
                 end
                 if hint then
-                    app:setHoveredHint('main', hint)
+                    if app.temp.fullWindow then
+                        app:setHoveredHint('main', hint)
+                    elseif ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
+                        ImGui.PushFont(ctx, app.gui.st.fonts.default)
+                        ImGui.SetTooltip(ctx, hint)
+                        ImGui.PopFont(ctx)
+                    end
                 end
                 if ImGui.IsItemHovered(ctx) then
                     ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
@@ -2187,34 +2193,34 @@ RunApp = function()
 
                     table.insert(menu,
                         { icon = 'money', hint = ('%s is free, but donations are welcome :)'):format(Scr.name) })
-                        if ImGui.IsWindowDocked(ctx) then
-                            table.insert(menu, { icon = 'undock', hint = 'Undock' })
-                        else
-                            table.insert(menu, { icon = 'dock_down', hint = 'Dock' })
-                        end
-                        table.insert(menu, {
-                            icon = 'question',
-                            hint = 'Help',
-                            active = app.temp.showHelpWindow
-                        })
-                        table.insert(menu, {
-                            icon = 'gear',
-                            hint = 'Settings',
-                            active = ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow')
-                        })
-                        if app.temp.fullWindow then
-                            table.insert(menu,
+                    if ImGui.IsWindowDocked(ctx) then
+                        table.insert(menu, { icon = 'undock', hint = 'Undock' })
+                    else
+                        table.insert(menu, { icon = 'dock_down', hint = 'Dock' })
+                    end
+                    table.insert(menu, {
+                        icon = 'question',
+                        hint = 'Help',
+                        active = app.temp.showHelpWindow
+                    })
+                    table.insert(menu, {
+                        icon = 'gear',
+                        hint = 'Settings',
+                        active = ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow')
+                    })
+                    if app.temp.fullWindow then
+                        table.insert(menu,
                             {
                                 icon = 'sidebar',
                                 hint = app.settings.current.showSideBar and 'Hide side bar' or
-                                'Show side bar',
+                                    'Show side bar',
                                 active = app.settings.current.showSideBar
                             })
-                        end
-                        table.insert(menu, {
-                            icon = app.settings.current.minimalMode and 'maximize' or 'minimize',
-                            hint = app.settings.current.minimalMode and 'Turn off minimal mode' or 'Turn on minimal mode'
-                        })
+                    end
+                    table.insert(menu, {
+                        icon = app.settings.current.minimalMode and 'maximize' or 'minimize',
+                        hint = app.settings.current.minimalMode and 'Turn off minimal mode' or 'Turn on minimal mode'
+                    })
                     return menu
                 end
                 local calculateDimensions = function()
@@ -2224,7 +2230,7 @@ RunApp = function()
                         menuW = menuW + select(1, ImGui.CalcTextSize(ctx, ICONS[(btn.icon):upper()])) +
                             ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
                     end
-                    -- menuW = menuW 
+                    -- menuW = menuW
                     ImGui.PopFont(ctx)
                     return menuW, h
                 end
@@ -2372,8 +2378,15 @@ RunApp = function()
                     ImGui.PushFont(ctx, app.gui.st.fonts.large)
                     ImGui.AlignTextToFramePadding(ctx)
                     ImGui.Text(ctx, app.scr.name)
-                    app:setHoveredHint('main', app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
                     ImGui.PopStyleColor(ctx)
+
+                    if app.temp.fullWindow then
+                        app:setHoveredHint('main', app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
+                    elseif ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
+                        ImGui.PushFont(ctx, app.gui.st.fonts.default)
+                        ImGui.SetTooltip(ctx, app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
+                        ImGui.PopFont(ctx)
+                    end
                     ImGui.SameLine(ctx)
                     local x, y = ImGui.GetCursorScreenPos(ctx)
                     local width = 2 * app.gui.scale
