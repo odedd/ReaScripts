@@ -116,7 +116,24 @@ RunApp = function()
                 -- self:setKeyboardPos(nil);
             end,
             add = function(self, itemIdx)
-                self.items[itemIdx] = true
+                -- Check if the result doesn't allow multiple selection
+                local result = app.temp.searchResults[itemIdx]
+                if result and result.allowMultiple == false then
+                    -- If this result doesn't allow multiple, clear all others and select only this one
+                    self.items = {}
+                    self.items[itemIdx] = true
+                else
+                    -- Check if any currently selected result doesn't allow multiple
+                    for selectedIdx, _ in pairs(self.items) do
+                        local selectedResult = app.temp.searchResults[selectedIdx]
+                        if selectedResult and selectedResult.allowMultiple == false then
+                            -- Clear all selections if any selected result doesn't allow multiple
+                            self.items = {}
+                            break
+                        end
+                    end
+                    self.items[itemIdx] = true
+                end
             end,
             remove = function(self, itemIdx)
                 if not (self.keyboardPos == itemIdx and self:count() == 1) then
@@ -145,19 +162,73 @@ RunApp = function()
                 self:setKeyboardPos(itemIdx)
             end,
             toggle = function(self, itemIdx)
+                local result = app.temp.searchResults[itemIdx]
+                
                 if self:has(itemIdx) then
                     self:remove(itemIdx)
                     return false
                 else
-                    self:add(itemIdx)
-                    return true
+                    -- Check if the result being added doesn't allow multiple selection
+                    if result and result.allowMultiple == false then
+                        -- If this result doesn't allow multiple, select only this one
+                        self:selectOnly(itemIdx)
+                        return true
+                    else
+                        -- Check if any currently selected result doesn't allow multiple
+                        for selectedIdx, _ in pairs(self.items) do
+                            local selectedResult = app.temp.searchResults[selectedIdx]
+                            if selectedResult and selectedResult.allowMultiple == false then
+                                -- Clear all and select only the new item if any current selection doesn't allow multiple
+                                self:selectOnly(itemIdx)
+                                return true
+                            end
+                        end
+                        
+                        -- Normal toggle - add to selection
+                        self:add(itemIdx)
+                        return true
+                    end
                 end
             end,
             selectRange = function(self, fromIdx, toIdx)
                 local from, to = math.min(fromIdx, toIdx), math.max(fromIdx, toIdx)
-                for i = from, to do
-                    self:add(i)
+                
+                -- Check if the target item allows multiple selection
+                local targetResult = app.temp.searchResults[toIdx]
+                if targetResult and targetResult.allowMultiple == false then
+                    -- If target doesn't allow multiple, select only the target
+                    self:selectOnly(toIdx)
+                    return
                 end
+                
+                -- Store current selection that's outside the new range
+                local preservedSelection = {}
+                for selectedIdx, _ in pairs(self.items) do
+                    -- Preserve items that are outside the range from keyboard position to target
+                    if (selectedIdx < from or selectedIdx > to) then
+                        local selectedResult = app.temp.searchResults[selectedIdx]
+                        if selectedResult and selectedResult.allowMultiple ~= false then
+                            preservedSelection[selectedIdx] = true
+                        end
+                    end
+                end
+                
+                -- Clear existing selection
+                self:empty()
+                
+                -- Restore preserved selection
+                for idx, _ in pairs(preservedSelection) do
+                    self.items[idx] = true
+                end
+                
+                -- Add the new range, but only items that allow multiple selection
+                for i = from, to do
+                    local result = app.temp.searchResults[i]
+                    if result and result.allowMultiple ~= false then
+                        self.items[i] = true
+                    end
+                end
+                
                 self:setKeyboardPos(toIdx)
             end,
             setKeyboardPos = function(self, itemIdx, scroll)
@@ -1161,8 +1232,19 @@ RunApp = function()
                                 newIdx = #searchResults
                             end
                             if newIdx then
-                                if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) or ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl) then
+                                if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
                                     app.selection:selectRange(app.selection.keyboardPos, newIdx)
+                                elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl) then
+                                    -- For Cmd/Ctrl navigation, add to selection if item allows multiple
+                                    local targetResult = app.temp.searchResults[newIdx]
+                                    if targetResult and targetResult.allowMultiple ~= false then
+                                        -- Only add if it allows multiple selection
+                                        app.selection:add(newIdx)
+                                        app.selection:setKeyboardPos(newIdx)
+                                    else
+                                        -- If target doesn't allow multiple, select only it
+                                        app.selection:selectOnly(newIdx)
+                                    end
                                 else
                                     app.selection:selectOnly(newIdx)
                                 end
@@ -2308,7 +2390,7 @@ RunApp = function()
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
                 -- local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
                 local w = 730 * app.gui.scale
-                local h = 890 * app.gui.scale + #app.settings.current.projectScanFolders * (lineHeight+paddingY)
+                local h = 890 * app.gui.scale + #app.settings.current.projectScanFolders * (lineHeight + paddingY)
                 -- local h = select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)) * 2
                 -- h = h + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) + lineHeight
                 -- h = h + (numOfPreferences + numOfSeparators + #app.settings.current.projectScanFolders) *
@@ -2327,13 +2409,13 @@ RunApp = function()
                 -- end
                 -- ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowPadding, 0)
                 local visible, open = ImGui.BeginPopupModal(ctx, Scr.name .. ' Settings##settingsWindow', true,
-                ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoScrollWithMouse |
-                ImGui.WindowFlags_NoResize)
+                    ImGui.WindowFlags_NoDocking | ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoScrollWithMouse |
+                    ImGui.WindowFlags_NoResize)
                 -- ImGui.PopStyleVar(ctx, 1)
                 app.gui:popStyles(app.gui.st.vars.popupsTitle)
 
                 if visible then
-                    local w = w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)*2
+                    local w = w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2
                     if ImGui.BeginChild(ctx, 'SettingsMainArea', w, -app.gui.st.sizes.hintHeight) then --math.min(500*app.gui.scale, h - hintHeight)) then
                         if ImGui.IsWindowAppearing(ctx) then
                             app.temp.groupOrder = {}
@@ -2620,12 +2702,14 @@ RunApp = function()
                                                         local mod = keymod == 0 and 'Click' or
                                                             app.guiHelpers.keyModsToText(keymod |
                                                                 RESULT_CONTEXT.MOUSE_CLICK)
-                                                        local assetType = app.engine.assetTypeManager:getAssetTypeByClassName(group)
+                                                        local assetType = app.engine.assetTypeManager
+                                                            :getAssetTypeByClassName(group)
 
                                                         local text = BaseAssetType:parseInteractionHintTemplate(
                                                                 description,
                                                                 -1, nil,
-                                                                assetType.name, (assetType.allowMultiple and (assetType.group):gsub('s$','(s)'):lower() or (assetType.name):lower()))
+                                                                assetType.name,
+                                                                (assetType.allowMultiple and (assetType.group):gsub('s$', '(s)'):lower() or (assetType.name):lower()))
                                                             :gsub(
                                                                 "^%l", string.upper)
                                                         ImGui.PushFont(ctx, app.gui.st.fonts.bold)

@@ -151,7 +151,7 @@ function BaseAssetType:executeAndAddToRecents()
                 logMsg = 'Asset does not accept multiple selections - executed first asset only.'
             end
             logMsg = logMsg or ''
-            
+
             if index == total then asset.context.temp.executeFunctionTempStore = {} end
 
             if success and result == true then
@@ -378,6 +378,7 @@ function BaseAssetType:createAssetBase(params)
         searchText = params.searchText,
         group = params.group,
         pluralName = self.pluralName,
+        allowMultiple = self.allowMultiple,
         getInteractionHintFor = function(asset, mods, context, contextData, count)
             return self.getInteractionHintFor(
                 asset, mods, context, contextData, count)
