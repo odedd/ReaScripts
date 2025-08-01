@@ -624,6 +624,80 @@ RunApp = function()
                 app.selection:selectOnly(math.random(#app.temp.searchResults))
                 app.selection:execute(RESULT_CONTEXT['IGNORE_KEYS'])
             end,
+            getActiveFilters = function()
+                local activeFilters = app.temp.activeFilters ~= nil and app.temp.activeFilters or {}
+                if app.temp.filter == nil then app.temp.filter = {} end
+                local currentActiveKeys = {}
+                -- local numFilters = 0
+                for i, filterKey in pairs(FILTER_TYPES) do
+                    local filterItem = nil
+                    local selectedItemName
+                    if filterKey ~= FILTER_TYPES.TAG then
+                        for itemName, item in pairs(FILTER_MENU[filterKey].items) do
+                            for queryKey, queryValue in pairs(item.query) do
+                                if app.temp.filter[queryKey] == queryValue then
+                                    local key = filterKey .. item.order
+                                    table.insert(currentActiveKeys, key)
+                                    activeFilters[key] = activeFilters[key] or {}
+                                    activeFilters[key].key = key
+                                    activeFilters[key].type = filterKey
+                                    activeFilters[key].item = item
+                                    activeFilters[key].itemName = itemName
+                                    activeFilters[key].allQuery = item.allQuery or FILTER_MENU[filterKey].allQuery
+                                    if activeFilters[key].order == nil then
+                                        activeFilters[key].order = OD_Tablelength(
+                                            activeFilters)
+                                    end
+                                end
+                            end
+                        end
+                    else
+                        for tagKey, tagValue in pairs(app.temp.filter.tags or {}) do
+                            if app.engine.tags[tagKey] then
+                                local key = filterKey .. tagKey
+                                table.insert(currentActiveKeys, key)
+                                activeFilters[key] = activeFilters[key] or {}
+                                activeFilters[key].key = key
+                                activeFilters[key].type = FILTER_TYPES.TAG
+                                activeFilters[key].value = tagValue
+                                activeFilters[key].item = app.engine.tags[tagKey]
+                                activeFilters[key].itemName = app.engine.tags[tagKey].name
+
+                                if activeFilters[key].order == nil then
+                                    activeFilters[key].order = OD_Tablelength(
+                                        activeFilters)
+                                end
+                            end
+                        end
+                    end
+                end
+                local removed = false
+                -- Remove inactive filters from activeFilters
+                for key, filter in pairs(activeFilters) do
+                    local found = false
+                    for _, activeKey in ipairs(currentActiveKeys) do
+                        if key == activeKey then
+                            found = true
+                            break
+                        end
+                    end
+                    if not found then
+                        removed = true
+                        activeFilters[key] = nil
+                    end
+                end
+                if removed then
+                    -- Renumber activeFilters order using OD_PairsByOrder
+                    local order = 1
+                    for key, filter in OD_PairsByOrder(activeFilters) do
+                        filter.order = order
+                        order = order + 1
+                    end
+                end
+
+                app.temp.activeFilters = activeFilters
+                return activeFilters
+            end,
             createAction = function(actionName, cmd)
                 local snActionName = OD_SanitizeFilename(actionName)
                 local filename = ('%s - %s'):format(Scr.no_ext, snActionName)
@@ -863,31 +937,31 @@ RunApp = function()
             end,
             getHintFor = function(asset, context, count)
                 local mods = ImGui.GetKeyMods(app.gui.ctx)
-                
+
                 -- Check if selection spans multiple asset types
                 if count > 1 then
                     local selectedResults = app.selection:results()
                     local assetTypes = {}
-                    
+
                     -- Collect unique asset type groups
                     for _, result in ipairs(selectedResults) do
                         if result.class and result.class.group then
                             assetTypes[result.class.group] = true
                         end
                     end
-                    
+
                     -- If multiple asset types, show generic hint
                     local typeCount = 0
                     for _ in pairs(assetTypes) do
                         typeCount = typeCount + 1
                     end
-                    
+
                     if typeCount > 1 then
                         local actionKey = app.guiHelpers.keyModsToText(mods | context)
                         return T.HINTS.MULTI_TYPE_SELECTION:format(actionKey, count)
                     end
                 end
-                
+
                 -- Default behavior for single type selections
                 local assetHint, usedMods = asset:getInteractionHintFor(mods, context, nil,
                     count)
@@ -977,6 +1051,151 @@ RunApp = function()
             end,
         }
         app.draw = {
+            activeFilters = function()
+                local ctx = app.gui.ctx
+                local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+
+                local x, y = ImGui.GetCursorPos(ctx)
+                local lines = 1
+                local height = 0
+
+                ImGui.PushFont(ctx, app.gui.st.fonts.small)
+                if OD_Tablelength(app.temp.activeFilters) > 0 then
+                    ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx))
+
+                    if app.guiHelpers.iconButton(ctx, 'CLOSE', app.gui.st.col.buttons.activeFilterAction) then
+                        app.flow.filterResults({ clear = true })
+                    end
+                    app:setHoveredHint('main', T.HINTS.RESET_FILTERS)
+                    if app.guiHelpers.iconButton(ctx, 'DISK', app.gui.st.col.buttons.activeFilterAction) then
+                        ImGui.OpenPopup(ctx, 'Save Filter Set Context Menu')
+                    end
+                    app:setHoveredHint('main', T.HINTS.SAVE_FILTERS)
+                    if ImGui.BeginPopup(ctx, 'Save Filter Set Context Menu') then
+                        app:setHint('main', '')
+                        if ImGui.MenuItem(ctx, 'Save preset...') then
+                            app.temp.showCreatePresetDialog = true
+                            app.temp.presetName = ""
+                            app.temp.presetWord = ""
+                        end
+                        app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_PRESET)
+                        if ImGui.MenuItem(ctx, 'Create Reaper action...') then
+                            app.temp.showExportActionDialog = true
+                            app.temp.actionName = ""
+                        end
+                        app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_ACTION)
+                        ImGui.EndPopup(ctx)
+                    end
+                    if app.guiHelpers.iconButton(ctx, 'DICE', app.gui.st.col.buttons.activeFilterAction) then
+                        app.flow.executeRandomResult()
+                    end
+                    app:setHoveredHint('main', T.HINTS.RANDOM_ACTION)
+                    ImGui.SameLine(ctx)
+                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
+                    app.gui:pushStyles(app.gui.st.vars.topBarActiveFiltersArea)
+                    app.gui:pushColors(app.gui.st.col.topBarActiveFiltersArea)
+
+
+                    local closeButtonSizeW, closeButtonSizeH = app.guiHelpers.calcTinyIconSize(ctx, ICONS.CLOSE)
+                    local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
+                    local filterH = ImGui.GetTextLineHeight(ctx) + paddingY * 2
+
+                    if ImGui.BeginChild(ctx, 'activesideBar', nil, nil, ImGui.ChildFlags_AutoResizeY) then
+                        local i = 0
+                        for filterKey, filter in OD_PairsByOrder(app.temp.activeFilters) do
+                            i = i + 1
+                            local text = filter.itemName
+                            local textW, textH = ImGui.CalcTextSize(ctx, text)
+                            if filter.type == FILTER_TYPES.TAG then
+                                text = filter.itemName
+                                -- textW = app.guiHelpers.calcTinyIconSize(ctx,
+                                --         filter.value and ICONS.PLUS or ICONS.MINUS) +
+
+                                ImGui.CalcTextSize(ctx, text)
+                            end
+                            local iconWidth = app.guiHelpers.calcTinyIconSize(ctx, FILTER_ICONS[filter.type])
+                            local tagIconWidth = filter.type == FILTER_TYPES.TAG and
+                                (app.guiHelpers.calcTinyIconSize(ctx, (filter.value and ICONS.PLUS or ICONS.MINUS)) + spacingX) or
+                                0
+                            local filterW = paddingX + iconWidth + tagIconWidth + spacingX + textW + spacingX * 2 +
+                                closeButtonSizeW +
+                                paddingX
+                            if (i ~= 1) then
+                                ImGui.SameLine(ctx)
+                            end
+                            if (filterW > ImGui.GetContentRegionAvail(ctx)) then
+                                ImGui.SetCursorPosX(ctx, x)
+                                lines = lines + 1
+                            end
+                            ImGui.SetCursorPosY(ctx, y + (filterH + spacingY) * (lines - 1))
+                            local x1, y1 = ImGui.GetCursorScreenPos(ctx)
+                            local x2, y2 = x1 + filterW, y1 + filterH
+                            ImGui.PushID(ctx, 'activeFilter' .. filter.key)
+                            if ImGui.BeginChild(ctx, 'node', filterW, filterH, nil, ImGui.WindowFlags_NoScrollbar) then
+                                ImGui.AlignTextToFramePadding(ctx)
+                                ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), x1, y1, x2, y2,
+                                    ImGui.GetColor(ctx, ImGui.Col_Button),
+                                    ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
+                                ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX) --, ImGui.GetCursorPosY(ctx) + paddingY)
+                                app.guiHelpers.tinyIcon(ctx, 'filterType',
+                                    FILTER_ICONS[filter.type],
+                                    true,
+                                    true)
+                                ImGui.SameLine(ctx, 0, spacingX)
+
+                                -- ImGui.AlignTextToFramePadding(ctx)
+                                -- ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + iconWidth + spacingX * 2) --, ImGui.GetCursorPosY(ctx) + paddingY)
+                                if filter.type == FILTER_TYPES.TAG then
+                                    -- ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
+                                    app.guiHelpers.tinyIcon(ctx, 'tagType',
+                                        filter.value and ICONS.PLUS or ICONS.MINUS,
+                                        true,
+                                        true)
+                                    ImGui.SameLine(ctx, 0, spacingX)
+                                    -- ImGui.Dummy(ctx, 0, 0)
+                                    -- ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
+                                    -- ImGui.TextColored(ctx, app.gui.st.basecolors.textDark, T.FILTER_NAMES[filter.key])
+                                end
+                                ImGui.AlignTextToFramePadding(ctx)
+                                ImGui.Text(ctx, filter.itemName)
+                                ImGui.SameLine(ctx, 0, spacingX * 2)
+                                if app.guiHelpers.tinyIcon(ctx, 'removeFilter', ICONS.CLOSE, nil, nil, T.HINTS.ACTIVE_FILTER_REMOVE, 2) then
+                                    if filter.type == FILTER_TYPES.TAG then
+                                        app.flow.filterResults({ removeTags = { filter.item.id } })
+                                    else
+                                        app.flow.filterResults(filter.allQuery)
+                                    end
+                                end
+                                ImGui.SetCursorScreenPos(ctx, x2, y2)
+                                ImGui.Dummy(ctx, 0, 0)
+                                ImGui.EndChild(ctx)
+                            end
+                            -- if ImGui.IsItemHovered(ctx) then
+                            if filter.type == FILTER_TYPES.TAG then
+                                if filter.value then
+                                    app:setHoveredHint('main', (T.HINTS.TAG_POSITIVE):format(filter.itemName), nil,
+                                        nil, 0)
+                                else
+                                    app:setHoveredHint('main', (T.HINTS.TAG_NEGATIVE):format(filter.itemName), nil,
+                                        nil, 0)
+                                end
+                            else
+                                app:setHoveredHint('main',
+                                    (T.HINTS.LOAD_FILTER_DEFAULT):format(T.FILTER_NAMES[filter.type], filter
+                                        .itemName), nil, nil, 0)
+                            end
+                            -- end
+                            ImGui.PopID(ctx)
+                        end
+                        ImGui.EndChild(ctx)
+                    end
+                    app.gui:popStyles(app.gui.st.vars.topBarActiveFiltersArea)
+                    app.gui:popColors(app.gui.st.col.topBarActiveFiltersArea)
+                    height = lines * filterH + spacingY * (lines + 1)
+                    ImGui.SetCursorPosY(ctx, y + height)
+                end
+                ImGui.PopFont(ctx)
+            end,
             search = function(ctx)
                 app.gui:pushStyles(app.gui.st.vars.searchWindow)
                 app.gui:pushColors(app.gui.st.col.searchWindow)
@@ -1011,219 +1230,6 @@ RunApp = function()
                         sideBarScreenX, 10, sideBarScreenX + sideBarW, 1000, 0xffffff22)
                 end
 
-                local drawActiveFilters = function()
-                    local x, y = ImGui.GetCursorPos(ctx)
-                    local lines = 1
-                    local height = 0
-                    local activeFilters = app.temp.activeFilters ~= nil and app.temp.activeFilters or {}
-
-                    local currentActiveKeys = {}
-                    -- local numFilters = 0
-                    for i, filterKey in pairs(FILTER_TYPES) do
-                        local filterItem = nil
-                        local selectedItemName
-                        if filterKey ~= FILTER_TYPES.TAG then
-                            for itemName, item in pairs(FILTER_MENU[filterKey].items) do
-                                for queryKey, queryValue in pairs(item.query) do
-                                    if app.temp.filter[queryKey] == queryValue then
-                                        local key = filterKey .. item.order
-                                        table.insert(currentActiveKeys, key)
-                                        activeFilters[key] = activeFilters[key] or {}
-                                        activeFilters[key].key = key
-                                        activeFilters[key].type = filterKey
-                                        activeFilters[key].item = item
-                                        activeFilters[key].itemName = itemName
-                                        activeFilters[key].allQuery = item.allQuery or FILTER_MENU[filterKey].allQuery
-                                        if activeFilters[key].order == nil then
-                                            activeFilters[key].order = OD_Tablelength(
-                                                activeFilters)
-                                        end
-                                    end
-                                end
-                            end
-                        else
-                            for tagKey, tagValue in pairs(app.temp.filter.tags) do
-                                if app.engine.tags[tagKey] then
-                                    local key = filterKey .. tagKey
-                                    table.insert(currentActiveKeys, key)
-                                    activeFilters[key] = activeFilters[key] or {}
-                                    activeFilters[key].key = key
-                                    activeFilters[key].type = FILTER_TYPES.TAG
-                                    activeFilters[key].value = tagValue
-                                    activeFilters[key].item = app.engine.tags[tagKey]
-                                    activeFilters[key].itemName = app.engine.tags[tagKey].name
-
-                                    if activeFilters[key].order == nil then
-                                        activeFilters[key].order = OD_Tablelength(
-                                            activeFilters)
-                                    end
-                                end
-                            end
-                        end
-                    end
-                    local removed = false
-                    -- Remove inactive filters from activeFilters
-                    for key, filter in pairs(activeFilters) do
-                        local found = false
-                        for _, activeKey in ipairs(currentActiveKeys) do
-                            if key == activeKey then
-                                found = true
-                                break
-                            end
-                        end
-                        if not found then
-                            removed = true
-                            activeFilters[key] = nil
-                        end
-                    end
-                    if removed then
-                        -- Renumber activeFilters order using OD_PairsByOrder
-                        local order = 1
-                        for key, filter in OD_PairsByOrder(activeFilters) do
-                            filter.order = order
-                            order = order + 1
-                        end
-                    end
-
-                    app.temp.activeFilters = activeFilters
-
-                    ImGui.PushFont(ctx, app.gui.st.fonts.small)
-                    if OD_Tablelength(activeFilters) > 0 then
-                        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx))
-
-                        if app.guiHelpers.iconButton(ctx, 'CLOSE', app.gui.st.col.buttons.activeFilterAction) then
-                            app.flow.filterResults({ clear = true })
-                        end
-                        app:setHoveredHint('main', T.HINTS.RESET_FILTERS)
-                        if app.guiHelpers.iconButton(ctx, 'DISK', app.gui.st.col.buttons.activeFilterAction) then
-                            ImGui.OpenPopup(ctx, 'Save Filter Set Context Menu')
-                        end
-                        app:setHoveredHint('main', T.HINTS.SAVE_FILTERS)
-                        if ImGui.BeginPopup(ctx, 'Save Filter Set Context Menu') then
-                            app:setHint('main', '')
-                            if ImGui.MenuItem(ctx, 'Save preset...') then
-                                app.temp.showCreatePresetDialog = true
-                                app.temp.presetName = ""
-                                app.temp.presetWord = ""
-                            end
-                            app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_PRESET)
-                            if ImGui.MenuItem(ctx, 'Create Reaper action...') then
-                                app.temp.showExportActionDialog = true
-                                app.temp.actionName = ""
-                            end
-                            app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_ACTION)
-                            ImGui.EndPopup(ctx)
-                        end
-                        if app.guiHelpers.iconButton(ctx, 'DICE', app.gui.st.col.buttons.activeFilterAction) then
-                            app.flow.executeRandomResult()
-                        end
-                        app:setHoveredHint('main', T.HINTS.RANDOM_ACTION)
-                        ImGui.SameLine(ctx)
-                        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                        app.gui:pushStyles(app.gui.st.vars.topBarActiveFiltersArea)
-                        app.gui:pushColors(app.gui.st.col.topBarActiveFiltersArea)
-
-
-                        local closeButtonSizeW, closeButtonSizeH = app.guiHelpers.calcTinyIconSize(ctx, ICONS.CLOSE)
-                        local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
-                        local filterH = ImGui.GetTextLineHeight(ctx) + paddingY * 2
-
-                        if ImGui.BeginChild(ctx, 'activesideBar', nil, nil, ImGui.ChildFlags_AutoResizeY) then
-                            local i = 0
-                            for filterKey, filter in OD_PairsByOrder(activeFilters) do
-                                i = i + 1
-                                local text = filter.itemName
-                                local textW, textH = ImGui.CalcTextSize(ctx, text)
-                                if filter.type == FILTER_TYPES.TAG then
-                                    text = filter.itemName
-                                    -- textW = app.guiHelpers.calcTinyIconSize(ctx,
-                                    --         filter.value and ICONS.PLUS or ICONS.MINUS) +
-
-                                    ImGui.CalcTextSize(ctx, text)
-                                end
-                                local iconWidth = app.guiHelpers.calcTinyIconSize(ctx, FILTER_ICONS[filter.type])
-                                local tagIconWidth = filter.type == FILTER_TYPES.TAG and
-                                    (app.guiHelpers.calcTinyIconSize(ctx, (filter.value and ICONS.PLUS or ICONS.MINUS)) + spacingX) or
-                                    0
-                                local filterW = paddingX + iconWidth + tagIconWidth + spacingX + textW + spacingX * 2 +
-                                    closeButtonSizeW +
-                                    paddingX
-                                if (i ~= 1) then
-                                    ImGui.SameLine(ctx)
-                                end
-                                if (filterW > ImGui.GetContentRegionAvail(ctx)) then
-                                    ImGui.SetCursorPosX(ctx, x)
-                                    lines = lines + 1
-                                end
-                                ImGui.SetCursorPosY(ctx, y + (filterH + spacingY) * (lines - 1))
-                                local x1, y1 = ImGui.GetCursorScreenPos(ctx)
-                                local x2, y2 = x1 + filterW, y1 + filterH
-                                ImGui.PushID(ctx, 'activeFilter' .. filter.key)
-                                if ImGui.BeginChild(ctx, 'node', filterW, filterH, nil, ImGui.WindowFlags_NoScrollbar) then
-                                    ImGui.AlignTextToFramePadding(ctx)
-                                    ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), x1, y1, x2, y2,
-                                        ImGui.GetColor(ctx, ImGui.Col_Button),
-                                        ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
-                                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX) --, ImGui.GetCursorPosY(ctx) + paddingY)
-                                    app.guiHelpers.tinyIcon(ctx, 'filterType',
-                                        FILTER_ICONS[filter.type],
-                                        true,
-                                        true)
-                                    ImGui.SameLine(ctx, 0, spacingX)
-
-                                    -- ImGui.AlignTextToFramePadding(ctx)
-                                    -- ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + iconWidth + spacingX * 2) --, ImGui.GetCursorPosY(ctx) + paddingY)
-                                    if filter.type == FILTER_TYPES.TAG then
-                                        -- ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
-                                        app.guiHelpers.tinyIcon(ctx, 'tagType',
-                                            filter.value and ICONS.PLUS or ICONS.MINUS,
-                                            true,
-                                            true)
-                                        ImGui.SameLine(ctx, 0, spacingX)
-                                        -- ImGui.Dummy(ctx, 0, 0)
-                                        -- ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
-                                        -- ImGui.TextColored(ctx, app.gui.st.basecolors.textDark, T.FILTER_NAMES[filter.key])
-                                    end
-                                    ImGui.AlignTextToFramePadding(ctx)
-                                    ImGui.Text(ctx, filter.itemName)
-                                    ImGui.SameLine(ctx, 0, spacingX * 2)
-                                    if app.guiHelpers.tinyIcon(ctx, 'removeFilter', ICONS.CLOSE, nil, nil, T.HINTS.ACTIVE_FILTER_REMOVE, 2) then
-                                        if filter.type == FILTER_TYPES.TAG then
-                                            app.flow.filterResults({ removeTags = { filter.item.id } })
-                                        else
-                                            app.flow.filterResults(filter.allQuery)
-                                        end
-                                    end
-                                    ImGui.SetCursorScreenPos(ctx, x2, y2)
-                                    ImGui.Dummy(ctx, 0, 0)
-                                    ImGui.EndChild(ctx)
-                                end
-                                -- if ImGui.IsItemHovered(ctx) then
-                                if filter.type == FILTER_TYPES.TAG then
-                                    if filter.value then
-                                        app:setHoveredHint('main', (T.HINTS.TAG_POSITIVE):format(filter.itemName), nil,
-                                            nil, 0)
-                                    else
-                                        app:setHoveredHint('main', (T.HINTS.TAG_NEGATIVE):format(filter.itemName), nil,
-                                            nil, 0)
-                                    end
-                                else
-                                    app:setHoveredHint('main',
-                                        (T.HINTS.LOAD_FILTER_DEFAULT):format(T.FILTER_NAMES[filter.type], filter
-                                            .itemName), nil, nil, 0)
-                                end
-                                -- end
-                                ImGui.PopID(ctx)
-                            end
-                            ImGui.EndChild(ctx)
-                        end
-                        app.gui:popStyles(app.gui.st.vars.topBarActiveFiltersArea)
-                        app.gui:popColors(app.gui.st.col.topBarActiveFiltersArea)
-                        height = lines * filterH + spacingY * (lines + 1)
-                        ImGui.SetCursorPosY(ctx, y + height)
-                    end
-                    ImGui.PopFont(ctx)
-                end
                 local drawResultsTable = function()
                     -- AFTER TESTING: THIS IS UNNECCESSARY - Round fontLineHeight to avoid floating point precision issues with scrolling
                     -- local fontLineHeight = math.floor(fontLineHeight + 0.5) THAT IS DEFINITELY NOT THE ISSUE
@@ -2153,7 +2159,7 @@ RunApp = function()
                 end
 
                 if ImGui.BeginChild(ctx, 'mainArea', w - sideBarW - spacingX) then
-                    drawActiveFilters()
+                    app.draw.activeFilters()
                     drawResultsTable()
                     ImGui.EndChild(ctx)
                 end
@@ -2181,27 +2187,33 @@ RunApp = function()
 
                     table.insert(menu,
                         { icon = 'money', hint = ('%s is free, but donations are welcome :)'):format(Scr.name) })
-                    if ImGui.IsWindowDocked(ctx) then
-                        table.insert(menu, { icon = 'undock', hint = 'Undock' })
-                    else
-                        table.insert(menu, { icon = 'dock_down', hint = 'Dock' })
-                    end
-                    table.insert(menu, {
-                        icon = 'question',
-                        hint = 'Help',
-                        active = app.temp.showHelpWindow
-                    })
-                    table.insert(menu, {
-                        icon = 'gear',
-                        hint = 'Settings',
-                        active = ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow')
-                    })
-                    table.insert(menu,
-                        {
-                            icon = 'sidebar',
-                            hint = app.settings.current.showSideBar and 'Hide side bar' or
+                        if ImGui.IsWindowDocked(ctx) then
+                            table.insert(menu, { icon = 'undock', hint = 'Undock' })
+                        else
+                            table.insert(menu, { icon = 'dock_down', hint = 'Dock' })
+                        end
+                        table.insert(menu, {
+                            icon = 'question',
+                            hint = 'Help',
+                            active = app.temp.showHelpWindow
+                        })
+                        table.insert(menu, {
+                            icon = 'gear',
+                            hint = 'Settings',
+                            active = ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow')
+                        })
+                        if app.temp.fullWindow then
+                            table.insert(menu,
+                            {
+                                icon = 'sidebar',
+                                hint = app.settings.current.showSideBar and 'Hide side bar' or
                                 'Show side bar',
-                            active = app.settings.current.showSideBar
+                                active = app.settings.current.showSideBar
+                            })
+                        end
+                        table.insert(menu, {
+                            icon = app.settings.current.minimalMode and 'maximize' or 'minimize',
+                            hint = app.settings.current.minimalMode and 'Turn off minimal mode' or 'Turn on minimal mode'
                         })
                     return menu
                 end
@@ -2210,14 +2222,15 @@ RunApp = function()
                     local menuW, h = 0, ImGui.GetTextLineHeight(ctx) + paddingY * 2 + winPaddingY * 2
                     for i, btn in ipairs(menu) do
                         menuW = menuW + select(1, ImGui.CalcTextSize(ctx, ICONS[(btn.icon):upper()])) +
-                            ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2 +
-                            ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+                            ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
                     end
+                    -- menuW = menuW 
                     ImGui.PopFont(ctx)
                     return menuW, h
                 end
                 menu = createMenu()
                 local menuW, h = calculateDimensions()
+                app.temp.menuH = h + winPaddingY * 2
 
                 local handleSpecialKeys = function()
                     if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and ImGui.IsWindowFocused(ctx) then
@@ -2274,7 +2287,7 @@ RunApp = function()
                     end
 
                     local w = select(1, ImGui.GetContentRegionAvail(ctx)) - menuW +
-                        ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+                        ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) - paddingX - winPaddingX
 
                     ImGui.SetNextItemWidth(ctx, w)
                     local rv
@@ -2380,6 +2393,12 @@ RunApp = function()
                             else
                                 app:msg(T.ERROR.NO_DOCK)
                             end
+                        elseif btn == 'minimize' then
+                            app.settings.current.minimalMode = true
+                            app.settings:save()
+                        elseif btn == 'maximize' then
+                            app.settings.current.minimalMode = false
+                            app.settings:save()
                         elseif btn == 'question' then
                             app.temp.showHelpWindow = app.temp.showHelpWindow == nil and true or nil
                         elseif btn == 'gear' then
@@ -3109,15 +3128,25 @@ RunApp = function()
             end,
             mainWindow = function(ctx)
                 ImGui.SetNextWindowPos(ctx, 100, 100, ImGui.Cond_FirstUseEver)
-                ImGui.SetNextWindowSizeConstraints(app.gui.ctx, app.gui.mainWindow.min_w, app.gui.mainWindow.min_h,
-                    app.gui.mainWindow.max_w, app.gui.mainWindow.max_h)
+
+                app.flow.getActiveFilters()
+                app.temp.fullWindow = true
+                if app.settings.current.minimalMode then
+                    if app.temp.filter and ((app.temp.filter.text == '' or app.temp.filter.text == nil) and (app.temp.activeFilters == nil or (not next(app.temp.activeFilters)))) then
+                        app.temp.fullWindow = false
+                    end
+                end
+
+                ImGui.SetNextWindowSizeConstraints(app.gui.ctx, app.gui.mainWindow.min_w,
+                    app.temp.fullWindow and app.gui.mainWindow.min_h or (app.temp.menuH or 0),
+                    app.gui.mainWindow.max_w, app.temp.fullWindow and app.gui.mainWindow.max_h or (app.temp.menuH or 0))
 
                 app.guiHelpers.handleDocking(ctx, 1)
+                local windowFlags = ImGui.WindowFlags_NoTitleBar | ImGui.WindowFlags_NoCollapse
 
                 local visible, open = ImGui.Begin(ctx, Scr.name .. "###mainWindow",
                     true,
-                    ImGui.WindowFlags_NoTitleBar |
-                    ImGui.WindowFlags_NoCollapse)
+                    windowFlags)
                 app.guiHelpers.saveWindowDimensions(ctx)
 
                 app.guiHelpers.handleDocking(ctx, 2)
@@ -3135,12 +3164,14 @@ RunApp = function()
 
                     app.draw.topBar(ctx)
 
-                    if ImGui.BeginChild(ctx, '##body', 0.0, -app.gui.st.sizes.hintHeight) then
-                        app.draw.search(ctx)
+                    if app.temp.fullWindow then
+                        if ImGui.BeginChild(ctx, '##body', 0.0, -app.gui.st.sizes.hintHeight) then
+                            app.draw.search(ctx)
 
-                        ImGui.EndChild(ctx)
+                            ImGui.EndChild(ctx)
+                        end
+                        app.draw.hint(ctx, 'main')
                     end
-                    app.draw.hint(ctx, 'main')
                     app.draw.confirmations(ctx)
                     app.draw.createPresetDialog(ctx)
                     app.draw.exportActionDialog(ctx)

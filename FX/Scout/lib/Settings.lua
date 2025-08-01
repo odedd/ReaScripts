@@ -11,6 +11,7 @@ PB_Settings = OD_Settings:new({
         closeAfterExecute = true,
         recentlyAddedDays = 30,
         addInstrumentsAsInstrumentTracks = true,
+        minimalMode = true,
         shortcuts = {
             markFavorite = {
                 key = OD_KEYCODES.F,

@@ -4,7 +4,7 @@
 FLT_MIN, FLT_MAX = ImGui.NumericLimits_Float()
 
 APP_PAGE = {
-    ['SEARCH'] = { width = 900, height = 409, minHeight = 409, windowFlags = ImGui.WindowFlags_None }
+    ['SEARCH'] = { width = 600, height = 409, minHeight = 409, windowFlags = ImGui.WindowFlags_None }
 }
 
 

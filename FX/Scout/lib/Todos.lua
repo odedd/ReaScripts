@@ -22,11 +22,11 @@
 -- DONE: handle FX instruments
 -- DONE: fix resizing settings and help windows
 -- DONE: Handle hints for selection that spans many asset types
+-- DONE: minimal mode
 -- TODO: Settings window - add Convert Folders/Categories to tags
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Add take markers
 -- TODO: Import progress bar (coroutine?)
--- TODO: minimal mode (?)
 -- TODO: write help
 
 ---------------------------------------
