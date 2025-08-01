@@ -99,9 +99,10 @@ function BaseAssetType:parseInteractionHintTemplate(template, count, targetObjec
 
     local manyPlaceholder = manyPlaceholder or 'results'
     local countText = count == -1 and '&&&' or tostring(count)
-    -- Replace variables
-    result = result:gsub("%%asset", count == 1 and assetName or (countText .. ' ' .. manyPlaceholder))
-    result = result:gsub("%%count", countText)
+    -- Replace variables (escape % characters in replacement strings)
+    local assetReplacement = count == 1 and assetName or (countText .. ' ' .. manyPlaceholder)
+    result = result:gsub("%%asset", (assetReplacement:gsub("%%", "%%%%")))
+    result = result:gsub("%%count", (countText:gsub("%%", "%%%%")))
     if targetObject and r.ValidatePtr(targetObject, "MediaItem*") then
         result = result:gsub("%%dragTargetObject", "item")
     elseif targetObject and r.ValidatePtr(targetObject, "Track*") then
@@ -294,7 +295,7 @@ BaseAssetType.assetActions = {
     end,
     moveFavorite = function(self, targetPosition)
         local favorite = self.context.tags.current.favorites
-        -- local key = self.type .. ' ' .. self.load
+        local key = self.key
 
         -- Check if this asset is actually a favorite
         if not OD_HasValue(favorite, self.key) then
