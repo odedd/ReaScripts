@@ -128,27 +128,43 @@ T.SETTINGS = {
         HINT = 'Interface scale. Double click to enter manually.',
     },
     EXPORT_TAGS = {
-        LABEL = 'Import / Export',
+        LABEL = '',
         BUTTON_LABEL = 'Export',
         HINT = 'Export user data for use on another system or as a backup.',
     },
     IMPORT_TAGS = {
-        LABEL = '',
+        LABEL = 'Import / Export',
         BUTTON_LABEL = 'Import (Overwrite)',
         BUTTON_LABEL_MERGE = 'Import (Merge)',
         HINT = 'Import user data. Shift+click to overwrite existing data.',
     },
     CONVERT_FOLDERS_TO_TAGS = {
-        LABEL = 'Import',
+        LABEL = 'Convert',
         BUTTON_LABEL = 'Folders->Tags',
         HINT = 'Convert FX folders to tags.',
-        SUCCESS_MESSAGE = 'Conversion successful: %d folders converted, %d assets tagged',
     },
     CONVERT_CATEGORIES_TO_TAGS = {
         LABEL = '',
         BUTTON_LABEL = 'Categories->Tags',
         HINT = 'Convert FX categories to tags.',
-        SUCCESS_MESSAGE = 'Conversion successful: %d categories converted, %d assets tagged',
+    }
+}
+
+T.PROGRESS = {
+    CONVERT_CATEGORIES = {
+        CONVERTING = 'Converting category \'%s\'',
+        SUCCESS = 'Conversion successful: %d categories converted, %d FX tagged',
+    },
+    CONVERT_FOLDERS = {
+        CONVERTING = 'Converting folder \'%s\'',
+        SUCCESS = 'Conversion successful: %d folders converted, %d FX tagged',
+    },
+    IMPORT = {
+        PARSING = 'Parsing items (%s)...',
+        MAPPING_TAGS = 'Mapping tags...',
+        MAPPING_ITEMS = 'Mapping items...',
+        SUCCESS_MERGE = 'Import successful: %d items imported (merged), %d items skipped',
+        SUCCESS_OVERWRITE = 'Import successful: %d items imported (overwritten), %d items skipped'
     }
 }
 

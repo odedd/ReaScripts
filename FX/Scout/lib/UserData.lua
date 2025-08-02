@@ -188,14 +188,61 @@ function PB_UserData:import(args)
     if not self.app.engine.assetTypeManager then
         local errorMsg = "self.app.engine.assetTypeManager is nil - make sure to call db:init() first"
         self.app.logger:logError(errorMsg)
-        return {error = true, msg = errorMsg }
+
+        return { error = true, msg = errorMsg }
     end
 
     local file = io.open(filename, 'r')
     if not file then
         self.app.logger:logError('Failed to open file for reading', filename)
-        return { error = false, msg = 'Failed to open file for reading' }
+
+        return { error = true, msg = 'Failed to open file for reading' }
     end
+
+    -- First pass: quickly count items per section
+    local sectionCounts = {
+        version = 0,
+        assetTypes = 0,
+        tagInfo = 0,
+        taggedAssets = 0,
+        presets = 0,
+        favorites = 0
+    }
+
+    local currentSection = nil
+    for line in file:lines() do
+        if line:match("^%[version%]") then
+            currentSection = "version"
+        elseif line:match("^%[assetTypes%]") then
+            currentSection = "assetTypes"
+        elseif line:match("^%[tagInfo%]") then
+            currentSection = "tagInfo"
+        elseif line:match("^%[taggedAssets%]") then
+            currentSection = "taggedAssets"
+        elseif line:match("^%[presets%]") then
+            currentSection = "presets"
+        elseif line:match("^%[favorites%]") then
+            currentSection = "favorites"
+        elseif currentSection and line ~= "" then
+            sectionCounts[currentSection] = sectionCounts[currentSection] + 1
+        end
+    end
+
+    -- Close and reopen file for actual parsing
+    file:close()
+    file = io.open(filename, 'r')
+    if not file then
+        self.app.logger:logError('Failed to reopen file for parsing', filename)
+        return { error = true, msg = 'Failed to reopen file for parsing' }
+    end
+
+    self.app.logger:logDebug('Section counts:',
+        'version: ' .. sectionCounts.version ..
+        ', assetTypes: ' .. sectionCounts.assetTypes ..
+        ', tagInfo: ' .. sectionCounts.tagInfo ..
+        ', taggedAssets: ' .. sectionCounts.taggedAssets ..
+        ', presets: ' .. sectionCounts.presets ..
+        ', favorites: ' .. sectionCounts.favorites)
 
     local section = nil
     local importedTagInfo = {}
@@ -209,6 +256,7 @@ function PB_UserData:import(args)
 
     self.app.logger:logDebug('Parsing tags file...')
 
+    local count = {}
     for line in file:lines() do
         if line:match("^%[version%]") then
             section = "version"
@@ -275,7 +323,6 @@ function PB_UserData:import(args)
         elseif section == "taggedAssets" and line ~= "" then
             -- Use safe parsing for colon-separated asset line
             local colonPos = OD_FindUnescapedChar(line, ":")
-            coroutine.yield({progress = true, msg = line })
             if colonPos then
                 local asset = OD_UnescapeCSV(line:sub(1, colonPos - 1))
                 local tagsStr = line:sub(colonPos + 1)
@@ -421,6 +468,15 @@ function PB_UserData:import(args)
                 self.app.logger:logError('Invalid favorites line format', line)
             end
         end
+        count[section] = (count[section] or 0) + 1
+        if count[section] % YIELD_FREQUENCY == 0 or count[section] == sectionCounts[section] then
+            coroutine.yield({
+                progress = true,
+                msg = (T.PROGRESS.IMPORT.PARSING):format(section),
+                index = count[section],
+                total = sectionCounts[section]
+            })
+        end
     end
     file:close()
 
@@ -461,7 +517,7 @@ function PB_UserData:import(args)
         )
 
         self.app.logger:logError(errorMsg)
-        return false, { msg = errorMsg }
+        return { error = true, msg = errorMsg }
     elseif fileVersion == nil then
         -- No version info found - assume legacy format
         self.app.logger:logInfo('No version information found in tags file. Assuming legacy format.')
@@ -589,7 +645,6 @@ function PB_UserData:import(args)
         local nextNewIdRef = { self.current.tagIdCount + 1 } -- Use table for reference
         local newTagsCount = 0
         local existingTagsCount = 0
-
         for importedId, importedTag in pairs(importedTagInfo) do
             -- First ensure the parent hierarchy exists
             local mappedParentId = ensureParentExists(importedTag.parentId, idMapping, nextNewIdRef, {})
@@ -618,6 +673,15 @@ function PB_UserData:import(args)
                 self.app.logger:logDebug(
                     'Adding new tag "' .. importedTag.name .. '" at path "' .. pathStr .. '" with ID', nextNewIdRef[1])
                 nextNewIdRef[1] = nextNewIdRef[1] + 1
+            end
+            local count = newTagsCount + existingTagsCount
+            if count % YIELD_FREQUENCY == 0 or count == sectionCounts.tagInfo then
+                coroutine.yield({
+                    progress = true,
+                    msg = T.PROGRESS.IMPORT.MAPPING_TAGS,
+                    index = count,
+                    total = sectionCounts.tagInfo
+                })
             end
         end
 
@@ -773,8 +837,9 @@ function PB_UserData:import(args)
 
         return nil, mappedAssetTypeId
     end
-
+    local count = 0
     for imported_basename, assetData in pairs(importedTaggedAssets) do
+        count = count + 1
         self.app.logger:logDebug('Processing imported asset: basename="' ..
             imported_basename .. '" originalAssetId="' .. assetData.originalAssetId .. '"')
 
@@ -902,7 +967,14 @@ function PB_UserData:import(args)
                 })
             end
         end
-
+        if count % YIELD_FREQUENCY == 0 or count == sectionCounts.taggedAssets then
+            coroutine.yield({
+                progress = true,
+                msg = T.PROGRESS.IMPORT.MAPPING_ITEMS,
+                index = count,
+                total = sectionCounts.taggedAssets
+            })
+        end
         ::continue::
     end
 
@@ -1149,11 +1221,8 @@ function PB_UserData:import(args)
         self.app.flow.filterResults()
     end
 
-    local msg = string.format('Import successful: %d assets mapped, %d assets skipped',
+    local msg = (mergeMode and T.PROGRESS.IMPORT.SUCCESS_MERGE or T.PROGRESS.IMPORT.SUCCESS_OVERWRITE):format(
         mappedAssetsCount or 0, skippedAssetsCount or 0)
-    if not mergeMode then
-        msg = msg .. ' (existing data overwritten)'
-    end
     return { success = true, msg = msg }
 end
 
@@ -1328,8 +1397,10 @@ function PB_UserData:createPreset(name, filter, word)
         return nil
     end
 
-    if OD_TableLength(OD_TableFilter(self.current.presets, function(k, v) return v.word ~= nil and v.word ~= '' and
-            v.word:upper() == word:upper() end)) > 0 then
+    if OD_TableLength(OD_TableFilter(self.current.presets, function(k, v)
+            return v.word ~= nil and v.word ~= '' and
+                v.word:upper() == word:upper()
+        end)) > 0 then
         self.app.logger:logError('Cannot create preset: preset with word ' .. word .. ' already exists')
         return nil
     end
@@ -1462,23 +1533,35 @@ function PB_UserData:convertFoldersToTags()
     -- Check if we have FX folders data
     if not self.app.engine or not self.app.engine.fxFolders or not self.app.engine.pluginToFolders then
         self.app.logger:logError('No FX folders data available')
-        return false, 'No FX folders data available'
+        return { error = true, msg = 'No FX folders data available' }
     end
 
     local foldersConverted = 0
     local assetsTagged = 0
+    local count = 0
+    local totalFolders = OD_TableLength(self.app.engine.fxFolders)
+    -- Iterate through each category
 
     self.app.logger:logDebug('Available folders', OD_TableLength(self.app.engine.fxFolders))
 
     -- Iterate through each folder
     for folderId, folderData in pairs(self.app.engine.fxFolders) do
+        count = count + 1
+        local msg = (T.PROGRESS.CONVERT_FOLDERS.CONVERTING):format(folderData.name)
+        coroutine.yield({
+            progress = true,
+            msg = msg,
+            index = count,
+            total = totalFolders
+        })
+
         local folderName = folderData.name
         if not folderName or folderName == '' then
             goto continue_folder
         end
 
         self.app.logger:logDebug('Processing folder: ' ..
-        folderName .. ' with ' .. OD_TableLength(folderData.items or {}) .. ' items')                                                   -- Check if tag already exists (case insensitive)
+            folderName .. ' with ' .. OD_TableLength(folderData.items or {}) .. ' items') -- Check if tag already exists (case insensitive)
         local existingTagId = nil
         for tagId, tagData in pairs(self.current.tagInfo) do
             if tagData.name:lower() == folderName:lower() and tagData.parentId == TAGS_ROOT_PARENT then
@@ -1537,10 +1620,10 @@ function PB_UserData:convertFoldersToTags()
                         if wasTagAdded then
                             assetsTagged = assetsTagged + 1
                             self.app.logger:logDebug('Tagged plugin "' ..
-                            (asset.name or 'Unknown') .. '" with folder tag "' .. folderName .. '"')
+                                (asset.name or 'Unknown') .. '" with folder tag "' .. folderName .. '"')
                         else
                             self.app.logger:logDebug('Plugin "' ..
-                            (asset.name or 'Unknown') .. '" already has folder tag "' .. folderName .. '"')
+                                (asset.name or 'Unknown') .. '" already has folder tag "' .. folderName .. '"')
                         end
                         itemsInFolder = itemsInFolder + 1
                     end
@@ -1551,7 +1634,7 @@ function PB_UserData:convertFoldersToTags()
         end
 
         self.app.logger:logDebug('Checked ' ..
-        assetsChecked .. ' plugin assets, found ' .. itemsInFolder .. ' plugins in folder "' .. folderName .. '"')
+            assetsChecked .. ' plugin assets, found ' .. itemsInFolder .. ' plugins in folder "' .. folderName .. '"')
 
         ::continue_folder::
     end
@@ -1569,25 +1652,36 @@ function PB_UserData:convertFoldersToTags()
         self.app.flow.filterResults()
     end
 
-    self.app.logger:logInfo(string.format(T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.SUCCESS_MESSAGE, foldersConverted,
+    self.app.logger:logInfo(string.format(T.PROGRESS.CONVERT_FOLDERS.SUCCESS, foldersConverted,
         assetsTagged))
-    return true, foldersConverted, assetsTagged
+    local msg = (T.PROGRESS.CONVERT_FOLDERS.SUCCESS):format(
+        foldersConverted or 0, assetsTagged or 0)
+    return { success = true, msg = msg }
 end
 
-function PB_UserData:convertCategoriesToTags()
+function PB_UserData:convertCategoriesToTags(args)
     self.app.logger:logDebug('-- PB_UserData:convertCategoriesToTags()')
 
     -- Check if we have FX categories data
     if not self.app.engine or not self.app.engine.fxCategories or not self.app.engine.pluginToCategories then
         self.app.logger:logError('No FX categories data available')
-        return false, 'No FX categories data available'
+        coroutine.yield { error = true, msg = 'No FX categories data available' }
     end
 
     local categoriesConverted = 0
     local assetsTagged = 0
-
+    local count = 0
+    local totalCategories = OD_TableLength(self.app.engine.fxCategories)
     -- Iterate through each category
     for categoryName, pluginList in pairs(self.app.engine.fxCategories) do
+        count = count + 1
+        local msg = (T.PROGRESS.CONVERT_CATEGORIES.CONVERTING):format(categoryName)
+        coroutine.yield({
+            progress = true,
+            msg = msg,
+            index = count,
+            total = totalCategories
+        })
         if not categoryName or categoryName == '' then
             goto continue_category
         end
@@ -1620,6 +1714,7 @@ function PB_UserData:convertCategoriesToTags()
         -- Get all plugins in this category and tag them
         local itemsInCategory = 0
         local assetsChecked = 0
+
         for _, asset in ipairs(self.app.engine.assets) do
             if asset.type == ASSET_TYPE.PluginAssetType then
                 assetsChecked = assetsChecked + 1
@@ -1630,10 +1725,10 @@ function PB_UserData:convertCategoriesToTags()
                         if wasTagAdded then
                             assetsTagged = assetsTagged + 1
                             self.app.logger:logDebug('Tagged plugin "' ..
-                            (asset.name or 'Unknown') .. '" with category tag "' .. categoryName .. '"')
+                                (asset.name or 'Unknown') .. '" with category tag "' .. categoryName .. '"')
                         else
                             self.app.logger:logDebug('Plugin "' ..
-                            (asset.name or 'Unknown') .. '" already has category tag "' .. categoryName .. '"')
+                                (asset.name or 'Unknown') .. '" already has category tag "' .. categoryName .. '"')
                         end
                         itemsInCategory = itemsInCategory + 1
                     end
@@ -1644,7 +1739,8 @@ function PB_UserData:convertCategoriesToTags()
         end
 
         self.app.logger:logDebug('Checked ' ..
-        assetsChecked .. ' plugin assets, found ' .. itemsInCategory .. ' plugins in category "' .. categoryName .. '"')
+            assetsChecked ..
+            ' plugin assets, found ' .. itemsInCategory .. ' plugins in category "' .. categoryName .. '"')
 
         ::continue_category::
     end
@@ -1657,132 +1753,18 @@ function PB_UserData:convertCategoriesToTags()
         self.app.engine:assembleAssets()
     end
 
+
     -- Trigger a refresh of the search results
     if self.app.flow then
         self.app.flow.filterResults()
     end
 
-    self.app.logger:logInfo(string.format(T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.SUCCESS_MESSAGE, categoriesConverted,
+    self.app.logger:logInfo(string.format(T.PROGRESS.CONVERT_CATEGORIES.SUCCESS, categoriesConverted,
         assetsTagged))
-    return true, categoriesConverted, assetsTagged
+
+    local msg = (T.PROGRESS.CONVERT_CATEGORIES.SUCCESS):format(
+        categoriesConverted or 0, assetsTagged or 0)
+    return { success = true, msg = msg }
 end
-
--- -- Magic Word management functions
--- function PB_UserData:createMagicWord(word, filter)
---     if not word or word == '' then
---         self.app.logger:logError('Cannot create magic word: word is required')
---         return nil
---     end
-
---     if not filter then
---         self.app.logger:logError('Cannot create magic word: filter is required')
---         return nil
---     end
-
---     if self.current.magicWords[word] then
---         self.app.logger:logError('Cannot create magic word: already exists')
---         return nil
---     end
-
---     -- Create a deep copy of the filter to store
---     local magicWord = OD_DeepCopy(filter)
-
---     self.current.magicWords[word] = {
---         order = OD_TableLength(self.current.magicWords),
---         filter = filter
---     }
-
---     self.app.logger:logInfo('Created magicWord \'' .. word)
-
---     self:save()
-
---     return magicWord
--- end
-
--- function PB_UserData:deleteMagicWord(word)
---     if not self.current.magicWords[word] then
---         self.app.logger:logError('Cannot delete magic word: word ' .. word .. ' not found')
---         return false
---     end
-
---     self.current.magicWords[word] = nil
-
---     self.app.logger:logInfo('Deleted magic word \'' .. word)
-
---     self:save()
-
---     return true
--- end
-
--- function PB_UserData:renameMagicWord(word, newName)
---     if not newName or newName == '' then
---         self.app.logger:logError('Cannot rename magic word: new name is required')
---         return false
---     end
-
---     if not self.current.magicWords[word] then
---         self.app.logger:logError('Cannot rename word ' .. word .. ' to ' .. newName .. ': word ' .. word .. ' not found')
---         return false
---     end
-
---     if self.current.magicWords[newName] then
---         self.app.logger:logError('Cannot rename word ' ..
---         word .. ' to ' .. newName .. ': word ' .. newName .. ' already exists')
---         return false
---     end
-
---     self.current.magicWords[newName] = OD_DeepCopy(self.current.magicWords[word])
---     self.current.magicWords[word] = nil
-
---     self.app.logger:logInfo('Renamed word from \'' .. word .. '\' to \'' .. newName .. '\'')
-
---     self:save()
-
---     return true
--- end
-
--- function PB_UserData:updateMagicWord(word, newName, filter, order)
---     if not self.current.magicWords[word] then
---         self.app.logger:logError('Cannot update word: word ' .. word .. ' not found')
---         return nil
---     end
-
---     if not word or word == '' then
---         self.app.logger:logError('Cannot update word: name is required')
---         return nil
---     end
-
---     if self.current.magicWords[newName] then
---         self.app.logger:logError('Cannot rename word ' ..
---         word .. ' to ' .. newName .. ': word ' .. newName .. ' already exists')
---         return false
---     end
-
---     if not filter then
---         self.app.logger:logError('Cannot update word: filter is required')
---         return nil
---     end
-
---     local presetFilter = OD_DeepCopy(filter)
---     -- Create a deep copy of the filter to store
---     self.current.magicWords[newName] = OD_DeepCopy(self.current.magicWords[word])
---     self.current.magicWords[newName].filter = presetFilter
---     self.current.magicWords[newName].order = order or self.current.magicWords[word].order
---     self.current.magicWords[word] = nil
-
---     self.app.logger:logInfo('Updated word \'' .. word)
-
---     self:save()
-
---     return self.current.magicWords[newName]
--- end
-
--- function PB_UserData:getMagicWord(word)
---     return self.current.magicWords[word]
--- end
-
--- function PB_UserData:getAllMagicWords()
---     return self.current.magicWords
--- end
 
 -- * local

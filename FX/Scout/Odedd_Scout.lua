@@ -2623,10 +2623,6 @@ RunApp = function()
                                 ImGui.EndChild(ctx)
                             end
                             app:setHoveredHint('settings', path)
-                            -- if tooLong and ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
-                            --     ImGui.SetTooltip(ctx, path)
-                            -- end
-                            -- path = app.gui:setting('folder', path,T.SETTINGS.PROJECT_SCAN_FOLDER.HINT, path, {}, true)
                         end
                         if removePath then
                             table.remove(app.settings.current.projectScanFolders, removePath)
@@ -2637,32 +2633,30 @@ RunApp = function()
 
                         -- Convert Folders to Tags button
                         if app.gui:setting('button', T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.LABEL, T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.HINT, nil, { label = T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.BUTTON_LABEL, divideWidth = 2 }) then
-                            local success, foldersConverted, assetsTagged = app.userdata:convertFoldersToTags()
-                            if success then
-                                local msg = string.format(
-                                    T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.SUCCESS_MESSAGE,
-                                    foldersConverted or 0, assetsTagged or 0)
-                                app:msg(msg)
-                            else
-                                app:msg('Conversion failed: ' .. (foldersConverted or 'Unknown error'), 'error')
-                            end
+                            app.temp.progressCoroutine = coroutine.create(app.userdata.convertFoldersToTags)
                         end
 
                         -- Convert Categories to Tags button
                         if app.gui:setting('button', T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.LABEL, T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.HINT, nil, { label = T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.BUTTON_LABEL }, true) then
-                            local success, categoriesConverted, assetsTagged = app.userdata:convertCategoriesToTags()
-                            if success then
-                                local msg = string.format(
-                                    T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.SUCCESS_MESSAGE,
-                                    categoriesConverted or 0, assetsTagged or 0)
-                                app:msg(msg)
-                            else
-                                app:msg('Conversion failed: ' .. (categoriesConverted or 'Unknown error'), 'error')
+                            app.temp.progressCoroutine = coroutine.create(app.userdata.convertCategoriesToTags)
+                        end
+
+                        -- Import button
+                        local mergeMode = not ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)
+                        local importButtonText = mergeMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE or
+                            T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL
+                        if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText, divideWidth = 2 }) then
+                            local rv, filename = r.GetUserFileNameForRead('',
+                                'Import Tags, Presets and Favorites',
+                                'scout')
+                            if rv and filename then
+                                app.temp.coroutineArgs = { filename = filename, mergeMode = mergeMode }
+                                app.temp.progressCoroutine = coroutine.create(app.userdata.import)
                             end
                         end
 
                         -- Export button
-                        if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL, divideWidth = 2 }) then
+                        if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL }, true) then
                             local rv, filename = r.JS_Dialog_BrowseForSaveFile(
                                 'Export Tags, Presets and Favorites', '',
                                 '',
@@ -2676,42 +2670,11 @@ RunApp = function()
                                 end
                             end
                         end
-                        -- app:setHoveredHint('settings', T.SETTINGS.EXPORT_TAGS.HINT)
-
-                        -- Import button
-                        local mergeMode = not ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)
-                        local importButtonText = mergeMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE or
-                            T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL
-                        if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText }, true) then
-                            app.temp.showProgressBarWindow = true
-
-                            local rv, filename = r.GetUserFileNameForRead('',
-                                'Import Tags, Presets and Favorites',
-                                'scout')
-                            if rv and filename then
-                                app.temp.coroutineArgs = { filename = filename, mergeMode = mergeMode }
-                                app.temp.progressCoroutine = coroutine.create(app.userdata.import)
-
-                                -- local success, skippedAssets, mappedCount, skippedCount = app.userdata:import(filename,
-                                --     not overwriteMode)
-                                -- if success then
-                                --     local msg = string.format('Import successful: %d assets mapped, %d assets skipped',
-                                --         mappedCount or 0, skippedCount or 0)
-                                --     if overwriteMode then
-                                --         msg = msg .. ' (existing data overwritten)'
-                                --     end
-                                --     app:msg(msg)
-                                -- else
-                                --     app:msg('Import failed: ' .. (skippedAssets or 'Unknown error'), 'error')
-                                -- end
-                            end
-                        end
-
 
                         ImGui.EndChild(ctx)
                     end
                     app.draw.hint(ctx, 'settings')
-                    if app.temp.captureCounter > 3 and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) and ImGui.IsWindowFocused(ctx) then
+                    if app.temp.captureCounter > 3 and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) and not ImGui.IsPopupOpen(ctx, 'Operation in Progress') and not ImGui.IsPopupOpen(ctx, 'Scout##msg') then
                         ImGui.CloseCurrentPopup(ctx)
                     else
                         OD_ReleaseGlobalKeys()
@@ -2753,7 +2716,6 @@ RunApp = function()
             end,
             help = function(ctx)
                 if app.temp.showHelpWindow then
-                    -- FIXME: Window should resize when changing zoom?
                     local w = 810 * app.gui.scale
                     local h = 530 * app.gui.scale
                     local maxH = app.gui.screen.size[2] * .8
@@ -3180,15 +3142,19 @@ RunApp = function()
                 end
             end,
             progressBarWindow = function(ctx)
-                if app.temp.showProgressBarWindow then
+                if app.temp.progressCoroutine then
                     if not ImGui.IsPopupOpen(ctx, 'Operation in Progress') then
                         ImGui.OpenPopup(ctx, 'Operation in Progress')
                     end
 
+                    local currentWindowPos = { ImGui.GetWindowPos(ctx) }
+                    local currentWindowSize = { ImGui.GetWindowSize(ctx) }
+                    local center = { currentWindowPos[1] + currentWindowSize[1] / 2,
+                        currentWindowPos[2] + currentWindowSize[2] / 2 }
 
                     ImGui.SetNextWindowSize(ctx, 550 * app.gui.scale, 0, ImGui.Cond_Always)
-                    ImGui.SetNextWindowPos(ctx, app.gui.mainWindow.pos[1] + (app.gui.mainWindow.size[1] / 2),
-                        app.gui.mainWindow.pos[2] + (app.gui.mainWindow.size[2] / 2), ImGui.Cond_Appearing, 0.5, 0.5)
+                    ImGui.SetNextWindowPos(ctx, center[1],
+                        center[2], ImGui.Cond_Appearing, 0.5, 0.5)
                     app.gui:pushStyles(app.gui.st.vars.popupsTitle)
 
                     local visible, open = ImGui.BeginPopupModal(ctx, 'Operation in Progress', false,
@@ -3198,8 +3164,8 @@ RunApp = function()
                     if visible then
                         if app.temp.progressCoroutine then
                             local releaseCoroutine = function()
+                                app.temp.progressCoroutine = nil
                                 app.temp.coroutineArgs = nil
-                                app.temp.showProgressBarWindow = false
                             end
 
                             if coroutine.status(app.temp.progressCoroutine) == "suspended" then
@@ -3208,11 +3174,15 @@ RunApp = function()
                                         app.temp.coroutineArgs)
                                 if rv.progress then
                                     ImGui.Text(ctx, rv.msg)
+                                    ImGui.ProgressBar(ctx, (rv.index or 0) / (rv.total or 1), nil, nil,
+                                        ("%s/%s"):format(rv.index, rv.total))
                                 elseif rv.success or rv.error then
                                     releaseCoroutine()
+                                    ImGui.CloseCurrentPopup(ctx)
                                     app:msg(rv.msg)
                                 end
                             elseif coroutine.status(app.temp.progressCoroutine) == "dead" then
+                                ImGui.CloseCurrentPopup(ctx)
                                 releaseCoroutine()
                             end
                         end
@@ -3220,7 +3190,7 @@ RunApp = function()
                     end
 
                     if not open then
-                        app.temp.showProgressBarWindow = false
+                        app.temp.progressCoroutine = nil
                     end
                 end
             end,

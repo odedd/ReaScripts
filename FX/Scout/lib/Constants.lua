@@ -7,6 +7,7 @@ APP_PAGE = {
     ['SEARCH'] = { width = 600, height = 409, minHeight = 409, windowFlags = ImGui.WindowFlags_None }
 }
 
+YIELD_FREQUENCY = 10
 
 -- Load asset type IDs from manifest (with hardcoded IDs for stability)
 ASSET_TYPE = {}

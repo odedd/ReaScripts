@@ -157,7 +157,7 @@ function OD_Gui_App:drawPopup(popupType, title, data)
                 if self.gui.st.vars.popupsTitle then
                     self.gui:pushStyles(self.gui.st.vars.popupsTitle)
                 end
-        if r.ImGui_BeginPopupModal(ctx, title, false, r.ImGui_WindowFlags_NoResize() + r.ImGui_WindowFlags_NoDocking()) then
+        if r.ImGui_BeginPopupModal(ctx, title, false, r.ImGui_WindowFlags_NoResize() | r.ImGui_WindowFlags_NoDocking()) then
             if self.gui.st.vars.popupsTitle then
                 self.gui:popStyles(self.gui.st.vars.popupsTitle)
             end

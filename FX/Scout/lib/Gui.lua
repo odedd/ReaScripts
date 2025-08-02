@@ -198,6 +198,7 @@ PB_Gui.init = function(self, fonts)
             -- [ImGui.Col_TabActive] = self.st.basecolors.darkActive,
             -- [ImGui.Col_TabUnfocused] = self.st.basecolors.darkBG,
             -- [ImGui.Col_TabUnfocusedActive] = self.st.basecolors.darkBG,
+            [ImGui.Col_PlotHistogram] = self.st.basecolors.main,
             [ImGui.Col_FrameBg] = self.st.basecolors.darkBG,
             [ImGui.Col_FrameBgHovered] = self.st.basecolors.darkHovered,
             [ImGui.Col_FrameBgActive] = self.st.basecolors.darkActive,
