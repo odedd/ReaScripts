@@ -1546,14 +1546,37 @@ RunApp = function()
                                             if app.temp.searchMode == SEARCH_MODE.MAIN then
                                                 handleResultDragDrop(row)
                                             end
-                                            if ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
-                                                -- local hint = app.guiHelpers.getHintFor(result, RESULT_CONTEXT.MOUSE_DOUBLE_CLICK, 1)
-                                                -- if hint then
-                                                --     ImGui.SetTooltip(ctx, hint)
-                                                -- end
-                                                -- hintResult = result
-                                                -- hintContext = RESULT_CONTEXT.MOUSE_DOUBLE_CLICK
+                                            if ImGui.BeginPopupContextItem(ctx, nil) then
+                                                if ImGui.IsWindowAppearing(ctx) then
+                                                    if not app.selection:has(row.index) then
+                                                        app.selection:selectOnly(row.index)
+                                                    end
+                                                end
+                                                -- local group = result.assetType
+                                                app:setHint('main', '')
+                                                local assetType = result.class
+
+                                                for keymod, hint in pairs(assetType.interactionHints) do
+                                                    local description = hint.text
+                                                    local mod = keymod == 0 and 'Enter' or
+                                                        app.guiHelpers.keyModsToText(keymod |
+                                                            RESULT_CONTEXT.KEYBOARD)
+
+                                                    local text = BaseAssetType:parseInteractionHintTemplate(
+                                                            description,
+                                                            app.selection:count(), nil,
+                                                            assetType.name,
+                                                            assetType.pluralName)
+                                                        :gsub(
+                                                            "^%l", string.upper)
+                                                    if ImGui.MenuItem(ctx, text, mod) then
+                                                        app.flow.executeSelectedResults(ctx,
+                                                            keymod, nil)
+                                                    end
+                                                end
+                                                ImGui.EndPopup(ctx)
                                             end
+
                                             ImGui.SameLine(ctx)
                                             -- if result.type == ASSET_TYPE.TrackAssetType and result.color then
                                             if result.color then
