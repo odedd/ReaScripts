@@ -74,8 +74,8 @@ RunApp = function()
         local logger = OD_Logger:new({
             level = LOG_LEVEL,
             output = OD_Logger.LOG_OUTPUT.CONSOLE,
-            filename = projPath .. Scr.name .. '_' .. projFileName .. '.log',
-            -- filename = p .. Scr.name .. '_' .. projFileName .. '.log',
+            -- filename = projPath .. Scr.name .. '_' .. projFileName .. '.log',
+            filename = p .. Scr.name .. '_' .. projFileName .. '.log',
             showImGuiDebugWindows = false,
             profile = false
         })
@@ -2635,6 +2635,32 @@ RunApp = function()
 
                         ImGui.SeparatorText(ctx, 'Tags, Presets and Favorites')
 
+                        -- Convert Folders to Tags button
+                        if app.gui:setting('button', T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.LABEL, T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.HINT, nil, { label = T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.BUTTON_LABEL, divideWidth = 2 }) then
+                            local success, foldersConverted, assetsTagged = app.userdata:convertFoldersToTags()
+                            if success then
+                                local msg = string.format(
+                                    T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.SUCCESS_MESSAGE,
+                                    foldersConverted or 0, assetsTagged or 0)
+                                app:msg(msg)
+                            else
+                                app:msg('Conversion failed: ' .. (foldersConverted or 'Unknown error'), 'error')
+                            end
+                        end
+
+                        -- Convert Categories to Tags button
+                        if app.gui:setting('button', T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.LABEL, T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.HINT, nil, { label = T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.BUTTON_LABEL }, true) then
+                            local success, categoriesConverted, assetsTagged = app.userdata:convertCategoriesToTags()
+                            if success then
+                                local msg = string.format(
+                                    T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.SUCCESS_MESSAGE,
+                                    categoriesConverted or 0, assetsTagged or 0)
+                                app:msg(msg)
+                            else
+                                app:msg('Conversion failed: ' .. (categoriesConverted or 'Unknown error'), 'error')
+                            end
+                        end
+
                         -- Export button
                         if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL, divideWidth = 2 }) then
                             local rv, filename = r.JS_Dialog_BrowseForSaveFile(
@@ -2675,15 +2701,18 @@ RunApp = function()
                                 end
                             end
                         end
-                        app:setHoveredHint('settings', T.SETTINGS.IMPORT_TAGS.HINT)
+
+
                         ImGui.EndChild(ctx)
                     end
                     app.draw.hint(ctx, 'settings')
-                    if app.temp.captureCounter > 3 and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+                    if app.temp.captureCounter > 3 and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) and ImGui.IsWindowFocused(ctx) then
                         ImGui.CloseCurrentPopup(ctx)
                     else
                         OD_ReleaseGlobalKeys()
                     end
+                    app:drawMsg()
+
                     ImGui.EndPopup(ctx)
                 else
                     app.temp._capturing = false
@@ -3196,7 +3225,9 @@ RunApp = function()
                     app.draw.settings(ctx)
                     app.draw.help(ctx)
                     app.draw.welcomeDialog(ctx)
+                    if not app.temp.settingsWindowOpen then
                     app:drawMsg()
+                    end
                     ImGui.End(ctx)
                 end
             end

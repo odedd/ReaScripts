@@ -137,6 +137,18 @@ T.SETTINGS = {
         BUTTON_LABEL = 'Import (Overwrite)',
         BUTTON_LABEL_MERGE = 'Import (Merge)',
         HINT = 'Import user data. Shift+click to overwrite existing data.',
+    },
+    CONVERT_FOLDERS_TO_TAGS = {
+        LABEL = 'Import',
+        BUTTON_LABEL = 'Folders->Tags',
+        HINT = 'Convert FX folders to tags.',
+        SUCCESS_MESSAGE = 'Conversion successful: %d folders converted, %d assets tagged',
+    },
+    CONVERT_CATEGORIES_TO_TAGS = {
+        LABEL = '',
+        BUTTON_LABEL = 'Categories->Tags',
+        HINT = 'Convert FX categories to tags.',
+        SUCCESS_MESSAGE = 'Conversion successful: %d categories converted, %d assets tagged',
     }
 }
 

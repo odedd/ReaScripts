@@ -1448,6 +1448,208 @@ function PB_UserData:getAllPresets()
     return self.current.presets
 end
 
+function PB_UserData:convertFoldersToTags()
+    self.app.logger:logDebug('-- PB_UserData:convertFoldersToTags()')
+    
+    -- Check if we have FX folders data
+    if not self.app.engine or not self.app.engine.fxFolders or not self.app.engine.pluginToFolders then
+        self.app.logger:logError('No FX folders data available')
+        return false, 'No FX folders data available'
+    end
+    
+    local foldersConverted = 0
+    local assetsTagged = 0
+    
+        self.app.logger:logDebug('Available folders', OD_TableLength(self.app.engine.fxFolders))
+    
+    -- Iterate through each folder
+    for folderId, folderData in pairs(self.app.engine.fxFolders) do
+        local folderName = folderData.name
+        if not folderName or folderName == '' then
+            goto continue_folder
+        end
+        
+        self.app.logger:logDebug('Processing folder: ' .. folderName .. ' with ' .. OD_TableLength(folderData.items or {}) .. ' items')        -- Check if tag already exists (case insensitive)
+        local existingTagId = nil
+        for tagId, tagData in pairs(self.current.tagInfo) do
+            if tagData.name:lower() == folderName:lower() and tagData.parentId == TAGS_ROOT_PARENT then
+                existingTagId = tagId
+                break
+            end
+        end
+        
+        -- Create tag if it doesn't exist
+        local targetTagId = existingTagId
+        local isNewTag = false
+        if not existingTagId then
+            targetTagId = self.current.tagIdCount + 1
+            self.current.tagIdCount = targetTagId
+            self.current.tagInfo[targetTagId] = {
+                name = folderName,
+                parentId = TAGS_ROOT_PARENT,
+                order = targetTagId
+            }
+            self.app.logger:logDebug('Created tag "' .. folderName .. '" with ID ' .. targetTagId)
+            isNewTag = true
+            foldersConverted = foldersConverted + 1
+        else
+            self.app.logger:logDebug('Using existing tag "' .. folderName .. '" with ID ' .. targetTagId)
+        end
+        
+        -- Get all plugins in this folder and tag them
+        local itemsInFolder = 0
+        local assetsChecked = 0
+        
+        -- Debug: Check what assets we have
+        self.app.logger:logDebug('Total engine assets available', #(self.app.engine.assets or {}))
+        if self.app.engine.assets and #self.app.engine.assets > 0 then
+            local pluginAssets = 0
+            local assetTypes = {}
+            for _, asset in ipairs(self.app.engine.assets) do
+                local assetTypeName = tostring(asset.type or 'nil')
+                assetTypes[assetTypeName] = (assetTypes[assetTypeName] or 0) + 1
+                if asset.type == ASSET_TYPE.PluginAssetType then
+                    pluginAssets = pluginAssets + 1
+                end
+            end
+            self.app.logger:logDebug('Plugin assets found', pluginAssets)
+            for typeName, count in pairs(assetTypes) do
+                self.app.logger:logDebug('Asset type: ' .. typeName, count)
+            end
+        end
+        
+        for _, asset in ipairs(self.app.engine.assets) do
+            if asset.type == ASSET_TYPE.PluginAssetType then
+                assetsChecked = assetsChecked + 1
+                if asset.isInFolder then
+                    if asset:isInFolder(folderId) then
+                        -- Add tag to asset (each plugin can only be in one folder)
+                        local wasTagAdded = self:addTagToAsset(asset.id, targetTagId, false)
+                        if wasTagAdded then
+                            assetsTagged = assetsTagged + 1
+                            self.app.logger:logDebug('Tagged plugin "' .. (asset.name or 'Unknown') .. '" with folder tag "' .. folderName .. '"')
+                        else
+                            self.app.logger:logDebug('Plugin "' .. (asset.name or 'Unknown') .. '" already has folder tag "' .. folderName .. '"')
+                        end
+                        itemsInFolder = itemsInFolder + 1
+                    end
+                else
+                    self.app.logger:logDebug('Asset missing isInFolder method:', asset.name or 'Unknown')
+                end
+            end
+        end
+        
+        self.app.logger:logDebug('Checked ' .. assetsChecked .. ' plugin assets, found ' .. itemsInFolder .. ' plugins in folder "' .. folderName .. '"')
+        
+        ::continue_folder::
+    end
+    
+    self:save()
+    
+    -- Refresh engine tags
+    if self.app.engine then
+        self.app.engine:getTags(true)
+        self.app.engine:assembleAssets()
+    end
+    
+    -- Trigger a refresh of the search results
+    if self.app.flow then
+        self.app.flow.filterResults()
+    end
+    
+    self.app.logger:logInfo(string.format(T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.SUCCESS_MESSAGE, foldersConverted, assetsTagged))
+    return true, foldersConverted, assetsTagged
+end
+
+function PB_UserData:convertCategoriesToTags()
+    self.app.logger:logDebug('-- PB_UserData:convertCategoriesToTags()')
+    
+    -- Check if we have FX categories data
+    if not self.app.engine or not self.app.engine.fxCategories or not self.app.engine.pluginToCategories then
+        self.app.logger:logError('No FX categories data available')
+        return false, 'No FX categories data available'
+    end
+    
+    local categoriesConverted = 0
+    local assetsTagged = 0
+    
+    -- Iterate through each category
+    for categoryName, pluginList in pairs(self.app.engine.fxCategories) do
+        if not categoryName or categoryName == '' then
+            goto continue_category
+        end
+        
+        -- Check if tag already exists (case insensitive)
+        local existingTagId = nil
+        for tagId, tagData in pairs(self.current.tagInfo) do
+            if tagData.name:lower() == categoryName:lower() and tagData.parentId == TAGS_ROOT_PARENT then
+                existingTagId = tagId
+                break
+            end
+        end
+        
+        -- Create tag if it doesn't exist
+        local targetTagId = existingTagId
+        if not existingTagId then
+            targetTagId = self.current.tagIdCount + 1
+            self.current.tagIdCount = targetTagId
+            self.current.tagInfo[targetTagId] = {
+                name = categoryName,
+                parentId = TAGS_ROOT_PARENT,
+                order = targetTagId
+            }
+            self.app.logger:logDebug('Created tag "' .. categoryName .. '" with ID ' .. targetTagId)
+            categoriesConverted = categoriesConverted + 1
+        else
+            self.app.logger:logDebug('Using existing tag "' .. categoryName .. '" with ID ' .. targetTagId)
+        end
+        
+        -- Get all plugins in this category and tag them
+        local itemsInCategory = 0
+        local assetsChecked = 0
+        for _, asset in ipairs(self.app.engine.assets) do
+            if asset.type == ASSET_TYPE.PluginAssetType then
+                assetsChecked = assetsChecked + 1
+                if asset.isInCategory then
+                    if asset:isInCategory(categoryName) then
+                        -- Add tag to asset (plugins can be in multiple categories)
+                        local wasTagAdded = self:addTagToAsset(asset.id, targetTagId, false)
+                        if wasTagAdded then
+                            assetsTagged = assetsTagged + 1
+                            self.app.logger:logDebug('Tagged plugin "' .. (asset.name or 'Unknown') .. '" with category tag "' .. categoryName .. '"')
+                        else
+                            self.app.logger:logDebug('Plugin "' .. (asset.name or 'Unknown') .. '" already has category tag "' .. categoryName .. '"')
+                        end
+                        itemsInCategory = itemsInCategory + 1
+                    end
+                else
+                    self.app.logger:logDebug('Asset missing isInCategory method:', asset.name or 'Unknown')
+                end
+            end
+        end
+        
+        self.app.logger:logDebug('Checked ' .. assetsChecked .. ' plugin assets, found ' .. itemsInCategory .. ' plugins in category "' .. categoryName .. '"')
+        
+        ::continue_category::
+    end
+    
+    self:save()
+    
+    -- Refresh engine tags
+    if self.app.engine then
+        self.app.engine:getTags(true)
+        self.app.engine:assembleAssets()
+    end
+    
+    -- Trigger a refresh of the search results
+    if self.app.flow then
+        self.app.flow.filterResults()
+    end
+    
+    self.app.logger:logInfo(string.format(T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.SUCCESS_MESSAGE, categoriesConverted, assetsTagged))
+    return true, categoriesConverted, assetsTagged
+end
+
 -- -- Magic Word management functions
 -- function PB_UserData:createMagicWord(word, filter)
 --     if not word or word == '' then
