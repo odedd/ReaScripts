@@ -29,6 +29,7 @@
 -- TODO: Add take markers
 -- TODO: write help
 -- TODO: Docking
+-- TODO: Test on windows
 
 ---------------------------------------
 -- AFTER LAUNCH -----------------------
