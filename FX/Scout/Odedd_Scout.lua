@@ -2751,7 +2751,7 @@ RunApp = function()
                                 if ImGui.IsWindowAppearing(ctx) then
                                     tabFlags = tabFlags | ImGui.TabItemFlags_SetSelected
                                 end
-                                if ImGui.BeginTabItem(ctx, 'Key Commands', false, tabFlags) then
+                                if ImGui.BeginTabItem(ctx, 'Result execution options', false, tabFlags) then
                                     for i, group in ipairs(app.settings.current.groupOrder) do
                                         if group ~= SPECIAL_GROUPS.RECENTS and group ~= SPECIAL_GROUPS.FAVORITES then
                                             ImGui.PushID(ctx, i)
@@ -2796,7 +2796,8 @@ RunApp = function()
                                     end
                                     ImGui.EndTabItem(ctx)
                                 end
-                                if ImGui.BeginTabItem(ctx, 'Another Menu', false) then
+                                if ImGui.BeginTabItem(ctx, 'About Scout', false) then
+                                    ImGui.TextWrapped(ctx, T.MAIN_HELP)
                                     ImGui.EndTabItem(ctx)
                                 end
                                 ImGui.EndTabBar(ctx)

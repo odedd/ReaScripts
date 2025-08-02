@@ -295,3 +295,79 @@ T.HINTS = {
     DRAG_TAG_INTO_TAG = 'Move tag \'%s\' into tag \'%s\'.',
     DRAG_TAG_TO_POSITION_RELATIVE_TO_TAG = 'Move tag \'%s\' %s tag \'%s\'.'
 }
+
+T.MAIN_HELP = [[
+Scout - Asset Search & Management for Reaper
+
+Scout is a powerful search and organization tool that helps you quickly find and use all your Reaper assets in one unified interface.
+
+WHAT SCOUT SEARCHES:
+
+- Plugins (VST, VST3, AU, JS) - All your effects and instruments
+- Actions - Built-in and custom Reaper actions  
+- Projects - Recently opened and scanned project files
+- Project Templates - Your saved project templates
+- Track Templates - Your saved track templates
+- FX Chains - Your custom FX chains
+- Tracks - Current project's tracks
+- Takes - Current project's active takes in media items
+- Markers & Regions
+
+HOW TO USE:
+
+- Type to search across all asset types
+- Use the sidebar filters to narrow results by type, folder, category, developer, or tags
+- Double click any result to execute/load it instantly
+- Use shift/ctrl/cmd to select multiple results
+- Drag results to tracks to add them directly
+- Right-click results to see possible actions, as well as keyboard shortcuts for quick access
+
+FILTER SEARCH MODE:
+- Press Tab to switch between searching items and searching filters
+- When in filter search mode, type to search for filters, tags and presets by name
+- Pressing Enter on a filter will apply it to the current search and return to item search mode
+- Pressing Shift+Enter on a filter will apply it and stay in filter search mode
+
+ADVANCED FEATURES:
+
+TAGGING SYSTEM:
+- Drag items to tags in the sidebar to organize your assets (Alt-dragging removes tags)
+- Create nested tags for hierarchical organization
+- Right-click tags for rename/delete options
+- Tags can be either used either positively (to include) or negatively (to exclude) in filters
+- Tags can be combined with other tags and filters for powerful searches
+
+PRESETS: 
+- Save complex filter combinations as presets for quick access
+- Presets can be assigned magic words for quick loading
+- Type the magic word followed by space to load the preset instantly
+- Type the magic word followed by a question mark to randomly execute one of the preset's results
+
+FAVORITES
+- Mark frequently used items (Ctrl+F by default)
+
+RANDOM EXECUTION:
+- Randomly select and execute one of the current search results (Default: Shift+Ctrl/Cmd+R)
+
+CUSTOM ACTIONS:
+- Create custom Reaper actions that instantly load presets or run random results
+
+SLEEP MODE:
+- Enable sleep mode for faster loading times (recommended)
+
+KEYBOARD SHORTCUTS:
+- Enter: Execute selected item(s)
+- Escape: Clear search or close (depending on sleep mode setting)
+- Ctrl+A: Select all results
+- Ctrl+F: Toggle favorite status of selected items
+- Ctrl+R: Execute random result from current search
+
+TIPS:
+- Enable Sleep Mode for fastest performance
+- Use the sidebar to organize assets with tags and filters  
+- Drag items directly to tracks to add them
+- Create presets for commonly used filter combinations
+- Import/export your tags and favorites to share between systems
+
+Scout makes your Reaper workflow faster by putting everything you need at your fingertips with instant search and smart organization.
+]]

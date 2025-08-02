@@ -25,12 +25,12 @@
 -- DONE: minimal mode
 -- DONE: Settings window - add Convert Folders/Categories to tags
 -- DONE: Import progress bar (coroutine?)
+-- DONE: Add recent Projects
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Add take markers
 -- TODO: write help
 -- TODO: Docking
 -- TODO: Test on windows
-
 ---------------------------------------
 -- AFTER LAUNCH -----------------------
 ---------------------------------------
