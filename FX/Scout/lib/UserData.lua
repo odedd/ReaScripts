@@ -10,7 +10,7 @@ PB_UserData = OD_Settings:new({
         presets = {},
         -- magicWords = {},
         tagIdCount = 7,
-        presetIdCount = 7,
+        presetIdCount = 0,
     },
     initial = {
         tagInfo = {
@@ -1320,6 +1320,17 @@ function PB_UserData:deleteTag(tagId, persistAndReload)
         for id, info in pairs(self.current.tagInfo) do
             if info.parentId == parentId then
                 deleteDescendants(id) -- Delete descendants first
+
+                -- Remove descendant tag from all tagged assets
+                for assetId, tagIds in pairs(self.current.taggedAssets) do
+                    if OD_HasValue(tagIds, id) then
+                        OD_RemoveValue(tagIds, id)
+                        if #tagIds == 0 then
+                            self.current.taggedAssets[assetId] = nil
+                        end
+                    end
+                end
+
                 self.current.tagInfo[id] = nil
             end
         end
@@ -1335,12 +1346,34 @@ function PB_UserData:deleteTag(tagId, persistAndReload)
 
     -- Delete the tag itself
     self.current.tagInfo[tagId] = nil
-
     if persistAndReload ~= false then
         self:save()
         -- Notify engine to refresh its runtime data
         self.app.engine:getTags(true)
+        self.app.engine:tagAssets()
     end
+end
+
+function PB_UserData:deleteAllTags()
+    self.app.logger:logDebug('-- PB_UserData:deleteAllTags()')
+
+    local tagCount = 0
+    for tagId, tag in pairs(self.current.tagInfo) do
+        if tag.parentId == TAGS_ROOT_PARENT then
+            self:deleteTag(tagId, false)
+        end
+        tagCount = tagCount + 1
+    end
+
+    self:save()
+
+    self.app.engine:getTags(true)
+    self.app.engine:tagAssets()
+
+    self.app.flow.filterResults({ clear = true })
+
+    self.app.logger:logInfo('Deleted all ' .. tagCount .. ' tags')
+    return tagCount
 end
 
 function PB_UserData:createTag(name, parent)
@@ -1554,6 +1587,7 @@ function PB_UserData:convertFoldersToTags()
             index = count,
             total = totalFolders
         })
+
 
         local folderName = folderData.name
         if not folderName or folderName == '' then

@@ -15,8 +15,8 @@ function AssetTypeManager:new(engine)
         -- Settings access
         settings = engine.app.settings,
 
-        -- Tags access
-        tags = engine.app.userdata,
+        -- Userdata access
+        userdata = engine.app.userdata,
         
         -- flow access
         flow = engine.app.flow,

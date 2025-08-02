@@ -2038,7 +2038,7 @@ RunApp = function()
                                 end
                             end
 
-                            if parentId == TAGS_ROOT_PARENT then
+                            if parentId == TAGS_ROOT_PARENT and next(app.engine.tags) then
                                 local availH = select(2, ImGui.GetContentRegionAvail(ctx))
                                 ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + availH)
                                 drawDropTarget(lastTag, spacingY + availH, 'after', 0, 0)
@@ -2671,6 +2671,11 @@ RunApp = function()
                             end
                         end
 
+                        if app.gui:setting('button', T.SETTINGS.DELETE_ALL_TAGS.LABEL, T.SETTINGS.DELETE_ALL_TAGS.HINT, nil, { label = T.SETTINGS.DELETE_ALL_TAGS.BUTTON_LABEL }) then
+                            app.temp.confirmDeleteTags = true
+                        end
+
+
                         ImGui.EndChild(ctx)
                     end
                     app.draw.hint(ctx, 'settings')
@@ -2681,7 +2686,7 @@ RunApp = function()
                     end
                     app.draw.progressBarWindow(ctx)
                     app:drawMsg()
-
+                    app.draw.confirmations(ctx)
                     ImGui.EndPopup(ctx)
                 else
                     app.temp._capturing = false
@@ -2823,8 +2828,10 @@ RunApp = function()
                 app:setHint(window, '')
             end,
             popup = function(ctx, id, text)
-                local center = { app.gui.mainWindow.pos[1] + app.gui.mainWindow.size[1] / 2,
-                    app.gui.mainWindow.pos[2] + app.gui.mainWindow.size[2] / 2 } -- {ImGui.Viewport_GetCenter(ImGui.GetMainViewport(ctx))}
+                local currentWindowPos = { ImGui.GetWindowPos(ctx) }
+                local currentWindowSize = { ImGui.GetWindowSize(ctx) }
+                local center = { currentWindowPos[1] + currentWindowSize[1] / 2,
+                    currentWindowPos[2] + currentWindowSize[2] / 2 }
                 local okButtonLabel = 'Yes'
                 local cancelButtonLabel = 'No'
                 local okPressed = false
@@ -2916,6 +2923,20 @@ RunApp = function()
                     if not open then
                         app.temp.confirmMultipleTracks = nil
                         app.temp.confirmMultipleMediaItems = nil
+                    end
+                end
+                if app.temp.confirmDeleteTags then
+                    local text = T.SETTINGS.DELETE_ALL_TAGS.CONFIRM
+                    if not ImGui.IsPopupOpen(ctx, 'Delete all tags') then
+                        ImGui.OpenPopup(ctx, 'Delete all tags')
+                    end
+                    local open, confirm = app.draw.popup(app.gui.ctx, 'Delete all tags', text)
+                    if confirm then
+                        app.userdata:deleteAllTags()
+                        app:msg('Deleted all tags successfully')
+                    end
+                    if not open then
+                        app.temp.confirmDeleteTags = nil
                     end
                 end
             end,
@@ -3240,13 +3261,13 @@ RunApp = function()
                         end
                         app.draw.hint(ctx, 'main')
                     end
-                    app.draw.confirmations(ctx)
                     app.draw.createPresetDialog(ctx)
                     app.draw.exportActionDialog(ctx)
                     app.draw.settings(ctx)
                     app.draw.help(ctx)
                     app.draw.welcomeDialog(ctx)
                     if not app.temp.settingsWindowOpen then
+                        app.draw.confirmations(ctx)
                         app:drawMsg()
                     end
                     ImGui.End(ctx)

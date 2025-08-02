@@ -147,24 +147,30 @@ T.SETTINGS = {
         LABEL = '',
         BUTTON_LABEL = 'Categories->Tags',
         HINT = 'Convert FX categories to tags.',
+    },
+    DELETE_ALL_TAGS = {
+        LABEL = 'Delete all tags',
+        BUTTON_LABEL = 'Delete',
+        HINT = 'Delete all tags. This cannot be undone.',
+        CONFIRM = 'Are you sure? This cannot be undone.'
     }
 }
 
 T.PROGRESS = {
     CONVERT_CATEGORIES = {
         CONVERTING = 'Converting category \'%s\'',
-        SUCCESS = 'Conversion successful: %d categories converted, %d FX tagged',
+        SUCCESS = 'Conversion successful\n\n%d categories converted\n%d FX tagged',
     },
     CONVERT_FOLDERS = {
         CONVERTING = 'Converting folder \'%s\'',
-        SUCCESS = 'Conversion successful: %d folders converted, %d FX tagged',
+        SUCCESS = 'Conversion successful.\n\n%d folders converted\n%d FX tagged',
     },
     IMPORT = {
         PARSING = 'Parsing items (%s)...',
         MAPPING_TAGS = 'Mapping tags...',
         MAPPING_ITEMS = 'Mapping items...',
-        SUCCESS_MERGE = 'Import successful: %d items imported (merged), %d items skipped',
-        SUCCESS_OVERWRITE = 'Import successful: %d items imported (overwritten), %d items skipped'
+        SUCCESS_MERGE = 'Import successful.\n\n%d items imported (merged)\n%d items could not be imported',
+        SUCCESS_OVERWRITE = 'Import successful.\n\n%d items imported (overwritten)\n%d items skipped'
     }
 }
 

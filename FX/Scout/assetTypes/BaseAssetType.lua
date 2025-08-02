@@ -258,7 +258,7 @@ BaseAssetType.assetActions = {
     --     return self.type .. ' ' .. self.load
     -- end,
     toggleFavorite = function(self)
-        self.favorite = self.context.tags:toggleAssetFavorite(self.key)
+        self.favorite = self.context.userdata:toggleAssetFavorite(self.key)
 
         -- Use the unified special groups marking function to handle group reassignment
         self.engine:markSpecialGroups()
@@ -268,7 +268,7 @@ BaseAssetType.assetActions = {
     end,
     -- Batch toggle favorites for multiple assets (more efficient than calling toggleFavorite multiple times)
     batchToggleFavorites = function(self, assets, willFavorite)
-        local favorites = self.context.tags.current.favorites
+        local favorites = self.context.userdata.current.favorites
         local changed = false
 
         for _, asset in ipairs(assets) do
@@ -284,7 +284,7 @@ BaseAssetType.assetActions = {
         end
 
         if changed then
-            self.context.tags:save()
+            self.context.userdata:save()
             -- Use the unified special groups marking function to handle group reassignment
             self.engine:markSpecialGroups()
             self.engine:sortAssets()
@@ -294,7 +294,7 @@ BaseAssetType.assetActions = {
         return changed
     end,
     moveFavorite = function(self, targetPosition)
-        local favorite = self.context.tags.current.favorites
+        local favorite = self.context.userdata.current.favorites
         local key = self.key
 
         -- Check if this asset is actually a favorite
@@ -335,7 +335,7 @@ BaseAssetType.assetActions = {
         -- Insert at target position
         table.insert(favorite, targetPosition, key)
 
-        self.context.tags:save()
+        self.context.userdata:save()
         self.engine:markSpecialGroups()
         self.engine:sortAssets()
         self.context.flow.filterResults(nil, nil, { self }) -- Use multi-target to maintain selection on this asset
@@ -345,7 +345,7 @@ BaseAssetType.assetActions = {
         return true
     end,
     addToRecents = function(self)
-        self.context.tags:addAssetToRecents(self.key)
+        self.context.userdata:addAssetToRecents(self.key)
 
         -- Use the unified special groups marking function
         self.engine:markSpecialGroups()
@@ -357,7 +357,7 @@ BaseAssetType.assetActions = {
 
         if not OD_HasValue(self.tags, tag.id) then
             table.insert(self.tags, tag.id)
-            self.context.tags:addTagToAsset(self.id, tag.id, save)
+            self.context.userdata:addTagToAsset(self.id, tag.id, save)
         end
     end,
     removeTag = function(self, tag, saveToDB)
@@ -365,7 +365,7 @@ BaseAssetType.assetActions = {
 
         if OD_HasValue(self.tags, tag.id) then
             OD_RemoveValue(self.tags, tag.id)
-            self.context.tags:removeTagFromAsset(self.id, tag.id, save)
+            self.context.userdata:removeTagFromAsset(self.id, tag.id, save)
         end
     end
 }
