@@ -15,6 +15,7 @@ ICONS = {
     ['HEADPHONES'] = 'H',
     ['COMPUTER'] = 'I',
     ['DISK'] = 'K',
+    ['LIGHTNING'] = 'l',
     ['LEFT'] = 'L',
     ['MINIMIZE'] = 'm',
     ['MONEY'] = 'M',

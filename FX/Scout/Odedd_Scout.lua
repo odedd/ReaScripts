@@ -1210,11 +1210,17 @@ RunApp = function()
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
                 local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
                 local sideBarMinimizedW = 0
+                local quickChainMinimizedW = 0
                 local sideBarW, sideBarH =
                     app.settings.current.showSideBar and (app.settings.current.sideBarWidth * app.gui.scale) or
                     sideBarMinimizedW,
                     select(2, ImGui.GetContentRegionAvail(ctx))
+                local quickChainW, quickChainH =
+                    app.settings.current.showQuickChain and (app.settings.current.quickChainWidth * app.gui.scale) or
+                    quickChainMinimizedW,
+                    select(2, ImGui.GetContentRegionAvail(ctx))
                 local sideBarScreenX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - sideBarW -- X position for tag area
+                -- local quickChainScreenX = sideBarScreenX - quickChainW -- X position for quick chain area
                 local upperRowY = ImGui.GetCursorPosY(ctx)                                     -- Y position for upper row, used for "sticky" first group title
                 local upperRowScreenY = select(2, ImGui.GetCursorScreenPos(ctx))               -- Y position for upper row, used for "sticky" first group title
                 local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx)
@@ -1454,7 +1460,7 @@ RunApp = function()
                         end
                     end
 
-                    if ImGui.BeginChild(ctx, 'resultsArea', w - sideBarW - spacingX) then
+                    if ImGui.BeginChild(ctx, 'resultsArea', w - sideBarW - spacingX - quickChainW - spacingX) then
                         if app.pageSwitched then
                             app.flow.filterResults({ text = '' })
                         end
@@ -1562,7 +1568,8 @@ RunApp = function()
                                                         app.guiHelpers.keyModsToText(keymod |
                                                             RESULT_CONTEXT.KEYBOARD)
 
-                                                    local text = app.guiHelpers.getHintFor(result, keymod, RESULT_CONTEXT.KEYBOARD, app.selection:count())
+                                                    local text = app.guiHelpers.getHintFor(result, keymod,
+                                                            RESULT_CONTEXT.KEYBOARD, app.selection:count())
                                                         :gsub(
                                                             "^%l", string.upper):gsub('%.$', ' ') -- Capitalize first letter and remove trailing dot
                                                     if ImGui.MenuItem(ctx, text, mod) then
@@ -1725,6 +1732,32 @@ RunApp = function()
                                 ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
                             else
                                 app.settings.current.sideBarWidth = app.settings.current.minSideBarWidth
+                            end
+                        end
+                    end
+                end
+                local drawQuickChainSeparator = function()
+                    -- Separator Resize Line
+                    local separatorX, separatorY = ImGui.GetCursorScreenPos(ctx)
+                    ImGui.DrawList_AddLine(ImGui.GetWindowDrawList(ctx), separatorX, separatorY, separatorX,
+                        separatorY + h,
+                        ImGui.GetStyleColor(ctx, ImGui.Col_Separator))
+                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
+                    ImGui.InvisibleButton(ctx, '##quickChainSeparator', spacingX * 2, quickChainH)
+                    if ImGui.IsItemHovered(ctx) then
+                        app:setHoveredHint('main', 'Drag to change QuickChain width')
+                        ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
+                    end
+                    if ImGui.IsItemActive(ctx) then
+                        ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
+                        local mouseDeltaX = select(1, ImGui.GetMouseDragDelta(ctx, nil, nil, ImGui.MouseButton_Left))
+                        if mouseDeltaX ~= 0 then
+                            local newWidth = (quickChainW - mouseDeltaX) / app.gui.scale
+                            if newWidth > app.settings.current.minQuickChainWidth then
+                                app.settings.current.quickChainWidth = newWidth
+                                ImGui.ResetMouseDragDelta(ctx, ImGui.MouseButton_Left)
+                            else
+                                app.settings.current.quickChainWidth = app.settings.current.minQuickChainWidth
                             end
                         end
                     end
@@ -2182,11 +2215,69 @@ RunApp = function()
                         ImGui.EndChild(ctx)
                     end
                 end
+                local drawQuickChain = function()
+                    if ImGui.BeginChild(ctx, 'quickChain', quickChainW - spacingX * 2, quickChainH) then
+                        ImGui.SeparatorText(ctx, "Quick Chain")
+                        ImGui.Spacing(ctx)
 
-                if ImGui.BeginChild(ctx, 'mainArea', w - sideBarW - spacingX) then
+                        local w, h = ImGui.GetContentRegionAvail(ctx)
+                        local list = app.temp.quickChain or {}
+                        if ImGui.BeginListBox(ctx, '##quickChainList', w, h) then
+                            for i, item in ipairs(list) do
+                                local label = item.searchText[1].text
+                                if ImGui.Selectable(ctx, label, false) then
+                                    if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
+                                        table.remove(list, i)
+                                    end
+                                end
+                                if ImGui.BeginDragDropSource(ctx) then
+                                    ImGui.SetDragDropPayload(ctx, 'QUICK_CHAIN_ITEM', tostring(i))
+                                    ImGui.EndDragDropSource(ctx)
+                                end
+                                if ImGui.BeginDragDropTarget(ctx) then
+                                    local payload, data = ImGui.AcceptDragDropPayload(ctx, 'QUICK_CHAIN_ITEM')
+                                    local assetDropped, assetPayload = ImGui.AcceptDragDropPayload(ctx, 'ASSET', nil)
+                                    if assetDropped then
+                                        r.ShowConsoleMsg('got asset in quick chain\n')
+                                        local results = app.selection:results()
+                                        for j, result in ipairs(results) do
+                                            table.insert(list, i + j, result)
+                                        end
+                                    end
+                                    if payload then
+                                        local oldIdx = tonumber(data)
+                                        table.insert(list, i, table.remove(list, oldIdx))
+                                    end
+                                    ImGui.EndDragDropTarget(ctx)
+                                end
+                            end
+                            ImGui.EndListBox(ctx)
+                            if ImGui.BeginDragDropTarget(ctx) then
+                                local assetDropped, assetPayload = ImGui.AcceptDragDropPayload(ctx, 'ASSET', nil)
+                                if assetDropped then
+                                    local results = app.selection:results()
+                                    for j, result in ipairs(results) do
+                                        table.insert(list, #list + 1, result)
+                                    end
+                                end
+                                ImGui.EndDragDropTarget(ctx)
+                            end
+                        end
+                        ImGui.EndChild(ctx)
+                        app.temp.quickChain = list
+                    end
+                end
+
+                if ImGui.BeginChild(ctx, 'mainArea', w - sideBarW - spacingX - quickChainW - spacingX) then
                     app.draw.activeFilters()
                     drawResultsTable()
                     ImGui.EndChild(ctx)
+                end
+                if app.settings.current.showQuickChain then
+                    ImGui.SameLine(ctx)
+                    drawQuickChainSeparator()
+                    ImGui.SameLine(ctx)
+                    drawQuickChain()
                 end
                 if app.settings.current.showSideBar then
                     ImGui.SameLine(ctx)
@@ -2228,6 +2319,13 @@ RunApp = function()
                         active = ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow')
                     })
                     if app.temp.fullWindow then
+                        table.insert(menu,
+                            {
+                                icon = 'lightning',
+                                hint = app.settings.current.showQuickChain and 'Hide Quick Chain' or
+                                    'Show Quich Chain',
+                                active = app.settings.current.showQuickChain
+                            })
                         table.insert(menu,
                             {
                                 icon = 'sidebar',
@@ -2441,6 +2539,9 @@ RunApp = function()
                             app.temp.showHelpWindow = app.temp.showHelpWindow == nil and true or nil
                         elseif btn == 'gear' then
                             ImGui.OpenPopup(ctx, Scr.name .. ' Settings##settingsWindow')
+                        elseif btn == 'lightning' then
+                            app.settings.current.showQuickChain = not app.settings.current.showQuickChain
+                            app.settings:save()
                         elseif btn == 'sidebar' then
                             app.settings.current.showSideBar = not app.settings.current.showSideBar
                             app.settings:save()

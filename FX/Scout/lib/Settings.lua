@@ -111,8 +111,11 @@ PB_Settings = OD_Settings:new({
         -- set In the UI
         sideBarWidth = 200,
         showSideBar = true,
+        quickChainWidth = 200,
+        showQuickChain = true,
         -- Internal
         minSideBarWidth = 140,
+        minQuickChainWidth = 140,
         lastDockId = nil,
         numberOfResultsThatRequireConfirmation = 10,
         numberOfTracksThatRequireConfirmation = 6,
