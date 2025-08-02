@@ -27,6 +27,8 @@
 -- DONE: Import progress bar (coroutine?)
 -- DONE: Add recent Projects
 -- TODO: Create Default Presets with Magic Words for types
+-- TODO: Show Total Results 
+-- TODO: Quick Chain
 -- TODO: Add take markers
 -- TODO: write help
 -- TODO: Docking

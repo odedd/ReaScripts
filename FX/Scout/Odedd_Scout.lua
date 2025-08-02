@@ -935,8 +935,8 @@ RunApp = function()
                 end
                 return table.concat(modKeys, '+')
             end,
-            getHintFor = function(asset, context, count)
-                local mods = ImGui.GetKeyMods(app.gui.ctx)
+            getHintFor = function(asset, mods, context, count)
+                local mods = mods or ImGui.GetKeyMods(app.gui.ctx)
 
                 -- Check if selection spans multiple asset types
                 if count > 1 then
@@ -1562,13 +1562,9 @@ RunApp = function()
                                                         app.guiHelpers.keyModsToText(keymod |
                                                             RESULT_CONTEXT.KEYBOARD)
 
-                                                    local text = BaseAssetType:parseInteractionHintTemplate(
-                                                            description,
-                                                            app.selection:count(), nil,
-                                                            assetType.name,
-                                                            assetType.pluralName)
+                                                    local text = app.guiHelpers.getHintFor(result, keymod, RESULT_CONTEXT.KEYBOARD, app.selection:count())
                                                         :gsub(
-                                                            "^%l", string.upper)
+                                                            "^%l", string.upper):gsub('%.$', ' ') -- Capitalize first letter and remove trailing dot
                                                     if ImGui.MenuItem(ctx, text, mod) then
                                                         app.flow.executeSelectedResults(ctx,
                                                             keymod, nil)
@@ -1696,7 +1692,7 @@ RunApp = function()
                         end
 
                         if hintResult then
-                            local hint = app.guiHelpers.getHintFor(hintResult, hintContext, app.selection:count())
+                            local hint = app.guiHelpers.getHintFor(hintResult, nil, hintContext, app.selection:count())
                             if hint then
                                 app:setHint('main', hint, nil, nil, -1)
                             end
