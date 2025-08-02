@@ -2679,26 +2679,31 @@ RunApp = function()
                         -- app:setHoveredHint('settings', T.SETTINGS.EXPORT_TAGS.HINT)
 
                         -- Import button
-                        local overwriteMode = ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)
-                        local importButtonText = overwriteMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL or
-                            T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE
+                        local mergeMode = not ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)
+                        local importButtonText = mergeMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE or
+                            T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL
                         if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText }, true) then
+                            app.temp.showProgressBarWindow = true
+
                             local rv, filename = r.GetUserFileNameForRead('',
                                 'Import Tags, Presets and Favorites',
                                 'scout')
                             if rv and filename then
-                                local success, skippedAssets, mappedCount, skippedCount = app.userdata:import(filename,
-                                    not overwriteMode)
-                                if success then
-                                    local msg = string.format('Import successful: %d assets mapped, %d assets skipped',
-                                        mappedCount or 0, skippedCount or 0)
-                                    if overwriteMode then
-                                        msg = msg .. ' (existing data overwritten)'
-                                    end
-                                    app:msg(msg)
-                                else
-                                    app:msg('Import failed: ' .. (skippedAssets or 'Unknown error'), 'error')
-                                end
+                                app.temp.coroutineArgs = { filename = filename, mergeMode = mergeMode }
+                                app.temp.progressCoroutine = coroutine.create(app.userdata.import)
+
+                                -- local success, skippedAssets, mappedCount, skippedCount = app.userdata:import(filename,
+                                --     not overwriteMode)
+                                -- if success then
+                                --     local msg = string.format('Import successful: %d assets mapped, %d assets skipped',
+                                --         mappedCount or 0, skippedCount or 0)
+                                --     if overwriteMode then
+                                --         msg = msg .. ' (existing data overwritten)'
+                                --     end
+                                --     app:msg(msg)
+                                -- else
+                                --     app:msg('Import failed: ' .. (skippedAssets or 'Unknown error'), 'error')
+                                -- end
                             end
                         end
 
@@ -2711,6 +2716,7 @@ RunApp = function()
                     else
                         OD_ReleaseGlobalKeys()
                     end
+                    app.draw.progressBarWindow(ctx)
                     app:drawMsg()
 
                     ImGui.EndPopup(ctx)
@@ -3173,6 +3179,51 @@ RunApp = function()
                     end
                 end
             end,
+            progressBarWindow = function(ctx)
+                if app.temp.showProgressBarWindow then
+                    if not ImGui.IsPopupOpen(ctx, 'Operation in Progress') then
+                        ImGui.OpenPopup(ctx, 'Operation in Progress')
+                    end
+
+
+                    ImGui.SetNextWindowSize(ctx, 550 * app.gui.scale, 0, ImGui.Cond_Always)
+                    ImGui.SetNextWindowPos(ctx, app.gui.mainWindow.pos[1] + (app.gui.mainWindow.size[1] / 2),
+                        app.gui.mainWindow.pos[2] + (app.gui.mainWindow.size[2] / 2), ImGui.Cond_Appearing, 0.5, 0.5)
+                    app.gui:pushStyles(app.gui.st.vars.popupsTitle)
+
+                    local visible, open = ImGui.BeginPopupModal(ctx, 'Operation in Progress', false,
+                        ImGui.WindowFlags_AlwaysAutoResize)
+                    app.gui:popStyles(app.gui.st.vars.popupsTitle)
+
+                    if visible then
+                        if app.temp.progressCoroutine then
+                            local releaseCoroutine = function()
+                                app.temp.coroutineArgs = nil
+                                app.temp.showProgressBarWindow = false
+                            end
+
+                            if coroutine.status(app.temp.progressCoroutine) == "suspended" then
+                                local _, rv = coroutine
+                                    .resume(app.temp.progressCoroutine, app.userdata,
+                                        app.temp.coroutineArgs)
+                                if rv.progress then
+                                    ImGui.Text(ctx, rv.msg)
+                                elseif rv.success or rv.error then
+                                    releaseCoroutine()
+                                    app:msg(rv.msg)
+                                end
+                            elseif coroutine.status(app.temp.progressCoroutine) == "dead" then
+                                releaseCoroutine()
+                            end
+                        end
+                        ImGui.EndPopup(ctx)
+                    end
+
+                    if not open then
+                        app.temp.showProgressBarWindow = false
+                    end
+                end
+            end,
             mainWindow = function(ctx)
                 ImGui.SetNextWindowPos(ctx, 100, 100, ImGui.Cond_FirstUseEver)
 
@@ -3226,7 +3277,7 @@ RunApp = function()
                     app.draw.help(ctx)
                     app.draw.welcomeDialog(ctx)
                     if not app.temp.settingsWindowOpen then
-                    app:drawMsg()
+                        app:drawMsg()
                     end
                     ImGui.End(ctx)
                 end

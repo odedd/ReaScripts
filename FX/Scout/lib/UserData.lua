@@ -176,9 +176,11 @@ function PB_UserData:export(filename)
     return true
 end
 
-function PB_UserData:import(filename, mergeMode)
+function PB_UserData:import(args)
     -- mergeMode: true = merge with existing tags, false = replace all tags (default: false)
-    mergeMode = mergeMode or false
+    args = args or {}
+    local filename = args.filename or ''
+    local mergeMode = args.mergeMode or false
 
     self.app.logger:logDebug('-- PB_UserData:import() from ' .. filename .. ' mergeMode: ' .. tostring(mergeMode))
 
@@ -186,13 +188,13 @@ function PB_UserData:import(filename, mergeMode)
     if not self.app.engine.assetTypeManager then
         local errorMsg = "self.app.engine.assetTypeManager is nil - make sure to call db:init() first"
         self.app.logger:logError(errorMsg)
-        return false, errorMsg, {}, 0, 0
+        return {error = true, msg = errorMsg }
     end
 
     local file = io.open(filename, 'r')
     if not file then
         self.app.logger:logError('Failed to open file for reading', filename)
-        return false, {}, 0, 0
+        return { error = false, msg = 'Failed to open file for reading' }
     end
 
     local section = nil
@@ -273,7 +275,7 @@ function PB_UserData:import(filename, mergeMode)
         elseif section == "taggedAssets" and line ~= "" then
             -- Use safe parsing for colon-separated asset line
             local colonPos = OD_FindUnescapedChar(line, ":")
-
+            coroutine.yield({progress = true, msg = line })
             if colonPos then
                 local asset = OD_UnescapeCSV(line:sub(1, colonPos - 1))
                 local tagsStr = line:sub(colonPos + 1)
@@ -319,7 +321,7 @@ function PB_UserData:import(filename, mergeMode)
                     else
                         -- For non-file-based assets, use the full identifier minus the asset type prefix
                         imported_basename = asset:match("^%d+%s+(.+)$")
-                        
+
                         -- Fallback: try to extract basename from path if the above didn't work
                         if not imported_basename then
                             imported_basename = asset:match("([^/\\]+)$")
@@ -459,7 +461,7 @@ function PB_UserData:import(filename, mergeMode)
         )
 
         self.app.logger:logError(errorMsg)
-        return false, errorMsg, {}, 0, 0
+        return false, { msg = errorMsg }
     elseif fileVersion == nil then
         -- No version info found - assume legacy format
         self.app.logger:logInfo('No version information found in tags file. Assuming legacy format.')
@@ -1093,7 +1095,7 @@ function PB_UserData:import(filename, mergeMode)
                     -- Update existing preset with same name
                     newId = existingPresetId
                     self.app.logger:logDebug('⟳ Updating existing preset "' ..
-                    importedPreset.name .. '" (ID ' .. newId .. ')')
+                        importedPreset.name .. '" (ID ' .. newId .. ')')
                 else
                     -- Find next available ID if no name conflict exists
                     while finalPresets[newId] do
@@ -1147,7 +1149,12 @@ function PB_UserData:import(filename, mergeMode)
         self.app.flow.filterResults()
     end
 
-    return true, skippedAssets, mappedAssetsCount, skippedAssetsCount
+    local msg = string.format('Import successful: %d assets mapped, %d assets skipped',
+        mappedAssetsCount or 0, skippedAssetsCount or 0)
+    if not mergeMode then
+        msg = msg .. ' (existing data overwritten)'
+    end
+    return { success = true, msg = msg }
 end
 
 function PB_UserData:toggleAssetFavorite(assetKey)
@@ -1321,7 +1328,8 @@ function PB_UserData:createPreset(name, filter, word)
         return nil
     end
 
-    if OD_TableLength(OD_TableFilter(self.current.presets, function(k, v) return v.word ~= nil and v.word ~= '' and v.word:upper() == word:upper() end)) > 0 then
+    if OD_TableLength(OD_TableFilter(self.current.presets, function(k, v) return v.word ~= nil and v.word ~= '' and
+            v.word:upper() == word:upper() end)) > 0 then
         self.app.logger:logError('Cannot create preset: preset with word ' .. word .. ' already exists')
         return nil
     end
@@ -1450,26 +1458,27 @@ end
 
 function PB_UserData:convertFoldersToTags()
     self.app.logger:logDebug('-- PB_UserData:convertFoldersToTags()')
-    
+
     -- Check if we have FX folders data
     if not self.app.engine or not self.app.engine.fxFolders or not self.app.engine.pluginToFolders then
         self.app.logger:logError('No FX folders data available')
         return false, 'No FX folders data available'
     end
-    
+
     local foldersConverted = 0
     local assetsTagged = 0
-    
-        self.app.logger:logDebug('Available folders', OD_TableLength(self.app.engine.fxFolders))
-    
+
+    self.app.logger:logDebug('Available folders', OD_TableLength(self.app.engine.fxFolders))
+
     -- Iterate through each folder
     for folderId, folderData in pairs(self.app.engine.fxFolders) do
         local folderName = folderData.name
         if not folderName or folderName == '' then
             goto continue_folder
         end
-        
-        self.app.logger:logDebug('Processing folder: ' .. folderName .. ' with ' .. OD_TableLength(folderData.items or {}) .. ' items')        -- Check if tag already exists (case insensitive)
+
+        self.app.logger:logDebug('Processing folder: ' ..
+        folderName .. ' with ' .. OD_TableLength(folderData.items or {}) .. ' items')                                                   -- Check if tag already exists (case insensitive)
         local existingTagId = nil
         for tagId, tagData in pairs(self.current.tagInfo) do
             if tagData.name:lower() == folderName:lower() and tagData.parentId == TAGS_ROOT_PARENT then
@@ -1477,7 +1486,7 @@ function PB_UserData:convertFoldersToTags()
                 break
             end
         end
-        
+
         -- Create tag if it doesn't exist
         local targetTagId = existingTagId
         local isNewTag = false
@@ -1495,11 +1504,11 @@ function PB_UserData:convertFoldersToTags()
         else
             self.app.logger:logDebug('Using existing tag "' .. folderName .. '" with ID ' .. targetTagId)
         end
-        
+
         -- Get all plugins in this folder and tag them
         local itemsInFolder = 0
         local assetsChecked = 0
-        
+
         -- Debug: Check what assets we have
         self.app.logger:logDebug('Total engine assets available', #(self.app.engine.assets or {}))
         if self.app.engine.assets and #self.app.engine.assets > 0 then
@@ -1517,7 +1526,7 @@ function PB_UserData:convertFoldersToTags()
                 self.app.logger:logDebug('Asset type: ' .. typeName, count)
             end
         end
-        
+
         for _, asset in ipairs(self.app.engine.assets) do
             if asset.type == ASSET_TYPE.PluginAssetType then
                 assetsChecked = assetsChecked + 1
@@ -1527,9 +1536,11 @@ function PB_UserData:convertFoldersToTags()
                         local wasTagAdded = self:addTagToAsset(asset.id, targetTagId, false)
                         if wasTagAdded then
                             assetsTagged = assetsTagged + 1
-                            self.app.logger:logDebug('Tagged plugin "' .. (asset.name or 'Unknown') .. '" with folder tag "' .. folderName .. '"')
+                            self.app.logger:logDebug('Tagged plugin "' ..
+                            (asset.name or 'Unknown') .. '" with folder tag "' .. folderName .. '"')
                         else
-                            self.app.logger:logDebug('Plugin "' .. (asset.name or 'Unknown') .. '" already has folder tag "' .. folderName .. '"')
+                            self.app.logger:logDebug('Plugin "' ..
+                            (asset.name or 'Unknown') .. '" already has folder tag "' .. folderName .. '"')
                         end
                         itemsInFolder = itemsInFolder + 1
                     end
@@ -1538,47 +1549,49 @@ function PB_UserData:convertFoldersToTags()
                 end
             end
         end
-        
-        self.app.logger:logDebug('Checked ' .. assetsChecked .. ' plugin assets, found ' .. itemsInFolder .. ' plugins in folder "' .. folderName .. '"')
-        
+
+        self.app.logger:logDebug('Checked ' ..
+        assetsChecked .. ' plugin assets, found ' .. itemsInFolder .. ' plugins in folder "' .. folderName .. '"')
+
         ::continue_folder::
     end
-    
+
     self:save()
-    
+
     -- Refresh engine tags
     if self.app.engine then
         self.app.engine:getTags(true)
         self.app.engine:assembleAssets()
     end
-    
+
     -- Trigger a refresh of the search results
     if self.app.flow then
         self.app.flow.filterResults()
     end
-    
-    self.app.logger:logInfo(string.format(T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.SUCCESS_MESSAGE, foldersConverted, assetsTagged))
+
+    self.app.logger:logInfo(string.format(T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.SUCCESS_MESSAGE, foldersConverted,
+        assetsTagged))
     return true, foldersConverted, assetsTagged
 end
 
 function PB_UserData:convertCategoriesToTags()
     self.app.logger:logDebug('-- PB_UserData:convertCategoriesToTags()')
-    
+
     -- Check if we have FX categories data
     if not self.app.engine or not self.app.engine.fxCategories or not self.app.engine.pluginToCategories then
         self.app.logger:logError('No FX categories data available')
         return false, 'No FX categories data available'
     end
-    
+
     local categoriesConverted = 0
     local assetsTagged = 0
-    
+
     -- Iterate through each category
     for categoryName, pluginList in pairs(self.app.engine.fxCategories) do
         if not categoryName or categoryName == '' then
             goto continue_category
         end
-        
+
         -- Check if tag already exists (case insensitive)
         local existingTagId = nil
         for tagId, tagData in pairs(self.current.tagInfo) do
@@ -1587,7 +1600,7 @@ function PB_UserData:convertCategoriesToTags()
                 break
             end
         end
-        
+
         -- Create tag if it doesn't exist
         local targetTagId = existingTagId
         if not existingTagId then
@@ -1603,7 +1616,7 @@ function PB_UserData:convertCategoriesToTags()
         else
             self.app.logger:logDebug('Using existing tag "' .. categoryName .. '" with ID ' .. targetTagId)
         end
-        
+
         -- Get all plugins in this category and tag them
         local itemsInCategory = 0
         local assetsChecked = 0
@@ -1616,9 +1629,11 @@ function PB_UserData:convertCategoriesToTags()
                         local wasTagAdded = self:addTagToAsset(asset.id, targetTagId, false)
                         if wasTagAdded then
                             assetsTagged = assetsTagged + 1
-                            self.app.logger:logDebug('Tagged plugin "' .. (asset.name or 'Unknown') .. '" with category tag "' .. categoryName .. '"')
+                            self.app.logger:logDebug('Tagged plugin "' ..
+                            (asset.name or 'Unknown') .. '" with category tag "' .. categoryName .. '"')
                         else
-                            self.app.logger:logDebug('Plugin "' .. (asset.name or 'Unknown') .. '" already has category tag "' .. categoryName .. '"')
+                            self.app.logger:logDebug('Plugin "' ..
+                            (asset.name or 'Unknown') .. '" already has category tag "' .. categoryName .. '"')
                         end
                         itemsInCategory = itemsInCategory + 1
                     end
@@ -1627,26 +1642,28 @@ function PB_UserData:convertCategoriesToTags()
                 end
             end
         end
-        
-        self.app.logger:logDebug('Checked ' .. assetsChecked .. ' plugin assets, found ' .. itemsInCategory .. ' plugins in category "' .. categoryName .. '"')
-        
+
+        self.app.logger:logDebug('Checked ' ..
+        assetsChecked .. ' plugin assets, found ' .. itemsInCategory .. ' plugins in category "' .. categoryName .. '"')
+
         ::continue_category::
     end
-    
+
     self:save()
-    
+
     -- Refresh engine tags
     if self.app.engine then
         self.app.engine:getTags(true)
         self.app.engine:assembleAssets()
     end
-    
+
     -- Trigger a refresh of the search results
     if self.app.flow then
         self.app.flow.filterResults()
     end
-    
-    self.app.logger:logInfo(string.format(T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.SUCCESS_MESSAGE, categoriesConverted, assetsTagged))
+
+    self.app.logger:logInfo(string.format(T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.SUCCESS_MESSAGE, categoriesConverted,
+        assetsTagged))
     return true, categoriesConverted, assetsTagged
 end
 
