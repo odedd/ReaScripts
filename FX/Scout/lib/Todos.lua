@@ -24,9 +24,9 @@
 -- DONE: Handle hints for selection that spans many asset types
 -- DONE: minimal mode
 -- DONE: Settings window - add Convert Folders/Categories to tags
+-- DONE: Import progress bar (coroutine?)
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Add take markers
--- TODO: Import progress bar (coroutine?)
 -- TODO: write help
 -- TODO: Docking
 
