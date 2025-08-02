@@ -2295,57 +2295,63 @@ RunApp = function()
                     local w = select(1, ImGui.GetContentRegionAvail(ctx)) - menuW +
                         ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) - paddingX - winPaddingX
 
-                    ImGui.SetNextItemWidth(ctx, w)
-                    local rv
-                    if not ImGui.IsAnyItemActive(ctx) and not app.temp.waitingForDoubleClick and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.tagRename and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows) then
-                        ImGui.SetKeyboardFocusHere(ctx, 0)
-                    end
-                    handleSpecialKeys()
-                    local callback = nil
-                    local inputFlags = ImGui.InputTextFlags_EscapeClearsAll
-                    if app.temp.selectSearchInputTextOnNextFrame then
-                        inputFlags = inputFlags | ImGui.InputTextFlags_AutoSelectAll
-                    end
-                    if app.temp.clearSearchInputText then
-                        inputFlags = inputFlags | ImGui.InputTextFlags_CallbackAlways
-                        callback = app.gui.clearInputIfNeeded
-                    end
-                    rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput" .. app.temp.searchMode,
-                        T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput,
-                        inputFlags, callback)
-                    if not app.temp.selectSearchInputText then -- wait 1 frame for selection to work
-                        app.temp.lastSearchMode = app.temp.searchMode
-                        app.temp.selectSearchInputTextOnNextFrame = nil
-                    else
-                        app.temp.selectSearchInputText = nil
-                        app.temp.selectSearchInputTextOnNextFrame = true
-                    end
-                    -- handleSpecialKeys()
-                    -- app.temp.blockNextCharacter = nil
-                    app.temp.clearSearchInputText = nil
-                    if ImGui.IsItemFocused(ctx) then
-                        if ImGui.IsKeyReleased(ctx, ImGui.Key_Tab) then
-                            if app.temp.searchMode == SEARCH_MODE.MAIN then
-                                app.flow.setSearchMode(SEARCH_MODE.FILTERS)
-                            else
-                                app.flow.setSearchMode(SEARCH_MODE.MAIN)
+
+                    if ImGui.BeginChild(ctx, 'topBarSearchInput', w, nil, nil, ImGui.WindowFlags_NoMouseInputs) then
+                        -- local w = select(1, ImGui.GetContentRegionAvail(ctx))
+
+                        ImGui.SetNextItemWidth(ctx, w)
+                        local rv
+                        if not ImGui.IsAnyItemActive(ctx) and not app.temp.waitingForDoubleClick and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.tagRename and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows) then
+                            ImGui.SetKeyboardFocusHere(ctx, 0)
+                        end
+                        handleSpecialKeys()
+                        local callback = nil
+                        local inputFlags = ImGui.InputTextFlags_EscapeClearsAll
+                        if app.temp.selectSearchInputTextOnNextFrame then
+                            inputFlags = inputFlags | ImGui.InputTextFlags_AutoSelectAll
+                        end
+                        if app.temp.clearSearchInputText then
+                            inputFlags = inputFlags | ImGui.InputTextFlags_CallbackAlways
+                            callback = app.gui.clearInputIfNeeded
+                        end
+                        rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput" .. app.temp.searchMode,
+                            T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput,
+                            inputFlags, callback)
+                        if not app.temp.selectSearchInputText then -- wait 1 frame for selection to work
+                            app.temp.lastSearchMode = app.temp.searchMode
+                            app.temp.selectSearchInputTextOnNextFrame = nil
+                        else
+                            app.temp.selectSearchInputText = nil
+                            app.temp.selectSearchInputTextOnNextFrame = true
+                        end
+                        -- handleSpecialKeys()
+                        -- app.temp.blockNextCharacter = nil
+                        app.temp.clearSearchInputText = nil
+                        if ImGui.IsItemFocused(ctx) then
+                            if ImGui.IsKeyReleased(ctx, ImGui.Key_Tab) then
+                                if app.temp.searchMode == SEARCH_MODE.MAIN then
+                                    app.flow.setSearchMode(SEARCH_MODE.FILTERS)
+                                else
+                                    app.flow.setSearchMode(SEARCH_MODE.MAIN)
+                                end
                             end
                         end
-                    end
-                    if rv then
-                        -- if app.temp.searchMode == SEARCH_MODE.MAIN then
-                        local wordKey, wordAction = app.temp.searchInput:upper():match('(.+)([%s%?])$')
-                        local wordFilter = app.engine.magicWords[wordKey]
-                        if wordFilter then
-                            app.flow.filterResults(wordFilter)
-                            if wordAction == '?' then app.flow.executeRandomResult() end
-                            app.guiHelpers.clearSearchInputText()
-                        else
-                            app.flow.filterResults({ text = app.temp.searchInput })
+                        if rv then
+                            -- if app.temp.searchMode == SEARCH_MODE.MAIN then
+                            local wordKey, wordAction = app.temp.searchInput:upper():match('(.+)([%s%?])$')
+                            local wordFilter = app.engine.magicWords[wordKey]
+                            if wordFilter then
+                                app.flow.filterResults(wordFilter)
+                                if wordAction == '?' then app.flow.executeRandomResult() end
+                                app.guiHelpers.clearSearchInputText()
+                            else
+                                app.flow.filterResults({ text = app.temp.searchInput })
+                            end
+                            -- -- else
+                            -- --     app.flow.filterResults({ text = app.temp.searchInput })
+                            -- end
                         end
-                        -- -- else
-                        -- --     app.flow.filterResults({ text = app.temp.searchInput })
-                        -- end
+                        ImGui.EndChild(ctx)
                     end
                 end
                 local drawIconMenu = function(ctx, buttons)
@@ -2426,7 +2432,6 @@ RunApp = function()
                 end
                 if ImGui.BeginChild(ctx, 'topBar', nil, h, ImGui.ChildFlags_AlwaysUseWindowPadding, ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoScrollWithMouse) then
                     drawLogo()
-
                     drawTextSearchInput()
                     ImGui.SameLine(ctx)
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
