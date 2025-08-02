@@ -28,6 +28,42 @@ end
 function ProjectAssetType:getData()
     local data = {} -- Use consistent local variable naming
 
+    -- Local function to get recent projects from reaper.ini
+    local function getRecentProjects()
+        local recentProjects = {}
+        local iniPath = reaper.get_ini_file():gsub("\\", "/")
+        local content = OD_GetContent(iniPath)
+
+        if content and content ~= "" then
+            -- Find the [Recent] section
+            local recentSection = content:match("%[Recent%](.-)\n%[")
+            if not recentSection then
+                recentSection = content:match("%[Recent%](.*)")
+            end
+
+            if recentSection then
+                -- Parse recent entries (recent01=path, recent02=path, etc.)
+                for line in recentSection:gmatch("[^\n]+") do
+                    local recentPath = line:match("recent%d+=(.+)")
+                    if recentPath and recentPath ~= "" then
+                        -- Check if file exists and is a .RPP file
+                        if recentPath:lower():match("%.rpp$") and OD_FileExists(recentPath) then
+                            local path, name, ext = OD_DissectFilename(recentPath)
+                            table.insert(recentProjects, {
+                                fullPath = recentPath,
+                                name = name,
+                                path = path,
+                                recent = true,
+                            })
+                        end
+                    end
+                end
+            end
+        end
+
+        return recentProjects
+    end
+
     -- Get project scan folders from settings
     local scanFolders = self.context.settings.current.projectScanFolders or {}
 
@@ -52,6 +88,13 @@ function ProjectAssetType:getData()
         end
     end
 
+    -- Add recent projects from reaper.ini
+    local recentProjects = getRecentProjects()
+    self.context.logger:logDebug('Found ' .. #recentProjects .. ' recent projects from reaper.ini')
+    for _, project in ipairs(recentProjects) do
+        table.insert(data, project)
+    end
+
     return data
 end
 
@@ -66,5 +109,8 @@ function ProjectAssetType:assembleAsset(project)
         group = self.group,
     })
 
+    if project.recent then
+        table.insert(asset.searchText, { text = '(Recently opened)' })
+    end
     return asset
 end
