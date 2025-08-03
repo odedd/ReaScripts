@@ -56,7 +56,7 @@ T.EDIT_PRESET_DIALOG = {
 
 T.SETTINGS = {
     CREATE_INSIDE_FODLER = {
-        LABEL = 'Create sends inside folder',
+        LABEL = 'Create sends in folder',
         HINT = 'New send tracks can be created inside a folder track.',
     },
     SEND_FOLDER_NAME = {
@@ -68,7 +68,7 @@ T.SETTINGS = {
         HINT = 'If one does not exist, it will be created when adding sends.',
     },
     USE_VIRTUAL_INSTRUMENT_TRACKS = {
-        LABEL = 'Use virtual instrument tracks',
+        LABEL = 'Use instrument tracks',
         HINT = 'When selecting instruments, create/convert to virtual instrument tracks.',
     },
     PROJECT_SCAN_FOLDER = {
@@ -90,7 +90,7 @@ T.SETTINGS = {
         HINT = 'The order in which FX are displayed in the search window.',
     },
     SHOW_ONLY_HIGHEST_PRIORITY_FX = {
-        LABEL = 'Only show highest priority FX',
+        LABEL = 'Show high priority FX',
         HINT = 'If FX exist in several formats, only show the highest priority ones.'
     },
     CLOSE_AFTER_EXECUTE = {
@@ -141,6 +141,10 @@ T.SETTINGS = {
         SHOW_SETTINGS = {
             LABEL = 'Show settings',
             HINT = 'Open the settings window.',
+        },
+        SELECT_ALL_RESULTS = {
+            LABEL = 'Select all results',
+            HINT = 'Select all search results.',
         },
         SHOW_HELP = {
             LABEL = 'Show help',

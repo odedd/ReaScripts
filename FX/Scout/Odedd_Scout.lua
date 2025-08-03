@@ -912,21 +912,11 @@ RunApp = function()
             end,
             isShortcutPressed = function(key)
                 local shortcut = app.settings.current.shortcuts[key]
-                if shortcut == nil then return false end
-                local keyChord = app.settings.shortCutToKeyChord(shortcut)
-                return ImGui.Shortcut(app.gui.ctx, keyChord, ImGui.InputFlags_RouteAlways)
-            end,
-            getShortcutDescription = function(key)
-                local shortcut = app.settings.current.shortcuts[key]
-                local desc = ''
-                if shortcut and shortcut.key ~= -1 then
-                    if shortcut.ctrl then desc = desc .. OD_KEYCODE_NAMES[OD_KEYCODES.CONTROL] end
-                    if shortcut.shift then desc = desc .. '+' .. OD_KEYCODE_NAMES[OD_KEYCODES.SHIFT] end
-                    if shortcut.alt then desc = desc .. '+' .. OD_KEYCODE_NAMES[OD_KEYCODES.ALT] end
-                    if shortcut.macCtrl then desc = desc .. '+' .. OD_KEYCODE_NAMES[OD_KEYCODES.STARTKEY] end
-                    desc = desc .. ' + ' .. OD_KEYCODE_NAMES[shortcut.key]
+                if shortcut == nil then
+                    return false
                 end
-                return desc
+                local keyChord = shortcut or 0
+                return ImGui.Shortcut(app.gui.ctx, keyChord, ImGui.InputFlags_RouteAlways)
             end,
             selectSearchInputText = function()
                 app.temp.selectSearchInputText = true
@@ -2580,6 +2570,7 @@ RunApp = function()
                             end
                             pressed = true
                         elseif app.guiHelpers.isShortcutPressed('addToQuickChain') then
+                            r.ShowConsoleMsg('pressed')
                             app.flow.addSelectionToQuickChain()
                             pressed = true
                         elseif app.guiHelpers.isShortcutPressed('clearQuickChain') then
@@ -2683,7 +2674,7 @@ RunApp = function()
                     local clicked = nil
                     for i, btn in ipairs(buttons) do
                         local shortcut = btn.shortcut and
-                        app.guiHelpers.shortCutToText(app.settings.current.shortcuts[btn.shortcut]) or ''
+                            app.guiHelpers.shortCutToText(app.settings.current.shortcuts[btn.shortcut]) or ''
                         local hint = btn.hint .. (shortcut ~= '' and ' (' .. shortcut .. ')' or '')
                         local col = btn.active and app.gui.st.col.buttons.topBarActiveIcon or
                             app.gui.st.col.buttons.topBarIcon
@@ -2783,9 +2774,9 @@ RunApp = function()
                 -- local lineHeightWithSpacing = ImGui.GetTextLineHeightWithSpacing(ctx)
                 local lineHeight = ImGui.GetTextLineHeight(ctx)
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
-                -- local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
-                local w = 730 * app.gui.scale
-                local h = 890 * app.gui.scale + #app.settings.current.projectScanFolders * (lineHeight + paddingY)
+                local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+                local w = 1390 * app.gui.scale
+                local h = 730 * app.gui.scale + #app.settings.current.projectScanFolders * (lineHeight + paddingY)
                 -- local h = select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)) * 2
                 -- h = h + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) + lineHeight
                 -- h = h + (numOfPreferences + numOfSeparators + #app.settings.current.projectScanFolders) *
@@ -2811,7 +2802,7 @@ RunApp = function()
 
                 if visible then
                     local w = w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2
-                    if ImGui.BeginChild(ctx, 'SettingsMainArea', w, -app.gui.st.sizes.hintHeight) then --math.min(500*app.gui.scale, h - hintHeight)) then
+                    if ImGui.BeginChild(ctx, 'SettingsLeftArea', w / 2 - paddingX - spacingX, -app.gui.st.sizes.hintHeight) then --math.min(500*app.gui.scale, h - hintHeight)) then
                         if ImGui.IsWindowAppearing(ctx) then
                             app.temp.groupOrder = {}
                             app.temp.groupVisibility = {}
@@ -2844,104 +2835,7 @@ RunApp = function()
                             T.SETTINGS.SLEEP_MODE.LABEL,
                             T.SETTINGS.SLEEP_MODE.HINT, app.settings.current.sleepMode,
                             { help = T.SLEEP_MODE_EXPLANATION })
-                        ImGui.SeparatorText(ctx, 'Shortcuts')
-                        local resetCounter = false
-                        local key = app.settings.current.sleepMode and T.SETTINGS.SHORTCUTS.ENTER_SLEEP_MODE or
-                            T.SETTINGS.SHORTCUTS.CLOSE_SCRIPT
-                            ImGui.BeginDisabled(ctx)
-                        app.settings.current.shortcuts.closeScript, resetCounter = app.gui:setting('shortcut',
-                            key.LABEL,
-                            key.HINT, app.settings.current.shortcuts.closeScript,
-                            {
-                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                    function(k, v) return k ~= 'closeScript' end)
-                            })
-                            ImGui.EndDisabled(ctx)
-                        if resetCounter then app.temp.captureCounter = 0 end
-                        if app.settings.current.sleepMode then
-                            app.settings.current.shortcuts.hardCloseScript, resetCounter = app.gui:setting('shortcut',
-                                T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.LABEL,
-                                T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.HINT,
-                                app.settings.current.shortcuts.hardCloseScript,
-                                {
-                                    existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                        function(k, v) return k ~= 'hardCloseScript' end)
-                                })
-                            if resetCounter then app.temp.captureCounter = 0 end
-                        end
-                        app.settings.current.shortcuts.markFavorite, resetCounter = app.gui:setting('shortcut',
-                            T.SETTINGS.SHORTCUTS.MARK_FAVORITE.LABEL,
-                            T.SETTINGS.SHORTCUTS.MARK_FAVORITE.HINT, app.settings.current.shortcuts.markFavorite,
-                            {
-                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                    function(k, v) return k ~= 'markFavorite' end)
-                            })
-                        app.settings.current.shortcuts.runRandomResult, resetCounter = app.gui:setting('shortcut',
-                            T.SETTINGS.SHORTCUTS.RANDOM_RESULT.LABEL,
-                            T.SETTINGS.SHORTCUTS.RANDOM_RESULT.HINT, app.settings.current.shortcuts.runRandomResult,
-                            {
-                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                    function(k, v) return k ~= 'runRandomResult' end)
-                            })
-                        app.settings.current.shortcuts.showSettings, resetCounter = app.gui:setting('shortcut',
-                            T.SETTINGS.SHORTCUTS.SHOW_SETTINGS.LABEL,
-                            T.SETTINGS.SHORTCUTS.SHOW_SETTINGS.HINT, app.settings.current.shortcuts.showSettings,
-                            {
-                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                    function(k, v) return k ~= 'showSettings' end)
-                            })
-                        app.settings.current.shortcuts.showHelp, resetCounter = app.gui:setting('shortcut',
-                            T.SETTINGS.SHORTCUTS.SHOW_HELP.LABEL,
-                            T.SETTINGS.SHORTCUTS.SHOW_HELP.HINT, app.settings.current.shortcuts.showHelp,
-                            {
-                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                    function(k, v) return k ~= 'showHelp' end)
-                            })
-                        app.settings.current.shortcuts.toggleDock, resetCounter = app.gui:setting('shortcut',
-                            T.SETTINGS.SHORTCUTS.TOGGLE_DOCK.LABEL,
-                            T.SETTINGS.SHORTCUTS.TOGGLE_DOCK.HINT, app.settings.current.shortcuts.toggleDock,
-                            {
-                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                    function(k, v) return k ~= 'toggleDock' end)
-                            })
-                        app.settings.current.shortcuts.toggleMinimalMode, resetCounter = app.gui:setting('shortcut',
-                            T.SETTINGS.SHORTCUTS.TOGGLE_MINIMAL_MODE.LABEL,
-                            T.SETTINGS.SHORTCUTS.TOGGLE_MINIMAL_MODE.HINT,
-                            app.settings.current.shortcuts.toggleMinimalMode,
-                            {
-                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                    function(k, v) return k ~= 'toggleMinimalMode' end)
-                            })
-                        app.settings.current.shortcuts.toggleSideBar, resetCounter = app.gui:setting('shortcut',
-                            T.SETTINGS.SHORTCUTS.TOGGLE_SIDEBAR.LABEL,
-                            T.SETTINGS.SHORTCUTS.TOGGLE_SIDEBAR.HINT, app.settings.current.shortcuts.toggleSideBar,
-                            {
-                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                    function(k, v) return k ~= 'toggleSideBar' end)
-                            })
-                        app.settings.current.shortcuts.toggleQuickChain, resetCounter = app.gui:setting('shortcut',
-                            T.SETTINGS.SHORTCUTS.TOGGLE_QUICK_CHAIN.LABEL,
-                            T.SETTINGS.SHORTCUTS.TOGGLE_QUICK_CHAIN.HINT, app.settings.current.shortcuts
-                            .toggleQuickChain,
-                            {
-                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                    function(k, v) return k ~= 'toggleQuickChain' end)
-                            })
-                        app.settings.current.shortcuts.addToQuickChain, resetCounter = app.gui:setting('shortcut',
-                            T.SETTINGS.SHORTCUTS.ADD_TO_QUICK_CHAIN.LABEL,
-                            T.SETTINGS.SHORTCUTS.ADD_TO_QUICK_CHAIN.HINT, app.settings.current.shortcuts.addToQuickChain,
-                            {
-                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                    function(k, v) return k ~= 'addToQuickChain' end)
-                            })
-                        app.settings.current.shortcuts.clearQuickChain, resetCounter = app.gui:setting('shortcut',
-                            T.SETTINGS.SHORTCUTS.CLEAR_QUICK_CHAIN.LABEL,
-                            T.SETTINGS.SHORTCUTS.CLEAR_QUICK_CHAIN.HINT, app.settings.current.shortcuts.clearQuickChain,
-                            {
-                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                    function(k, v) return k ~= 'clearQuickChain' end)
-                            })
-                        if resetCounter then app.temp.captureCounter = 0 end
+
                         ImGui.SeparatorText(ctx, 'Ordering')
 
                         app.settings.current.showOnlyHighestPriorityPlugin = app.gui:setting('checkbox',
@@ -2956,6 +2850,191 @@ RunApp = function()
                             'orderable_list',
                             'FXTypeOrder', T.SETTINGS.FX_TYPE_ORDER.HINT,
                             { app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility }, {}, true)
+
+
+                        ImGui.SeparatorText(ctx, 'Tags, Presets and Favorites')
+
+                        -- Convert Folders to Tags button
+                        if app.gui:setting('button', T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.LABEL, T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.HINT, nil, { label = T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.BUTTON_LABEL, divideWidth = 2 }) then
+                            app.temp.progressCoroutine = coroutine.create(app.userdata.convertFoldersToTags)
+                        end
+
+                        -- Convert Categories to Tags button
+                        if app.gui:setting('button', T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.LABEL, T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.HINT, nil, { label = T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.BUTTON_LABEL }, true) then
+                            app.temp.progressCoroutine = coroutine.create(app.userdata.convertCategoriesToTags)
+                        end
+
+                        -- Import button
+                        local mergeMode = not ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)
+                        local importButtonText = mergeMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE or
+                            T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL
+                        if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText, divideWidth = 2 }) then
+                            local rv, filename = r.GetUserFileNameForRead('',
+                                'Import Tags, Presets and Favorites',
+                                'scout')
+                            if rv and filename then
+                                app.temp.coroutineArgs = { filename = filename, mergeMode = mergeMode }
+                                app.temp.progressCoroutine = coroutine.create(app.userdata.import)
+                            end
+                        end
+
+                        -- Export button
+                        if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL }, true) then
+                            local rv, filename = r.JS_Dialog_BrowseForSaveFile(
+                                'Export Tags, Presets and Favorites', '',
+                                '',
+                                'Scout Tags files (*.scout)\0*.scout\0\0')
+                            if rv == 1 and filename then
+                                local success, errorMsg = app.userdata:export(filename)
+                                if success then
+                                    app:msg('Export successful: ' .. filename)
+                                else
+                                    app:msg('Export failed: ' .. (errorMsg or 'Unknown error'), 'error')
+                                end
+                            end
+                        end
+
+                        if app.gui:setting('button', T.SETTINGS.DELETE_ALL_TAGS.LABEL, T.SETTINGS.DELETE_ALL_TAGS.HINT, nil, { label = T.SETTINGS.DELETE_ALL_TAGS.BUTTON_LABEL }) then
+                            app.temp.confirmDeleteTags = true
+                        end
+
+
+                        ImGui.EndChild(ctx)
+                    end
+                    ImGui.SameLine(ctx)
+                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX)
+                    local separatorX, separatorY = ImGui.GetCursorScreenPos(ctx)
+                    ImGui.DrawList_AddLine(ImGui.GetWindowDrawList(ctx), separatorX, separatorY, separatorX,
+                        separatorY + select(2, ImGui.GetContentRegionAvail(ctx)) - app.gui.st.sizes.hintHeight,
+                        ImGui.GetStyleColor(ctx, ImGui.Col_Separator))
+                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX * 2)
+                    if ImGui.BeginChild(ctx, 'SettingsRightArea', w / 2 - paddingX - spacingX, -app.gui.st.sizes.hintHeight) then
+                        ImGui.SeparatorText(ctx, 'Shortcuts')
+                        local resetCounter = false
+                        local key = app.settings.current.sleepMode and T.SETTINGS.SHORTCUTS.ENTER_SLEEP_MODE or
+                            T.SETTINGS.SHORTCUTS.CLOSE_SCRIPT
+                        ImGui.BeginDisabled(ctx)
+                        app.settings.current.shortcuts.closeScript, resetCounter = app.gui:setting('shortcut',
+                            key.LABEL,
+                            key.HINT, app.settings.current.shortcuts.closeScript,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'closeScript' end)
+                            })
+                        ImGui.EndDisabled(ctx)
+                        if resetCounter then app.temp.captureCounter = 0 end
+                        if app.settings.current.sleepMode then
+                            app.settings.current.shortcuts.hardCloseScript, resetCounter = app.gui:setting('shortcut',
+                                T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.LABEL,
+                                T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.HINT,
+                                app.settings.current.shortcuts.hardCloseScript,
+                                {
+                                    existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                        function(k, v) return k ~= 'hardCloseScript' end)
+                                })
+                            if resetCounter then app.temp.captureCounter = 0 end
+                        end
+                        app.settings.current.shortcuts.selectAllResults, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.SELECT_ALL_RESULTS.LABEL,
+                            T.SETTINGS.SHORTCUTS.SELECT_ALL_RESULTS.HINT,
+                            app.settings.current.shortcuts.selectAllResults,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'selectAllResults' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+
+                        app.settings.current.shortcuts.markFavorite, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.MARK_FAVORITE.LABEL,
+                            T.SETTINGS.SHORTCUTS.MARK_FAVORITE.HINT, app.settings.current.shortcuts.markFavorite,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'markFavorite' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+
+                        app.settings.current.shortcuts.runRandomResult, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.RANDOM_RESULT.LABEL,
+                            T.SETTINGS.SHORTCUTS.RANDOM_RESULT.HINT, app.settings.current.shortcuts.runRandomResult,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'runRandomResult' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+
+                        app.settings.current.shortcuts.showSettings, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.SHOW_SETTINGS.LABEL,
+                            T.SETTINGS.SHORTCUTS.SHOW_SETTINGS.HINT, app.settings.current.shortcuts.showSettings,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'showSettings' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+
+                        app.settings.current.shortcuts.showHelp, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.SHOW_HELP.LABEL,
+                            T.SETTINGS.SHORTCUTS.SHOW_HELP.HINT, app.settings.current.shortcuts.showHelp,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'showHelp' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+
+                        app.settings.current.shortcuts.toggleDock, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.TOGGLE_DOCK.LABEL,
+                            T.SETTINGS.SHORTCUTS.TOGGLE_DOCK.HINT, app.settings.current.shortcuts.toggleDock,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'toggleDock' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+
+                        app.settings.current.shortcuts.toggleMinimalMode, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.TOGGLE_MINIMAL_MODE.LABEL,
+                            T.SETTINGS.SHORTCUTS.TOGGLE_MINIMAL_MODE.HINT,
+                            app.settings.current.shortcuts.toggleMinimalMode,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'toggleMinimalMode' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+
+                        app.settings.current.shortcuts.toggleSideBar, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.TOGGLE_SIDEBAR.LABEL,
+                            T.SETTINGS.SHORTCUTS.TOGGLE_SIDEBAR.HINT, app.settings.current.shortcuts.toggleSideBar,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'toggleSideBar' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+
+                        app.settings.current.shortcuts.toggleQuickChain, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.TOGGLE_QUICK_CHAIN.LABEL,
+                            T.SETTINGS.SHORTCUTS.TOGGLE_QUICK_CHAIN.HINT, app.settings.current.shortcuts
+                            .toggleQuickChain,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'toggleQuickChain' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+
+                        app.settings.current.shortcuts.addToQuickChain, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.ADD_TO_QUICK_CHAIN.LABEL,
+                            T.SETTINGS.SHORTCUTS.ADD_TO_QUICK_CHAIN.HINT, app.settings.current.shortcuts.addToQuickChain,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'addToQuickChain' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+
+                        app.settings.current.shortcuts.clearQuickChain, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.CLEAR_QUICK_CHAIN.LABEL,
+                            T.SETTINGS.SHORTCUTS.CLEAR_QUICK_CHAIN.HINT, app.settings.current.shortcuts.clearQuickChain,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'clearQuickChain' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
 
 
                         ImGui.SeparatorText(ctx, 'Item specific settings')
@@ -3019,53 +3098,6 @@ RunApp = function()
                             table.remove(app.settings.current.projectScanFolders, removePath)
                             removePath = nil
                         end
-
-                        ImGui.SeparatorText(ctx, 'Tags, Presets and Favorites')
-
-                        -- Convert Folders to Tags button
-                        if app.gui:setting('button', T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.LABEL, T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.HINT, nil, { label = T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.BUTTON_LABEL, divideWidth = 2 }) then
-                            app.temp.progressCoroutine = coroutine.create(app.userdata.convertFoldersToTags)
-                        end
-
-                        -- Convert Categories to Tags button
-                        if app.gui:setting('button', T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.LABEL, T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.HINT, nil, { label = T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.BUTTON_LABEL }, true) then
-                            app.temp.progressCoroutine = coroutine.create(app.userdata.convertCategoriesToTags)
-                        end
-
-                        -- Import button
-                        local mergeMode = not ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)
-                        local importButtonText = mergeMode and T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL_MERGE or
-                            T.SETTINGS.IMPORT_TAGS.BUTTON_LABEL
-                        if app.gui:setting('button', T.SETTINGS.IMPORT_TAGS.LABEL, T.SETTINGS.IMPORT_TAGS.HINT, nil, { label = importButtonText, divideWidth = 2 }) then
-                            local rv, filename = r.GetUserFileNameForRead('',
-                                'Import Tags, Presets and Favorites',
-                                'scout')
-                            if rv and filename then
-                                app.temp.coroutineArgs = { filename = filename, mergeMode = mergeMode }
-                                app.temp.progressCoroutine = coroutine.create(app.userdata.import)
-                            end
-                        end
-
-                        -- Export button
-                        if app.gui:setting('button', T.SETTINGS.EXPORT_TAGS.LABEL, T.SETTINGS.EXPORT_TAGS.HINT, nil, { label = T.SETTINGS.EXPORT_TAGS.BUTTON_LABEL }, true) then
-                            local rv, filename = r.JS_Dialog_BrowseForSaveFile(
-                                'Export Tags, Presets and Favorites', '',
-                                '',
-                                'Scout Tags files (*.scout)\0*.scout\0\0')
-                            if rv == 1 and filename then
-                                local success, errorMsg = app.userdata:export(filename)
-                                if success then
-                                    app:msg('Export successful: ' .. filename)
-                                else
-                                    app:msg('Export failed: ' .. (errorMsg or 'Unknown error'), 'error')
-                                end
-                            end
-                        end
-
-                        if app.gui:setting('button', T.SETTINGS.DELETE_ALL_TAGS.LABEL, T.SETTINGS.DELETE_ALL_TAGS.HINT, nil, { label = T.SETTINGS.DELETE_ALL_TAGS.BUTTON_LABEL }) then
-                            app.temp.confirmDeleteTags = true
-                        end
-
 
                         ImGui.EndChild(ctx)
                     end
