@@ -774,6 +774,7 @@ RunApp = function()
                     r.SetExtState(Scr.ext_name, 'RUNNING', 'WAKING UP', false)    -- This is needed for the wakeup check in checkExternalCommand's RUN_RANDOM, even though it's not referenced directly
                     r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
                     r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false) -- Clear hibernating version
+                    app.temp.quickChain = {}
                     app.flow.setSearchMode(SEARCH_MODE.MAIN, { clear = true })
                     PDefer(app.loop)
                 else
