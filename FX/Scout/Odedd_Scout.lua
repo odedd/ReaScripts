@@ -45,7 +45,7 @@ r.SetExtState(Scr.ext_name, 'SCRIPT_VERSION', Scr.version, false)
 RunApp = function()
     if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' and OD_PrereqsOK({
             reaimgui_version = '0.9.2',
-            js_version = 1.310,    -- required for JS_Window_Find and JS_VKeys_GetState
+            js_version = 1.310,    -- required for JS_Window_...
             reaper_version = 7.03, -- required for set_action_options
         }) then
         package.path = r.ImGui_GetBuiltinPath() .. '/?.lua'
