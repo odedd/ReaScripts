@@ -138,6 +138,23 @@ T.SETTINGS = {
             LABEL = 'Toggle Quick Chain',
             HINT = 'Show/hide the Quick Chain.',
         },
+        SHOW_SETTINGS = {
+            LABEL = 'Show settings',
+            HINT = 'Open the settings window.',
+        },
+        SHOW_HELP = {
+            LABEL = 'Show help',
+            HINT = 'Open the help window.',
+        },
+        TOGGLE_DOCK = {
+            LABEL = 'Dock/Undock script',
+            HINT = 'Dock/undock the script in the Reaper docker.',
+        },
+        TOGGLE_MINIMAL_MODE = {
+            LABEL = 'Toggle minimal mode',
+            HINT = 'Toggle minimal mode on and off.',
+        }
+
     },
     UI_SCALE = {
         LABEL = 'Zoom',

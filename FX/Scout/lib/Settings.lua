@@ -13,69 +13,19 @@ PB_Settings = OD_Settings:new({
         addInstrumentsAsInstrumentTracks = true,
         minimalMode = false,
         shortcuts = {
-            markFavorite = {
-                key = OD_KEYCODES.F,
-                ctrl = true,
-                shift = true,
-                alt = false,
-                macCtrl = false
-            },
-            closeScript = {
-                key = OD_KEYCODES.ESCAPE,
-                ctrl = false,
-                shift = false,
-                alt = false,
-                macCtrl = false
-            },
-            hardCloseScript = {
-                key = OD_KEYCODES.Q,
-                ctrl = true,
-                shift = true,
-                alt = false,
-                macCtrl = false
-            },
-            selectAllResults = {
-                key = OD_KEYCODES.A,
-                ctrl = true,
-                shift = true,
-                alt = false,
-                macCtrl = false
-            },
-            runRandomResult = {
-                key = OD_KEYCODES.R,
-                ctrl = true,
-                shift = true,
-                alt = false,
-                macCtrl = false
-            },
-            addToQuickChain = {
-                key = OD_KEYCODES.RIGHT,
-                ctrl = true,
-                shift = true,
-                alt = false,
-                macCtrl = false
-            },
-            clearQuickChain = {
-                key = OD_KEYCODES.K,
-                ctrl = true,
-                shift = true,
-                alt = false,
-                macCtrl = false
-            },
-            toggleQuickChain = {
-                key = OD_KEYCODES.Q,
-                ctrl = false,
-                shift = false,
-                alt = true,
-                macCtrl = false
-            },
-            toggleSideBar = {
-                key = OD_KEYCODES.S,
-                ctrl = false,
-                shift = false,
-                alt = true,
-                macCtrl = false
-            }
+            markFavorite = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_F,
+            closeScript = ImGui.Key_Escape,
+            hardCloseScript = ImGui.Mod_Super | ImGui.Key_Q,
+            selectAllResults = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_A,
+            runRandomResult = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_R,
+            addToQuickChain = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_RightArrow,
+            clearQuickChain = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_K,
+            toggleQuickChain = ImGui.Mod_Alt | ImGui.Key_Q,
+            toggleSideBar = ImGui.Mod_Alt | ImGui.Key_S,
+            showSettings = ImGui.Mod_Ctrl | ImGui.Key_Comma,
+            showHelp = ImGui.Mod_Ctrl | ImGui.Key_F1,
+            toggleDock = ImGui.Mod_Ctrl | ImGui.Key_D,
+            toggleMinimalMode = ImGui.Mod_Ctrl | ImGui.Key_M,
         },
         fxTypeVisibility = {
             ['Internal'] = true,
@@ -134,7 +84,7 @@ PB_Settings = OD_Settings:new({
             ["RegionAssetType"] = true,         -- Markers asset type
             ["ProjectTemplateAssetType"] = true -- Project Templates asset type
         },
-        uiScale = 1,
+        uiScale = 1.5,
 
         -- set In the UI
         sideBarWidth = 200,
@@ -159,11 +109,12 @@ PB_Settings = OD_Settings:new({
 
 function PB_Settings.shortCutToKeyChord(shortcut)
     if shortcut == nil then return 0 end
-    return OD_GetImGuiKeyCode(ImGui, shortcut.key)|
-        (shortcut.shift and ImGui.Mod_Shift or 0) |
-        (shortcut.ctrl and ImGui.Mod_Ctrl or 0) |
-        (shortcut.macCtrl and ImGui.Mod_Super or 0) |
-        (shortcut.alt and ImGui.Mod_Alt or 0)
+    return shortcut
+    -- return OD_GetImGuiKeyCode(ImGui, shortcut.key)|
+    --     (shortcut.shift and ImGui.Mod_Shift or 0) |
+    --     (shortcut.ctrl and ImGui.Mod_Ctrl or 0) |
+    --     (shortcut.macCtrl and ImGui.Mod_Super or 0) |
+        -- (shortcut.alt and ImGui.Mod_Alt or 0)
 end
 
 function PB_Settings:new(o)

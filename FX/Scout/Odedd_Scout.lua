@@ -51,6 +51,8 @@ RunApp = function()
         package.path = r.ImGui_GetBuiltinPath() .. '/?.lua'
         ImGui = require 'imgui' '0.9.2'
 
+        OD_KeyboardImguiHelperInit()
+
         dofile(p .. 'lib/Constants.lua')
         dofile(p .. 'lib/Texts.lua')
         dofile(p .. 'lib/Settings.lua')
@@ -908,20 +910,9 @@ RunApp = function()
                     end
                 end
             end,
-
-            -- isShortcutPressed = function(key)
-            --     if app.settings.current.shortcuts[key] and app.settings.current.shortcuts[key].key == -1 then return false end
-            --     return app.settings.current.shortcuts[key] and
-            --         OD_IsGlobalKeyPressed(app.settings.current.shortcuts[key].key, true) and
-            --         OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL) == app.settings.current.shortcuts[key].ctrl
-            --         and OD_IsGlobalKeyDown(OD_KEYCODES.SHIFT) == app.settings.current.shortcuts[key].shift
-            --         and OD_IsGlobalKeyDown(OD_KEYCODES.ALT) == app.settings.current.shortcuts[key].alt
-            --         and OD_IsGlobalKeyDown(OD_KEYCODES.STARTKEY) == app.settings.current.shortcuts[key].macCtrl
-            -- end,
-
             isShortcutPressed = function(key)
                 local shortcut = app.settings.current.shortcuts[key]
-                if shortcut and shortcut.key == -1 then return false end
+                if shortcut == nil then return false end
                 local keyChord = app.settings.shortCutToKeyChord(shortcut)
                 return ImGui.Shortcut(app.gui.ctx, keyChord, ImGui.InputFlags_RouteAlways)
             end,
@@ -942,6 +933,27 @@ RunApp = function()
             end,
             clearSearchInputText = function()
                 app.temp.clearSearchInputText = true
+            end,
+            shortCutToText = function(keychord)
+                if keychord == nil or keychord == 0 then return '' end
+                local mods = {}
+                if OD_BfCheck(keychord, ImGui.Mod_Ctrl) then
+                    table.insert(mods, OD_IMGUI_KEY_NAMES[ImGui.Mod_Ctrl])
+                end
+                if OD_BfCheck(keychord, ImGui.Mod_Alt) then
+                    table.insert(mods, OD_IMGUI_KEY_NAMES[ImGui.Mod_Alt])
+                end
+                if OD_BfCheck(keychord, ImGui.Mod_Shift) then
+                    table.insert(mods, OD_IMGUI_KEY_NAMES[ImGui.Mod_Shift])
+                end
+                if OD_BfCheck(keychord, ImGui.Mod_Super) then
+                    table.insert(mods, OD_IMGUI_KEY_NAMES[ImGui.Mod_Super])
+                end
+                local key = keychord & ~(ImGui.Mod_Ctrl | ImGui.Mod_Alt | ImGui.Mod_Shift | ImGui.Mod_Super)
+                if key ~= 0 then
+                    table.insert(mods, OD_IMGUI_KEY_NAMES[key])
+                end
+                return table.concat(mods, '+')
             end,
             keyModsToText = function(mods)
                 local modKeys = {}
@@ -1532,7 +1544,7 @@ RunApp = function()
                         end
                     end
 
-                    if ImGui.BeginChild(ctx, 'resultsArea', w - (app.settings.current.showSideBar and (sideBarW + paddingX * 2) or 0) - (app.settings.current.showQuickChain and (quickChainW + paddingX * 2) or 0 )) then
+                    if ImGui.BeginChild(ctx, 'resultsArea', w - (app.settings.current.showSideBar and (sideBarW + paddingX * 2) or 0) - (app.settings.current.showQuickChain and (quickChainW + paddingX * 2) or 0)) then
                         if app.pageSwitched then
                             app.flow.filterResults({ text = '' })
                         end
@@ -1780,7 +1792,7 @@ RunApp = function()
                         separatorY + h,
                         ImGui.GetStyleColor(ctx, ImGui.Col_Separator))
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - paddingX)
-                    ImGui.InvisibleButton(ctx, '##quickChainSeparator', paddingX*2, quickChainH)
+                    ImGui.InvisibleButton(ctx, '##quickChainSeparator', paddingX * 2, quickChainH)
                     if ImGui.IsItemHovered(ctx) then
                         app:setHoveredHint('main', 'Drag to change Quick Chain width')
                         ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
@@ -1799,8 +1811,8 @@ RunApp = function()
                         end
                     end
                     ImGui.SameLine(ctx)
-                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX*2+ paddingX)
-                    ImGui.Dummy(ctx, 0,0)
+                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX * 2 + paddingX)
+                    ImGui.Dummy(ctx, 0, 0)
                 end
                 local drawQuickChainSeparator = function()
                     -- Separator Resize Line
@@ -1810,7 +1822,7 @@ RunApp = function()
                         separatorY + h,
                         ImGui.GetStyleColor(ctx, ImGui.Col_Separator))
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - paddingX)
-                    ImGui.InvisibleButton(ctx, '##quickChainSeparator', paddingX*2, quickChainH)
+                    ImGui.InvisibleButton(ctx, '##quickChainSeparator', paddingX * 2, quickChainH)
                     if ImGui.IsItemHovered(ctx) then
                         app:setHoveredHint('main', 'Drag to change Quick Chain width')
                         ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
@@ -1829,8 +1841,8 @@ RunApp = function()
                         end
                     end
                     ImGui.SameLine(ctx)
-                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX*2+ paddingX)
-                    ImGui.Dummy(ctx, 0,0)
+                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX * 2 + paddingX)
+                    ImGui.Dummy(ctx, 0, 0)
                 end
                 local drawsideBar = function()
                     if ImGui.BeginChild(ctx, 'sideBar', sideBarW - spacingX * 2, sideBarH) then
@@ -2440,7 +2452,7 @@ RunApp = function()
                     end
                 end
 
-                if ImGui.BeginChild(ctx, 'mainArea', w - (app.settings.current.showSideBar and (sideBarW + paddingX * 2) or 0) - (app.settings.current.showQuickChain and (quickChainW + paddingX * 2) or 0 )) then
+                if ImGui.BeginChild(ctx, 'mainArea', w - (app.settings.current.showSideBar and (sideBarW + paddingX * 2) or 0) - (app.settings.current.showQuickChain and (quickChainW + paddingX * 2) or 0)) then
                     app.draw.activeFilters()
                     drawResultsTable()
                     ImGui.EndChild(ctx)
@@ -2476,14 +2488,15 @@ RunApp = function()
                     table.insert(menu,
                         { icon = 'money', hint = ('%s is free, but donations are welcome :)'):format(Scr.name) })
                     if ImGui.IsWindowDocked(ctx) then
-                        table.insert(menu, { icon = 'undock', hint = 'Undock' })
+                        table.insert(menu, { icon = 'undock', hint = 'Undock', shortcut = 'toggleDock' })
                     else
-                        table.insert(menu, { icon = 'dock_down', hint = 'Dock' })
+                        table.insert(menu, { icon = 'dock_down', hint = 'Dock', shortcut = 'toggleDock' })
                     end
                     table.insert(menu, {
                         icon = 'question',
                         hint = 'Help',
-                        active = app.temp.showHelpWindow
+                        active = app.temp.showHelpWindow,
+                        shortcut = 'showHelp'
                     })
                     if app.temp.fullWindow then
                         table.insert(menu,
@@ -2491,25 +2504,29 @@ RunApp = function()
                                 icon = 'lightning',
                                 hint = app.settings.current.showQuickChain and 'Hide Quick Chain' or
                                     'Show Quick Chain',
-                                active = app.settings.current.showQuickChain
+                                active = app.settings.current.showQuickChain,
+                                shortcut = 'toggleQuickChain'
                             })
                         table.insert(menu,
                             {
                                 icon = 'sidebar',
                                 hint = app.settings.current.showSideBar and 'Hide side bar' or
                                     'Show side bar',
-                                active = app.settings.current.showSideBar
+                                active = app.settings.current.showSideBar,
+                                shortcut = 'toggleSideBar'
                             })
                     end
                     table.insert(menu, {
                         icon = 'gear',
                         hint = 'Settings',
-                        active = ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow')
+                        active = ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow'),
+                        shortcut = 'showSettings'
                     })
 
                     table.insert(menu, {
                         icon = app.settings.current.minimalMode and 'maximize' or 'minimize',
-                        hint = app.settings.current.minimalMode and 'Turn off minimal mode' or 'Turn on minimal mode'
+                        hint = app.settings.current.minimalMode and 'Turn off minimal mode' or 'Turn on minimal mode',
+                        shortcut = 'toggleMinimalMode'
                     })
                     return menu
                 end
@@ -2568,15 +2585,6 @@ RunApp = function()
                         elseif app.guiHelpers.isShortcutPressed('clearQuickChain') then
                             app.temp.quickChain = {}
                             pressed = true
-                        elseif app.guiHelpers.isShortcutPressed('toggleQuickChain') then
-                            app.settings.current.showQuickChain = not app.settings.current.showQuickChain
-                            app.settings:save()
-                            pressed = true
-
-                        elseif app.guiHelpers.isShortcutPressed('toggleSideBar') then
-                            app.settings.current.showSideBar = not app.settings.current.showSideBar
-                            app.settings:save()
-                            pressed = true
                         elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.guiHelpers.isShortcutPressed('markFavorite') and app.selection.keyboardPos then
                             -- Toggle favorite status for all selected assets
                             pressed = true
@@ -2595,7 +2603,7 @@ RunApp = function()
                                 end
                             end
                         end
-                        if pressed then app.temp.shortCutPressed = true end
+                        if pressed then app.temp.shortcutPressed = true end
                     end
                 end
                 local drawTextSearchInput = function()
@@ -2625,10 +2633,10 @@ RunApp = function()
                             inputFlags = inputFlags | ImGui.InputTextFlags_CallbackAlways
                             callback = app.gui.clearInputIfNeeded
                         end
-                        if app.temp.shortCutPressed then
+                        if app.temp.shortcutPressed then
                             inputFlags = inputFlags | ImGui.InputTextFlags_CallbackCharFilter
                             callback = app.gui.rejectCharacter
-                            app.temp.shortCutPressed = nil
+                            app.temp.shortcutPressed = nil
                         end
                         rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput" .. app.temp.searchMode,
                             T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput,
@@ -2674,11 +2682,14 @@ RunApp = function()
                     ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
                     local clicked = nil
                     for i, btn in ipairs(buttons) do
+                        local shortcut = btn.shortcut and
+                        app.guiHelpers.shortCutToText(app.settings.current.shortcuts[btn.shortcut]) or ''
+                        local hint = btn.hint .. (shortcut ~= '' and ' (' .. shortcut .. ')' or '')
                         local col = btn.active and app.gui.st.col.buttons.topBarActiveIcon or
                             app.gui.st.col.buttons.topBarIcon
-                        if app.guiHelpers.iconButton(ctx, btn.icon, col, btn.hint) then
-                            clicked = btn
-                                .icon
+                        if app.guiHelpers.iconButton(ctx, btn.icon, col, hint) or (btn.shortcut and app.guiHelpers.isShortcutPressed(btn.shortcut) and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup)) then
+                            app.temp.shortcutPressed = true
+                            clicked = btn.icon
                         end
                     end
                     ImGui.PopFont(ctx)
@@ -2718,9 +2729,7 @@ RunApp = function()
                 end
                 local function handleMenuButtons(rv, btn)
                     if rv then
-                        if btn == 'close' then
-                            -- app.exit = true
-                        elseif btn == 'undock' then
+                        if btn == 'undock' then
                             app.gui.mainWindow.dockTo = 0
                         elseif btn == 'dock_down' then
                             if app.settings.current.lastDockId then
@@ -2751,11 +2760,14 @@ RunApp = function()
                 end
                 if ImGui.BeginChild(ctx, 'topBar', nil, h, ImGui.ChildFlags_AlwaysUseWindowPadding, ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoScrollWithMouse) then
                     drawLogo()
+                    local searchX = ImGui.GetCursorPosX(ctx)
+                    local menuX = searchX + select(1, ImGui.GetContentRegionAvail(ctx)) - menuW +
+                        ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) - paddingX - winPaddingX
+                    ImGui.SetCursorPosX(ctx, menuX + spacingX)
+                    local rv, btn = drawIconMenu(ctx, menu) -- this needs to be drawn before the text input so that it captures the shortcuts to set app.temp.shortcutPressed in time
+                    ImGui.SetCursorPosX(ctx, searchX)
                     drawTextSearchInput()
-                    ImGui.SameLine(ctx)
-                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
-                    local rv, btn = drawIconMenu(ctx, menu)
-                    ImGui.Dummy(ctx, 0, 0) -- this prevents errors on UI resizing
+                    -- ImGui.Dummy(ctx, 0, 0) -- this prevents errors on UI resizing. later update - I think it's fine
                     ImGui.PopFont(ctx)
                     ImGui.EndChild(ctx)
                     handleMenuButtons(rv, btn)
@@ -2868,6 +2880,35 @@ RunApp = function()
                             {
                                 existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                                     function(k, v) return k ~= 'runRandomResult' end)
+                            })
+                        app.settings.current.shortcuts.showSettings, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.SHOW_SETTINGS.LABEL,
+                            T.SETTINGS.SHORTCUTS.SHOW_SETTINGS.HINT, app.settings.current.shortcuts.showSettings,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'showSettings' end)
+                            })
+                        app.settings.current.shortcuts.showHelp, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.SHOW_HELP.LABEL,
+                            T.SETTINGS.SHORTCUTS.SHOW_HELP.HINT, app.settings.current.shortcuts.showHelp,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'showHelp' end)
+                            })
+                        app.settings.current.shortcuts.toggleDock, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.TOGGLE_DOCK.LABEL,
+                            T.SETTINGS.SHORTCUTS.TOGGLE_DOCK.HINT, app.settings.current.shortcuts.toggleDock,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'toggleDock' end)
+                            })
+                        app.settings.current.shortcuts.toggleMinimalMode, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.TOGGLE_MINIMAL_MODE.LABEL,
+                            T.SETTINGS.SHORTCUTS.TOGGLE_MINIMAL_MODE.HINT,
+                            app.settings.current.shortcuts.toggleMinimalMode,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'toggleMinimalMode' end)
                             })
                         app.settings.current.shortcuts.toggleSideBar, resetCounter = app.gui:setting('shortcut',
                             T.SETTINGS.SHORTCUTS.TOGGLE_SIDEBAR.LABEL,
@@ -3029,8 +3070,6 @@ RunApp = function()
                     app.draw.hint(ctx, 'settings')
                     if app.temp.captureCounter > 3 and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) and not ImGui.IsPopupOpen(ctx, 'Operation in Progress') and not ImGui.IsPopupOpen(ctx, 'Scout##msg') then
                         ImGui.CloseCurrentPopup(ctx)
-                    else
-                        OD_ReleaseGlobalKeys()
                     end
                     app.draw.progressBarWindow(ctx)
                     app:drawMsg()
@@ -3041,7 +3080,6 @@ RunApp = function()
                 end
                 if app.temp.settingsWindowOpen and not (open or ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow')) then
                     app.temp.settingsWindowOpen = nil
-                    OD_ReleaseGlobalKeys()
 
                     -- Convert temp group order and visibility back to settings format
                     if app.temp.groupOrder and app.temp.groupVisibility then
@@ -3697,7 +3735,6 @@ RunApp = function()
             if app.logger.profile then r.ShowConsoleMsg(Profile.report(10)) end
 
             r.SetExtState(Scr.ext_name, 'RUNNING', '', false)
-            OD_ReleaseGlobalKeys()
         end
 
         function Exit()

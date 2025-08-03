@@ -527,25 +527,17 @@ PB_Gui.init = function(self, fonts)
             _, retval1 = ImGui.InputTextWithHint(ctx, '##' .. text, data.hint, val)
         elseif stType == 'shortcut' then
             hint = hint .. ' alt-click to remove shortcut.'
-            if val and (val.key == -1) then val = nil end
+            -- if val and (val.key == -1) then val = nil end
             local label, newVal
             if self.app.temp._capturing == text then
                 label = '...'
                 retval2 = true
                 hint = 'Press a key combination, or click to cancel'
-                local key = OD_GetKeyPressed(OD_KEYCODES['0'], OD_KEYCODES['Z'], true) or
-                    OD_GetKeyPressed(OD_KEYCODES['NUMPAD0'], OD_KEYCODES['F24'], true) or
-                    OD_GetKeyPressed(OD_KEYCODES['ESCAPE'], OD_KEYCODES['DOWN'], true)
+                local key = OD_GetImguiKeysPressed(ctx)
                 if key then
-                    local testVal = {
-                        key = key,
-                        ctrl = OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL),
-                        shift = OD_IsGlobalKeyDown(OD_KEYCODES.SHIFT),
-                        alt = OD_IsGlobalKeyDown(OD_KEYCODES.ALT),
-                        macCtrl = (_OD_ISMAC and OD_IsGlobalKeyDown(OD_KEYCODES.STARTKEY))
-                    }
-                    for k, v in pairs(data.existingShortcuts or {}) do
-                        if v.key == testVal.key and v.ctrl == testVal.ctrl and v.shift == testVal.shift and v.alt == testVal.alt and v.macCtrl == testVal.macCtrl then
+                    local testVal = key | ImGui.GetKeyMods(ctx)
+                    for key, shortcut in pairs(data.existingShortcuts or {}) do
+                        if shortcut == testVal then
                             testVal = nil
                             self.app:msg('Shortcut already in use')
                             break
@@ -557,16 +549,12 @@ PB_Gui.init = function(self, fonts)
                     end
                 end
             else
-                if val ~= nil and OD_IsGlobalKeyDown(OD_KEYCODES.ALT) then
+                if val ~= nil and ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
                     label = 'Click to remove shortcut'
                 elseif val == nil then
                     label = 'Click to set shortcut'
                 else
-                    label = OD_KEYCODE_NAMES[val.key]
-                    if val.macCtrl then label = OD_KEYCODE_NAMES[OD_KEYCODES.STARTKEY] .. '+' .. label end
-                    if val.ctrl then label = OD_KEYCODE_NAMES[OD_KEYCODES.CONTROL] .. '+' .. label end
-                    if val.shift then label = OD_KEYCODE_NAMES[OD_KEYCODES.SHIFT] .. '+' .. label end
-                    if val.alt then label = OD_KEYCODE_NAMES[OD_KEYCODES.ALT] .. '+' .. label end
+                    label = self.app.guiHelpers.shortCutToText(val)
                 end
             end
             ImGui.PushStyleColor(ctx, ImGui.Col_Button, ImGui.GetStyleColor(ctx, ImGui.Col_FrameBg))
@@ -574,7 +562,7 @@ PB_Gui.init = function(self, fonts)
                 if self.app.temp._capturing == text then
                     self.app.temp._capturing = nil
                 else
-                    if OD_IsGlobalKeyDown(OD_KEYCODES.ALT) then
+                    if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
                         if val ~= nil then val = nil end
                     else
                         self.app.temp._capturing = text
@@ -582,7 +570,7 @@ PB_Gui.init = function(self, fonts)
                 end
             end
             ImGui.PopStyleColor(ctx)
-            if val == nil then val = { key = -1, ctrl = false, shift = false, alt = false } end
+            -- if val == nil then val = { key = -1, ctrl = false, shift = false, alt = false } end
             retval1 = newVal or val
         elseif stType == 'orderable_list' then
             -- ImGui.Dummy(ctx, widgetWidth, 20)
