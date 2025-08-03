@@ -32,7 +32,7 @@ else
     dofile(p .. '../../Resources/Common/Common.lua')
 end
 
-LOG_LEVEL = OD_Logger.LOG_LEVEL.NONE
+LOG_LEVEL = OD_Logger.LOG_LEVEL.ERROR
 
 OD_Init()
 
@@ -1727,8 +1727,13 @@ RunApp = function()
                                                 app.gui:pushColors(app.gui.st.col.search.thirdResult)
                                                 local text = '|'
                                                 for t = 1, #(result.tags or {}) do
-                                                    local tag = tagInfo[result.tags[t]]
-                                                    text = text .. tag.name .. '|'
+                                                    if tagInfo[result.tags[t]] == nil then
+                                                        app.logger:logError('Tag not found in tagInfo: ' ..
+                                                        tostring(result.tags[t]))
+                                                    else
+                                                        local tag = tagInfo[result.tags[t]]
+                                                        text = text .. tag.name .. '|'
+                                                    end
                                                 end
                                                 ImGui.Text(ctx, text)
                                                 app.gui:popColors(app.gui.st.col.search.thirdResult)
