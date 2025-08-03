@@ -2848,6 +2848,7 @@ RunApp = function()
                         local resetCounter = false
                         local key = app.settings.current.sleepMode and T.SETTINGS.SHORTCUTS.ENTER_SLEEP_MODE or
                             T.SETTINGS.SHORTCUTS.CLOSE_SCRIPT
+                            ImGui.BeginDisabled(ctx)
                         app.settings.current.shortcuts.closeScript, resetCounter = app.gui:setting('shortcut',
                             key.LABEL,
                             key.HINT, app.settings.current.shortcuts.closeScript,
@@ -2855,6 +2856,7 @@ RunApp = function()
                                 existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                                     function(k, v) return k ~= 'closeScript' end)
                             })
+                            ImGui.EndDisabled(ctx)
                         if resetCounter then app.temp.captureCounter = 0 end
                         if app.settings.current.sleepMode then
                             app.settings.current.shortcuts.hardCloseScript, resetCounter = app.gui:setting('shortcut',
