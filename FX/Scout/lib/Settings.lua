@@ -61,6 +61,20 @@ PB_Settings = OD_Settings:new({
                 shift = true,
                 alt = false,
                 macCtrl = false
+            },
+            toggleQuickChain = {
+                key = OD_KEYCODES.Q,
+                ctrl = false,
+                shift = false,
+                alt = true,
+                macCtrl = false
+            },
+            toggleSideBar = {
+                key = OD_KEYCODES.S,
+                ctrl = false,
+                shift = false,
+                alt = true,
+                macCtrl = false
             }
         },
         fxTypeVisibility = {

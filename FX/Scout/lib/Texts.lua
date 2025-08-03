@@ -130,6 +130,14 @@ T.SETTINGS = {
             LABEL = 'Mark favorite',
             HINT = 'Mark search result as favorite.',
         },
+        TOGGLE_SIDEBAR = {
+            LABEL = 'Toggle side bar',
+            HINT = 'Show/hide the side bar.',
+        },
+        TOGGLE_QUICK_CHAIN = {
+            LABEL = 'Toggle Quick Chain',
+            HINT = 'Show/hide the Quick Chain.',
+        },
     },
     UI_SCALE = {
         LABEL = 'Zoom',

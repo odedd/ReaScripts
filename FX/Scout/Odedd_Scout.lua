@@ -2467,11 +2467,6 @@ RunApp = function()
                         hint = 'Help',
                         active = app.temp.showHelpWindow
                     })
-                    table.insert(menu, {
-                        icon = 'gear',
-                        hint = 'Settings',
-                        active = ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow')
-                    })
                     if app.temp.fullWindow then
                         table.insert(menu,
                             {
@@ -2488,6 +2483,12 @@ RunApp = function()
                                 active = app.settings.current.showSideBar
                             })
                     end
+                    table.insert(menu, {
+                        icon = 'gear',
+                        hint = 'Settings',
+                        active = ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow')
+                    })
+
                     table.insert(menu, {
                         icon = app.settings.current.minimalMode and 'maximize' or 'minimize',
                         hint = app.settings.current.minimalMode and 'Turn off minimal mode' or 'Turn on minimal mode'
@@ -2530,25 +2531,25 @@ RunApp = function()
                                     goWithQuickChain and app.temp.quickChain or app.selection:results(),
                                     RESULT_CONTEXT.KEYBOARD)
                             end
-                            -- pressed = true
                         elseif app.guiHelpers.isShortcutPressed('selectAllResults', true) then
                             app.selection:selectRange(1, #app.temp.searchResults)
-                            -- pressed = true
                         elseif app.guiHelpers.isShortcutPressed('hardCloseScript', true) then
                             app.hardExit = true
-                            -- pressed = true
                         elseif app.guiHelpers.isShortcutPressed('runRandomResult', true) then
                             if #app.temp.searchResults > 0 then
                                 app.flow.executeRandomResult()
                             end
                         elseif app.guiHelpers.isShortcutPressed('addToQuickChain', true) then
                             app.flow.addSelectionToQuickChain()
-                            -- pressed = true
                         elseif app.guiHelpers.isShortcutPressed('clearQuickChain', true) then
                             app.temp.quickChain = {}
-                            -- pressed = true
+                        elseif app.guiHelpers.isShortcutPressed('toggleQuickChain', true) then
+                            app.settings.current.showQuickChain = not app.settings.current.showQuickChain
+                            app.settings:save()
+                        elseif app.guiHelpers.isShortcutPressed('toggleSideBar', true) then
+                            app.settings.current.showSideBar = not app.settings.current.showSideBar
+                            app.settings:save()
                         elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.guiHelpers.isShortcutPressed('markFavorite', true) and app.selection.keyboardPos then
-                            -- pressed = true
                             -- Toggle favorite status for all selected assets
                             local selectedResults = app.selection:results()
                             if #selectedResults > 0 then
@@ -2565,7 +2566,6 @@ RunApp = function()
                                 end
                             end
                         end
-                        -- if pressed then app.guiHelpers.blockNextCharacter() end
                     end
                 end
                 local drawTextSearchInput = function()
@@ -2833,6 +2833,20 @@ RunApp = function()
                             {
                                 existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                                     function(k, v) return k ~= 'runRandomResult' end)
+                            })
+                        app.settings.current.shortcuts.toggleSideBar, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.TOGGLE_SIDEBAR.LABEL,
+                            T.SETTINGS.SHORTCUTS.TOGGLE_SIDEBAR.HINT, app.settings.current.shortcuts.toggleSideBar,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'toggleSideBar' end)
+                            })
+                        app.settings.current.shortcuts.toggleQuickChain, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.TOGGLE_QUICK_CHAIN.LABEL,
+                            T.SETTINGS.SHORTCUTS.TOGGLE_QUICK_CHAIN.HINT, app.settings.current.shortcuts.toggleQuickChain,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'toggleQuickChain' end)
                             })
                         app.settings.current.shortcuts.addToQuickChain, resetCounter = app.gui:setting('shortcut',
                             T.SETTINGS.SHORTCUTS.ADD_TO_QUICK_CHAIN.LABEL,
