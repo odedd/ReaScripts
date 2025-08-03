@@ -3247,7 +3247,7 @@ RunApp = function()
 
                     if not open or not app.temp.showHelpWindow then
                         app.temp.showHelpWindow = nil
-                        local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or r.JS_Window_FindTop('Scout', true)
+                        local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or r.JS_Window_Find(Scr.name, true)
                         if scriptHwnd then
                             r.JS_Window_SetFocus(scriptHwnd)
                         end
@@ -3849,7 +3849,7 @@ CheckIfHybernating = function()
         end
     elseif r.GetExtState(Scr.ext_name, 'RUNNING') == 'TRUE' then
         -- Script is already running, just bring it to focus
-        local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or r.JS_Window_FindTop('Scout', true)
+        local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or r.JS_Window_FindTop(Scr.name, true)
         if scriptHwnd then
             r.JS_Window_SetFocus(scriptHwnd)
         end
