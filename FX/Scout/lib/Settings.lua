@@ -11,7 +11,7 @@ PB_Settings = OD_Settings:new({
         closeAfterExecute = true,
         recentlyAddedDays = 30,
         addInstrumentsAsInstrumentTracks = true,
-        minimalMode = true,
+        minimalMode = false,
         shortcuts = {
             markFavorite = {
                 key = OD_KEYCODES.F,
@@ -112,7 +112,7 @@ PB_Settings = OD_Settings:new({
         sideBarWidth = 200,
         showSideBar = true,
         quickChainWidth = 200,
-        showQuickChain = true,
+        showQuickChain = false,
         -- Internal
         minSideBarWidth = 140,
         minQuickChainWidth = 140,
