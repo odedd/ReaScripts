@@ -3074,8 +3074,21 @@ RunApp = function()
                                 T.SETTINGS.SEND_FOLDER_NAME.HINT, app.settings.current.sendFolderName,
                                 { hint = T.SETTINGS.SEND_FOLDER_NAME.LABEL }, true)
                         end
-
-
+                        app.settings.current.overrideDefaultSendVolume = app.gui:setting('checkbox',
+                            T.SETTINGS.OVERRIDE_DEFAULT_SEND_VOLUME.LABEL,
+                            T.SETTINGS.OVERRIDE_DEFAULT_SEND_VOLUME.HINT, app.settings.current.overrideDefaultSendVolume)
+                        if app.settings.current.overrideDefaultSendVolume then
+                            app.settings.current.sendVolume = app.gui:setting('dragdouble', '###sendVolume',
+                                T.SETTINGS.SEND_VOLUME.HINT, app.settings.current.sendVolume,
+                                {
+                                speed = 0.1,
+                                min = -144,
+                                max = 12,
+                                format = app.settings.current.sendVolume <= -144 and '-inf' or '%.2f dB',
+                                help = T.RECENTLY_ADDED_EXPLANATION
+                            }, true)
+                             app.settings.current.sendVolume = math.max(math.min(app.settings.current.sendVolume, 12), -144)
+                        end
                         local removePath = nil
                         local path = app.gui:setting('folder', T.SETTINGS.PROJECT_SCAN_FOLDER.LABEL,
                             T.SETTINGS.PROJECT_SCAN_FOLDER.HINT, nil,

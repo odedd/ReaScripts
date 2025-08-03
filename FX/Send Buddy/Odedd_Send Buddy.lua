@@ -458,7 +458,6 @@ if OD_PrereqsOK({
                     return
                 end
                 local target = targetTrack and ((s.type == SEND_TYPE.SEND) and s.destTrack or s.srcTrack) or s
-                local v = OD_dBFromValue(target.vol)
                 ImGui.SetNextItemWidth(ctx, w)
                 if targetTrack then app.gui:pushColors(app.gui.st.col.targetFader) end
                 local rv, v3 = ImGui.DragDouble(ctx, '##db', v, 0, 0, 0, '%.2f')

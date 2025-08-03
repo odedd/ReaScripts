@@ -59,6 +59,14 @@ T.SETTINGS = {
         LABEL = 'Create sends in folder',
         HINT = 'New send tracks can be created inside a folder track.',
     },
+    OVERRIDE_DEFAULT_SEND_VOLUME = {
+        LABEL = 'Override send volume',
+        HINT = 'Override the default send volume for new sends.',
+    },
+    SEND_VOLUME = {
+        LABEL = 'Send volume',
+        HINT = 'The volume for new sends. Set to -inf to disable.',
+    },
     SEND_FOLDER_NAME = {
         LABEL = 'Folder name',
         HINT = 'If one does not exist, it will be created when adding sends.',

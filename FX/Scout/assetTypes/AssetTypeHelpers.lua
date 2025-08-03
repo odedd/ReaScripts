@@ -31,9 +31,25 @@ helpers.createSendTrack = function(asset)
     return newTrack
 end
 
+helpers.setDefaultSendVolume = function(settings)
+    -- Sets up plugin UI state based on settings, returns original state
+    if settings.overrideDefaultSendVolume then
+        local originalState = r.SNM_GetDoubleConfigVar('defsendvol', -1)
+        r.SNM_SetDoubleConfigVar('defsendvol', settings.sendVolume == -144 and 0 or OD_ValFromdB(settings.sendVolume))
+        return originalState
+    end
+    return nil -- No change needed
+end
+
+helpers.resetDefaultSendVolume = function(originalState)
+    -- Restores the original plugin UI state
+    if originalState ~= nil then
+        r.SNM_SetDoubleConfigVar('defsendvol', originalState)
+    end
+end
 helpers.setPluginUIState = function(settings)
     -- Sets up plugin UI state based on settings, returns original state
-    if settings.showFxUI ~= nil and settings.showFxUI ~= SHOW_FX_UI.FOLLOW_PREFERENCE then
+    if settings.overrideDefaultSendVolume then
         local originalState = tonumber(select(2, r.get_config_var_string('fxfloat_focus')))
         r.SNM_SetIntConfigVar('fxfloat_focus',
             OD_BfSet(originalState, 4, settings.showFxUI == SHOW_FX_UI.OPEN))
@@ -174,8 +190,9 @@ helpers.addPluginActions = function(instance)
         end)
     instance:addInteraction(ImGui.Mod_Alt | ImGui.Mod_Ctrl, 'add %asset to selected track(s) as input FX',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
-            local selectedTracks = helpers.tracksIfDragged(context, contextData, index) or helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
-                contextData, confirm)
+            local selectedTracks = helpers.tracksIfDragged(context, contextData, index) or
+                helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
+                    contextData, confirm)
 
             if selectedTracks and #selectedTracks > 0 then
                 local originalUIState = helpers.setPluginUIState(asset.context.settings.current)
@@ -193,8 +210,8 @@ helpers.addPluginActions = function(instance)
         'send to a new track with %asset%plural( (all on the same track%))',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
             local selectedTracks = helpers.tracksIfDragged(context, contextData, index) or
-            helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
-                contextData, confirm)
+                helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
+                    contextData, confirm)
 
             if selectedTracks and #selectedTracks > 0 then
                 if index == 1 then tempStore.newSendTrack = helpers.createSendTrack(asset) end
@@ -203,6 +220,7 @@ helpers.addPluginActions = function(instance)
                 helpers.resetPluginUIState(originalUIState)
 
                 if index == 1 then
+                    local originalSendVol = helpers.setDefaultSendVolume(asset.context.settings.current)
                     for _, track in ipairs(selectedTracks) do
                         if tempStore.newSendTrack then
                             reaper.GetSetMediaTrackInfo_String(tempStore.newSendTrack, "P_NAME",
@@ -210,6 +228,7 @@ helpers.addPluginActions = function(instance)
                             local rv = reaper.CreateTrackSend(track, tempStore.newSendTrack)
                         end
                     end
+                    helpers.resetDefaultSendVolume(originalSendVol)
                 end
 
                 return true, ('Sent %d track(s) to a new track with %d FX'):format(#selectedTracks, total)
@@ -224,8 +243,8 @@ helpers.addPluginActions = function(instance)
         'send to %singular(a new track)%plural(%count new tracks) with %asset%plural( (each FX on a separate track%))',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
             local selectedTracks = helpers.tracksIfDragged(context, contextData, index) or
-            helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
-                contextData, confirm)
+                helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
+                    contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
                 local newTrack = helpers.createSendTrack(asset)
                 local originalUIState = helpers.setPluginUIState(asset.context.settings.current)
@@ -233,13 +252,14 @@ helpers.addPluginActions = function(instance)
                     r.TrackFX_AddByName(newTrack, asset.load, false, -1)
                 end
                 helpers.resetPluginUIState(originalUIState)
-
+                local originalSendVol = helpers.setDefaultSendVolume(asset.context.settings.current)
                 for _, track in ipairs(selectedTracks) do
                     if newTrack then
                         reaper.GetSetMediaTrackInfo_String(newTrack, "P_NAME", asset.searchText[1].text, true)
                         local rv = reaper.CreateTrackSend(track, newTrack)
                     end
                 end
+                helpers.resetDefaultSendVolume(originalSendVol)
                 return true,
                     ('Sent %d track(s) to a new track with %s'):format(#selectedTracks, asset.searchText[1].text)
             elseif selectedTracks and #selectedTracks == 0 then
