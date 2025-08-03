@@ -27,14 +27,14 @@
 -- DONE: Import progress bar (coroutine?)
 -- DONE: Add recent Projects
 -- DONE: Quick Chain - only accept FX and FX Chains
+-- DONE: Quick Chain - drag to objects, tracks and blank
+-- DONE: Quick Chain
 -- TODO: Create Default Presets with Magic Words for types
--- TODO: Show Total Results 
--- TODO: Quick Chain
+-- TODO: Show Total Results
 -- TODO: Add take markers
 -- TODO: write help
 -- TODO: Docking
 -- TODO: Test on windows
--- TODO: Quick Chain - drag to objects, tracks and blank
 -- TODO: Setting to override default send volume
 -- TODO: Zoom scroll issue is still there (eg. at 76% but not just)
 ---------------------------------------

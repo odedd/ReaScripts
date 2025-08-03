@@ -347,6 +347,12 @@ TAGGING SYSTEM:
 - Tags can be either used either positively (to include) or negatively (to exclude) in filters
 - Tags can be combined with other tags and filters for powerful searches
 
+QUICK CHAIN:
+- Build an instant chain, where you can combine FX/FX Chains from different search results and control their order
+- Drag/Drop FX or FX chains to the quick chain, or use the key command (Shift+Ctrl/Cmd+Right by default) to add items to the Quick Chain
+- Alt/Option+Click to remove an item from the Quick Chain
+- When a Quick Chain has items, all actions (Add FX, create send etc...) relate to the Quick Chain
+
 PRESETS: 
 - Save complex filter combinations as presets for quick access
 - Presets can be assigned magic words for quick loading
@@ -371,6 +377,8 @@ KEYBOARD SHORTCUTS:
 - Ctrl+A: Select all results
 - Ctrl+F: Toggle favorite status of selected items
 - Ctrl+R: Execute random result from current search
+- Add to Quick Chain: See sidebar or right-click menu for shortcut
+- Clear Quick Chain: See sidebar or right-click menu for shortcut
 
 TIPS:
 - Enable Sleep Mode for fastest performance
@@ -378,6 +386,7 @@ TIPS:
 - Drag items directly to tracks to add them
 - Create presets for commonly used filter combinations
 - Import/export your tags and favorites to share between systems
+- Use Quick Chain to batch process FX and chains efficiently
 
 Scout makes your Reaper workflow faster by putting everything you need at your fingertips with instant search and smart organization.
 ]]
