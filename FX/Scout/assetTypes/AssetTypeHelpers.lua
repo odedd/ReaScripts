@@ -56,6 +56,22 @@ helpers.setAsAnInstrumentTrack = function(track, currentSettings)
         r.SetMediaTrackInfo_Value(track, "I_RECARM", 1)
     end
 end
+
+helpers.tracksIfDragged = function(context, contextData, index)
+    local draggedToBlank = OD_BfCheck(context, RESULT_CONTEXT['DRAGGED_TO_BLANK'])
+    local draggedToTrack = OD_BfCheck(context, RESULT_CONTEXT['DRAGGED_TO_OBJECT']) and contextData and
+        r.ValidatePtr(contextData, "MediaTrack*")
+
+    if draggedToBlank then
+        if index == 1 then
+            local numTracks = r.CountTracks(0)
+            r.InsertTrackAtIndex(numTracks, true)
+            return { r.GetTrack(0, numTracks) }
+        end
+    elseif draggedToTrack then
+        return { contextData }
+    end
+end
 helpers.addPluginActions = function(instance)
     instance:addInteraction(0, 'add %asset to selected track(s) or create a new track if none is selected',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
@@ -158,7 +174,7 @@ helpers.addPluginActions = function(instance)
         end)
     instance:addInteraction(ImGui.Mod_Alt | ImGui.Mod_Ctrl, 'add %asset to selected track(s) as input FX',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
-            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
+            local selectedTracks = helpers.tracksIfDragged(context, contextData, index) or helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
                 contextData, confirm)
 
             if selectedTracks and #selectedTracks > 0 then
@@ -176,8 +192,10 @@ helpers.addPluginActions = function(instance)
     instance:addInteraction(ImGui.Mod_Shift,
         'send to a new track with %asset%plural( (all on the same track%))',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
-            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
+            local selectedTracks = helpers.tracksIfDragged(context, contextData, index) or
+            helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
                 contextData, confirm)
+
             if selectedTracks and #selectedTracks > 0 then
                 if index == 1 then tempStore.newSendTrack = helpers.createSendTrack(asset) end
                 local originalUIState = helpers.setPluginUIState(asset.context.settings.current)
@@ -205,7 +223,8 @@ helpers.addPluginActions = function(instance)
     instance:addInteraction(ImGui.Mod_Shift | ImGui.Mod_Ctrl,
         'send to %singular(a new track)%plural(%count new tracks) with %asset%plural( (each FX on a separate track%))',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
-            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
+            local selectedTracks = helpers.tracksIfDragged(context, contextData, index) or
+            helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
                 contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
                 local newTrack = helpers.createSendTrack(asset)
