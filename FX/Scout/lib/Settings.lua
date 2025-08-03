@@ -3,16 +3,16 @@
 PB_Settings = OD_Settings:new({
     default = {
         -- Settings window
-        createSendsInsideFolder = true,
+        createSendsInsideFolder = false,
         sendFolderName = 'FX Return Tracks',
         sleepMode = false,
         projectScanFolders = {},
         showFxUI = SHOW_FX_UI.FOLLOW_PREFERENCE,
-        closeAfterExecute = true,
+        closeAfterExecute = false,
         recentlyAddedDays = 30,
         addInstrumentsAsInstrumentTracks = true,
         minimalMode = false,
-        overrideDefaultSendVolume = true,
+        overrideDefaultSendVolume = false,
         sendVolume = -12,
         shortcuts = {
             markFavorite = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_F,
@@ -32,16 +32,16 @@ PB_Settings = OD_Settings:new({
         fxTypeVisibility = {
             ['Internal'] = true,
             ['VST3'] = true,
-            ['VST3i'] = false,
+            ['VST3i'] = true,
             ['VST'] = true,
-            ['VSTi'] = false,
+            ['VSTi'] = true,
             ['AU'] = true,
-            ['AUi'] = false,
+            ['AUi'] = true,
             ['JS'] = true,
             ['CLAP'] = true,
-            ['CLAPi'] = false,
+            ['CLAPi'] = true,
             ['LV2'] = true,
-            ['LV2i'] = false
+            ['LV2i'] = true
         },
         fxTypeOrder = {
             "Internal",
@@ -86,12 +86,12 @@ PB_Settings = OD_Settings:new({
             ["RegionAssetType"] = true,         -- Markers asset type
             ["ProjectTemplateAssetType"] = true -- Project Templates asset type
         },
-        uiScale = 1.5,
+        uiScale = 1,
 
         -- set In the UI
         sideBarWidth = 200,
         showSideBar = true,
-        quickChainWidth = 200,
+        quickChainWidth = 160,
         showQuickChain = false,
         -- Internal
         minSideBarWidth = 140,
@@ -104,7 +104,7 @@ PB_Settings = OD_Settings:new({
         welcomeScreenShown = false
     },
     initial = {
-        projectScanFolders = { '/Users/odeddavidov/Desktop' },
+        projectScanFolders = {},
     },
     dfsetfile = Scr.dfsetfile
 })
@@ -116,7 +116,7 @@ function PB_Settings.shortCutToKeyChord(shortcut)
     --     (shortcut.shift and ImGui.Mod_Shift or 0) |
     --     (shortcut.ctrl and ImGui.Mod_Ctrl or 0) |
     --     (shortcut.macCtrl and ImGui.Mod_Super or 0) |
-        -- (shortcut.alt and ImGui.Mod_Alt or 0)
+    -- (shortcut.alt and ImGui.Mod_Alt or 0)
 end
 
 function PB_Settings:new(o)
