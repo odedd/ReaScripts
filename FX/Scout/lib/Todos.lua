@@ -30,11 +30,11 @@
 -- DONE: Quick Chain - drag to objects, tracks and blank
 -- DONE: Quick Chain
 -- DONE: Setting to override default send volume
+-- DONE: Docking
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Show Total Results
 -- TODO: Add take markers
 -- TODO: write help
--- TODO: Docking
 -- TODO: Test on windows
 -- TODO: Zoom scroll issue is still there (eg. at 76% but not just)
 ---------------------------------------

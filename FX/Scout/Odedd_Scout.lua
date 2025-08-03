@@ -104,10 +104,10 @@ RunApp = function()
         app.userdata:load()
         app.gui:init();
 
+        app.temp.focusWindowOn = 3
         ---------------------------------------
         -- Functions --------------------------
         ---------------------------------------
-
 
         app.selection = {
             items = {},
@@ -895,6 +895,7 @@ RunApp = function()
                         end
                         ImGui.SetNextWindowDockID(ctx, app.gui.mainWindow.dockTo, ImGui.Cond_Always)
                         app.gui.mainWindow.dockTo = nil
+                        app.temp.focusWindowOn = ImGui.GetFrameCount(ctx) + 3
                     end
                 elseif pos == 2 then --after a window has been created
                     if ImGui.GetWindowDockID(ctx) ~= app.gui.mainWindow.dockId then
@@ -1729,7 +1730,7 @@ RunApp = function()
                                                 for t = 1, #(result.tags or {}) do
                                                     if tagInfo[result.tags[t]] == nil then
                                                         app.logger:logError('Tag not found in tagInfo: ' ..
-                                                        tostring(result.tags[t]))
+                                                            tostring(result.tags[t]))
                                                     else
                                                         local tag = tagInfo[result.tags[t]]
                                                         text = text .. tag.name .. '|'
@@ -2616,7 +2617,8 @@ RunApp = function()
 
                         ImGui.SetNextItemWidth(ctx, w)
                         local rv
-                        if not ImGui.IsAnyItemActive(ctx) and not app.temp.waitingForDoubleClick and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.tagRename and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows) then
+                        if app.temp.focusTextInput or (not ImGui.IsAnyItemActive(ctx) and not app.temp.waitingForDoubleClick and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.tagRename and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows)) then
+                            app.temp.focusTextInput = nil
                             ImGui.SetKeyboardFocusHere(ctx, 0)
                         end
                         handleSpecialKeys()
@@ -3081,13 +3083,14 @@ RunApp = function()
                             app.settings.current.sendVolume = app.gui:setting('dragdouble', '###sendVolume',
                                 T.SETTINGS.SEND_VOLUME.HINT, app.settings.current.sendVolume,
                                 {
-                                speed = 0.1,
-                                min = -144,
-                                max = 12,
-                                format = app.settings.current.sendVolume <= -144 and '-inf' or '%.2f dB',
-                                help = T.RECENTLY_ADDED_EXPLANATION
-                            }, true)
-                             app.settings.current.sendVolume = math.max(math.min(app.settings.current.sendVolume, 12), -144)
+                                    speed = 0.1,
+                                    min = -144,
+                                    max = 12,
+                                    format = app.settings.current.sendVolume <= -144 and '-inf' or '%.2f dB',
+                                    help = T.RECENTLY_ADDED_EXPLANATION
+                                }, true)
+                            app.settings.current.sendVolume = math.max(math.min(app.settings.current.sendVolume, 12),
+                                -144)
                         end
                         local removePath = nil
                         local path = app.gui:setting('folder', T.SETTINGS.PROJECT_SCAN_FOLDER.LABEL,
@@ -3725,6 +3728,19 @@ RunApp = function()
 
             app.flow.checkExternalCommand()
             r.SetExtState(Scr.ext_name, 'RUNNING', 'TRUE', false)
+            if r.GetExtState(Scr.ext_name, 'FOCUS') == 'GO' then
+                r.SetExtState(Scr.ext_name, 'FOCUS', '', false)
+                app.temp.focusWindowOn = ImGui.GetFrameCount(ctx) + 3
+            end
+            if app.temp.focusWindowOn == ImGui.GetFrameCount(ctx) then
+                app.temp.focusWindowOn = nil
+                app.temp.focusTextInput = true
+                ImGui.SetNextWindowFocus(ctx)
+                local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or r.JS_Window_FindTop(Scr.name, true)
+                if scriptHwnd then
+                    r.JS_Window_SetFocus(scriptHwnd)
+                end
+            end
 
             if not app.hide then
                 app.gui:pushColors(app.gui.st.col.main)
@@ -3845,12 +3861,14 @@ CheckIfHybernating = function()
         else
             -- Same version: wakeup running script
             r.SetExtState(Scr.ext_name, 'WAKEUP', 'GO', false)
+            r.SetExtState(Scr.ext_name, 'FOCUS', 'GO', false)
             return -- Exit early, hibernating script will wake up
         end
     elseif r.GetExtState(Scr.ext_name, 'RUNNING') == 'TRUE' then
         -- Script is already running, just bring it to focus
         local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or r.JS_Window_FindTop(Scr.name, true)
         if scriptHwnd then
+            r.SetExtState(Scr.ext_name, 'FOCUS', 'GO', false)
             r.JS_Window_SetFocus(scriptHwnd)
         end
         return
@@ -3858,4 +3876,5 @@ CheckIfHybernating = function()
 end
 
 CheckIfHybernating()
+
 RunApp()
