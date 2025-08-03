@@ -908,12 +908,22 @@ RunApp = function()
                     end
                 end
             end,
-            isShortcutPressed = function(key, global)
+
+            -- isShortcutPressed = function(key)
+            --     if app.settings.current.shortcuts[key] and app.settings.current.shortcuts[key].key == -1 then return false end
+            --     return app.settings.current.shortcuts[key] and
+            --         OD_IsGlobalKeyPressed(app.settings.current.shortcuts[key].key, true) and
+            --         OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL) == app.settings.current.shortcuts[key].ctrl
+            --         and OD_IsGlobalKeyDown(OD_KEYCODES.SHIFT) == app.settings.current.shortcuts[key].shift
+            --         and OD_IsGlobalKeyDown(OD_KEYCODES.ALT) == app.settings.current.shortcuts[key].alt
+            --         and OD_IsGlobalKeyDown(OD_KEYCODES.STARTKEY) == app.settings.current.shortcuts[key].macCtrl
+            -- end,
+
+            isShortcutPressed = function(key)
                 local shortcut = app.settings.current.shortcuts[key]
                 if shortcut and shortcut.key == -1 then return false end
                 local keyChord = app.settings.shortCutToKeyChord(shortcut)
-                return ImGui.Shortcut(app.gui.ctx, keyChord,
-                    global and ImGui.InputFlags_RouteAlways or ImGui.InputFlags_None)
+                return ImGui.Shortcut(app.gui.ctx, keyChord, ImGui.InputFlags_RouteAlways)
             end,
             getShortcutDescription = function(key)
                 local shortcut = app.settings.current.shortcuts[key]
@@ -1522,7 +1532,7 @@ RunApp = function()
                         end
                     end
 
-                    if ImGui.BeginChild(ctx, 'resultsArea', w - sideBarW - spacingX - quickChainW - spacingX) then
+                    if ImGui.BeginChild(ctx, 'resultsArea', w - (app.settings.current.showSideBar and (sideBarW + paddingX * 2) or 0) - (app.settings.current.showQuickChain and (quickChainW + paddingX * 2) or 0 )) then
                         if app.pageSwitched then
                             app.flow.filterResults({ text = '' })
                         end
@@ -1764,14 +1774,15 @@ RunApp = function()
                 end
                 local drawSideBarSeparator = function()
                     -- Separator Resize Line
+                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX)
                     local separatorX, separatorY = ImGui.GetCursorScreenPos(ctx)
                     ImGui.DrawList_AddLine(ImGui.GetWindowDrawList(ctx), separatorX, separatorY, separatorX,
                         separatorY + h,
                         ImGui.GetStyleColor(ctx, ImGui.Col_Separator))
-                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
-                    ImGui.InvisibleButton(ctx, '##separator', spacingX * 2, sideBarH)
+                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - paddingX)
+                    ImGui.InvisibleButton(ctx, '##quickChainSeparator', paddingX*2, quickChainH)
                     if ImGui.IsItemHovered(ctx) then
-                        app:setHoveredHint('main', 'Drag to change tag list width')
+                        app:setHoveredHint('main', 'Drag to change Quick Chain width')
                         ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
                     end
                     if ImGui.IsItemActive(ctx) then
@@ -1787,15 +1798,19 @@ RunApp = function()
                             end
                         end
                     end
+                    ImGui.SameLine(ctx)
+                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX*2+ paddingX)
+                    ImGui.Dummy(ctx, 0,0)
                 end
                 local drawQuickChainSeparator = function()
                     -- Separator Resize Line
+                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX)
                     local separatorX, separatorY = ImGui.GetCursorScreenPos(ctx)
                     ImGui.DrawList_AddLine(ImGui.GetWindowDrawList(ctx), separatorX, separatorY, separatorX,
                         separatorY + h,
                         ImGui.GetStyleColor(ctx, ImGui.Col_Separator))
-                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
-                    ImGui.InvisibleButton(ctx, '##quickChainSeparator', spacingX * 2, quickChainH)
+                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - paddingX)
+                    ImGui.InvisibleButton(ctx, '##quickChainSeparator', paddingX*2, quickChainH)
                     if ImGui.IsItemHovered(ctx) then
                         app:setHoveredHint('main', 'Drag to change Quick Chain width')
                         ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
@@ -1813,6 +1828,9 @@ RunApp = function()
                             end
                         end
                     end
+                    ImGui.SameLine(ctx)
+                    ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX*2+ paddingX)
+                    ImGui.Dummy(ctx, 0,0)
                 end
                 local drawsideBar = function()
                     if ImGui.BeginChild(ctx, 'sideBar', sideBarW - spacingX * 2, sideBarH) then
@@ -2284,7 +2302,7 @@ RunApp = function()
                         local x, y = ImGui.GetCursorPos(ctx)
                         if ImGui.BeginListBox(ctx, '##quickChainList', w, listH) then
                             if ImGui.IsWindowHovered(ctx) then
-                            app:setHint('main', T.HINTS.QUICK_CHAIN_HOVER)
+                                app:setHint('main', T.HINTS.QUICK_CHAIN_HOVER)
                             end
                             for i, item in ipairs(list) do
                                 local label = item.searchText[1].text
@@ -2312,8 +2330,8 @@ RunApp = function()
                                             #app.temp.quickChain)):gsub("^%l", string.upper)
                                         app:setHint('main', assetHint, nil, nil, 2)
                                         app.temp.dragFromChainToObject = object or
-                                            -1         -- either store the dragged track or -1 to signify blank
-                                            ImGui.Text(ctx, resultName)
+                                            -1 -- either store the dragged track or -1 to signify blank
+                                        ImGui.Text(ctx, resultName)
                                     else
                                         app.temp.dragFromChainToObject = nil
                                     end
@@ -2346,7 +2364,7 @@ RunApp = function()
                                     ImGui.EndDragDropTarget(ctx)
                                 end
                             end
-                            
+
                             ImGui.EndListBox(ctx)
                             if ImGui.BeginDragDropTarget(ctx) then
                                 local assetDropped, assetPayload = ImGui.AcceptDragDropPayload(ctx, 'ASSET', nil)
@@ -2422,7 +2440,7 @@ RunApp = function()
                     end
                 end
 
-                if ImGui.BeginChild(ctx, 'mainArea', w - sideBarW - spacingX - quickChainW - spacingX) then
+                if ImGui.BeginChild(ctx, 'mainArea', w - (app.settings.current.showSideBar and (sideBarW + paddingX * 2) or 0) - (app.settings.current.showQuickChain and (quickChainW + paddingX * 2) or 0 )) then
                     app.draw.activeFilters()
                     drawResultsTable()
                     ImGui.EndChild(ctx)
@@ -2512,7 +2530,7 @@ RunApp = function()
 
                 local handleSpecialKeys = function()
                     if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and ImGui.IsWindowFocused(ctx) then
-                        -- local pressed = false
+                        local pressed = false
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) then
                             -- if not app.temp.ignoreEscapeKey then
                             if app.temp.searchInput == '' then
@@ -2522,6 +2540,7 @@ RunApp = function()
                                     app.flow.close()
                                 end
                             end
+                            pressed = true
                         elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter, false) then
                             if not app.temp.tagRename then
                                 local goWithQuickChain = app.temp.searchMode == SEARCH_MODE.MAIN and
@@ -2531,26 +2550,36 @@ RunApp = function()
                                     goWithQuickChain and app.temp.quickChain or app.selection:results(),
                                     RESULT_CONTEXT.KEYBOARD)
                             end
-                        elseif app.guiHelpers.isShortcutPressed('selectAllResults', true) then
+                            pressed = true
+                        elseif app.guiHelpers.isShortcutPressed('selectAllResults') then
                             app.selection:selectRange(1, #app.temp.searchResults)
-                        elseif app.guiHelpers.isShortcutPressed('hardCloseScript', true) then
+                            pressed = true
+                        elseif app.guiHelpers.isShortcutPressed('hardCloseScript') then
                             app.hardExit = true
-                        elseif app.guiHelpers.isShortcutPressed('runRandomResult', true) then
+                            pressed = true
+                        elseif app.guiHelpers.isShortcutPressed('runRandomResult') then
                             if #app.temp.searchResults > 0 then
                                 app.flow.executeRandomResult()
                             end
-                        elseif app.guiHelpers.isShortcutPressed('addToQuickChain', true) then
+                            pressed = true
+                        elseif app.guiHelpers.isShortcutPressed('addToQuickChain') then
                             app.flow.addSelectionToQuickChain()
-                        elseif app.guiHelpers.isShortcutPressed('clearQuickChain', true) then
+                            pressed = true
+                        elseif app.guiHelpers.isShortcutPressed('clearQuickChain') then
                             app.temp.quickChain = {}
-                        elseif app.guiHelpers.isShortcutPressed('toggleQuickChain', true) then
+                            pressed = true
+                        elseif app.guiHelpers.isShortcutPressed('toggleQuickChain') then
                             app.settings.current.showQuickChain = not app.settings.current.showQuickChain
                             app.settings:save()
-                        elseif app.guiHelpers.isShortcutPressed('toggleSideBar', true) then
+                            pressed = true
+
+                        elseif app.guiHelpers.isShortcutPressed('toggleSideBar') then
                             app.settings.current.showSideBar = not app.settings.current.showSideBar
                             app.settings:save()
-                        elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.guiHelpers.isShortcutPressed('markFavorite', true) and app.selection.keyboardPos then
+                            pressed = true
+                        elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.guiHelpers.isShortcutPressed('markFavorite') and app.selection.keyboardPos then
                             -- Toggle favorite status for all selected assets
+                            pressed = true
                             local selectedResults = app.selection:results()
                             if #selectedResults > 0 then
                                 -- Use the first selected asset to determine the action (favorite or unfavorite)
@@ -2566,6 +2595,7 @@ RunApp = function()
                                 end
                             end
                         end
+                        if pressed then app.temp.shortCutPressed = true end
                     end
                 end
                 local drawTextSearchInput = function()
@@ -2594,6 +2624,11 @@ RunApp = function()
                         if app.temp.clearSearchInputText then
                             inputFlags = inputFlags | ImGui.InputTextFlags_CallbackAlways
                             callback = app.gui.clearInputIfNeeded
+                        end
+                        if app.temp.shortCutPressed then
+                            inputFlags = inputFlags | ImGui.InputTextFlags_CallbackCharFilter
+                            callback = app.gui.rejectCharacter
+                            app.temp.shortCutPressed = nil
                         end
                         rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput" .. app.temp.searchMode,
                             T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput,
@@ -2843,7 +2878,8 @@ RunApp = function()
                             })
                         app.settings.current.shortcuts.toggleQuickChain, resetCounter = app.gui:setting('shortcut',
                             T.SETTINGS.SHORTCUTS.TOGGLE_QUICK_CHAIN.LABEL,
-                            T.SETTINGS.SHORTCUTS.TOGGLE_QUICK_CHAIN.HINT, app.settings.current.shortcuts.toggleQuickChain,
+                            T.SETTINGS.SHORTCUTS.TOGGLE_QUICK_CHAIN.HINT, app.settings.current.shortcuts
+                            .toggleQuickChain,
                             {
                                 existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                                     function(k, v) return k ~= 'toggleQuickChain' end)

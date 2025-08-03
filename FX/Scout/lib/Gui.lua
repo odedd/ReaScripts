@@ -32,10 +32,10 @@ PB_Gui.init = function(self, fonts)
     InputTextCallback_DeleteChars(0, buflen);
 ]])
     ImGui.Attach(self.ctx, self.clearInputIfNeeded)
-    -- self.blockNextCharacter = ImGui.CreateFunctionFromEEL([[
-    --     EventChar = 0;
-    -- ]])
-    --     ImGui.Attach(self.ctx, self.blockNextCharacter)
+
+    -- self.rejectCharacter = ImGui.CreateFunctionFromEEL('rejectCharacter ? EventChar = 0;')
+    self.rejectCharacter = ImGui.CreateFunctionFromEEL('EventChar = 0;')
+    ImGui.Attach(self.ctx, self.rejectCharacter)
 
     self.st.basecolors = {
         darkestBG = 0x131313ff,
@@ -118,7 +118,7 @@ PB_Gui.init = function(self, fonts)
             default = {
                 [ImGui.Col_Button] = self.st.basecolors.main,
                 [ImGui.Col_ButtonHovered] = self.st.basecolors.mainBright,
-                [ImGui.Col_ButtonActive ] = self.st.basecolors.mainBrighter,
+                [ImGui.Col_ButtonActive] = self.st.basecolors.mainBrighter,
             }
         },
         tagButtons = {
