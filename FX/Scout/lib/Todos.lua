@@ -33,6 +33,9 @@
 -- TODO: write help
 -- TODO: Docking
 -- TODO: Test on windows
+-- TODO: QuickChain - drag to objects, tracks and blank
+-- TODO: QuickChain - only accept FX and FX Chains
+-- TODO: Setting to override default send volume
 ---------------------------------------
 -- AFTER LAUNCH -----------------------
 ---------------------------------------

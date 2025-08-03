@@ -126,8 +126,11 @@ function BaseAssetType:getInteractionHintFor(mods, context, contextData, count)
     local interactionHint = nil
     local correctContext = class:determineCorrectContext(mods, context)
     interactionHint = class.interactionHints[correctContext].text
-    return class:parseInteractionHintTemplate(interactionHint, count, contextData, self.searchText[1].text,
-        (self.pluralName):lower()), correctContext | context
+    local quickChain = OD_BfCheck(context, RESULT_CONTEXT.QUICK_CHAIN)
+    local assetName = quickChain and 'Quick Chain' or self.searchText[1].text
+    local pluralName = quickChain and 'Quick Chain items' or (self.pluralName):lower()
+    return class:parseInteractionHintTemplate(interactionHint, count, contextData, assetName,
+        pluralName), correctContext | context
 end
 
 function BaseAssetType:executeAndAddToRecents()

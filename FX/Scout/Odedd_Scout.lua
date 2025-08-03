@@ -243,8 +243,8 @@ RunApp = function()
                 end
                 return results
             end,
-            execute = function(self, resultContext, contextData, confirm)
-                local results = self:results()
+            execute = function(self, keyMods, resultContext, contextData, confirm)
+                local results = app.temp.resultsForExecution
 
                 -- Group results by asset type
                 local resultsByType = {}
@@ -262,7 +262,7 @@ RunApp = function()
                 for assetType, typeResults in pairs(resultsByType) do
                     local total = #typeResults
                     for i, result in ipairs(typeResults) do
-                        result:execute(ImGui.GetKeyMods(app.gui.ctx), resultContext or 0, contextData, confirm, total,
+                        result:execute(keyMods, resultContext or 0, contextData, confirm, total,
                             i)
                     end
                 end
@@ -307,6 +307,7 @@ RunApp = function()
             end,
             resetTemp = function()
                 app.temp.confirmation = {}
+                app.temp.quickChain = {}
                 app.temp.searchMode = SEARCH_MODE.MAIN
             end,
             setPage = function(page)
@@ -607,16 +608,19 @@ RunApp = function()
                 filterAssets()
                 resetOrRestoreSelection()
             end,
-            executeSelectedResults = function(ctx, resultContext, contextData, confirm)
-                local resultCount = app.selection:count()
+            executeSelectedResults = function(ctx, results, resultContext, keyMods, contextData, confirm)
+                local keyMods = keyMods or ImGui.GetKeyMods(app.gui.ctx)
+                app.temp.resultsForExecution = results or app.temp.resultsForExecution
+                local resultCount = OD_TableLength(app.temp.resultsForExecution)
                 if resultCount >= app.settings.current.numberOfResultsThatRequireConfirmation and not (confirm and confirm.multipleResults) then
                     app.temp.confirmMultipleResults = {
                         count = resultCount,
                         resultContext = resultContext,
-                        contextData = contextData
+                        contextData = contextData,
+                        keyMods = keyMods
                     }
                 elseif confirm or resultCount < app.settings.current.numberOfResultsThatRequireConfirmation then
-                    app.selection:execute(resultContext, contextData, confirm)
+                    app.selection:execute(keyMods, resultContext, contextData, confirm)
                 end
             end,
             executeRandomResult = function()
@@ -940,7 +944,8 @@ RunApp = function()
 
                 -- Check if selection spans multiple asset types
                 if count > 1 then
-                    local selectedResults = app.selection:results()
+                    local selectedResults = OD_BfCheck(context, RESULT_CONTEXT.QUICK_CHAIN) and app.temp.quickChain or
+                        app.selection:results()
                     local assetTypes = {}
 
                     -- Collect unique asset type groups
@@ -1055,6 +1060,54 @@ RunApp = function()
                 ImGui.SetCursorPos(ctx, x + w, y)
                 return clicked
             end,
+            actionContextMenu = function(ctx, result, resultCount, actionContext)
+                actionContext = actionContext or 0
+                app:setHint('main', '')
+                local assetType = result.class
+
+
+                local sortedList = {}
+                for keymod, hint in pairs(assetType.interactionHints) do
+                    table.insert(sortedList,
+                        {
+                            keymod = keymod,
+                            hint = hint,
+                            disabled = OD_BfCheck(keymod,
+                                    RESULT_CONTEXT.DRAGGED_TO_BLANK) or
+                                OD_BfCheck(keymod, RESULT_CONTEXT.DRAGGED_TO_OBJECT)
+                        })
+                end
+
+                table.sort(sortedList, function(a, b)
+                    if a.disabled and not b.disabled then
+                        return false -- a goes after b
+                    elseif not a.disabled and b.disabled then
+                        return true  -- a goes before b
+                    else
+                        return a.keymod <
+                            b.keymod -- maintain consistent ordering for same type
+                    end
+                end)
+
+                for _, item in ipairs(sortedList) do
+                    local keymod, hint = item.keymod, item.hint
+
+                    local description = hint.text
+                    local mod = keymod == 0 and 'Enter' or
+                        app.guiHelpers.keyModsToText(keymod |
+                            RESULT_CONTEXT.KEYBOARD)
+
+                    local text = app.guiHelpers.getHintFor(result, keymod,
+                            RESULT_CONTEXT.KEYBOARD | actionContext, resultCount)
+                        :gsub(
+                            "^%l", string.upper):gsub('%.$', ' ') -- Capitalize first letter and remove trailing dot
+                    if item.disabled then ImGui.BeginDisabled(ctx) end
+                    if ImGui.MenuItem(ctx, (item.disabled and '(' .. mod .. ') ' or '') .. text, (not item.disabled) and mod or nil) then
+                        return true, keymod
+                    end
+                    if item.disabled then ImGui.EndDisabled(ctx) end
+                end
+            end
         }
         app.draw = {
             activeFilters = function()
@@ -1253,7 +1306,8 @@ RunApp = function()
                         -- handle escape
                         if app.selection.keyboardPos then
                             hintResult = searchResults[app.selection.keyboardPos]
-                            hintContext = RESULT_CONTEXT.KEYBOARD
+                            hintContext = RESULT_CONTEXT.KEYBOARD |
+                                (#app.temp.quickChain > 0 and RESULT_CONTEXT.QUICK_CHAIN or 0)
                             local newIdx = nil
                             if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) and app.selection.keyboardPos < #searchResults then
                                 newIdx =
@@ -1380,9 +1434,8 @@ RunApp = function()
                         end
                         if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragToObject then
                             if app.temp.dragToObject == -1 then
-                                app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.DRAGGED_TO_BLANK)
-                                app.logger:logDebug('Will create a new track with ' ..
-                                    app.selection:count() .. ' plugin(s)\n')
+                                app.flow.executeSelectedResults(ctx, app.selection:results(),
+                                    RESULT_CONTEXT.DRAGGED_TO_BLANK)
                             else
                                 if app.logger.level >= app.logger.LOG_LEVEL.DEBUG then
                                     local itemName
@@ -1392,11 +1445,9 @@ RunApp = function()
                                     else
                                         itemName = select(2, r.GetTrackName(app.temp.dragToObject))
                                     end
-                                    app.logger:logDebug('Will add ' ..
-                                        app.selection:count() ..
-                                        ' plugins to track ' .. itemName .. '\n')
                                 end
-                                app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.DRAGGED_TO_OBJECT, app.temp
+                                app.flow.executeSelectedResults(ctx, app.selection:results(),
+                                    RESULT_CONTEXT.DRAGGED_TO_OBJECT, nil, app.temp
                                     .dragToObject)
                             end
                             app.temp.dragToObject = nil
@@ -1542,7 +1593,7 @@ RunApp = function()
                                                     app.selection:selectOnly(row.index)
                                                 end
                                                 if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
-                                                    app.flow.executeSelectedResults(ctx,
+                                                    app.flow.executeSelectedResults(ctx, app.selection:results(),
                                                         RESULT_CONTEXT.MOUSE_DOUBLE_CLICK)
                                                 end
                                             end
@@ -1559,23 +1610,11 @@ RunApp = function()
                                                     end
                                                 end
                                                 -- local group = result.assetType
-                                                app:setHint('main', '')
-                                                local assetType = result.class
-
-                                                for keymod, hint in pairs(assetType.interactionHints) do
-                                                    local description = hint.text
-                                                    local mod = keymod == 0 and 'Enter' or
-                                                        app.guiHelpers.keyModsToText(keymod |
-                                                            RESULT_CONTEXT.KEYBOARD)
-
-                                                    local text = app.guiHelpers.getHintFor(result, keymod,
-                                                            RESULT_CONTEXT.KEYBOARD, app.selection:count())
-                                                        :gsub(
-                                                            "^%l", string.upper):gsub('%.$', ' ') -- Capitalize first letter and remove trailing dot
-                                                    if ImGui.MenuItem(ctx, text, mod) then
-                                                        app.flow.executeSelectedResults(ctx,
-                                                            keymod, nil)
-                                                    end
+                                                local rv, keymod = app.guiHelpers.actionContextMenu(ctx, result,
+                                                    app.selection:count())
+                                                if rv then
+                                                    app.flow.executeSelectedResults(ctx, app.selection:results(),
+                                                        keymod)
                                                 end
                                                 ImGui.EndPopup(ctx)
                                             end
@@ -1699,7 +1738,9 @@ RunApp = function()
                         end
 
                         if hintResult then
-                            local hint = app.guiHelpers.getHintFor(hintResult, nil, hintContext, app.selection:count())
+                            local count = OD_BfCheck(hintContext, RESULT_CONTEXT.QUICK_CHAIN) and
+                                #app.temp.quickChain or app.selection:count()
+                            local hint = app.guiHelpers.getHintFor(hintResult, nil, hintContext, count)
                             if hint then
                                 app:setHint('main', hint, nil, nil, -1)
                             end
@@ -2201,6 +2242,10 @@ RunApp = function()
                             app.temp.tagRename = newTag.id
                             app.temp.tagRenameBuffer = newTag.name
                         end
+                        if ImGui.IsItemHovered(ctx) then
+                            ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                        end
+
                         app:setHoveredHint('main', 'Create new tag')
                         ImGui.PopFont(ctx)
                         ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
@@ -2218,11 +2263,32 @@ RunApp = function()
                 local drawQuickChain = function()
                     if ImGui.BeginChild(ctx, 'quickChain', quickChainW - spacingX * 2, quickChainH) then
                         ImGui.SeparatorText(ctx, "Quick Chain")
-                        ImGui.Spacing(ctx)
+                        ImGui.SameLine(ctx)
+                        ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                        ImGui.SetCursorPosX(ctx,
+                            ImGui.GetCursorPosX(ctx) + ImGui.GetContentRegionAvail(ctx) - spacingX - paddingX * 2 -
+                            ImGui.CalcTextSize(ctx, ICONS.CLOSE))
+                        -- ImGui.AlignTextToFramePadding(ctx)
+                        if ImGui.Button(ctx, ICONS.TRASH .. '##clearQuickChain') then
+                            app.temp.quickChain = {}
+                        end
+                        if ImGui.IsItemHovered(ctx) then
+                            ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                        end
+                        app:setHoveredHint('main', 'Clear quick chain')
+                        ImGui.PopFont(ctx)
+                        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
 
                         local w, h = ImGui.GetContentRegionAvail(ctx)
                         local list = app.temp.quickChain or {}
-                        if ImGui.BeginListBox(ctx, '##quickChainList', w, h) then
+                        local listActive = #list > 0
+                        if listActive then
+                            app.gui:pushColors(app.gui.st.col.quickChainActive)
+                        end
+                        if ImGui.BeginListBox(ctx, '##quickChainList', w, h - ImGui.GetTextLineHeight(ctx) - paddingY * 2 - spacingY) then
+                            if ImGui.IsWindowHovered(ctx) then
+                            app:setHint('main', T.HINTS.QUICK_CHAIN_HOVER)
+                            end
                             for i, item in ipairs(list) do
                                 local label = item.searchText[1].text
                                 if ImGui.Selectable(ctx, label, false) then
@@ -2238,10 +2304,9 @@ RunApp = function()
                                     local payload, data = ImGui.AcceptDragDropPayload(ctx, 'QUICK_CHAIN_ITEM')
                                     local assetDropped, assetPayload = ImGui.AcceptDragDropPayload(ctx, 'ASSET', nil)
                                     if assetDropped then
-                                        r.ShowConsoleMsg('got asset in quick chain\n')
                                         local results = app.selection:results()
                                         for j, result in ipairs(results) do
-                                            table.insert(list, i + j, result)
+                                            table.insert(list, i + j - 1, result)
                                         end
                                     end
                                     if payload then
@@ -2251,6 +2316,7 @@ RunApp = function()
                                     ImGui.EndDragDropTarget(ctx)
                                 end
                             end
+                            
                             ImGui.EndListBox(ctx)
                             if ImGui.BeginDragDropTarget(ctx) then
                                 local assetDropped, assetPayload = ImGui.AcceptDragDropPayload(ctx, 'ASSET', nil)
@@ -2262,6 +2328,47 @@ RunApp = function()
                                 end
                                 ImGui.EndDragDropTarget(ctx)
                             end
+                        end
+                        if listActive then
+                            app.gui:popColors(app.gui.st.col.quickChainActive)
+                        end
+                        if #list == 0 then
+                            ImGui.BeginDisabled(ctx)
+                        else
+                            app.gui:pushColors(app.gui.st.col.buttons.default)
+                        end
+                        ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                        if ImGui.Button(ctx, ICONS.LIGHTNING .. '##quickChainAdd',
+                                w - spacingX - paddingX * 2 - ImGui.CalcTextSize(ctx, ICONS.ELLIPSIS)) then
+                            app.flow.executeSelectedResults(ctx, app.temp.quickChain,
+                                RESULT_CONTEXT.QUICK_CHAIN)
+                        end
+                        if #list > 0 then
+                            local hint = (app.guiHelpers.getHintFor(list[1], nil, RESULT_CONTEXT.QUICK_CHAIN, 1)):gsub(
+                                '^ to ', ''):gsub('^%l', string.upper)
+                            app:setHoveredHint('main', hint)
+                        end
+                        ImGui.SameLine(ctx)
+                        if ImGui.Button(ctx, ICONS.ELLIPSIS .. '##quickChainMoreActions') then
+                            ImGui.OpenPopup(ctx, 'Quick Chain Actions')
+                        end
+                        if #list > 0 then app:setHoveredHint('main', T.HINTS.QUICK_CHAIN_MORE_ACTIONS) end
+                        ImGui.PopFont(ctx)
+                        if ImGui.BeginPopup(ctx, 'Quick Chain Actions') then
+                            -- local group = result.assetType
+                            app:setHint('main', '')
+                            local rv, keymod = app.guiHelpers.actionContextMenu(ctx, app.temp.quickChain[1],
+                                #app.temp.quickChain)
+                            if rv then
+                                app.flow.executeSelectedResults(ctx, app.temp.quickChain,
+                                    keymod | RESULT_CONTEXT.QUICK_CHAIN)
+                            end
+                            ImGui.EndPopup(ctx)
+                        end
+                        if #list == 0 then
+                            ImGui.EndDisabled(ctx)
+                        else
+                            app.gui:popColors(app.gui.st.col.buttons.default)
                         end
                         ImGui.EndChild(ctx)
                         app.temp.quickChain = list
@@ -2369,7 +2476,11 @@ RunApp = function()
                             end
                         elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter, false) then
                             if not app.temp.tagRename then
-                                app.flow.executeSelectedResults(ctx, RESULT_CONTEXT.KEYBOARD)
+                                local goWithQuickChain = app.temp.searchMode == SEARCH_MODE.MAIN and
+                                    #app.temp.quickChain > 0
+                                app.flow.executeSelectedResults(ctx,
+                                    goWithQuickChain and app.temp.quickChain or app.selection:results(),
+                                    RESULT_CONTEXT.KEYBOARD)
                             end
                             -- pressed = true
                         elseif app.guiHelpers.isShortcutPressed('selectAllResults', true) then
@@ -3018,7 +3129,8 @@ RunApp = function()
                         'You selected ' ..
                         app.temp.confirmMultipleResults.count .. ' items.\nAre you sure you want to continue?')
                     if confirm then
-                        app.flow.executeSelectedResults(ctx, app.temp.confirmMultipleResults.resultContext,
+                        app.flow.executeSelectedResults(ctx, nil, app.temp.confirmMultipleResults.resultContext,
+                            app.temp.confirmMultipleResults.keyMods,
                             app.temp.confirmMultipleResults.contextData, { multipleResults = true })
                     end
                     if not open then
@@ -3037,7 +3149,8 @@ RunApp = function()
                     if confirm then
                         local confirmations = object.confirm or {}
                         confirmations[app.temp.confirmMultipleTracks and 'multipleTracks' or 'multipleMediaItems'] = true
-                        app.flow.executeSelectedResults(ctx, object.resultContext,
+                        app.flow.executeSelectedResults(ctx, nil, object.resultContext,
+                            object.keyMods,
                             object.contextData,
                             confirmations)
                     end
@@ -3180,7 +3293,7 @@ RunApp = function()
 
                         -- Delete button (only when editing)
                         if isEditing then
-                            app.gui:pushColors(app.gui.st.col.buttons.deletePreset)
+                            app.gui:pushColors(app.gui.st.col.buttons.delete)
                             if app.gui:setting('button', T.EDIT_PRESET_DIALOG.DELETE.LABEL,
                                     T.EDIT_PRESET_DIALOG.DELETE.HINT, nil,
                                     { label = T.EDIT_PRESET_DIALOG.DELETE.BUTTON, hintWindow = 'editFilterWindow' }) then
@@ -3192,7 +3305,7 @@ RunApp = function()
                                 app.temp.showCreatePresetDialog = false
                                 ImGui.CloseCurrentPopup(ctx)
                             end
-                            app.gui:popColors(app.gui.st.col.buttons.deletePreset)
+                            app.gui:popColors(app.gui.st.col.buttons.delete)
                         end
 
                         app.draw.hint(ctx, 'editFilterWindow')

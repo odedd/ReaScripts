@@ -56,6 +56,7 @@ RESULT_CONTEXT = {
     ['MOUSE_DOUBLE_CLICK'] = 8,
     ['DRAGGED_TO_OBJECT'] = 16,
     ['DRAGGED_TO_BLANK'] = 32,
+    ['QUICK_CHAIN'] = 64,
 }
 
 SHOW_FX_UI = {

@@ -110,12 +110,16 @@ PB_Gui.init = function(self, fonts)
                 hovered = { [ImGui.Col_Text] = self.st.basecolors.mainBright },
                 active = { [ImGui.Col_Text] = self.st.basecolors.mainBrighter },
             },
-            deletePreset = {
-            [ImGui.Col_Button] = 0x991d30ff,
-            [ImGui.Col_ButtonHovered] = 0xa3273aff,
-            [ImGui.Col_ButtonActive] = 0xba364aff,
-        },
-        
+            delete = {
+                [ImGui.Col_Button] = 0x991d30ff,
+                [ImGui.Col_ButtonHovered] = 0xa3273aff,
+                [ImGui.Col_ButtonActive] = 0xba364aff,
+            },
+            default = {
+                [ImGui.Col_Button] = self.st.basecolors.main,
+                [ImGui.Col_ButtonHovered] = self.st.basecolors.mainBright,
+                [ImGui.Col_ButtonActive ] = self.st.basecolors.mainBrighter,
+            }
         },
         tagButtons = {
             [ImGui.Col_Text] = self.st.basecolors.main,
@@ -144,6 +148,11 @@ PB_Gui.init = function(self, fonts)
             [ImGui.Col_Button] = self.st.basecolors.darkBG,
             [ImGui.Col_ButtonHovered] = self.st.basecolors.darkHovered,
             [ImGui.Col_ButtonActive] = self.st.basecolors.darkActive,
+        },
+        quickChainActive = {
+            [ImGui.Col_FrameBg] = self.st.basecolors.mainDark,
+            [ImGui.Col_FrameBgHovered] = self.st.basecolors.mainDark,
+            [ImGui.Col_FrameBgActive] = self.st.basecolors.mainDark,
         },
         settings = {
             selectable = {

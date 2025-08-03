@@ -7,6 +7,7 @@ ICONS = {
     ['PENCIL'] = 'C',
     ['DICE'] = 'd',
     ['DOCK_DOWN'] = 'D',
+    ['ELLIPSIS'] = 'e',
     ['UNDOCK'] = 'E',
     ['FOLDER'] = 'f',
     ['ARROW_LEFT'] = 'F',

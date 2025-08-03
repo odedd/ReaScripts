@@ -293,7 +293,9 @@ T.HINTS = {
     DRAG_RESULT_DEFAULT = 'Drag to tag list to add/remove tags or to a track.',
     DRAG_TAG_DEFAULT = 'Drag to another tag to reorder or to an item to add/remove tag.',
     DRAG_TAG_INTO_TAG = 'Move tag \'%s\' into tag \'%s\'.',
-    DRAG_TAG_TO_POSITION_RELATIVE_TO_TAG = 'Move tag \'%s\' %s tag \'%s\'.'
+    DRAG_TAG_TO_POSITION_RELATIVE_TO_TAG = 'Move tag \'%s\' %s tag \'%s\'.',
+    QUICK_CHAIN_MORE_ACTIONS = 'See all possible actions.',
+    QUICK_CHAIN_HOVER = 'Drag FX/Chains here to add them to the quick chain. Alt/Option+Click to remove.',
 }
 
 T.MAIN_HELP = [[

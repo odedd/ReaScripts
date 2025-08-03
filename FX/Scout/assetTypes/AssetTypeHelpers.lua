@@ -60,7 +60,7 @@ helpers.addPluginActions = function(instance)
     instance:addInteraction(0, 'add %asset to selected track(s) or create a new track if none is selected',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
             local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context,
-                contextData, confirm)
+                mods, contextData, confirm)
 
             if selectedTracks and #selectedTracks > 0 then
                 local originalUIState = helpers.setPluginUIState(asset.context.settings.current)
@@ -96,7 +96,10 @@ helpers.addPluginActions = function(instance)
             if contextData and r.ValidatePtr(contextData, "MediaItem*") then
                 local take = r.GetActiveTake(contextData)
                 local fxIndex = r.TakeFX_AddByName(take, asset.load, 1)
-                if asset.instrument then helpers.setAsAnInstrumentTrack(tempStore.newTrack, asset.context.settings.current) end
+                if asset.instrument then
+                    helpers.setAsAnInstrumentTrack(tempStore.newTrack,
+                        asset.context.settings.current)
+                end
             else -- if not item then track
                 local fxIndex = r.TrackFX_AddByName(contextData, asset.load, false, -1)
             end
@@ -155,7 +158,7 @@ helpers.addPluginActions = function(instance)
         end)
     instance:addInteraction(ImGui.Mod_Alt | ImGui.Mod_Ctrl, 'add %asset to selected track(s) as input FX',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
-            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context,
+            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
                 contextData, confirm)
 
             if selectedTracks and #selectedTracks > 0 then
@@ -173,7 +176,7 @@ helpers.addPluginActions = function(instance)
     instance:addInteraction(ImGui.Mod_Shift,
         'send to a new track with %asset%plural( (all on the same track%))',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
-            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context,
+            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
                 contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
                 if index == 1 then tempStore.newSendTrack = helpers.createSendTrack(asset) end
@@ -202,7 +205,7 @@ helpers.addPluginActions = function(instance)
     instance:addInteraction(ImGui.Mod_Shift | ImGui.Mod_Ctrl,
         'send to %singular(a new track)%plural(%count new tracks) with %asset%plural( (each FX on a separate track%))',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
-            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context,
+            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
                 contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
                 local newTrack = helpers.createSendTrack(asset)
@@ -228,7 +231,7 @@ helpers.addPluginActions = function(instance)
     return instance
 end
 
-helpers.getSelectedTracksWithConfirmation = function(tempStorage, assetContext, context, contextData, confirm)
+helpers.getSelectedTracksWithConfirmation = function(tempStorage, assetContext, context, keyMods, contextData, confirm)
     -- Similar logic for items if needed by other asset types
     if not tempStorage.executeFunctionSelectedTracks then
         tempStorage.executeFunctionSelectedTracks = {}
@@ -241,6 +244,7 @@ helpers.getSelectedTracksWithConfirmation = function(tempStorage, assetContext, 
     if #tempStorage.executeFunctionSelectedTracks >= assetContext.settings.current.numberOfMediaItemsThatRequireConfirmation and not (confirm and confirm.multipleTracks) then
         assetContext.temp.confirmMultipleTracks = {
             count = #tempStorage.executeFunctionSelectedTracks,
+            keyMods = keyMods,
             resultContext = context,
             contextData = contextData,
             confirm = confirm
