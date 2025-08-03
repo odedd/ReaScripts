@@ -2570,7 +2570,6 @@ RunApp = function()
                             end
                             pressed = true
                         elseif app.guiHelpers.isShortcutPressed('addToQuickChain') then
-                            r.ShowConsoleMsg('pressed')
                             app.flow.addSelectionToQuickChain()
                             pressed = true
                         elseif app.guiHelpers.isShortcutPressed('clearQuickChain') then
