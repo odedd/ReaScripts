@@ -11,6 +11,7 @@ function FXChainAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("FX Chain", "FX Chains")(class, context)
     -- FX Chains are file-based assets (.rfxchain files)
     instance.shouldMapBaseFilenames = true
+    instance.allowInQuickChain = true
     instance = helpers.addPluginActions(instance)
     return instance
 end

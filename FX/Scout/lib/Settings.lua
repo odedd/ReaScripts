@@ -47,6 +47,20 @@ PB_Settings = OD_Settings:new({
                 shift = true,
                 alt = false,
                 macCtrl = false
+            },
+            addToQuickChain = {
+                key = OD_KEYCODES.RIGHT,
+                ctrl = true,
+                shift = true,
+                alt = false,
+                macCtrl = false
+            },
+            clearQuickChain = {
+                key = OD_KEYCODES.K,
+                ctrl = true,
+                shift = true,
+                alt = false,
+                macCtrl = false
             }
         },
         fxTypeVisibility = {

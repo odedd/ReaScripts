@@ -118,6 +118,14 @@ T.SETTINGS = {
             LABEL = 'Run random result',
             HINT = 'Randomly select one of the results and run it.',
         },
+        ADD_TO_QUICK_CHAIN = {
+            LABEL = 'Add to Quick Chain',
+            HINT = 'Add selected FX/FX Chains to the Quick Chain.',
+        },
+        CLEAR_QUICK_CHAIN = {
+            LABEL = 'Clear Quick Chain',
+            HINT = 'Clear the Quick Chain.',
+        },
         MARK_FAVORITE = {
             LABEL = 'Mark favorite',
             HINT = 'Mark search result as favorite.',
@@ -295,7 +303,7 @@ T.HINTS = {
     DRAG_TAG_INTO_TAG = 'Move tag \'%s\' into tag \'%s\'.',
     DRAG_TAG_TO_POSITION_RELATIVE_TO_TAG = 'Move tag \'%s\' %s tag \'%s\'.',
     QUICK_CHAIN_MORE_ACTIONS = 'See all possible actions.',
-    QUICK_CHAIN_HOVER = 'Drag FX/Chains here to add them to the quick chain. Alt/Option+Click to remove.',
+    QUICK_CHAIN_HOVER = 'Drag FX/Chains here to add them to the Quick Chain. Alt/Option+Click to remove.',
 }
 
 T.MAIN_HELP = [[

@@ -624,9 +624,8 @@ RunApp = function()
                 end
             end,
             executeRandomResult = function()
-                -- local randomResult = app.temp.searchResults[math.random(#app.temp.searchResults)]
-                app.selection:selectOnly(math.random(#app.temp.searchResults))
-                app.selection:execute(RESULT_CONTEXT['IGNORE_KEYS'])
+                app.temp.resultsForExecution = { app.temp.searchResults[math.random(#app.temp.searchResults)] }
+                app.selection:execute(0, RESULT_CONTEXT['IGNORE_KEYS'])
             end,
             getActiveFilters = function()
                 local activeFilters = app.temp.activeFilters ~= nil and app.temp.activeFilters or {}
@@ -782,7 +781,18 @@ RunApp = function()
                     ImGui.PopFont(ctx)
                     PDefer(app.flow.hibernate)
                 end
-            end
+            end,
+            addSelectionToQuickChain = function()
+                if not app.settings.current.showQuickChain then
+                    app.settings.current.showQuickChain = true
+                end
+                local results = app.selection:results()
+                for j, result in ipairs(results) do
+                    if result.class.allowInQuickChain then
+                        table.insert(app.temp.quickChain, #app.temp.quickChain + 1, result)
+                    end
+                end
+            end,
         }
         app.guiHelpers = {
             initFrame = function(ctx)
@@ -971,9 +981,12 @@ RunApp = function()
                 local assetHint, usedMods = asset:getInteractionHintFor(mods, context, nil,
                     count)
                 if assetHint then
+                    -- local format = OD_BfCheck(context, RESULT_CONTEXT.QUICK_CHAIN) and "%s%s" or "%s to %s"
                     local action = assetHint
                     local actionKey = app.guiHelpers.keyModsToText(usedMods)
-                    local hint = ('%s to %s.'):format(actionKey, action)
+                    local hint = ("%s%s"):format(
+                        ((OD_BfCheck(context, RESULT_CONTEXT.QUICK_CHAIN) and not OD_BfCheck(context, RESULT_CONTEXT.KEYBOARD)) and '' or (actionKey .. ' to ')),
+                        action)
                     return hint
                 end
             end,
@@ -1088,17 +1101,15 @@ RunApp = function()
                             b.keymod -- maintain consistent ordering for same type
                     end
                 end)
-
                 for _, item in ipairs(sortedList) do
                     local keymod, hint = item.keymod, item.hint
 
                     local description = hint.text
                     local mod = keymod == 0 and 'Enter' or
-                        app.guiHelpers.keyModsToText(keymod |
-                            RESULT_CONTEXT.KEYBOARD)
+                        app.guiHelpers.keyModsToText(keymod)
 
                     local text = app.guiHelpers.getHintFor(result, keymod,
-                            RESULT_CONTEXT.KEYBOARD | actionContext, resultCount)
+                            actionContext, resultCount)
                         :gsub(
                             "^%l", string.upper):gsub('%.$', ' ') -- Capitalize first letter and remove trailing dot
                     if item.disabled then ImGui.BeginDisabled(ctx) end
@@ -1307,7 +1318,7 @@ RunApp = function()
                         if app.selection.keyboardPos then
                             hintResult = searchResults[app.selection.keyboardPos]
                             hintContext = RESULT_CONTEXT.KEYBOARD |
-                                (#app.temp.quickChain > 0 and RESULT_CONTEXT.QUICK_CHAIN or 0)
+                                ((#app.temp.quickChain > 0 and app.settings.current.showQuickChain) and RESULT_CONTEXT.QUICK_CHAIN or 0)
                             local newIdx = nil
                             if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) and app.selection.keyboardPos < #searchResults then
                                 newIdx =
@@ -1611,7 +1622,7 @@ RunApp = function()
                                                 end
                                                 -- local group = result.assetType
                                                 local rv, keymod = app.guiHelpers.actionContextMenu(ctx, result,
-                                                    app.selection:count())
+                                                    app.selection:count(), RESULT_CONTEXT.KEYBOARD)
                                                 if rv then
                                                     app.flow.executeSelectedResults(ctx, app.selection:results(),
                                                         keymod)
@@ -1786,7 +1797,7 @@ RunApp = function()
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX)
                     ImGui.InvisibleButton(ctx, '##quickChainSeparator', spacingX * 2, quickChainH)
                     if ImGui.IsItemHovered(ctx) then
-                        app:setHoveredHint('main', 'Drag to change QuickChain width')
+                        app:setHoveredHint('main', 'Drag to change Quick Chain width')
                         ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
                     end
                     if ImGui.IsItemActive(ctx) then
@@ -2263,29 +2274,15 @@ RunApp = function()
                 local drawQuickChain = function()
                     if ImGui.BeginChild(ctx, 'quickChain', quickChainW - spacingX * 2, quickChainH) then
                         ImGui.SeparatorText(ctx, "Quick Chain")
-                        ImGui.SameLine(ctx)
-                        ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
-                        ImGui.SetCursorPosX(ctx,
-                            ImGui.GetCursorPosX(ctx) + ImGui.GetContentRegionAvail(ctx) - spacingX - paddingX * 2 -
-                            ImGui.CalcTextSize(ctx, ICONS.CLOSE))
-                        -- ImGui.AlignTextToFramePadding(ctx)
-                        if ImGui.Button(ctx, ICONS.TRASH .. '##clearQuickChain') then
-                            app.temp.quickChain = {}
-                        end
-                        if ImGui.IsItemHovered(ctx) then
-                            ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
-                        end
-                        app:setHoveredHint('main', 'Clear quick chain')
-                        ImGui.PopFont(ctx)
-                        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
-
                         local w, h = ImGui.GetContentRegionAvail(ctx)
                         local list = app.temp.quickChain or {}
                         local listActive = #list > 0
                         if listActive then
                             app.gui:pushColors(app.gui.st.col.quickChainActive)
                         end
-                        if ImGui.BeginListBox(ctx, '##quickChainList', w, h - ImGui.GetTextLineHeight(ctx) - paddingY * 2 - spacingY) then
+                        local listH = h - ImGui.GetTextLineHeight(ctx) - paddingY * 2 - spacingY
+                        local x, y = ImGui.GetCursorPos(ctx)
+                        if ImGui.BeginListBox(ctx, '##quickChainList', w, listH) then
                             if ImGui.IsWindowHovered(ctx) then
                             app:setHint('main', T.HINTS.QUICK_CHAIN_HOVER)
                             end
@@ -2298,7 +2295,40 @@ RunApp = function()
                                 end
                                 if ImGui.BeginDragDropSource(ctx) then
                                     ImGui.SetDragDropPayload(ctx, 'QUICK_CHAIN_ITEM', tostring(i))
+                                    app:setHint('main', T.HINTS.DRAG_RESULT_DEFAULT)
+                                    local numItemsSelected = #app.temp.quickChain
+                                    local firstResult = app.temp.quickChain[1]
+                                    local resultName = (numItemsSelected == 1) and firstResult.searchText[1].text or
+                                        numItemsSelected .. ' items'
+                                    local winX, winY = table.unpack(app.gui.mainWindow.pos)
+                                    local winW, winH = table.unpack(app.gui.mainWindow.size)
+                                    local x, y = ImGui.GetCursorScreenPos(ctx)
+                                    if not (x >= winX and x <= winX + winW and y >= winY and y <= winY + winH) then
+                                        local object = r.BR_ItemAtMouseCursor() or r.BR_TrackAtMouseCursor()
+                                        local mods = ImGui.GetKeyMods(ctx)
+                                        local hintContext = object and RESULT_CONTEXT.DRAGGED_TO_OBJECT or
+                                            RESULT_CONTEXT.DRAGGED_TO_BLANK
+                                        local assetHint = (firstResult:getInteractionHintFor(mods, hintContext, object,
+                                            #app.temp.quickChain)):gsub("^%l", string.upper)
+                                        app:setHint('main', assetHint, nil, nil, 2)
+                                        app.temp.dragFromChainToObject = object or
+                                            -1         -- either store the dragged track or -1 to signify blank
+                                            ImGui.Text(ctx, resultName)
+                                    else
+                                        app.temp.dragFromChainToObject = nil
+                                    end
                                     ImGui.EndDragDropSource(ctx)
+                                end
+                                if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragFromChainToObject then
+                                    if app.temp.dragFromChainToObject == -1 then
+                                        app.flow.executeSelectedResults(ctx, app.temp.quickChain,
+                                            RESULT_CONTEXT.DRAGGED_TO_BLANK)
+                                    else
+                                        app.flow.executeSelectedResults(ctx, app.temp.quickChain,
+                                            RESULT_CONTEXT.DRAGGED_TO_OBJECT, nil, app.temp
+                                            .dragFromChainToObject)
+                                    end
+                                    app.temp.dragFromChainToObject = nil
                                 end
                                 if ImGui.BeginDragDropTarget(ctx) then
                                     local payload, data = ImGui.AcceptDragDropPayload(ctx, 'QUICK_CHAIN_ITEM')
@@ -2321,10 +2351,7 @@ RunApp = function()
                             if ImGui.BeginDragDropTarget(ctx) then
                                 local assetDropped, assetPayload = ImGui.AcceptDragDropPayload(ctx, 'ASSET', nil)
                                 if assetDropped then
-                                    local results = app.selection:results()
-                                    for j, result in ipairs(results) do
-                                        table.insert(list, #list + 1, result)
-                                    end
+                                    app.flow.addSelectionToQuickChain()
                                 end
                                 ImGui.EndDragDropTarget(ctx)
                             end
@@ -2358,11 +2385,16 @@ RunApp = function()
                             -- local group = result.assetType
                             app:setHint('main', '')
                             local rv, keymod = app.guiHelpers.actionContextMenu(ctx, app.temp.quickChain[1],
-                                #app.temp.quickChain)
+                                #app.temp.quickChain, RESULT_CONTEXT.QUICK_CHAIN)
                             if rv then
                                 app.flow.executeSelectedResults(ctx, app.temp.quickChain,
                                     keymod | RESULT_CONTEXT.QUICK_CHAIN)
                             end
+                            ImGui.Separator(ctx)
+                            if ImGui.MenuItem(ctx, 'Clear Quick Chain') then
+                                app.temp.clearQuickChain = true
+                            end
+
                             ImGui.EndPopup(ctx)
                         end
                         if #list == 0 then
@@ -2370,8 +2402,23 @@ RunApp = function()
                         else
                             app.gui:popColors(app.gui.st.col.buttons.default)
                         end
+                        if #list == 0 then
+                            local text =
+                            'Drag FX or\nFX Chain to\ncreate a\nQuickChain'
+                            local textW, textH = ImGui.CalcTextSize(ctx, text, nil, nil, nil, w - paddingX * 2)
+                            ImGui.SetCursorPosY(ctx, y + (listH / 2) - (textH / 2))
+                            for line in text:gmatch("[^\n]+") do
+                                local lineW, textH = ImGui.CalcTextSize(ctx, line)
+                                ImGui.SetCursorPosX(ctx, x + paddingX + ((w - paddingX) / 2) - lineW / 2)
+                                ImGui.TextColored(ctx, app.gui.st.basecolors.textDark, line)
+                            end
+                        end
                         ImGui.EndChild(ctx)
                         app.temp.quickChain = list
+                        if app.temp.clearQuickChain then
+                            app.temp.clearQuickChain = flase
+                            app.temp.quickChain = {}
+                        end
                     end
                 end
 
@@ -2430,7 +2477,7 @@ RunApp = function()
                             {
                                 icon = 'lightning',
                                 hint = app.settings.current.showQuickChain and 'Hide Quick Chain' or
-                                    'Show Quich Chain',
+                                    'Show Quick Chain',
                                 active = app.settings.current.showQuickChain
                             })
                         table.insert(menu,
@@ -2477,6 +2524,7 @@ RunApp = function()
                         elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter, false) then
                             if not app.temp.tagRename then
                                 local goWithQuickChain = app.temp.searchMode == SEARCH_MODE.MAIN and
+                                    app.settings.current.showQuickChain and
                                     #app.temp.quickChain > 0
                                 app.flow.executeSelectedResults(ctx,
                                     goWithQuickChain and app.temp.quickChain or app.selection:results(),
@@ -2493,6 +2541,11 @@ RunApp = function()
                             if #app.temp.searchResults > 0 then
                                 app.flow.executeRandomResult()
                             end
+                        elseif app.guiHelpers.isShortcutPressed('addToQuickChain', true) then
+                            app.flow.addSelectionToQuickChain()
+                            -- pressed = true
+                        elseif app.guiHelpers.isShortcutPressed('clearQuickChain', true) then
+                            app.temp.quickChain = {}
                             -- pressed = true
                         elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.guiHelpers.isShortcutPressed('markFavorite', true) and app.selection.keyboardPos then
                             -- pressed = true
@@ -2780,6 +2833,20 @@ RunApp = function()
                             {
                                 existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                                     function(k, v) return k ~= 'runRandomResult' end)
+                            })
+                        app.settings.current.shortcuts.addToQuickChain, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.ADD_TO_QUICK_CHAIN.LABEL,
+                            T.SETTINGS.SHORTCUTS.ADD_TO_QUICK_CHAIN.HINT, app.settings.current.shortcuts.addToQuickChain,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'addToQuickChain' end)
+                            })
+                        app.settings.current.shortcuts.clearQuickChain, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.CLEAR_QUICK_CHAIN.LABEL,
+                            T.SETTINGS.SHORTCUTS.CLEAR_QUICK_CHAIN.HINT, app.settings.current.shortcuts.clearQuickChain,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'clearQuickChain' end)
                             })
                         if resetCounter then app.temp.captureCounter = 0 end
                         ImGui.SeparatorText(ctx, 'Ordering')
