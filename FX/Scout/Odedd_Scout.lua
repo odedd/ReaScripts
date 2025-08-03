@@ -2611,7 +2611,7 @@ RunApp = function()
                         ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) - paddingX - winPaddingX
 
 
-                    if ImGui.BeginChild(ctx, 'topBarSearchInput', w, nil, nil, ImGui.WindowFlags_NoMouseInputs) then
+                    if ImGui.BeginChild(ctx, 'topBarSearchInput', w, nil, nil, ImGui.WindowFlags_NoMouseInputs | ImGui.WindowFlags_NoScrollWithMouse | ImGui.WindowFlags_NoScrollbar) then
                         -- local w = select(1, ImGui.GetContentRegionAvail(ctx))
 
                         ImGui.SetNextItemWidth(ctx, w)
