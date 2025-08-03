@@ -279,11 +279,11 @@ BaseAssetType.assetActions = {
 
         for _, asset in ipairs(assets) do
             if willFavorite and not asset.favorite then
-                table.insert(favorites, 1, self.key)
+                table.insert(favorites, 1, asset.key)
                 asset.favorite = true
                 changed = true
             elseif not willFavorite and asset.favorite then
-                OD_RemoveValue(favorites, self.key)
+                OD_RemoveValue(favorites, asset.key)
                 asset.favorite = false
                 changed = true
             end
