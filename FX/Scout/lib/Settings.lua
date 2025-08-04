@@ -14,6 +14,7 @@ PB_Settings = OD_Settings:new({
         minimalMode = false,
         overrideDefaultSendVolume = false,
         sendVolume = -12,
+        showInvisibleTakeMarkers = false,
         shortcuts = {
             markFavorite = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_F,
             closeScript = ImGui.Key_Escape,
@@ -68,7 +69,8 @@ PB_Settings = OD_Settings:new({
             "TrackAssetType",           -- Tracks asset type
             "TakeAssetType",            -- Takes asset type
             "MarkerAssetType",          -- Markers asset type
-            "RegionAssetType",          -- Markers asset type
+            "RegionAssetType",          -- Regions asset type
+            "TakeMarkerAssetType",      -- Take Markers asset type
             "ProjectAssetType",         -- Projects asset type
             "ActionAssetType",          -- Actions asset type
         },
@@ -83,6 +85,7 @@ PB_Settings = OD_Settings:new({
             ["ActionAssetType"] = true,         -- Actions asset type
             ["ProjectAssetType"] = true,        -- Projects asset type
             ["MarkerAssetType"] = true,         -- Markers asset type
+            ["TakeMarkerAssetType"] = true,     -- Take Markers asset type
             ["RegionAssetType"] = true,         -- Markers asset type
             ["ProjectTemplateAssetType"] = true -- Project Templates asset type
         },

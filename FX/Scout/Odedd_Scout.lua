@@ -3095,6 +3095,10 @@ RunApp = function()
                             app.settings.current.sendVolume = math.max(math.min(app.settings.current.sendVolume, 12),
                                 -144)
                         end
+                        app.settings.current.showInvisibleTakeMarkers = app.gui:setting('checkbox',
+                            T.SETTINGS.SHOW_INVISIBLE_TAKE_MARKERS.LABEL,
+                            T.SETTINGS.SHOW_INVISIBLE_TAKE_MARKERS.HINT, app.settings.current.showInvisibleTakeMarkers)
+                        
                         local removePath = nil
                         local path = app.gui:setting('folder', T.SETTINGS.PROJECT_SCAN_FOLDER.LABEL,
                             T.SETTINGS.PROJECT_SCAN_FOLDER.HINT, nil,

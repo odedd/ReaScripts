@@ -38,7 +38,7 @@ function FXChainAssetType:assembleAsset(chain)
     local asset = self:createAssetBase({
         type = self.assetTypeId,
         load = chain.load,
-        searchText = { { text = chain.file }, { text = chain.path }, { text = chain.ext, hide = true } },
+        searchText = { { text = chain.file }, { text = chain.path } },
         group = self.group,
     })
 

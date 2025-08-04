@@ -109,6 +109,10 @@ T.SETTINGS = {
         LABEL = 'Open FX UI after adding',
         HINT = 'Open and float FX after adding'
     },
+    SHOW_INVISIBLE_TAKE_MARKERS = {
+        LABEL = 'Show invisible take markers',
+        HINT = 'Show take markers that are outside the item boundaries.',
+    },
     SHORTCUTS = {
         ENTER_SLEEP_MODE = {
             LABEL = 'Enter sleep mode',
@@ -166,7 +170,6 @@ T.SETTINGS = {
             LABEL = 'Toggle minimal mode',
             HINT = 'Toggle minimal mode on and off.',
         }
-
     },
     UI_SCALE = {
         LABEL = 'Zoom',
@@ -290,9 +293,9 @@ T.SPECIAL_GROUPS = {
     [SPECIAL_GROUPS.PLUGINS] = 'FX'
 }
 
-T.RECENTLY_ADDED_EXPLANATION = 
-[[The script can only track FX and actions added after it was first 
-run. Anything added before that - even if within the selected time 
+T.RECENTLY_ADDED_EXPLANATION =
+[[The script can only track FX and actions added after it was first
+run. Anything added before that - even if within the selected time
 range - will not appear as recently added.]]
 
 T.SLEEP_MODE_EXPLANATION =
@@ -351,7 +354,7 @@ Scout is a powerful search and organization tool that helps you quickly find and
 WHAT SCOUT SEARCHES:
 
 - Plugins (VST, VST3, AU, JS) - All your effects and instruments
-- Actions - Built-in and custom Reaper actions  
+- Actions - Built-in and custom Reaper actions
 - Projects - Recently opened and scanned project files
 - Project Templates - Your saved project templates
 - Track Templates - Your saved track templates
@@ -390,7 +393,7 @@ QUICK CHAIN:
 - Alt/Option+Click to remove an item from the Quick Chain
 - When a Quick Chain has items, all actions (Add FX, create send etc...) relate to the Quick Chain
 
-PRESETS: 
+PRESETS:
 - Save complex filter combinations as presets for quick access
 - Presets can be assigned magic words for quick loading
 - Type the magic word followed by space to load the preset instantly
@@ -419,7 +422,7 @@ KEYBOARD SHORTCUTS:
 
 TIPS:
 - Enable Sleep Mode for fastest performance
-- Use the sidebar to organize assets with tags and filters  
+- Use the sidebar to organize assets with tags and filters
 - Drag items directly to tracks to add them
 - Create presets for commonly used filter combinations
 - Import/export your tags and favorites to share between systems

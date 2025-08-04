@@ -181,7 +181,7 @@ function TrackTemplateAssetType:assembleAsset(tt)
     local asset = self:createAssetBase({
         type = self.assetTypeId,
         load = tt.load,
-        searchText = { { text = tt.file }, { text = tt.path }, { text = tt.ext, hide = true } },
+        searchText = { { text = tt.file }, { text = tt.path } },
         group = self.group,
     })
 

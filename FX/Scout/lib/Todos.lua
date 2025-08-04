@@ -31,9 +31,10 @@
 -- DONE: Quick Chain
 -- DONE: Setting to override default send volume
 -- DONE: Docking
+-- DONE: xd
+-- TODO: Setting to show/hide hidden tracks
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Show Total Results
--- TODO: Add take markers
 -- TODO: write help
 -- TODO: Test on windows
 -- TODO: Zoom scroll issue is still there (eg. at 76% but not just)
