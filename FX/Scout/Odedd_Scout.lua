@@ -807,7 +807,7 @@ RunApp = function()
                         local minHeight = (app.page.minHeight * app.gui.scale) or 0
                         app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.page.width * app.gui.scale,
                             ((minHeight or (app.page.minHeight * app.gui.scale) or 0) or 0)
-     ˝                   ImGui.SetNextWindowSize(app.gui.ctx,
+                        ImGui.SetNextWindowSize(app.gui.ctx,
                             math.max(app.settings.current.lastWindowWidth or 0, app.page.width * app.gui.scale),
                             math.max(app.settings.current.lastWindowHeight or 0,
                                 (app.page.minHeight or 0) * app.gui.scale))
