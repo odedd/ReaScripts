@@ -75,6 +75,10 @@ T.SETTINGS = {
         LABEL = 'Use sleep mode',
         HINT = 'If one does not exist, it will be created when adding sends.',
     },
+    CENTER_ON_OPEN = {
+        LABEL = 'Center on open',
+        HINT = 'Center the main window on the screen when opened.',
+    },
     USE_VIRTUAL_INSTRUMENT_TRACKS = {
         LABEL = 'Use instrument tracks',
         HINT = 'When selecting instruments, create/convert to virtual instrument tracks.',

@@ -804,14 +804,13 @@ RunApp = function()
             initFrame = function(ctx)
                 local function refreshWindowSize()
                     if app.page then
-                        local width = app.page.width
                         local minHeight = (app.page.minHeight * app.gui.scale) or 0
                         app.gui.mainWindow.min_w, app.gui.mainWindow.min_h = app.page.width * app.gui.scale,
                             ((minHeight or (app.page.minHeight * app.gui.scale) or 0) or 0)
-                        ImGui.SetNextWindowSize(app.gui.ctx,
+     ˝                   ImGui.SetNextWindowSize(app.gui.ctx,
                             math.max(app.settings.current.lastWindowWidth or 0, app.page.width * app.gui.scale),
                             math.max(app.settings.current.lastWindowHeight or 0,
-                                (app.page.height or 0) * app.gui.scale))
+                                (app.page.minHeight or 0) * app.gui.scale))
                         app.refreshWindowSizeOnNextFrame = false
                     end
                 end
@@ -2852,6 +2851,9 @@ RunApp = function()
                             T.SETTINGS.SLEEP_MODE.LABEL,
                             T.SETTINGS.SLEEP_MODE.HINT, app.settings.current.sleepMode,
                             { help = T.SLEEP_MODE_EXPLANATION })
+                        app.settings.current.centerOnOpen = app.gui:setting('checkbox',
+                            T.SETTINGS.CENTER_ON_OPEN.LABEL,
+                            T.SETTINGS.CENTER_ON_OPEN.HINT, app.settings.current.centerOnOpen)
 
                         ImGui.SeparatorText(ctx, 'Ordering')
 
@@ -3287,8 +3289,8 @@ RunApp = function()
                 app:setHint(window, '')
             end,
             popup = function(ctx, id, text)
-                local currentWindowPos = { ImGui.GetWindowPos(ctx) }
-                local currentWindowSize = { ImGui.GetWindowSize(ctx) }
+                local currentWindowPos = app.gui.mainWindow.pos
+                local currentWindowSize = app.gui.mainWindow.size
                 local center = { currentWindowPos[1] + currentWindowSize[1] / 2,
                     currentWindowPos[2] + currentWindowSize[2] / 2 }
                 local okButtonLabel = 'Yes'
@@ -3629,8 +3631,8 @@ RunApp = function()
                         ImGui.OpenPopup(ctx, 'Operation in Progress')
                     end
 
-                    local currentWindowPos = { ImGui.GetWindowPos(ctx) }
-                    local currentWindowSize = { ImGui.GetWindowSize(ctx) }
+                    local currentWindowPos = app.gui.mainWindow.pos
+                    local currentWindowSize = app.gui.mainWindow.size
                     local center = { currentWindowPos[1] + currentWindowSize[1] / 2,
                         currentWindowPos[2] + currentWindowSize[2] / 2 }
 
@@ -3677,7 +3679,10 @@ RunApp = function()
                 end
             end,
             mainWindow = function(ctx)
-                ImGui.SetNextWindowPos(ctx, 100, 100, ImGui.Cond_FirstUseEver)
+                local viewPortW, viewPortH = ImGui.Viewport_GetSize(ImGui.GetMainViewport(ctx))
+                local center = { viewPortW / 2,
+                    viewPortH / 2 }
+                ImGui.SetNextWindowPos(ctx, center[1], center[2] /  (app.settings.current.minimalMode and 1.5 or 1), app.settings.current.centerOnOpen and ImGui.Cond_Appearing or ImGui.Cond_FirstUseEver, 0.5, 0.5)
 
                 app.flow.getActiveFilters()
                 app.temp.fullWindow = true

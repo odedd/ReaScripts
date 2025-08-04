@@ -4,6 +4,7 @@ PB_Settings = OD_Settings:new({
     default = {
         -- Settings window
         createSendsInsideFolder = false,
+        centerOnOpen = true,
         sendFolderName = 'FX Return Tracks',
         sleepMode = false,
         projectScanFolders = {},
