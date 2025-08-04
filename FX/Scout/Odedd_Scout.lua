@@ -2746,6 +2746,13 @@ RunApp = function()
                             app.settings:save()
                         elseif btn == 'question' then
                             app.temp.showHelpWindow = app.temp.showHelpWindow == nil and true or nil
+                            if not app.temp.showHelpWindow then
+                                local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or
+                                r.JS_Window_Find(Scr.name, true)
+                                if scriptHwnd then
+                                    r.JS_Window_SetFocus(scriptHwnd)
+                                end
+                            end
                         elseif btn == 'gear' then
                             ImGui.OpenPopup(ctx, Scr.name .. ' Settings##settingsWindow')
                         elseif btn == 'lightning' then
@@ -3098,7 +3105,7 @@ RunApp = function()
                         app.settings.current.showInvisibleTakeMarkers = app.gui:setting('checkbox',
                             T.SETTINGS.SHOW_INVISIBLE_TAKE_MARKERS.LABEL,
                             T.SETTINGS.SHOW_INVISIBLE_TAKE_MARKERS.HINT, app.settings.current.showInvisibleTakeMarkers)
-                        
+
                         local removePath = nil
                         local path = app.gui:setting('folder', T.SETTINGS.PROJECT_SCAN_FOLDER.LABEL,
                             T.SETTINGS.PROJECT_SCAN_FOLDER.HINT, nil,
