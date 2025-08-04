@@ -6,7 +6,7 @@ TrackTemplateAssetType.__index = TrackTemplateAssetType
 setmetatable(TrackTemplateAssetType, BaseAssetType)
 
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
-local helpers = dofile(p..'AssetTypeHelpers.lua')
+local helpers = dofile(p .. 'AssetTypeHelpers.lua')
 
 function TrackTemplateAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Track Template", "Track Templates")(class, context)
@@ -18,9 +18,16 @@ function TrackTemplateAssetType.new(class, context)
             r.Main_openProject(asset.load)
             return true, ('loaded track template %s'):format(asset.searchText[1].text)
         end)
-    instance:addInteraction(ImGui.Mod_Shift, 'send to %singular(a )new track%plural(s) with %singular(template \'%asset\')%plural(%asset)',
+    instance:addInteraction(RESULT_CONTEXT.DRAGGED_TO_BLANK, 'load %asset as %singular(a )new track%plural(s)',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
-            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods, contextData, confirm)
+            r.Main_openProject(asset.load)
+            return true, ('loaded track template %s'):format(asset.searchText[1].text)
+        end)
+    instance:addInteraction(ImGui.Mod_Shift,
+        'send selected track(s) to %singular(a )new track%plural(s) with %singular(template \'%asset\')%plural(%asset)',
+        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
+                contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
                 local tempGuids = {}
                 local dummyTrack, dummyTrackFolderDepth, depthDelta
@@ -62,6 +69,8 @@ function TrackTemplateAssetType.new(class, context)
                     r.DeleteTrack(dummyTrack)
                 end
                 if index == total then
+                    local originalSendVol = helpers.setDefaultSendVolume(asset.context.settings.current)
+
                     for i, track in ipairs(selectedTracks) do
                         if i == 1 then
                             r.SetOnlyTrackSelected(track)
@@ -73,6 +82,74 @@ function TrackTemplateAssetType.new(class, context)
                             reaper.CreateTrackSend(track, addedTrack)
                         end
                     end
+                    helpers.resetDefaultSendVolume(originalSendVol)
+                end
+                return true, ('sent to a new track with template %s'):format(asset.searchText[1].text)
+            elseif selectedTracks and #selectedTracks == 0 then
+                return false, 'No tracks selected'
+            end
+        end)
+
+    instance:addInteraction(ImGui.Mod_Shift | RESULT_CONTEXT.DRAGGED_TO_BLANK,
+        'send selected track(s) to %singular(a )new track%plural(s) with %singular(template \'%asset\')%plural(%asset)',
+        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
+                contextData, confirm)
+            if selectedTracks and #selectedTracks > 0 then
+                local tempGuids = {}
+                local dummyTrack, dummyTrackFolderDepth, depthDelta
+                dummyTrack = helpers.createSendTrack(asset)
+                r.SetOnlyTrackSelected(dummyTrack)
+                r.Main_OnCommand(40913, 0)
+                local numTracks = r.CountTracks(0)
+                for i = 0, numTracks - 1 do
+                    local scannedTrack = r.GetTrack(0, i)
+                    local trackGuid = r.GetTrackGUID(scannedTrack)
+                    table.insert(tempGuids, trackGuid)
+                end
+                r.Main_openProject(asset.load)
+
+                if dummyTrack then
+                    dummyTrackFolderDepth = r.GetMediaTrackInfo_Value(dummyTrack, 'I_FOLDERDEPTH')
+                    r.SetMediaTrackInfo_Value(dummyTrack, 'I_FOLDERDEPTH', 0)
+                end
+
+                numTracks = r.CountTracks(0)
+                if index == 1 then
+                    tempStore.addedTracks = {}
+                end
+                local lastTrack = nil
+                for i = 0, numTracks - 1 do
+                    local scannedTrack = r.GetTrack(0, i)
+                    local trackGuid = r.GetTrackGUID(scannedTrack)
+                    if not OD_HasValue(tempGuids, trackGuid) then
+                        table.insert(tempStore.addedTracks, scannedTrack)
+                        if dummyTrack then
+                            depthDelta = r.GetMediaTrackInfo_Value(scannedTrack, 'I_FOLDERDEPTH')
+                            lastTrack = scannedTrack
+                        end
+                    end
+                end
+
+                if dummyTrack then
+                    r.SetMediaTrackInfo_Value(lastTrack, 'I_FOLDERDEPTH', dummyTrackFolderDepth + depthDelta)
+                    r.DeleteTrack(dummyTrack)
+                end
+                if index == total then
+                    local originalSendVol = helpers.setDefaultSendVolume(asset.context.settings.current)
+
+                    for i, track in ipairs(selectedTracks) do
+                        if i == 1 then
+                            r.SetOnlyTrackSelected(track)
+                            r.Main_OnCommand(40913, 0)
+                        else
+                            r.SetTrackSelected(track, true)
+                        end
+                        for j, addedTrack in ipairs(tempStore.addedTracks) do
+                            reaper.CreateTrackSend(track, addedTrack)
+                        end
+                    end
+                    helpers.resetDefaultSendVolume(originalSendVol)
                 end
                 return true, ('sent to a new track with template %s'):format(asset.searchText[1].text)
             elseif selectedTracks and #selectedTracks == 0 then
