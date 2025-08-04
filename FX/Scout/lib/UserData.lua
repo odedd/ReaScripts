@@ -1756,7 +1756,7 @@ function PB_UserData:createQuickChain(name, items, word)
         (word and (' and magic word "' .. word .. '"') or ''))
 
     self:save()
-
+    self.app.engine:getQuickChains() -- Notify engine to refresh its runtime data
     return quickChain
 end
 
@@ -1772,6 +1772,7 @@ function PB_UserData:deleteQuickChain(quickChainId)
     self.app.logger:logInfo('Deleted quick chain "' .. quickChainName .. '" with id ' .. quickChainId)
 
     self:save()
+    self.app.engine:getQuickChains() -- Notify engine to refresh its runtime data
 
     return true
 end
@@ -1813,6 +1814,7 @@ function PB_UserData:updateQuickChain(quickChainId, name, items, word)
     self.app.logger:logInfo('Updated quick chain "' .. name .. '" with id ' .. quickChainId)
 
     self:save()
+    self.app.engine:getQuickChains() -- Notify engine to refresh its runtime data
 
     return self.current.quickChains[quickChainId]
 end
@@ -1858,7 +1860,7 @@ function PB_UserData:resolveQuickChainAssets(quickChainId)
     if #resolvedAssets ~= #quickChain.items then
         local foundCount = #resolvedAssets
         local totalCount = #quickChain.items
-        self.app.logger:logWarning('Quick Chain "' .. quickChain.name .. '": resolved ' .. 
+        self.app.logger:logInfo('Quick Chain "' .. quickChain.name .. '": resolved ' .. 
             foundCount .. ' of ' .. totalCount .. ' assets (some assets may no longer be available)')
     end
 

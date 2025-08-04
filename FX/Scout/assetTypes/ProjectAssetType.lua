@@ -66,6 +66,17 @@ function ProjectAssetType:getData()
         return recentProjects
     end
 
+    -- Get recent projects first to prioritize them
+    local recentProjects = getRecentProjects()
+    self.context.logger:logDebug('Found ' .. #recentProjects .. ' recent projects from reaper.ini')
+    
+    -- Create a set of recent project paths for fast lookup
+    local recentProjectPaths = {}
+    for _, project in ipairs(recentProjects) do
+        recentProjectPaths[project.fullPath] = true
+        table.insert(data, project)
+    end
+
     -- Get project scan folders from settings
     local scanFolders = self.context.settings.current.projectScanFolders or {}
 
@@ -77,24 +88,21 @@ function ProjectAssetType:getData()
         if success and projectFiles then
             for _, relativePath in ipairs(projectFiles) do
                 local fullPath = folderPath .. OD_FolderSep() .. relativePath
-                local path, name, ext = OD_DissectFilename(relativePath)
+                
+                -- Only add if not already in recent projects
+                if not recentProjectPaths[fullPath] then
+                    local path, name, ext = OD_DissectFilename(relativePath)
 
-                table.insert(data, {
-                    fullPath = fullPath,
-                    name = name,
-                    path = folderPath .. '/' .. path,
-                })
+                    table.insert(data, {
+                        fullPath = fullPath,
+                        name = name,
+                        path = folderPath .. '/' .. path,
+                    })
+                end
             end
         else
             self.context.logger:logError('Project scan folder does not exist or is not accessible: ' .. folderPath)
         end
-    end
-
-    -- Add recent projects from reaper.ini
-    local recentProjects = getRecentProjects()
-    self.context.logger:logDebug('Found ' .. #recentProjects .. ' recent projects from reaper.ini')
-    for _, project in ipairs(recentProjects) do
-        table.insert(data, project)
     end
 
     return data

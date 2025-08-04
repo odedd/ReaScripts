@@ -289,7 +289,7 @@ PB_DataEngine = {
 
         self:getTags()
         self:getPresets()
-
+        self:getMagicWords()
         -- Use the new modular assembleAssets (this populates fxDevelopers)
         self:assembleAssets(forceRebuildCache)
 
@@ -838,11 +838,30 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
     if reassembleTagFilterAssets then self:assembleFilterAssets({ tags = true }) end
 end
 
+PB_DataEngine.getMagicWords = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.getMagicWords()')
+
+    -- Clear existing magic words
+    self.magicWords = {}
+
+    -- Populate magic words from presets
+    for id, preset in pairs(self.presets) do
+        if preset.word and preset.word ~= '' then
+            self.magicWords[preset.word:upper()] = { type = MAGIC_WORD_TYPE.PRESET, filter = preset.filter }
+        end
+    end
+
+    for id, quickChain in pairs(self.app.userdata.current.quickChains) do
+        if quickChain.word and quickChain.word ~= '' then
+            self.magicWords[quickChain.word:upper()] = { type = MAGIC_WORD_TYPE.QUICK_CHAIN, quickChain = quickChain }
+        end
+    end
+    self.app.logger:logDebug('Found ' .. #self.magicWords .. ' magic words')
+end
 PB_DataEngine.getPresets = function(self, reassemblePresetFilterAssets)
     self.app.logger:logDebug('-- PB_DataEngine.getPresets()')
 
     self.presets = {}
-    self.magicWords = {}
 
     -- Create a sorted list of presets alphabetically for consistent ordering
     local sortedPresets = {}
@@ -859,9 +878,6 @@ PB_DataEngine.getPresets = function(self, reassemblePresetFilterAssets)
     for order, sortedPreset in ipairs(sortedPresets) do
         local id = sortedPreset.id
         local presetData = sortedPreset.data
-        if presetData.word and presetData.word ~= '' then
-            self.magicWords[presetData.word:upper()] = {type = MAGIC_WORD_TYPE.PRESET, filter = presetData.filter}
-        end
         local preset = OD_DeepCopy(presetData)
         preset.id = id
         preset.app = self.app
@@ -906,6 +922,7 @@ PB_DataEngine.refreshPresets = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.refreshPresets()')
     -- Simple wrapper around getPresets for external refresh calls
     self:getPresets(true)
+    self:getMagicWords()
 end
 PB_DataEngine.markSpecialGroups = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.markSpecialGroups()')
@@ -1651,4 +1668,52 @@ PB_DataEngine.getAssetsByKeys = function(self, assetKeys)
     end
 
     return foundAssets
+end
+
+-- Check if a magic word is already in use by presets or Quick Chains
+-- Returns: isUsed (boolean), conflictType (string), conflictName (string)
+PB_DataEngine.isMagicWordUsed = function(self, word, excludeType, excludeId)
+    if not word or word == '' then
+        return false, nil, nil
+    end
+
+    local wordLower = word:lower()
+
+    -- Check presets (unless we're excluding a preset)
+    if excludeType ~= 'preset' then
+        for presetId, preset in pairs(self.presets or {}) do
+            if preset.word and preset.word ~= '' and preset.word:lower() == wordLower then
+                if excludeType ~= 'preset' or presetId ~= excludeId then
+                    return true, 'preset', preset.name
+                end
+            end
+        end
+    else
+        -- When excluding a preset, still check other presets
+        for presetId, preset in pairs(self.presets or {}) do
+            if preset.word and preset.word ~= '' and preset.word:lower() == wordLower and presetId ~= excludeId then
+                return true, 'preset', preset.name
+            end
+        end
+    end
+
+    -- Check Quick Chains (unless we're excluding a Quick Chain)
+    if excludeType ~= 'quickChain' then
+        for quickChainId, quickChain in pairs(self.app.userdata.current.quickChains or {}) do
+            if quickChain.word and quickChain.word ~= '' and quickChain.word:lower() == wordLower then
+                if excludeType ~= 'quickChain' or quickChainId ~= excludeId then
+                    return true, 'quickChain', quickChain.name
+                end
+            end
+        end
+    else
+        -- When excluding a Quick Chain, still check other Quick Chains
+        for quickChainId, quickChain in pairs(self.app.userdata.current.quickChains or {}) do
+            if quickChain.word and quickChain.word ~= '' and quickChain.word:lower() == wordLower and quickChainId ~= excludeId then
+                return true, 'quickChain', quickChain.name
+            end
+        end
+    end
+
+    return false, nil, nil
 end

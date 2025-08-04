@@ -40,6 +40,9 @@
 -- DONE: write help
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Test on windows
+-- TODO: Add Quick Chains to UserData import/export
+-- TODO: When importin/Exporting UserData, check for magic word conflicts across both presets and quick chains
+
 ---------------------------------------
 -- AFTER LAUNCH -----------------------
 ---------------------------------------
