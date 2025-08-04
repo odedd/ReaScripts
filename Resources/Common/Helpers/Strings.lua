@@ -44,6 +44,23 @@ function OD_Trim(s)
     return s:match'^()%s*$' and '' or s:match'^%s*(.*%S)'
 end
 
+function OD_FormatNumberWithCommas(number)
+    local s = tostring(number)
+    local integer_part, fracPart = s:match("([^.]*)(.*)") -- Separate integer and fractional parts
+    local formInteger = ""
+    local len = #integer_part
+
+    for i = 1, len do
+        formInteger = formInteger .. integer_part:sub(i, i)
+        if (len - i) % 3 == 0 and (len - i) ~= 0 then
+            formInteger = formInteger .. ","
+        end
+    end
+
+    return formInteger .. fracPart
+end
+
+
 -- function magicFix(str)
 --     return str:gsub("[%(%)%.%+%-%*%?%[%]%^%$%%]", "%%%1")
 --   end

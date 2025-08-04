@@ -611,6 +611,7 @@ RunApp = function()
                 validatedFilter, hasIssues = app.engine:validateFilter(filter)
                 app.temp.filter = validatedFilter
                 filterAssets()
+                app.temp.numResults = #app.temp.searchResults
                 resetOrRestoreSelection()
             end,
             executeSelectedResults = function(ctx, results, resultContext, keyMods, contextData, confirm)
@@ -1303,7 +1304,8 @@ RunApp = function()
                 -- local quickChainScreenX = sideBarScreenX - quickChainW -- X position for quick chain area
                 local upperRowY = ImGui.GetCursorPosY(ctx)                                     -- Y position for upper row, used for "sticky" first group title
                 local upperRowScreenY = select(2, ImGui.GetCursorScreenPos(ctx))               -- Y position for upper row, used for "sticky" first group title
-                local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx) + select(2,ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemInnerSpacing))
+                local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx) +
+                select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemInnerSpacing))
 
                 local tagInfo = app.userdata.current.tagInfo
                 local searchResults = app.temp.searchResults or
@@ -1510,7 +1512,7 @@ RunApp = function()
                                     ImGui.SetNextWindowScroll(ctx, 0, itemBottom - searchResultsH - 2)
                                     -- If item is above the visible area, scroll to show it at the top
                                 elseif itemTop < viewTop then
-                                    ImGui.SetNextWindowScroll(ctx, 0, math.max(0, itemTop-2))
+                                    ImGui.SetNextWindowScroll(ctx, 0, math.max(0, itemTop - 2))
                                 end
                             end
                         end
@@ -1764,7 +1766,20 @@ RunApp = function()
                                 app.temp.highlightDropAreaFor = nil
                             end
                             ImGui.SetCursorPosY(ctx, upperRowY)
-                            ImGui.SeparatorText(ctx, firstGroup or '')
+                            local text = OD_FormatNumberWithCommas(app.temp.numResults) .. ' results'
+                            local width = ImGui.GetContentRegionAvail(ctx)
+                            local textWidth = ImGui.CalcTextSize(ctx, text)
+                            local textPos = width - textWidth
+                            ImGui.SetNextItemWidth(ctx, textPos - spacingX)
+                            if ImGui.BeginChild(ctx, 'FirstSeparatorChild', textPos - spacingX) then
+                                -- ImGui.Button(ctx, firstGroup or '', width - textWidth - spacingX)
+                                ImGui.SeparatorText(ctx, firstGroup or '')
+                                ImGui.EndChild(ctx)
+                            end
+                            ImGui.SameLine(ctx)
+
+                            ImGui.SetCursorPosX(ctx, textPos)
+                            ImGui.TextColored(ctx, app.gui.st.basecolors.textDark,text)
                         else
                             drawErrorNoResults()
                         end
@@ -2747,7 +2762,7 @@ RunApp = function()
                             app.temp.showHelpWindow = app.temp.showHelpWindow == nil and true or nil
                             if not app.temp.showHelpWindow then
                                 local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or
-                                r.JS_Window_Find(Scr.name, true)
+                                    r.JS_Window_Find(Scr.name, true)
                                 if scriptHwnd then
                                     r.JS_Window_SetFocus(scriptHwnd)
                                 end
@@ -3682,7 +3697,8 @@ RunApp = function()
                 local viewPortW, viewPortH = ImGui.Viewport_GetSize(ImGui.GetMainViewport(ctx))
                 local center = { viewPortW / 2,
                     viewPortH / 2 }
-                ImGui.SetNextWindowPos(ctx, center[1], center[2] /  (app.settings.current.minimalMode and 1.5 or 1), app.settings.current.centerOnOpen and ImGui.Cond_Appearing or ImGui.Cond_FirstUseEver, 0.5, 0.5)
+                ImGui.SetNextWindowPos(ctx, center[1], center[2] / (app.settings.current.minimalMode and 1.5 or 1),
+                    app.settings.current.centerOnOpen and ImGui.Cond_Appearing or ImGui.Cond_FirstUseEver, 0.5, 0.5)
 
                 app.flow.getActiveFilters()
                 app.temp.fullWindow = true
