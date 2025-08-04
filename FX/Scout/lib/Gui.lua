@@ -527,7 +527,7 @@ PB_Gui.init = function(self, fonts)
             _, retval1 = ImGui.InputTextWithHint(ctx, '##' .. text, data.hint, val)
         elseif stType == 'shortcut' then
             hint = hint .. ' alt-click to remove shortcut.'
-            -- if val and (val.key == -1) then val = nil end
+            if val and val == -1 then val = nil end
             local label, newVal
             if self.app.temp._capturing == text then
                 label = '...'
@@ -571,7 +571,7 @@ PB_Gui.init = function(self, fonts)
             end
             ImGui.PopStyleColor(ctx)
             -- if val == nil then val = { key = -1, ctrl = false, shift = false, alt = false } end
-            retval1 = newVal or val
+            retval1 = newVal or val or -1
         elseif stType == 'orderable_list' then
             -- ImGui.Dummy(ctx, widgetWidth, 20)
             local orderList, enabledList = val[1], val[2]

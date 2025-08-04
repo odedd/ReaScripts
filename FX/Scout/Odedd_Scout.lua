@@ -51,8 +51,6 @@ RunApp = function()
         package.path = r.ImGui_GetBuiltinPath() .. '/?.lua'
         ImGui = require 'imgui' '0.9.2'
 
-        OD_KeyboardImguiHelperInit()
-
         dofile(p .. 'lib/Constants.lua')
         dofile(p .. 'lib/Texts.lua')
         dofile(p .. 'lib/Settings.lua')
@@ -917,7 +915,7 @@ RunApp = function()
             end,
             isShortcutPressed = function(key)
                 local shortcut = app.settings.current.shortcuts[key]
-                if shortcut == nil then
+                if shortcut == nil or shortcut == -1 then
                     return false
                 end
                 local keyChord = shortcut or 0
@@ -930,7 +928,7 @@ RunApp = function()
                 app.temp.clearSearchInputText = true
             end,
             shortCutToText = function(keychord)
-                if keychord == nil or keychord == 0 then return '' end
+                if keychord == nil or keychord == 0 or keychord == -1 then return '' end
                 local mods = {}
                 if OD_BfCheck(keychord, ImGui.Mod_Ctrl) then
                     table.insert(mods, OD_IMGUI_KEY_NAMES[ImGui.Mod_Ctrl])
@@ -1135,7 +1133,30 @@ RunApp = function()
                     end
                     if item.disabled then ImGui.EndDisabled(ctx) end
                 end
+            end,
+            formatRichText = function(text)
+                local text = text:gsub('$([%w_]+)', {
+                    SCRIPT = (Scr.name):upper(),
+                    script = '`' .. Scr.name .. '`',
+                    ctrl = OS_is.mac and 'Cmd' or 'Ctrl',
+                    alt = OS_is.mac and 'Option' or 'Alt',
+                })
+                for shortcut, keychord in pairs(app.settings.current.shortcuts) do
+                    if keychord ~= 0 and keychord ~= -1 then
+                        local keyText = app.guiHelpers.shortCutToText(keychord)
+                        text = text:gsub('$shortcut:' .. shortcut, '`' .. keyText .. '`')
+                    else
+                        text = text:gsub('$shortcut:' .. shortcut, '(unassigned shortcut)')
+                    end
+                end
+                text = text:gsub('([%\r\n])%-', '%1\0-;'):gsub('^%-', '\0-;')
+                text = text:gsub('`(.-)`',
+                    ('\0c%08X;%%1\0C;'):format(app.gui.st.basecolors.mainBrightest))
+                text = text:gsub('#(.-)#', ('\0fbold;%1\0F;'))
+
+                return text
             end
+
         }
         app.draw = {
             activeFilters = function()
@@ -1306,7 +1327,7 @@ RunApp = function()
                 local upperRowY = ImGui.GetCursorPosY(ctx)                                     -- Y position for upper row, used for "sticky" first group title
                 local upperRowScreenY = select(2, ImGui.GetCursorScreenPos(ctx))               -- Y position for upper row, used for "sticky" first group title
                 local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx) +
-                select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemInnerSpacing))
+                    select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemInnerSpacing))
 
                 local tagInfo = app.userdata.current.tagInfo
                 local searchResults = app.temp.searchResults or
@@ -1780,7 +1801,7 @@ RunApp = function()
                             ImGui.SameLine(ctx)
 
                             ImGui.SetCursorPosX(ctx, textPos)
-                            ImGui.TextColored(ctx, app.gui.st.basecolors.textDark,text)
+                            ImGui.TextColored(ctx, app.gui.st.basecolors.textDark, text)
                         else
                             drawErrorNoResults()
                         end
@@ -3201,7 +3222,7 @@ RunApp = function()
             help = function(ctx)
                 if app.temp.showHelpWindow then
                     local w = 810 * app.gui.scale
-                    local h = 530 * app.gui.scale
+                    local h = 830 * app.gui.scale
                     local maxH = app.gui.screen.size[2] * .8
                     -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger
                     -- closing this window. So we increment a counter which will be reset if the shortcut is
@@ -3211,7 +3232,7 @@ RunApp = function()
                     --     ImGui.Cond_Appearing,
                     --     0.5,
                     --     0.5)
-                    ImGui.SetNextWindowSizeConstraints(ctx, w * .7, 0.0, FLT_MAX, maxH)
+                    ImGui.SetNextWindowSizeConstraints(ctx, w, 0.0, w, maxH)
                     app.gui:pushStyles(app.gui.st.vars.popupsTitle)
                     local visible, open = ImGui.Begin(ctx, Scr.name .. ' Help##helpWindow', true,
                         ImGui.WindowFlags_NoDocking |
@@ -3221,68 +3242,134 @@ RunApp = function()
                     app.gui:popStyles(app.gui.st.vars.popupsTitle)
 
                     if visible then
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) and ImGui.IsWindowFocused(ctx) then
+                        if ImGui.Shortcut(ctx, ImGui.Key_Escape, ImGui.InputFlags_RouteGlobal | ImGui.InputFlags_RouteOverFocused) then
                             app.temp.showHelpWindow = nil
                         end
-                        if ImGui.BeginChild(ctx, '##help') then
+                        if ImGui.BeginChild(ctx, '##help', 0.0, -app.gui.st.sizes.hintHeight, nil) then
                             if ImGui.BeginTabBar(ctx, 'Help Bar') then
                                 local tabFlags = ImGui.TabItemFlags_None
                                 if ImGui.IsWindowAppearing(ctx) then
                                     tabFlags = tabFlags | ImGui.TabItemFlags_SetSelected
                                 end
-                                if ImGui.BeginTabItem(ctx, 'Result execution options', false, tabFlags) then
-                                    for i, group in ipairs(app.settings.current.groupOrder) do
-                                        if group ~= SPECIAL_GROUPS.RECENTS and group ~= SPECIAL_GROUPS.FAVORITES then
-                                            ImGui.PushID(ctx, i)
-                                            if ImGui.CollapsingHeader(ctx, app.engine.assetGroupNameCache[group], false, ImGui.TreeNodeFlags_DefaultOpen | ImGui.Cond_Appearing) then
-                                                if ImGui.BeginTable(ctx, "keyCommands", 2, nil, 0) then
-                                                    ImGui.TableSetupColumn(ctx, 'Key Commands',
-                                                        ImGui.TableColumnFlags_WidthFixed, 210 * app.gui.scale)
-                                                    ImGui.TableSetupColumn(ctx, 'Description',
-                                                        ImGui.TableColumnFlags_WidthStretch)
-                                                    for keymod, hint in OD_PairsByOrder(_G[group].interactionHints) do
-                                                        ImGui.TableNextRow(ctx)
-                                                        ImGui.TableNextColumn(ctx)
-                                                        local description = hint.text
-                                                        local mod = keymod == 0 and 'Click' or
-                                                            app.guiHelpers.keyModsToText(keymod |
-                                                                RESULT_CONTEXT.MOUSE_CLICK)
-                                                        local assetType = app.engine.assetTypeManager
-                                                            :getAssetTypeByClassName(group)
-
-                                                        local text = BaseAssetType:parseInteractionHintTemplate(
-                                                                description,
-                                                                -1, nil,
-                                                                assetType.name,
-                                                                (assetType.allowMultiple and (assetType.group):gsub('s$', '(s)'):lower() or (assetType.name):lower()))
-                                                            :gsub(
-                                                                "^%l", string.upper)
-                                                        ImGui.PushFont(ctx, app.gui.st.fonts.bold)
-                                                        -- ImGui.TextWrapped(ctx, mod .. ': ')
-                                                        ImGui.TextColored(ctx, app.gui.st.basecolors.mainBrightest,
-                                                            mod .. ': ')
-                                                        ImGui.PopFont(ctx)
-                                                        ImGui.TableNextColumn(ctx)
-
-                                                        -- ImGui.SameLine(ctx)
-                                                        ImGui.TextWrapped(ctx, text)
-                                                    end
-                                                    ImGui.EndTable(ctx)
-                                                end
+                                if ImGui.BeginTabItem(ctx, 'About Scout', false, tabFlags) then
+                                    if ImGui.BeginChild(ctx, 'AboutContent', nil, nil, nil, ImGui.WindowFlags_NoNavFocus) then
+                                        ImGui.Spacing(ctx)
+                                        -- ImGui.PushTextWrapPos(ctx, 0.0)
+                                        local text = T.MAIN_HELP
+                                        local firstPipePos = text:find('|')
+                                        if not firstPipePos then
+                                            -- No | sections found, render entire text as prefix
+                                            OD_ImGuiRichTextWrapped(ctx, app.guiHelpers.formatRichText(text),
+                                                app.gui.st.fonts)
+                                        elseif firstPipePos > 1 then
+                                            -- | sections found, render text before first | as prefix
+                                            local prefixText = text:sub(1, firstPipePos - 1)
+                                            if prefixText and prefixText ~= '' then
+                                                OD_ImGuiRichTextWrapped(ctx, app.guiHelpers.formatRichText(prefixText),
+                                                    app.gui.st.fonts)
                                             end
-                                            ImGui.PopID(ctx)
                                         end
+
+                                        for title, section in text:gmatch('|([^\r\n]+)([^|]+)') do
+                                            if ImGui.CollapsingHeader(ctx, title, false, ImGui.TreeNodeFlags_DefaultOpen) then
+                                                -- ImGui.TextWrapped(ctx, app.guiHelpers.formatRichText(section))
+                                                OD_ImGuiRichTextWrapped(ctx, app.guiHelpers.formatRichText(section),
+                                                    app.gui.st.fonts)
+                                            end
+                                        end
+                                        -- ImGui.PopTextWrapPos(ctx)
+                                        ImGui.EndChild(ctx)
                                     end
                                     ImGui.EndTabItem(ctx)
                                 end
-                                if ImGui.BeginTabItem(ctx, 'About Scout', false) then
-                                    ImGui.TextWrapped(ctx, T.MAIN_HELP)
+                                if ImGui.BeginTabItem(ctx, 'Keyboard Modifiers', false) then
+                                    if ImGui.BeginChild(ctx, 'ExecutionOptionsContent') then
+                                        ImGui.Spacing(ctx)
+                                        OD_ImGuiRichTextWrapped(ctx, app.guiHelpers.formatRichText(T.KEYBOARD_MODIFIERS_HELP),
+                                                    app.gui.st.fonts)
+                                        for i, group in ipairs(app.settings.current.groupOrder) do
+                                            if group ~= SPECIAL_GROUPS.RECENTS and group ~= SPECIAL_GROUPS.FAVORITES then
+                                                ImGui.PushID(ctx, i)
+                                                if ImGui.CollapsingHeader(ctx, app.engine.assetGroupNameCache[group], false) then
+                                                    if ImGui.BeginTable(ctx, "keyCommands", 2, nil, 0) then
+                                                        ImGui.TableSetupColumn(ctx, 'Key Commands',
+                                                            ImGui.TableColumnFlags_WidthFixed, 210 * app.gui.scale)
+                                                        ImGui.TableSetupColumn(ctx, 'Description',
+                                                            ImGui.TableColumnFlags_WidthStretch)
+                                                        for keymod, hint in OD_PairsByOrder(_G[group].interactionHints) do
+                                                            ImGui.TableNextRow(ctx)
+                                                            ImGui.TableNextColumn(ctx)
+                                                            local description = hint.text
+                                                            local mod = keymod == 0 and 'Click' or
+                                                                app.guiHelpers.keyModsToText(keymod |
+                                                                    RESULT_CONTEXT.MOUSE_CLICK)
+                                                            local assetType = app.engine.assetTypeManager
+                                                                :getAssetTypeByClassName(group)
+
+                                                            local text = BaseAssetType:parseInteractionHintTemplate(
+                                                                    description,
+                                                                    -1, nil,
+                                                                    assetType.name,
+                                                                    (assetType.allowMultiple and (assetType.group):gsub('s$', '(s)'):lower() or (assetType.name):lower()))
+                                                                :gsub(
+                                                                    "^%l", string.upper)
+                                                            ImGui.PushFont(ctx, app.gui.st.fonts.bold)
+                                                            -- ImGui.TextWrapped(ctx, mod .. ': ')
+                                                            ImGui.TextColored(ctx, app.gui.st.basecolors.mainBrightest,
+                                                                mod .. ': ')
+                                                            ImGui.PopFont(ctx)
+                                                            ImGui.TableNextColumn(ctx)
+
+                                                            -- ImGui.SameLine(ctx)
+                                                            ImGui.TextWrapped(ctx, text)
+                                                        end
+                                                        ImGui.EndTable(ctx)
+                                                    end
+                                                end
+                                                ImGui.PopID(ctx)
+                                            end
+                                        end
+                                        ImGui.EndChild(ctx)
+                                    end
                                     ImGui.EndTabItem(ctx)
                                 end
                                 ImGui.EndTabBar(ctx)
                             end
                             ImGui.EndChild(ctx)
                         end
+                        ImGui.Separator(ctx)
+                        if ImGui.BeginChild(ctx, 'HelpHint', nil, ImGui.GetTextLineHeightWithSpacing(ctx), nil, ImGui.WindowFlags_NoScrollWithMouse) then
+                            ImGui.Spacing(ctx)
+
+                            ImGui.Text(ctx, 'While this script is free,')
+                            ImGui.SameLine(ctx)
+                            -- ImGui.PushStyleColor(ctx, ImGui.Col_Text, app.gui.st.basecolors.mainBright)
+                            if ImGui.SmallButton(ctx, 'donations') then
+                                if r.APIExists('CF_ShellExecute') then
+                                    r.CF_ShellExecute(Scr.donation)
+                                else
+                                    local command
+                                    if OS_is.mac then
+                                        command = 'open "%s"'
+                                    elseif OS_is.win then
+                                        command = 'start "URL" /B "%s"'
+                                    elseif OS_is.lin then
+                                        command = 'xdg-open "%s"'
+                                    end
+                                    if command then
+                                        os.execute(command:format(Scr.donation))
+                                    end
+                                end
+                            end
+                            -- app.gui:popColors(app.gui.st.basecolors.mainBright)
+                            ImGui.SameLine(ctx)
+                            ImGui.SetCursorPosX(ctx,
+                                ImGui.GetCursorPosX(ctx) + ImGui.GetStyleColor(ctx, ImGui.StyleVar_ItemSpacing))
+                            ImGui.Text(ctx, 'will be very much appreciated ;-)')
+                            ImGui.EndChild(ctx)
+                        end
+
+
                         ImGui.End(ctx)
                     end
 

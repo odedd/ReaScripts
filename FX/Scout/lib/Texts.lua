@@ -358,87 +358,89 @@ T.HINTS = {
     QUICK_CHAIN_HOVER = 'Drag FX/Chains here to add them to the Quick Chain. Alt/Option+Click to remove.',
 }
 
-T.MAIN_HELP = [[
-Scout - Asset Search & Management for Reaper
 
-Scout is a powerful search and organization tool that helps you quickly find and use all your Reaper assets in one unified interface.
+T.KEYBOARD_MODIFIERS_HELP = [[
+#`KEYBOARD MODIFIERS`#
+Keyboard modifiers can be used to perform various actions on the search results. The modifiers change based on the type of result.
 
-WHAT SCOUT SEARCHES:
-
-- Plugins (VST, VST3, AU, JS) - All your effects and instruments
-- Actions - Built-in and custom Reaper actions
-- Projects - Recently opened and scanned project files
-- Project Templates - Your saved project templates
-- Track Templates - Your saved track templates
-- FX Chains - Your custom FX chains
-- Tracks - Current project's tracks
-- Takes - Current project's active takes in media items
-- Markers & Regions
-
-HOW TO USE:
-
-- Type to search across all asset types
-- Use the sidebar filters to narrow results by type, folder, category, developer, or tags
-- Double click any result to execute/load it instantly
-- Use shift/ctrl/cmd to select multiple results
-- Drag results to tracks to add them directly
-- Right-click results to see possible actions, as well as keyboard shortcuts for quick access
-
-FILTER SEARCH MODE:
-- Press Tab to switch between searching items and searching filters
-- When in filter search mode, type to search for filters, tags and presets by name
-- Pressing Enter on a filter will apply it to the current search and return to item search mode
-- Pressing Shift+Enter on a filter will apply it and stay in filter search mode
-
-ADVANCED FEATURES:
-
-TAGGING SYSTEM:
-- Drag items to tags in the sidebar to organize your assets (Alt-dragging removes tags)
-- Create nested tags for hierarchical organization
-- Right-click tags for rename/delete options
-- Tags can be either used either positively (to include) or negatively (to exclude) in filters
-- Tags can be combined with other tags and filters for powerful searches
-
-QUICK CHAIN:
-- Build an instant chain, where you can combine FX/FX Chains from different search results and control their order
-- Drag/Drop FX or FX chains to the quick chain, or use the key command (Shift+Ctrl/Cmd+Right by default) to add items to the Quick Chain
-- Alt/Option+Click to remove an item from the Quick Chain
-- When a Quick Chain has items, all actions (Add FX, create send etc...) relate to the Quick Chain
-
-PRESETS:
-- Save complex filter combinations as presets for quick access
-- Presets can be assigned magic words for quick loading
-- Type the magic word followed by space to load the preset instantly
-- Type the magic word followed by a question mark to randomly execute one of the preset's results
-
-FAVORITES
-- Mark frequently used items (Ctrl+F by default)
-
-RANDOM EXECUTION:
-- Randomly select and execute one of the current search results (Default: Shift+Ctrl/Cmd+R)
-
-CUSTOM ACTIONS:
-- Create custom Reaper actions that instantly load presets or run random results
-
-SLEEP MODE:
-- Enable sleep mode for faster loading times (recommended)
-
-KEYBOARD SHORTCUTS:
-- Enter: Execute selected item(s)
-- Escape: Clear search or close (depending on sleep mode setting)
-- Ctrl+A: Select all results
-- Ctrl+F: Toggle favorite status of selected items
-- Ctrl+R: Execute random result from current search
-- Add to Quick Chain: See sidebar or right-click menu for shortcut
-- Clear Quick Chain: See sidebar or right-click menu for shortcut
-
-TIPS:
-- Enable Sleep Mode for fastest performance
-- Use the sidebar to organize assets with tags and filters
-- Drag items directly to tracks to add them
-- Create presets for commonly used filter combinations
-- Import/export your tags and favorites to share between systems
-- Use Quick Chain to batch process FX and chains efficiently
-
-Scout makes your Reaper workflow faster by putting everything you need at your fingertips with instant search and smart organization.
+`Right-Clicking` a result will show you the available actions and their keyboard shortcuts.
 ]]
+
+T.MAIN_HELP = [[
+#`WHAT IS $SCRIPT?`#
+$script is a powerful search and organization tool that helps you quickly find and use all your Reaper assets in one unified interface, prioritizing speed and efficiency, allowing you to search for and manage your assets without leaving the keyboard.
+
+$script searches for #Plugins#, #Actions#, #Projects#, #Project Templates#, #Track Templates#, #FX Chains#, #Tracks#, #Takes#, #Markers#, #Regions# and #Take Markers#.
+
+#`USAGE`#
+- Type to search across all asset types
+- Use the sidebar filters to narrow results
+- `Double-Click` any result to execute/load it instantly
+- Use myriad keyboard modifiers for more actions (see tab)
+- `Right-click` results for available actions and keyboard shortcuts
+- Use `Shift/$ctrl` to select multiple results
+- `Drag` results to tracks to add them directly
+- `Drag` results to an empty area to create a new track
+- Create #Quick Chains# to batch process FX and chains
+- Randomly execute a results with $shortcut:runRandomResult
+- Use $script in `minimal mode` for a more compact interface
+
+#`TAGGING SYSTEM`#
+- Assign tags to items for easy organization
+- Tags can be `combined` with other tags/filters
+- Tags can be `inclusive` or `exclusive`
+- Inclusive tags show items that `have` the tag
+- Exclusive tags show items that `do not` have the tag
+- Create `nested tags` for hierarchical organization
+- Applied tags include their children in the results
+- `Drag` items to tags to add/remove (`$alt-Click` to remove)
+- `Double-Click` tags to rename them
+- `Right-Click` tags for more options (delete, create nested tag)
+
+#`PRESETS`#
+- Save filter combinations as presets
+- Assign `Magic Words` to presets for instant loading
+- Type `Magic Word + space` to load preset
+- Type `Magic Word + ?` to randomly execute one of the preset's results
+
+#`FILTER SEARCH MODE`#
+- Press `Tab` to switch between item search and filter search
+- In filter search mode, type to search filters, tags and presets
+- `Enter` applies filter and returns to item search
+- `Shift+Enter` applies filter without returning to item search
+
+#`QUICK CHAIN`#
+- Click icon or press $shortcut:toggleQuickChain to show/hide the Quick Chain sidebar 
+- Build chains by combining FX/FX Chains from search results
+- Control order and add items from different searches
+- `Drag/Drop` or press $shortcut:addToQuickChain to add FX/Chains to the Quick Chain
+- `$alt/+Click` to removes items from the Quick Chain
+- $shortcut:clearQuickChain to clear the Quick Chain
+- Execute chain by pressing `Enter` or by clicking the Lightning button
+- Click the `...` menu for more actions and keyboard shortcuts
+
+#`FAVORITES, RECENTS AND RECENTLY ADDED ITEMS`#
+- Press $shortcut:markFavorite to mark frequently used items
+- Recently used items are automatically shown at the top of the list
+- Use filter `Other->Recently Added` to see Recently added FX/Actions
+- Scout can only track items added after it was first run
+
+#`CUSTOM ACTIONS`#
+- Filter combinations can be saved as `custom Reaper actions`
+- Actions can either `load a filter` or `randomly and run a result`
+
+#`EXPORT/IMPORT`#
+- Export your `tags`, `presets` and `favorites` to share between systems
+- Importing can either `overwrite` or `merge` with existing data
+- When imported, $script will try its best to match existing items
+- If an item is not found on the receiving system, it will be ignored
+
+#`TIPS`#
+- Enable `Sleep Mode` for fastest loading
+- Start quickly by `converting FX folders and categories` to tags
+- Create presets for commonly used filter combinations
+- Use Magic Words and Reaper actions to quickly load presets
+- Boost your creativity by letting $script run `random results`
+- Use `filter search mode` to work quicker using the keyboard
+- Use `Quick Chain` to batch process FX and chains efficiently
+- Use the settings to `customize` $script to your workflow]]

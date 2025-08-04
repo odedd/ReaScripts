@@ -37,8 +37,8 @@
 -- DONE: Show Total Results
 -- DONE: Some asset types make no sense in multiple selections (markers/regions/projects/project templates). Make selecting them impossible via a switch in their assetType so that it is more robust.
 -- DONE: disable selecting multiple filters of the same type? (this is a petty one)
+-- DONE: write help
 -- TODO: Create Default Presets with Magic Words for types
--- TODO: write help
 -- TODO: Test on windows
 ---------------------------------------
 -- AFTER LAUNCH -----------------------
