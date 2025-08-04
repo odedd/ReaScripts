@@ -33,11 +33,11 @@
 -- DONE: Docking
 -- DONE: Add take markers
 -- DONE: Setting to show/hide hidden tracks
+-- DONE: Zoom scroll issue is still there (eg. at 76% but not just)
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Show Total Results
 -- TODO: write help
 -- TODO: Test on windows
--- TODO: Zoom scroll issue is still there (eg. at 76% but not just)
 ---------------------------------------
 -- AFTER LAUNCH -----------------------
 ---------------------------------------

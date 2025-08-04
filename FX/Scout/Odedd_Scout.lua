@@ -1303,7 +1303,7 @@ RunApp = function()
                 -- local quickChainScreenX = sideBarScreenX - quickChainW -- X position for quick chain area
                 local upperRowY = ImGui.GetCursorPosY(ctx)                                     -- Y position for upper row, used for "sticky" first group title
                 local upperRowScreenY = select(2, ImGui.GetCursorScreenPos(ctx))               -- Y position for upper row, used for "sticky" first group title
-                local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx)
+                local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx) + select(2,ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemInnerSpacing))
 
                 local tagInfo = app.userdata.current.tagInfo
                 local searchResults = app.temp.searchResults or
@@ -1495,7 +1495,7 @@ RunApp = function()
 
                                 -- Use the same line height for scrolling as for rendering
 
-                                local rowPosition = (selectedRow.totalIndex - 1) * fontLineHeight
+                                local rowPosition = (selectedRow.totalIndex - 1) * fontLineHeight + 2
                                 local currentScroll = app.temp.tableScrollY
 
                                 -- Check if item is fully visible
@@ -1507,10 +1507,10 @@ RunApp = function()
                                 -- If item extends below the visible area, scroll to show it fully
                                 if itemBottom > viewBottom then
                                     -- Scroll so the item's bottom aligns with the bottom of searchResultsH
-                                    ImGui.SetNextWindowScroll(ctx, 0, itemBottom - searchResultsH)
+                                    ImGui.SetNextWindowScroll(ctx, 0, itemBottom - searchResultsH - 2)
                                     -- If item is above the visible area, scroll to show it at the top
                                 elseif itemTop < viewTop then
-                                    ImGui.SetNextWindowScroll(ctx, 0, math.max(0, itemTop))
+                                    ImGui.SetNextWindowScroll(ctx, 0, math.max(0, itemTop-2))
                                 end
                             end
                         end
