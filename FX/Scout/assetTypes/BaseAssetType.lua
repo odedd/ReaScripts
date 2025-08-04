@@ -50,6 +50,7 @@ end
 function BaseAssetType:determineCorrectContext(mods, context)
     local context = context or 0
     if OD_BfCheck(context, RESULT_CONTEXT.IGNORE_KEYS) then return 0 end
+    context = OD_BfSet(context, RESULT_CONTEXT.QUICK_CHAIN, false) -- Remove QUICK_CHAIN flag for interaction hints
     local correctContext =
         self.interactionHints[mods | context] and (mods | context) or
         self.interactionHints[mods] and (mods) or

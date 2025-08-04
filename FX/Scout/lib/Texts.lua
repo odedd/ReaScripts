@@ -26,6 +26,31 @@ T.EXPORT_ACTION_DIALOG = {
         HINT = 'Close without creating action',
     }
 }
+T.EXPORT_QUICKACTION_AS_ACTION_DIALOG = {
+    INFO = 'Create a Reaper action that will either open ' ..
+        Scr.name ..
+        ' with the saved filter, or randomly select one of the filter\'s results and run it.'
+    ,
+    ACTION_TYPE = {
+        LABEL = 'Action',
+        HINT = 'Select what the action should do.',
+    },
+    NAME = {
+        LABEL = 'Name',
+        HINT = 'Will be prefixed by \'' .. Scr.no_ext .. '\'.',
+    },
+    EXPORT = {
+        LABEL = '',
+        BUTTON = 'Export as Action',
+        SUCCESS = 'Successfully created action:\n\n%s',
+        HINT = 'Add to Reaper action list',
+    },
+    CLOSE = {
+        LABEL = '',
+        BUTTON = 'Close',
+        HINT = 'Close without creating action',
+    }
+}
 
 T.EDIT_PRESET_DIALOG = {
     PRESET_NAME = {

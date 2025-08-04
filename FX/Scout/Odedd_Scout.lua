@@ -725,7 +725,7 @@ RunApp = function()
                 end
                 return filename .. '.lua'
             end,
-            createFilterAction = function(actionName, actionType, filter)
+            createReaperAction = function(actionName, actionType, filter)
                 if EXPORT_ACTIONS[actionType] then
                     return app.flow.createAction(actionName,
                         EXPORT_ACTIONS[actionType] .. " \'..\n[[" .. pickle(filter) .. "\n]]..\'")
@@ -753,6 +753,29 @@ RunApp = function()
                             app.flow.filterResults(filter, true, true)
                             app.flow.executeRandomResult()
                             app.temp.filter = currentFilter
+                        end
+                    end
+                    if cmd == "QUICK_CHAIN" then
+                        local currentQuickChain = OD_DeepCopy(app.temp.quickChain)
+                        local currentQuickChainOpen = app.settings.current.showQuickChain
+                        local qc = unpickle(arg)
+                        local shouldClose = (r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE')
+                        r.SetExtState(Scr.ext_name, 'EXTERNAL_COMMAND', '', false)
+
+                        if shouldClose then
+                            app.flow.loadQuickChain(qc)
+                            app.flow.executeSelectedResults(app.gui.ctx, app.temp.quickChain,
+                                qc.keymods | RESULT_CONTEXT.QUICK_CHAIN)
+                            app.temp.quickChain = currentQuickChain     -- Restore previous Quick Chain
+                            app.settings.current.showQuickChain = currentQuickChainOpen -- Restore previous Quick Chain visibility
+                            app.flow.close()
+                        else
+                            app.flow.loadQuickChain(qc)
+                            app.flow.executeSelectedResults(app.gui.ctx, app.temp.quickChain,
+                                qc.keymods | RESULT_CONTEXT.QUICK_CHAIN)
+                            app.temp.quickChain = currentQuickChain     -- Restore previous Quick Chain
+                            app.settings.current.showQuickChain = currentQuickChainOpen -- Restore previous Quick Chain visibility
+
                         end
                     end
                 end
@@ -801,7 +824,9 @@ RunApp = function()
             loadQuickChain = function(qc)
                 -- Clear current Quick Chain
                 app.temp.quickChain = {}
-                app.temp.currentlyLoadedQuickChain = qc
+                if qc.name then -- if there's no name then it's not a preset, but probably from external command, so no need to set currentlyLoadedQuickChain
+                    app.temp.currentlyLoadedQuickChain = qc
+                end
                 -- Resolve asset keys to assembled assets directly using DataEngine
                 local resolvedAssets = app.engine:getAssetsByKeys(qc.items)
 
@@ -2425,11 +2450,26 @@ RunApp = function()
                             ImGui.BeginDisabled(ctx)
                         end
                         if app.guiHelpers.iconButton(ctx, 'DISK', app.gui.st.col.buttons.activeFilterAction, nil, nil, 'saveQCPreset') then
-                            app.temp.showCreateQuickChainDialog = true
-                            app.temp.editingQuickChainId = nil
-                            app.temp.quickChainName = ""
-                            app.temp.quickChainWord = ""
+                            ImGui.OpenPopup(ctx, 'Save Quick Chain Context Menu')
                         end
+                        app:setHoveredHint('main', T.HINTS.SAVE_FILTERS)
+                        if ImGui.BeginPopup(ctx, 'Save Quick Chain Context Menu') then
+                            app:setHint('main', '')
+                            if ImGui.MenuItem(ctx, 'Save preset...') then
+                                app.temp.showCreateQuickChainDialog = true
+                                app.temp.editingQuickChainId = nil
+                                app.temp.quickChainName = ""
+                                app.temp.quickChainWord = ""
+                            end
+                            -- app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_PRESET)
+                            if ImGui.MenuItem(ctx, 'Create Reaper action...') then
+                                app.temp.showExportQuickChainActionDialog = true
+                                app.temp.actionName = ""
+                            end
+                            -- app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_ACTION)
+                            ImGui.EndPopup(ctx)
+                        end
+
                         if #app.temp.quickChain == 0 then
                             ImGui.EndDisabled(ctx)
                         end
@@ -3827,15 +3867,15 @@ RunApp = function()
                             end
                         end
 
-                            -- Check for duplicate word across both Quick Chains and Presets
-                            if (trimmedName == "" or canSaveQuickChain) and trimmedWord ~= "" then
-                                local isUsed, conflictType, conflictName = app.engine:isMagicWordUsed(trimmedWord,
-                                    'quickChain', app.temp.editingQuickChainId)
-                                if isUsed then
-                                    canSaveQuickChain = false
-                                    errorMessage = "Magic word already exists"
-                                end
+                        -- Check for duplicate word across both Quick Chains and Presets
+                        if (trimmedName == "" or canSaveQuickChain) and trimmedWord ~= "" then
+                            local isUsed, conflictType, conflictName = app.engine:isMagicWordUsed(trimmedWord,
+                                'quickChain', app.temp.editingQuickChainId)
+                            if isUsed then
+                                canSaveQuickChain = false
+                                errorMessage = "Magic word already exists"
                             end
+                        end
 
                         -- Show error message if any
                         if errorMessage ~= "" then
@@ -3902,8 +3942,8 @@ RunApp = function()
             end,
             exportActionDialog = function(ctx)
                 if app.temp.showExportActionDialog then
-                    if not ImGui.IsPopupOpen(ctx, 'Export Reaper Action') then
-                        ImGui.OpenPopup(ctx, 'Export Reaper Action')
+                    if not ImGui.IsPopupOpen(ctx, 'Export Filter-Set as Reaper Action') then
+                        ImGui.OpenPopup(ctx, 'Export Filter-Set as Reaper Action')
                         if not app.temp.actionName then
                             app.temp.actionName = ""
                             app.temp.exportActionType = EXPORT_ACTION_TYPE.APPLY_FILTER
@@ -3915,7 +3955,7 @@ RunApp = function()
                         app.gui.mainWindow.pos[2] + (app.gui.mainWindow.size[2] / 2), ImGui.Cond_Appearing, 0.5, 0.5)
                     app.gui:pushStyles(app.gui.st.vars.popupsTitle)
 
-                    local visible, open = ImGui.BeginPopupModal(ctx, 'Export Reaper Action', true,
+                    local visible, open = ImGui.BeginPopupModal(ctx, 'Export Filter-Set as Reaper Action', true,
                         ImGui.WindowFlags_AlwaysAutoResize)
                     app.gui:popStyles(app.gui.st.vars.popupsTitle)
 
@@ -3947,7 +3987,7 @@ RunApp = function()
                         if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canExportAction) or app.gui:setting('button', T.EXPORT_ACTION_DIALOG.EXPORT.LABEL,
                                 T.EXPORT_ACTION_DIALOG.EXPORT.HINT, nil,
                                 { label = T.EXPORT_ACTION_DIALOG.EXPORT.BUTTON, hintWindow = 'editFilterWindow' }) then
-                            local createdActionName = app.flow.createFilterAction(trimmedActionName,
+                            local createdActionName = app.flow.createReaperAction(trimmedActionName,
                                 app.temp.exportActionType, app.temp.filter)
                             if createdActionName then
                                 app.flow.msg((T.EXPORT_ACTION_DIALOG.EXPORT.SUCCESS):format(createdActionName))
@@ -3971,6 +4011,120 @@ RunApp = function()
                         app.temp.showExportActionDialog = false
                         app.temp.actionName = nil
                         app.temp.exportActionType = nil
+                    end
+                end
+            end,
+            exportQuickChainActionDialog = function(ctx)
+                if app.temp.showExportQuickChainActionDialog then
+                    if not ImGui.IsPopupOpen(ctx, 'Export Quick Chain as Reaper Action') then
+                        ImGui.OpenPopup(ctx, 'Export Quick Chain as Reaper Action')
+                        if not app.temp.actionName then
+                            app.temp.actionName = ""
+                            app.temp.exportActionType = 0
+                        end
+                    end
+
+                    ImGui.SetNextWindowSize(ctx, 550 * app.gui.scale, 0, ImGui.Cond_Always)
+                    ImGui.SetNextWindowPos(ctx, app.gui.mainWindow.pos[1] + (app.gui.mainWindow.size[1] / 2),
+                        app.gui.mainWindow.pos[2] + (app.gui.mainWindow.size[2] / 2), ImGui.Cond_Appearing, 0.5, 0.5)
+                    app.gui:pushStyles(app.gui.st.vars.popupsTitle)
+
+                    local visible, open = ImGui.BeginPopupModal(ctx, 'Export Quick Chain as Reaper Action', true,
+                        ImGui.WindowFlags_AlwaysAutoResize)
+
+                    if ImGui.IsWindowAppearing(ctx) then
+                        app.temp.actionTypesToKeyModMapp = {}
+                        app.temp.actionTypesList = ''
+
+                        local result = app.temp.quickChain and app.temp.quickChain[1] or nil
+                        if result then
+                            local assetType = result.class
+                            local filteredList = {}
+                            -- remove drag actions
+                            for keymod, hint in pairs(assetType.interactionHints) do
+                                if not OD_BfCheck(keymod, RESULT_CONTEXT.DRAGGED_TO_BLANK) and not
+                                    OD_BfCheck(keymod, RESULT_CONTEXT.DRAGGED_TO_OBJECT) then
+                                    table.insert(filteredList, { keymod = keymod, hint = hint })
+                                end
+                            end
+
+                            for i, item in ipairs(filteredList) do
+                                local keymod, hint = item.keymod, item.hint
+
+                                local text = app.guiHelpers.getHintFor(result, keymod,
+                                        RESULT_CONTEXT.QUICK_CHAIN, #app.temp.quickChain)
+                                    :gsub(
+                                        "^%l", string.upper):gsub('%.$', ' ')
+
+                                app.temp.actionTypesList = app.temp.actionTypesList .. text .. '\0'
+                                table.insert(app.temp.actionTypesToKeyModMapp, keymod)
+                            end
+                        end
+                    end
+                    app.gui:popStyles(app.gui.st.vars.popupsTitle)
+
+                    if visible then
+                        if ImGui.IsWindowAppearing(ctx) then
+                            ImGui.SetKeyboardFocusHere(ctx, 0)
+                        end
+                        ImGui.TextWrapped(ctx, T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.INFO)
+                        ImGui.Spacing(ctx)
+
+                        app.temp.exportActionType = app.gui:setting(
+                            'combo',
+                            T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.ACTION_TYPE.LABEL,
+                            T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.ACTION_TYPE.HINT,
+                            app.temp.exportActionType, {
+                                list = app.temp.actionTypesList,
+                                hintWindow = 'exportQuickChainActionDialog'
+                            })
+                        -- local exportActionType = app.temp.actionTypesToKeyModMapp[app.temp.exportActionType]
+                        app.temp.actionName = app.gui:setting('text', T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.NAME.LABEL,
+                            T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.NAME.HINT, app.temp.actionName,
+                            { hintWindow = 'exportQuickChainActionDialog' })
+
+
+                        local trimmedActionName = OD_Trim(app.temp.actionName)
+                        local canExportAction = trimmedActionName ~= ""
+
+                        if not canExportAction then ImGui.BeginDisabled(ctx) end
+                        if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canExportAction) or app.gui:setting('button', T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.LABEL,
+                                T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.HINT, nil,
+                                { label = T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.BUTTON, hintWindow = 'exportQuickChainActionDialog' }) then
+                            local keymods = app.temp.actionTypesToKeyModMapp[app.temp.exportActionType + 1]
+                            local items = {}
+                            for _, asset in ipairs(app.temp.quickChain or {}) do
+                                if asset.key then
+                                    table.insert(items, asset.key)
+                                end
+                            end
+                            -- Create the action with the given name, type and items
+                            local createdActionName = app.flow.createReaperAction(trimmedActionName,
+                                EXPORT_ACTION_TYPE.QUICK_CHAIN, { keymods = keymods, items = items })
+                            if createdActionName then
+                                app.flow.msg((T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.SUCCESS):format(
+                                    createdActionName))
+                            end
+                            app.temp.showExportQuickChainActionDialog = false
+                            ImGui.CloseCurrentPopup(ctx)
+                        end
+                        if not canExportAction then ImGui.EndDisabled(ctx) end
+
+                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.CLOSE.LABEL,
+                                T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.CLOSE.HINT, nil,
+                                { label = T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.CLOSE.BUTTON, hintWindow = 'exportQuickChainActionDialog' }) then
+                            app.temp.showExportQuickChainActionDialog = false
+                            ImGui.CloseCurrentPopup(ctx)
+                        end
+                        app.draw.hint(ctx, 'exportQuickChainActionDialog')
+                        ImGui.EndPopup(ctx)
+                    end
+
+                    if not open then
+                        app.temp.showExportQuickChainActionDialog = false
+                        app.temp.actionName = nil
+                        app.temp.exportActionType = nil
+                        app.temp.actionTypeList = nil
                     end
                 end
             end,
@@ -4080,6 +4234,7 @@ RunApp = function()
                     app.draw.createPresetDialog(ctx)
                     app.draw.createQuickChainDialog(ctx)
                     app.draw.exportActionDialog(ctx)
+                    app.draw.exportQuickChainActionDialog(ctx)
                     app.draw.settings(ctx)
                     app.draw.help(ctx)
                     app.draw.welcomeDialog(ctx)
