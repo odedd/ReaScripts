@@ -99,6 +99,8 @@ function ProjectAssetType:getData()
 end
 
 function ProjectAssetType:assembleAsset(project)
+    if not self.context.settings.current.scanRecentProjects and project.recent then return nil end
+    
     local asset = self:createAssetBase({
         type = self.assetTypeId,
         load = project.fullPath,

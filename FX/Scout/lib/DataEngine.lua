@@ -1169,6 +1169,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                         engine = self,
                         app = self.app, -- Add app context for executeFilter
                         type = filterType,
+                        allowMultiple = filterType == FILTER_TYPES.OTHER,
                         searchText = { { text = itemName } },
                         order = item.order,
                         load = item.query,
@@ -1258,6 +1259,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 load = preset.name,
                 engine = self,
                 app = self.app,
+                allowMultiple = false,
                 type = FILTER_TYPES.PRESET,
                 searchText = { { text = preset.name }, { text = preset.word or '' } },
                 order = preset.id, -- Use ID as order for now, could be customized later

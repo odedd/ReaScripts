@@ -1771,7 +1771,7 @@ RunApp = function()
                             local textWidth = ImGui.CalcTextSize(ctx, text)
                             local textPos = width - textWidth
                             ImGui.SetNextItemWidth(ctx, textPos - spacingX)
-                            if ImGui.BeginChild(ctx, 'FirstSeparatorChild', textPos - spacingX) then
+                            if ImGui.BeginChild(ctx, 'FirstSeparatorChild', textPos - spacingX, nil, nil, ImGui.WindowFlags_NoInputs) then
                                 -- ImGui.Button(ctx, firstGroup or '', width - textWidth - spacingX)
                                 ImGui.SeparatorText(ctx, firstGroup or '')
                                 ImGui.EndChild(ctx)
@@ -2807,7 +2807,7 @@ RunApp = function()
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
                 local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
                 local w = 1390 * app.gui.scale
-                local h = 730 * app.gui.scale + #app.settings.current.projectScanFolders * (lineHeight + paddingY)
+                local h = 760 * app.gui.scale + #app.settings.current.projectScanFolders * (lineHeight + paddingY)
                 -- local h = select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)) * 2
                 -- h = h + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) + lineHeight
                 -- h = h + (numOfPreferences + numOfSeparators + #app.settings.current.projectScanFolders) *
@@ -3153,7 +3153,9 @@ RunApp = function()
                             table.remove(app.settings.current.projectScanFolders, removePath)
                             removePath = nil
                         end
-
+                        app.settings.current.scanRecentProjects = app.gui:setting('checkbox',
+                            T.SETTINGS.SCAN_RECENT_PROJECTS.LABEL,
+                            T.SETTINGS.SCAN_RECENT_PROJECTS.HINT, app.settings.current.scanRecentProjects)
                         ImGui.EndChild(ctx)
                     end
                     app.draw.hint(ctx, 'settings')

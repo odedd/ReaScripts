@@ -89,6 +89,10 @@ T.SETTINGS = {
         HINT = 'Where Scout needs to search for projects. Will also scan subfolders.',
         HINT_DELETE = 'Remove this folder',
     },
+    SCAN_RECENT_PROJECTS = {
+        LABEL = 'Scan recent projects',
+        HINT = 'Scan Reaper\'s recently open projects and add them to the list.',
+    },
     RECENTLY_ADDED_DAYS = {
         LABEL = 'Days counted as recent',
         HINT = 'How long should actions and FX be considered recently added.',

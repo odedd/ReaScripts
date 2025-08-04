@@ -144,7 +144,7 @@ FILTER_MENU = {
         items = {} -- added in DataEngine.lua once folders are loaded
     },
     [FILTER_TYPES.OTHER] = {
-        order = 6,
+        order = 7,
         items = {
             ['Untagged'] = {
                 order = 1,

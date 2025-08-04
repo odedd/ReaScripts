@@ -35,6 +35,8 @@
 -- DONE: Setting to show/hide hidden tracks
 -- DONE: Zoom scroll issue is still there (eg. at 76% but not just)
 -- DONE: Show Total Results
+-- DONE: Some asset types make no sense in multiple selections (markers/regions/projects/project templates). Make selecting them impossible via a switch in their assetType so that it is more robust.
+-- DONE: disable selecting multiple filters of the same type? (this is a petty one)
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: write help
 -- TODO: Test on windows
@@ -42,12 +44,9 @@
 -- AFTER LAUNCH -----------------------
 ---------------------------------------
 
--- Some asset types make no sense in multiple selections (markers/regions/projects/project templates). Make selecting them impossible via a switch in their assetType so that it is more robust.
-
 ---------------------------------------
 -- MAYBE LATER ------------------------
 ---------------------------------------
 
--- disable selecting multiple filters of the same type? (this is a petty one)
 -- Add tooltips to results with additional information? (no. Maybe think of another way to show all info about an asset?)
 -- Refresh projects? (not for now)

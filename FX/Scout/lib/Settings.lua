@@ -8,6 +8,7 @@ PB_Settings = OD_Settings:new({
         sendFolderName = 'FX Return Tracks',
         sleepMode = false,
         projectScanFolders = {},
+        scanRecentProjects = true,
         showFxUI = SHOW_FX_UI.FOLLOW_PREFERENCE,
         closeAfterExecute = false,
         recentlyAddedDays = 30,
