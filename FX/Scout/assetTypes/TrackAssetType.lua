@@ -6,7 +6,7 @@ TrackAssetType.__index = TrackAssetType
 setmetatable(TrackAssetType, BaseAssetType)
 
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
-local helpers = dofile(p..'AssetTypeHelpers.lua')
+local helpers = dofile(p .. 'AssetTypeHelpers.lua')
 function TrackAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Track", "Tracks")(class, context)
     -- Tracks should be imported even if they can't be mapped to existing tracks
@@ -18,6 +18,7 @@ function TrackAssetType.new(class, context)
             -- local targetGuid = asset.load
 
             if index == 1 then
+                r.PreventUIRefresh(1)
                 r.SetOnlyTrackSelected(asset.object)
             else
                 r.SetTrackSelected(asset.object, true)
@@ -25,8 +26,11 @@ function TrackAssetType.new(class, context)
             r.SetMediaTrackInfo_Value(asset.object, 'B_SHOWINMIXER', 1)
             r.SetMediaTrackInfo_Value(asset.object, 'B_SHOWINTCP', 1)
             if index == total then
+                r.PreventUIRefresh(-1)
                 r.SetMixerScroll(asset.object)
                 r.Main_OnCommand(40913, 0)
+                r.TrackList_AdjustWindows(false)
+                r.UpdateArrange()
             end
             return true, ('selected %d track(s)'):format(total)
         end)
@@ -34,14 +38,16 @@ function TrackAssetType.new(class, context)
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
             -- local targetGuid = asset.load
 
+            r.SetMediaTrackInfo_Value(asset.object, 'B_SHOWINMIXER', 1)
+            r.SetMediaTrackInfo_Value(asset.object, 'B_SHOWINTCP', 1)
+
             if index == 1 then
+                r.PreventUIRefresh(1)
                 r.SetOnlyTrackSelected(asset.object)
             else
                 r.SetTrackSelected(asset.object, true)
             end
 
-            r.SetMediaTrackInfo_Value(asset.object, 'B_SHOWINMIXER', 1)
-            r.SetMediaTrackInfo_Value(asset.object, 'B_SHOWINTCP', 1)
 
             local childTracks = OD_GetChildTracks(asset.object)
             for _, childTrack in ipairs(childTracks) do
@@ -50,8 +56,11 @@ function TrackAssetType.new(class, context)
                 r.SetMediaTrackInfo_Value(childTrack, 'B_SHOWINTCP', 1)
             end
             if index == total then
+                r.PreventUIRefresh(-1)
                 r.SetMixerScroll(asset.object)
                 r.Main_OnCommand(40913, 0)
+                r.TrackList_AdjustWindows(false)
+                r.UpdateArrange()
             end
             return true, ('selected %d track(s) and their children'):format(total)
         end)
@@ -77,9 +86,10 @@ function TrackAssetType.new(class, context)
                 r.SetMixerScroll(asset.object)
                 r.PreventUIRefresh(-1)
                 r.Main_OnCommand(40913, 0)
-                -- r.UpdateArrange()
+                r.TrackList_AdjustWindows(false)
+                r.UpdateArrange()
             end
-            return true,('made %d track(s) visible'):format(total)
+            return true, ('made %d track(s) visible'):format(total)
         end)
 
     instance:addInteraction(ImGui.Mod_Alt | ImGui.Mod_Ctrl,
@@ -111,14 +121,16 @@ function TrackAssetType.new(class, context)
                 r.SetMixerScroll(asset.object)
                 r.PreventUIRefresh(-1)
                 r.Main_OnCommand(40913, 0)
-                -- r.UpdateArrange()
+                r.TrackList_AdjustWindows(false)
+                r.UpdateArrange()
             end
             return true, ('made %d track(s) and their children visible'):format(total)
         end)
 
     instance:addInteraction(ImGui.Mod_Shift, 'send from selected track(s) to %asset',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
-            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods, contextData, confirm)
+            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
+                contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
                 for _, track in ipairs(selectedTracks) do
                     local rv = reaper.CreateTrackSend(track, asset.object)
@@ -138,6 +150,7 @@ function TrackAssetType:getData()
         local track = reaper.GetTrack(0, i)
         local trackName = select(2, reaper.GetTrackName(track))
         local trackGuid = reaper.GetTrackGUID(track)
+        local trackIsHidden = reaper.GetMediaTrackInfo_Value(track, 'B_SHOWINTCP') == 0
         self.context.logger:logDebug('Track added', trackName)
 
         -- Capture context from asset type scope
@@ -147,6 +160,7 @@ function TrackAssetType:getData()
             object = track,
             engine = context.engine,
             guid = trackGuid,
+            hidden = trackIsHidden,
             order = i,
             _refreshColor = function(self)
                 local color = ImGui.ColorConvertNative(reaper.GetTrackColor(track)) * 0x100 | 0xff
@@ -164,12 +178,15 @@ function TrackAssetType:getData()
 end
 
 function TrackAssetType:assembleAsset(track)
+    if not self.context.settings.current.showInvisibleTracks and track.hidden then return nil end
+
     local asset = self:createAssetBase({
         type = self.assetTypeId,
         load = track.guid,
         searchText = { { text = track.name } },
         group = self.group,
     })
+    asset.hidden = track.hidden
     asset.order = track.order
     asset.object = track.object
     asset.color = track.color

@@ -3102,6 +3102,9 @@ RunApp = function()
                             app.settings.current.sendVolume = math.max(math.min(app.settings.current.sendVolume, 12),
                                 -144)
                         end
+                        app.settings.current.showInvisibleTracks = app.gui:setting('checkbox',
+                            T.SETTINGS.SHOW_INVISIBLE_TRACKS.LABEL,
+                            T.SETTINGS.SHOW_INVISIBLE_TRACKS.HINT, app.settings.current.showInvisibleTracks)
                         app.settings.current.showInvisibleTakeMarkers = app.gui:setting('checkbox',
                             T.SETTINGS.SHOW_INVISIBLE_TAKE_MARKERS.LABEL,
                             T.SETTINGS.SHOW_INVISIBLE_TAKE_MARKERS.HINT, app.settings.current.showInvisibleTakeMarkers)

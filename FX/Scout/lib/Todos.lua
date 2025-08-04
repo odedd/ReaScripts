@@ -32,7 +32,7 @@
 -- DONE: Setting to override default send volume
 -- DONE: Docking
 -- DONE: Add take markers
--- TODO: Setting to show/hide hidden tracks
+-- DONE: Setting to show/hide hidden tracks
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Show Total Results
 -- TODO: write help

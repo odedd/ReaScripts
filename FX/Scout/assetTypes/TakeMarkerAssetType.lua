@@ -79,9 +79,7 @@ function TakeMarkerAssetType:getData()
 end
 
 function TakeMarkerAssetType:assembleAsset(takeMarker)
-    if not self.context.settings.current.showInvisibleTakeMarkers then
-        if takeMarker.hidden then return nil end
-    end
+    if not self.context.settings.current.showInvisibleTakeMarkersand and takeMarker.hidden then return nil end
 
     local asset = self:createAssetBase({
         type = self.assetTypeId,

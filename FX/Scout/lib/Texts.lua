@@ -113,6 +113,10 @@ T.SETTINGS = {
         LABEL = 'Show invisible take markers',
         HINT = 'Show take markers that are outside the item boundaries.',
     },
+    SHOW_INVISIBLE_TRACKS = {
+        LABEL = 'Show invisible tracks',
+        HINT = 'Show tracks that are not visible in the TCP.',
+    },
     SHORTCUTS = {
         ENTER_SLEEP_MODE = {
             LABEL = 'Enter sleep mode',

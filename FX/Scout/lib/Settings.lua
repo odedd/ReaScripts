@@ -14,6 +14,7 @@ PB_Settings = OD_Settings:new({
         minimalMode = false,
         overrideDefaultSendVolume = false,
         sendVolume = -12,
+        showInvisibleTracks = false,
         showInvisibleTakeMarkers = false,
         shortcuts = {
             markFavorite = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_F,
