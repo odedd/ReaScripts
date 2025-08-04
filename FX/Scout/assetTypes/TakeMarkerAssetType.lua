@@ -35,41 +35,43 @@ function TakeMarkerAssetType:getData()
 
             for takeIdx = 0, numTakes - 1 do
                 local take = reaper.GetTake(item, takeIdx)
-                local takeGuid = reaper.BR_GetMediaItemTakeGUID(take)
-                local numTakeMarkers = reaper.GetNumTakeMarkers(take)
+                if take then
+                    local takeGuid = reaper.BR_GetMediaItemTakeGUID(take)
+                    local numTakeMarkers = reaper.GetNumTakeMarkers(take)
 
-                for markerIdx = 0, numTakeMarkers - 1 do
-                    local markerPos, markerName, markerColor = reaper.GetTakeMarker(take, markerIdx)
-                    local takePos = r.GetMediaItemTakeInfo_Value(take, 'D_STARTOFFS')
-                    local itemLength = r.GetMediaItemInfo_Value(item, 'D_LENGTH')
-                    local itemPos = r.GetMediaItemInfo_Value(item, 'D_POSITION')
-                    local absPos = markerPos - takePos + itemPos
-                    local markerIsHidden = absPos < itemPos or absPos > itemPos + itemLength
-                    if markerName and markerPos ~= -1 then
-                        totalOrder = totalOrder + 1
-                        self.context.logger:logDebug('Take Marker added', markerName)
+                    for markerIdx = 0, numTakeMarkers - 1 do
+                        local markerPos, markerName, markerColor = reaper.GetTakeMarker(take, markerIdx)
+                        local takePos = r.GetMediaItemTakeInfo_Value(take, 'D_STARTOFFS')
+                        local itemLength = r.GetMediaItemInfo_Value(item, 'D_LENGTH')
+                        local itemPos = r.GetMediaItemInfo_Value(item, 'D_POSITION')
+                        local absPos = markerPos - takePos + itemPos
+                        local markerIsHidden = absPos < itemPos or absPos > itemPos + itemLength
+                        if markerName and markerPos ~= -1 then
+                            totalOrder = totalOrder + 1
+                            self.context.logger:logDebug('Take Marker added', markerName)
 
-                        -- Capture context from asset type scope
-                        local context = self.context
+                            -- Capture context from asset type scope
+                            local context = self.context
 
-                        local takeMarkerData = {
-                            uuid = takeGuid .. markerIdx,
-                            name = markerName,
-                            absPos = absPos,
-                            pos = markerPos,
-                            hidden = markerIsHidden,
-                            color = ImGui.ColorConvertNative(markerColor) * 0x100 | 0xff,
-                            trackIdx = trackIdx,
-                            itemIdx = itemIdx,
-                            takeIdx = takeIdx,
-                            track = track,
-                            item = item,
-                            take = take,
-                            takeName = reaper.GetTakeName(take),
-                            markerIdx = markerIdx,
-                            order = totalOrder
-                        }
-                        table.insert(data, takeMarkerData)
+                            local takeMarkerData = {
+                                uuid = takeGuid .. markerIdx,
+                                name = markerName,
+                                absPos = absPos,
+                                pos = markerPos,
+                                hidden = markerIsHidden,
+                                color = ImGui.ColorConvertNative(markerColor) * 0x100 | 0xff,
+                                trackIdx = trackIdx,
+                                itemIdx = itemIdx,
+                                takeIdx = takeIdx,
+                                track = track,
+                                item = item,
+                                take = take,
+                                takeName = reaper.GetTakeName(take),
+                                markerIdx = markerIdx,
+                                order = totalOrder
+                            }
+                            table.insert(data, takeMarkerData)
+                        end
                     end
                 end
             end
@@ -79,7 +81,7 @@ function TakeMarkerAssetType:getData()
 end
 
 function TakeMarkerAssetType:assembleAsset(takeMarker)
-    if not self.context.settings.current.showInvisibleTakeMarkersand and takeMarker.hidden then return nil end
+    if not self.context.settings.current.showInvisibleTakeMarkers and takeMarker.hidden then return nil end
 
     local asset = self:createAssetBase({
         type = self.assetTypeId,

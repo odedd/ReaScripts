@@ -1162,6 +1162,7 @@ RunApp = function()
                         app:setHint('main', '')
                         if ImGui.MenuItem(ctx, 'Save preset...') then
                             app.temp.showCreatePresetDialog = true
+                            app.temp.editingPresetId = nil
                             app.temp.presetName = ""
                             app.temp.presetWord = ""
                         end
@@ -3561,6 +3562,7 @@ RunApp = function()
 
                     if not open then
                         app.temp.showCreatePresetDialog = false
+                        app.temp.editingPresetId = nil
                         app.temp.presetName = nil
                         app.temp.presetWord = nil
                         app.temp.editingPresetId = nil
