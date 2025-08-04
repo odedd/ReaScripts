@@ -312,6 +312,9 @@ RunApp = function()
                 app.temp.quickChain = {}
                 app.temp.searchMode = SEARCH_MODE.MAIN
             end,
+            msg = function(msg)
+                app:msg(msg)
+            end,
             setPage = function(page)
                 if page ~= app.page then
                     app.page = page
@@ -2733,7 +2736,7 @@ RunApp = function()
                             if app.settings.current.lastDockId then
                                 app.gui.mainWindow.dockTo = app.settings.current.lastDockId
                             else
-                                app:msg(T.ERROR.NO_DOCK)
+                                app.flow.msg(T.ERROR.NO_DOCK)
                             end
                         elseif btn == 'minimize' then
                             app.settings.current.minimalMode = true
@@ -2894,9 +2897,9 @@ RunApp = function()
                             if rv == 1 and filename then
                                 local success, errorMsg = app.userdata:export(filename)
                                 if success then
-                                    app:msg('Export successful: ' .. filename)
+                                    app.flow.msg('Export successful: ' .. filename)
                                 else
-                                    app:msg('Export failed: ' .. (errorMsg or 'Unknown error'), 'error')
+                                    app.flow.msg('Export failed: ' .. (errorMsg or 'Unknown error'), 'error')
                                 end
                             end
                         end
@@ -3377,7 +3380,7 @@ RunApp = function()
                     local open, confirm = app.draw.popup(app.gui.ctx, 'Delete all tags', text)
                     if confirm then
                         app.userdata:deleteAllTags()
-                        app:msg('Deleted all tags successfully')
+                        app.flow.msg('Deleted all tags successfully')
                     end
                     if not open then
                         app.temp.confirmDeleteTags = nil
@@ -3582,7 +3585,7 @@ RunApp = function()
                             local createdActionName = app.flow.createFilterAction(trimmedActionName,
                                 app.temp.exportActionType, app.temp.filter)
                             if createdActionName then
-                                app:msg((T.EXPORT_ACTION_DIALOG.EXPORT.SUCCESS):format(createdActionName))
+                                app.flow.msg((T.EXPORT_ACTION_DIALOG.EXPORT.SUCCESS):format(createdActionName))
                             end
                             app.temp.showExportActionDialog = false
                             ImGui.CloseCurrentPopup(ctx)
@@ -3644,7 +3647,7 @@ RunApp = function()
                                 elseif rv.success or rv.error then
                                     releaseCoroutine()
                                     ImGui.CloseCurrentPopup(ctx)
-                                    app:msg(rv.msg)
+                                    app.flow.msg(rv.msg)
                                 end
                             elseif coroutine.status(app.temp.progressCoroutine) == "dead" then
                                 ImGui.CloseCurrentPopup(ctx)

@@ -539,7 +539,7 @@ PB_Gui.init = function(self, fonts)
                     for key, shortcut in pairs(data.existingShortcuts or {}) do
                         if shortcut == testVal then
                             testVal = nil
-                            self.app:msg('Shortcut already in use')
+                            self.app.flow.msg('Shortcut already in use')
                             break
                         end
                     end

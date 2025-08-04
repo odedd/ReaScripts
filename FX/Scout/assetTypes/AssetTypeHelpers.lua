@@ -171,7 +171,7 @@ helpers.addPluginActions = function(instance)
         end)
     instance:addInteraction(ImGui.Mod_Alt, 'add %asset to selected item(s)',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
-            local selectedItems = helpers.getSelectedItemsWithConfirmation(tempStore, asset.context, context, contextData,
+            local selectedItems = helpers.getSelectedItemsWithConfirmation(tempStore, asset.context, context, mods, contextData,
                 confirm)
 
             if selectedItems and #selectedItems > 0 then
@@ -290,10 +290,14 @@ helpers.getSelectedTracksWithConfirmation = function(tempStorage, assetContext, 
         }
         return false, ('%s tracks selected, waiting for confirmation'):format(#tempStorage.executeFunctionSelectedTracks)
     end
+    if #tempStorage.executeFunctionSelectedTracks == 0 then
+        assetContext.flow.msg('No tracks selected')
+        return false, 'No tracks selected'
+    end
     return tempStorage.executeFunctionSelectedTracks -- Proceed
 end
 
-helpers.getSelectedItemsWithConfirmation = function(tempStorage, assetContext, context, contextData, confirm)
+helpers.getSelectedItemsWithConfirmation = function(tempStorage, assetContext, context, keyMods, contextData, confirm)
     -- Similar logic for items if needed by other asset types
     local numSelectedItems = r.CountSelectedMediaItems(0)
     local items = {}
@@ -305,11 +309,16 @@ helpers.getSelectedItemsWithConfirmation = function(tempStorage, assetContext, c
     if #items >= assetContext.settings.current.numberOfMediaItemsThatRequireConfirmation and not (confirm and confirm.multipleMediaItems) then
         assetContext.temp.confirmMultipleMediaItems = {
             count = #items,
+            keyMods = keyMods,
             resultContext = context,
             contextData = contextData,
             confirm = confirm
         }
         return false, ('%s items selected, waiting for confirmation'):format(#items)
+    end
+    if #items == 0 then
+        assetContext.flow.msg('No items selected')
+        return false, 'No items selected'
     end
     return items -- Proceed
 end
