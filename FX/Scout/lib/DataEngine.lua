@@ -860,7 +860,7 @@ PB_DataEngine.getPresets = function(self, reassemblePresetFilterAssets)
         local id = sortedPreset.id
         local presetData = sortedPreset.data
         if presetData.word and presetData.word ~= '' then
-            self.magicWords[presetData.word:upper()] = presetData.filter
+            self.magicWords[presetData.word:upper()] = {type = MAGIC_WORD_TYPE.PRESET, filter = presetData.filter}
         end
         local preset = OD_DeepCopy(presetData)
         preset.id = id
@@ -1619,4 +1619,36 @@ PB_DataEngine.markAssetDates = function(self)
     local assetsToCheck = getAssetsToCheck()
     local assets, firstRun = getDatesForAssets(assetsToCheck)
     writeNewAssets(assets, firstRun)
+end
+
+-- Find an asset by its key/id
+PB_DataEngine.getAssetByKey = function(self, assetKey)
+    if not assetKey or not self.assets then
+        return nil
+    end
+
+    for _, asset in ipairs(self.assets) do
+        if asset.id == assetKey then
+            return asset
+        end
+    end
+
+    return nil
+end
+
+-- Get multiple assets by their keys, filtering out any that aren't found
+PB_DataEngine.getAssetsByKeys = function(self, assetKeys)
+    if not assetKeys or type(assetKeys) ~= 'table' or not self.assets then
+        return {}
+    end
+
+    local foundAssets = {}
+    for _, assetKey in ipairs(assetKeys) do
+        local asset = self:getAssetByKey(assetKey)
+        if asset then
+            table.insert(foundAssets, asset)
+        end
+    end
+
+    return foundAssets
 end

@@ -2700,12 +2700,14 @@ RunApp = function()
                         if rv then
                             -- if app.temp.searchMode == SEARCH_MODE.MAIN then
                             local wordKey, wordAction = app.temp.searchInput:upper():match('(.+)([%s%?])$')
-                            local wordFilter = app.engine.magicWords[wordKey]
-                            if wordFilter then
-                                app.flow.filterResults(wordFilter)
-                                if wordAction == '?' then app.flow.executeRandomResult() end
-                                app.flow.setSearchMode(SEARCH_MODE.MAIN)
-                                app.guiHelpers.clearSearchInputText()
+                            local word = app.engine.magicWords[wordKey]
+                            if word then
+                                if word.type == MAGIC_WORD_TYPE.PRESET then
+                                    app.flow.filterResults(word.filter)
+                                    if wordAction == '?' then app.flow.executeRandomResult() end
+                                    app.flow.setSearchMode(SEARCH_MODE.MAIN)
+                                    app.guiHelpers.clearSearchInputText()
+                                end
                             else
                                 app.flow.filterResults({ text = app.temp.searchInput })
                             end
@@ -3285,8 +3287,9 @@ RunApp = function()
                                 if ImGui.BeginTabItem(ctx, 'Keyboard Modifiers', false) then
                                     if ImGui.BeginChild(ctx, 'ExecutionOptionsContent') then
                                         ImGui.Spacing(ctx)
-                                        OD_ImGuiRichTextWrapped(ctx, app.guiHelpers.formatRichText(T.KEYBOARD_MODIFIERS_HELP),
-                                                    app.gui.st.fonts)
+                                        OD_ImGuiRichTextWrapped(ctx,
+                                            app.guiHelpers.formatRichText(T.KEYBOARD_MODIFIERS_HELP),
+                                            app.gui.st.fonts)
                                         for i, group in ipairs(app.settings.current.groupOrder) do
                                             if group ~= SPECIAL_GROUPS.RECENTS and group ~= SPECIAL_GROUPS.FAVORITES then
                                                 ImGui.PushID(ctx, i)
