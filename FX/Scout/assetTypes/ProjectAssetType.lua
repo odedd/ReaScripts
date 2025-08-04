@@ -33,7 +33,7 @@ function ProjectAssetType:getData()
         local recentProjects = {}
         local iniPath = reaper.get_ini_file():gsub("\\", "/")
         local content = OD_GetContent(iniPath)
-
+        local recentOrder = 0
         if content and content ~= "" then
             -- Find the [Recent] section
             local recentSection = content:match("%[Recent%](.-)\n%[")
@@ -46,6 +46,7 @@ function ProjectAssetType:getData()
                 for line in recentSection:gmatch("[^\n]+") do
                     local recentPath = line:match("recent%d+=(.+)")
                     if recentPath and recentPath ~= "" then
+                        recentOrder = recentOrder + 1
                         -- Check if file exists and is a .RPP file
                         if recentPath:lower():match("%.rpp$") and OD_FileExists(recentPath) then
                             local path, name, ext = OD_DissectFilename(recentPath)
@@ -54,6 +55,7 @@ function ProjectAssetType:getData()
                                 name = name,
                                 path = path,
                                 recent = true,
+                                order = -recentOrder, -- minus because they are ordered from most recent to least recent
                             })
                         end
                     end
@@ -112,6 +114,7 @@ function ProjectAssetType:assembleAsset(project)
     })
 
     if project.recent then
+        asset.order = project.order
         table.insert(asset.searchText, { text = '(Recently opened)' })
     end
     return asset
