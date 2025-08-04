@@ -2683,6 +2683,7 @@ RunApp = function()
                             if wordFilter then
                                 app.flow.filterResults(wordFilter)
                                 if wordAction == '?' then app.flow.executeRandomResult() end
+                                app.flow.setSearchMode(SEARCH_MODE.MAIN)
                                 app.guiHelpers.clearSearchInputText()
                             else
                                 app.flow.filterResults({ text = app.temp.searchInput })
