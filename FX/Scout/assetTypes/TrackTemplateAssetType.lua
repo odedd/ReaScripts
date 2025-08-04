@@ -26,7 +26,7 @@ function TrackTemplateAssetType.new(class, context)
     instance:addInteraction(ImGui.Mod_Shift,
         'send selected track(s) to %singular(a )new track%plural(s) with %singular(template \'%asset\')%plural(%asset)',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
-            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
+            local selectedTracks, msg = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
                 contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
                 local tempGuids = {}
@@ -85,15 +85,15 @@ function TrackTemplateAssetType.new(class, context)
                     helpers.resetDefaultSendVolume(originalSendVol)
                 end
                 return true, ('sent to a new track with template %s'):format(asset.searchText[1].text)
-            elseif selectedTracks and #selectedTracks == 0 then
-                return false, 'No tracks selected'
+            else
+                return false, msg
             end
         end)
 
     instance:addInteraction(ImGui.Mod_Shift | RESULT_CONTEXT.DRAGGED_TO_BLANK,
         'send selected track(s) to %singular(a )new track%plural(s) with %singular(template \'%asset\')%plural(%asset)',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
-            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
+            local selectedTracks, msg = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
                 contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
                 local tempGuids = {}
@@ -152,8 +152,8 @@ function TrackTemplateAssetType.new(class, context)
                     helpers.resetDefaultSendVolume(originalSendVol)
                 end
                 return true, ('sent to a new track with template %s'):format(asset.searchText[1].text)
-            elseif selectedTracks and #selectedTracks == 0 then
-                return false, 'No tracks selected'
+            else
+                return false, msg
             end
         end)
     return instance

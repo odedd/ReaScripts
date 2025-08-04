@@ -311,7 +311,12 @@ RunApp = function()
                 app.temp.searchMode = SEARCH_MODE.MAIN
             end,
             msg = function(msg)
-                app:msg(msg)
+                if (r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE') then
+                    r.ClearConsole()
+                    r.MB(msg, Scr.name, 0)
+                else
+                    app:msg(msg)
+                end
             end,
             setPage = function(page)
                 if page ~= app.page then

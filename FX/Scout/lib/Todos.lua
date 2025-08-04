@@ -43,6 +43,7 @@
 -- TODO: Add Quick Chains to UserData import/export
 -- TODO: When importin/Exporting UserData, check for magic word conflicts across both presets and quick chains
 -- TODO: WHen running an external command that needs to show a msgbox (eg. no track selected), an error pops up
+-- TODO: If script was docked, it is undocked when started again or when woken up
 ---------------------------------------
 -- AFTER LAUNCH -----------------------
 ---------------------------------------

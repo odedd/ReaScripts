@@ -129,15 +129,15 @@ function TrackAssetType.new(class, context)
 
     instance:addInteraction(ImGui.Mod_Shift, 'send from selected track(s) to %asset',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
-            local selectedTracks = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
+            local selectedTracks, msg = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
                 contextData, confirm)
             if selectedTracks and #selectedTracks > 0 then
                 for _, track in ipairs(selectedTracks) do
                     local rv = reaper.CreateTrackSend(track, asset.object)
                 end
                 return true, ('Sent %d track(s) to track %s'):format(#selectedTracks, asset.searchText[1].text)
-            elseif selectedTracks and #selectedTracks == 0 then
-                return false, 'No tracks selected'
+            else
+                return false, msg
             end
         end)
     return instance
