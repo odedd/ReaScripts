@@ -2461,6 +2461,7 @@ RunApp = function()
 
                             ImGui.EndPopup(ctx)
                         end
+                        local y = ImGui.GetCursorPosY(ctx)
                         ImGui.SameLine(ctx)
                         if #app.temp.quickChain == 0 then
                             ImGui.BeginDisabled(ctx)
@@ -2490,7 +2491,9 @@ RunApp = function()
                             ImGui.EndDisabled(ctx)
                         end
                         ImGui.EndGroup(ctx)
-                        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
+                        ImGui.SetCursorPosY(ctx, y)
+
+                        -- ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
                         local w, h = ImGui.GetContentRegionAvail(ctx)
                         local listActive = #app.temp.quickChain > 0
 
