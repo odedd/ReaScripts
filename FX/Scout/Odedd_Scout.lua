@@ -769,17 +769,17 @@ RunApp = function()
                             app.flow.loadQuickChain(qc)
                             app.flow.executeSelectedResults(app.temp.quickChain,
                                 qc.keymods | RESULT_CONTEXT.QUICK_CHAIN)
-                            app.temp.quickChain = currentQuickChain                     -- Restore previous Quick Chain
+                            app.temp.quickChain = currentQuickChain -- Restore previous Quick Chain
                             app.settings.current.showQuickChain =
-                            currentQuickChainOpen                                       -- Restore previous Quick Chain visibility
+                                currentQuickChainOpen               -- Restore previous Quick Chain visibility
                             app.flow.close()
                         else
                             app.flow.loadQuickChain(qc)
                             app.flow.executeSelectedResults(app.temp.quickChain,
                                 qc.keymods | RESULT_CONTEXT.QUICK_CHAIN)
-                            app.temp.quickChain = currentQuickChain                     -- Restore previous Quick Chain
+                            app.temp.quickChain = currentQuickChain -- Restore previous Quick Chain
                             app.settings.current.showQuickChain =
-                            currentQuickChainOpen                                       -- Restore previous Quick Chain visibility
+                                currentQuickChainOpen               -- Restore previous Quick Chain visibility
                         end
                     end
                 end
@@ -1018,7 +1018,7 @@ RunApp = function()
                 local mods = mods or ImGui.GetKeyMods(app.gui.ctx)
 
                 -- Check if selection spans multiple asset types
-                local asset = OD_BfCheck(context, RESULT_CONTEXT.QUICK_CHAIN) and app.temp.quickChain[1] or asset 
+                local asset = OD_BfCheck(context, RESULT_CONTEXT.QUICK_CHAIN) and app.temp.quickChain[1] or asset
                 if count > 1 then
                     local selectedResults = OD_BfCheck(context, RESULT_CONTEXT.QUICK_CHAIN) and app.temp.quickChain or
                         app.selection:results()
@@ -1102,17 +1102,22 @@ RunApp = function()
                 ImGui.EndGroup(ctx)
                 if not disabled then return clicked end
             end,
-            iconButton = function(ctx, icon, colClass, hint, font, id)
-                local font = font or app.gui.st.fonts.icons_large
+            iconButton = function(ctx, icon, colClass, hint, shortcut, id)
+                -- local font = font or app.gui.st.fonts.icons_large
+                local font = app.gui.st.fonts.icons_large
                 ImGui.PushFont(ctx, font)
                 local x, y = ImGui.GetCursorPos(ctx)
                 local w = select(1, ImGui.CalcTextSize(ctx, ICONS[(icon):upper()])) +
                     ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding) * 2
                 local clicked
+                ImGui.BeginGroup(ctx)
                 if ImGui.InvisibleButton(ctx, '##menuBtn' .. icon .. (id or ''), w, ImGui.GetTextLineHeightWithSpacing(ctx)) then
                     clicked = true
                 end
                 if hint then
+                    local shortcut = shortcut and
+                        app.guiHelpers.shortCutToText(app.settings.current.shortcuts[shortcut]) or ''
+                    local hint = hint .. (shortcut ~= '' and ' (' .. shortcut .. ')' or '')
                     if app.temp.fullWindow then
                         app:setHoveredHint('main', hint)
                     elseif ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
@@ -1136,7 +1141,8 @@ RunApp = function()
                 ImGui.Text(ctx, tostring(ICONS[icon:upper()]))
                 app.gui:popColors(colClass.default)
                 ImGui.PopFont(ctx)
-                ImGui.SetCursorPos(ctx, x + w, y)
+                -- ImGui.SetCursorPos(ctx, x + w, y)
+                ImGui.EndGroup(ctx)
                 return clicked
             end,
             actionContextMenu = function(ctx, result, resultCount, actionContext)
@@ -1226,10 +1232,12 @@ RunApp = function()
                         app.flow.filterResults({ clear = true })
                     end
                     app:setHoveredHint('main', T.HINTS.RESET_FILTERS)
+                    ImGui.SameLine(ctx, 0, 0)
                     if app.guiHelpers.iconButton(ctx, 'DISK', app.gui.st.col.buttons.activeFilterAction) then
                         ImGui.OpenPopup(ctx, 'Save Filter Set Context Menu')
                     end
                     app:setHoveredHint('main', T.HINTS.SAVE_FILTERS)
+                    ImGui.SameLine(ctx, 0, 0)
                     if ImGui.BeginPopup(ctx, 'Save Filter Set Context Menu') then
                         app:setHint('main', '')
                         if ImGui.MenuItem(ctx, 'Save preset...') then
@@ -1246,11 +1254,10 @@ RunApp = function()
                         app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_ACTION)
                         ImGui.EndPopup(ctx)
                     end
-                    if app.guiHelpers.iconButton(ctx, 'DICE', app.gui.st.col.buttons.activeFilterAction) then
+                    if app.guiHelpers.iconButton(ctx, 'DICE', app.gui.st.col.buttons.activeFilterAction, T.HINTS.RANDOM_ACTION, 'runRandomResult') then
                         app.flow.executeRandomResult()
                     end
-                    app:setHoveredHint('main', T.HINTS.RANDOM_ACTION)
-                    ImGui.SameLine(ctx)
+                    ImGui.SameLine(ctx, 0, 0)
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
                     app.gui:pushStyles(app.gui.st.vars.topBarActiveFiltersArea)
                     app.gui:pushColors(app.gui.st.col.topBarActiveFiltersArea)
@@ -1259,7 +1266,7 @@ RunApp = function()
                     local closeButtonSizeW, closeButtonSizeH = app.guiHelpers.calcTinyIconSize(ctx, ICONS.CLOSE)
                     local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
                     local filterH = ImGui.GetTextLineHeight(ctx) + paddingY * 2
-
+                    ImGui.SetCursorPosY(ctx, y + paddingY)
                     if ImGui.BeginChild(ctx, 'activesideBar', nil, nil, ImGui.ChildFlags_AutoResizeY) then
                         local i = 0
                         for filterKey, filter in OD_PairsByOrder(app.temp.activeFilters) do
@@ -2878,15 +2885,13 @@ RunApp = function()
                     ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
                     local clicked = nil
                     for i, btn in ipairs(buttons) do
-                        local shortcut = btn.shortcut and
-                            app.guiHelpers.shortCutToText(app.settings.current.shortcuts[btn.shortcut]) or ''
-                        local hint = btn.hint .. (shortcut ~= '' and ' (' .. shortcut .. ')' or '')
                         local col = btn.active and app.gui.st.col.buttons.topBarActiveIcon or
                             app.gui.st.col.buttons.topBarIcon
-                        if app.guiHelpers.iconButton(ctx, btn.icon, col, hint) or (btn.shortcut and app.guiHelpers.isShortcutPressed(btn.shortcut) and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup)) then
+                        if app.guiHelpers.iconButton(ctx, btn.icon, col, btn.hint, btn.shortcut) or (btn.shortcut and app.guiHelpers.isShortcutPressed(btn.shortcut) and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup)) then
                             app.temp.shortcutPressed = true
                             clicked = btn.icon
                         end
+                        ImGui.SameLine(ctx, 0, 0)
                     end
                     ImGui.PopFont(ctx)
                     return clicked ~= nil, clicked
