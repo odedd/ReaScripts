@@ -345,8 +345,8 @@ RunApp = function()
                     query = OD_DeepCopy(query) or {}
                     if query.clear then
                         -- app.temp.searchInput = ''
-                        app.guiHelpers.clearSearchInputText()
-                        app.temp.filter = {}
+                        -- app.guiHelpers.clearSearchInputText()
+                        app.temp.filter = { text = app.temp.filter.text }
                     end
                     if query.clearText then
                         app.guiHelpers.clearSearchInputText()
@@ -1613,7 +1613,7 @@ RunApp = function()
                                 (w - ImGui.CalcTextSize(ctx, text) - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2) /
                                 2)
                             if ImGui.Button(ctx, text) then
-                                app.flow.filterResults({ clear = true })
+                                app.flow.filterResults({ clear = true, clearText = true })
                             end
                             app:setHoveredHint('main', T.HINTS.RESET_FILTERS)
                             ImGui.EndChild(ctx)
@@ -2769,6 +2769,9 @@ RunApp = function()
                                 app.flow.executeRandomResult()
                             end
                             pressed = true
+                        elseif app.guiHelpers.isShortcutPressed('clearFilters') then
+                            app.flow.filterResults({ clear = true })
+                            pressed = true
                         elseif app.guiHelpers.isShortcutPressed('addToQuickChain') then
                             app.flow.addSelectionToQuickChain()
                             pressed = true
@@ -2821,6 +2824,7 @@ RunApp = function()
                             inputFlags = inputFlags | ImGui.InputTextFlags_AutoSelectAll
                         end
                         if app.temp.clearSearchInputText then
+                            -- FIX: Doesn't seem to work
                             inputFlags = inputFlags | ImGui.InputTextFlags_CallbackAlways
                             callback = app.gui.clearInputIfNeeded
                         end
@@ -3170,6 +3174,15 @@ RunApp = function()
                             {
                                 existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                                     function(k, v) return k ~= 'markFavorite' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+
+                        app.settings.current.shortcuts.clearFilters, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.CLEAR_FILTERS.LABEL,
+                            T.SETTINGS.SHORTCUTS.CLEAR_FILTERS.HINT, app.settings.current.shortcuts.clearFilters,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'clearFilters' end)
                             })
                         if resetCounter then app.temp.captureCounter = 0 end
 
@@ -4280,7 +4293,9 @@ RunApp = function()
                 ImGui.SetNextWindowFocus(ctx)
                 local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or r.JS_Window_FindTop(Scr.name, true)
                 if scriptHwnd then
+                    r.DockWindowActivate(scriptHwnd)
                     r.JS_Window_SetFocus(scriptHwnd)
+                    ImGui.SetNextWindowFocus(ctx)
                 end
             end
 

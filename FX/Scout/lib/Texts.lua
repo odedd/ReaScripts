@@ -167,6 +167,10 @@ T.SETTINGS = {
             LABEL = 'Run random result',
             HINT = 'Randomly select one of the results and run it.',
         },
+        CLEAR_FILTERS = {
+            LABEL = 'Clear filters',
+            HINT = 'Clear all filters and tags from the search window.',
+        },
         ADD_TO_QUICK_CHAIN = {
             LABEL = 'Add to QuickChain',
             HINT = 'Add selected FX/FX Chains to the QuickChain.',

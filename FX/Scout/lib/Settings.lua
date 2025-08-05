@@ -23,6 +23,7 @@ PB_Settings = OD_Settings:new({
             closeScript = ImGui.Key_Escape,
             hardCloseScript = ImGui.Mod_Ctrl | ImGui.Key_Q,
             selectAllResults = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_A,
+            clearFilters = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_L,
             runRandomResult = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_R,
             addToQuickChain = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_K,
             clearQuickChain = ImGui.Mod_Alt | ImGui.Key_K,
