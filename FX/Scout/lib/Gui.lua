@@ -293,6 +293,8 @@ PB_Gui.init = function(self, fonts)
                 [ImGui.StyleVar_SeparatorTextAlign] = { 0, 0 },
                 [ImGui.StyleVar_SeparatorTextBorderSize] = { 1 * scale, nil },
                 [ImGui.StyleVar_SeparatorTextPadding] = { 0, 0 },
+                [ImGui.StyleVar_ItemInnerSpacing] = { 0, 0 },
+
             },
             tag = {
                 [ImGui.StyleVar_FrameRounding] = { 20 * scale, nil },
