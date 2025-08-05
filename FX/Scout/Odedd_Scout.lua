@@ -2430,7 +2430,7 @@ RunApp = function()
                                     end
                                     if ImGui.MenuItem(ctx, 'Click to confirm') then
                                         app.temp.showDeleteQuickChainConfirmation = nil
-                                        app.userdata:deleteQuickChain(app.temp.currentlyLoadedQuickChain.id)
+                                        app.userdata:deleteQuickChainPreset(app.temp.currentlyLoadedQuickChain.id)
                                         app.temp.currentlyLoadedQuickChain = nil
                                         app.temp.quickChain = {}
                                         numOfPresets = numOfPresets - 1
@@ -3910,13 +3910,13 @@ RunApp = function()
 
                             -- Create new Quick Chain - use converted keys
                             if not isEditing then
-                                local quickChain = app.userdata:createQuickChain(trimmedName, itemKeys, trimmedWord)
+                                local quickChain = app.userdata:createQuickChainPreset(trimmedName, itemKeys, trimmedWord)
                                 if quickChain then
                                     app.temp.currentlyLoadedQuickChain = quickChain
                                     app.logger:logInfo('Created Quick Chain "' .. quickChain.name .. '"')
                                 end
                             else
-                                local quickChain = app.userdata:updateQuickChain(app.temp.editingQuickChainId,
+                                local quickChain = app.userdata:updateQuickChainPreset(app.temp.editingQuickChainId,
                                     trimmedName, itemKeys, trimmedWord)
                                 if quickChain then
                                     app.logger:logInfo('Updated Quick Chain "' .. quickChain.name .. '"')
