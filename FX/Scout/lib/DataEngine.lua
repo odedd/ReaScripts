@@ -851,7 +851,7 @@ PB_DataEngine.getMagicWords = function(self)
         end
     end
 
-    for id, quickChain in pairs(self.app.userdata.current.quickChains) do
+    for id, quickChain in pairs(self.app.userdata.current.quickChainPresets) do
         if quickChain.word and quickChain.word ~= '' then
             self.magicWords[quickChain.word:upper()] = { type = MAGIC_WORD_TYPE.QUICK_CHAIN, quickChain = quickChain }
         end
@@ -1699,7 +1699,7 @@ PB_DataEngine.isMagicWordUsed = function(self, word, excludeType, excludeId)
 
     -- Check Quick Chains (unless we're excluding a Quick Chain)
     if excludeType ~= 'quickChain' then
-        for quickChainId, quickChain in pairs(self.app.userdata.current.quickChains or {}) do
+        for quickChainId, quickChain in pairs(self.app.userdata.current.quickChainPresets or {}) do
             if quickChain.word and quickChain.word ~= '' and quickChain.word:lower() == wordLower then
                 if excludeType ~= 'quickChain' or quickChainId ~= excludeId then
                     return true, 'quickChain', quickChain.name
@@ -1708,7 +1708,7 @@ PB_DataEngine.isMagicWordUsed = function(self, word, excludeType, excludeId)
         end
     else
         -- When excluding a Quick Chain, still check other Quick Chains
-        for quickChainId, quickChain in pairs(self.app.userdata.current.quickChains or {}) do
+        for quickChainId, quickChain in pairs(self.app.userdata.current.quickChainPresets or {}) do
             if quickChain.word and quickChain.word ~= '' and quickChain.word:lower() == wordLower and quickChainId ~= excludeId then
                 return true, 'quickChain', quickChain.name
             end
@@ -1719,16 +1719,16 @@ PB_DataEngine.isMagicWordUsed = function(self, word, excludeType, excludeId)
 end
 
 -- Get Quick Chains from UserData
-PB_DataEngine.getQuickChains = function(self)
-    self.app.logger:logDebug('-- PB_DataEngine.getQuickChains()')
+PB_DataEngine.getquickChainPresets = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.getquickChainPresets()')
     
     -- Quick Chains are stored in UserData, so just return them
-    local quickChains = self.app.userdata.current.quickChains or {}
+    local quickChainPresets = self.app.userdata.current.quickChainPresets or {}
     local count = 0
-    for _ in pairs(quickChains) do
+    for _ in pairs(quickChainPresets) do
         count = count + 1
     end
     
     self.app.logger:logDebug('Found ' .. count .. ' Quick Chains')
-    return quickChains
+    return quickChainPresets
 end

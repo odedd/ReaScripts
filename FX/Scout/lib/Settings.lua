@@ -66,7 +66,7 @@ PB_Settings = OD_Settings:new({
             SPECIAL_GROUPS.RECENTS,     -- Recents (special group)
             SPECIAL_GROUPS.FAVORITES,   -- Favorites (special group)
             SPECIAL_GROUPS.PLUGINS,     -- Placeholder for all FX types (VST3, AU, etc.)
-            "QuickChainAssetType",      -- QuickChain asset type
+            "QuickChainPresetAssetType",      -- QuickChain asset type
             "FXChainAssetType",         -- FX Chains asset type
             "TrackTemplateAssetType",   -- Track Templates asset type
             "ProjectTemplateAssetType", -- Project Templates asset type
@@ -92,7 +92,7 @@ PB_Settings = OD_Settings:new({
             ["TakeMarkerAssetType"] = true,      -- Take Markers asset type
             ["RegionAssetType"] = true,          -- Markers asset type
             ["ProjectTemplateAssetType"] = true, -- Project Templates asset type
-            ["QuickChainAssetType"] = true       -- Project Templates asset type
+            ["QuickChainPresetAssetType"] = true       -- Project Templates asset type
         },
         uiScale = 1,
 

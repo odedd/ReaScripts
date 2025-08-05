@@ -21,7 +21,7 @@ return {
     { id = 9,  file = 'RegionAssetType.lua',          comment = 'Regions' },
     { id = 10,  file = 'ProjectAssetType.lua',         comment = 'Project files (.rpp)' },
     { id = 11, file = 'ActionAssetType.lua',          comment = 'Reaper actions' },
-    { id = 12, file = 'QuickChainAssetType.lua',      comment = 'Quick Chains' },
+    { id = 12, file = 'QuickChainPresetAssetType.lua',      comment = 'Quick Chains' },
 
     -- When adding new asset types, assign the next available ID and add here:
     -- { id = 13, file = 'NewAssetType.lua', comment = 'Description of new type' },

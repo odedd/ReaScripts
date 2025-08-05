@@ -171,7 +171,7 @@ helpers.addPluginActions = function(instance)
             if asset.instrument then helpers.setAsAnInstrumentTrack(newTrack, asset.context.settings.current) end
             return true, ('Added %d FX to new track (each on its own track)'):format(total)
         end)
-    instance:addInteraction(ImGui.Mod_Alt, 'add %asset to selected item(s)',
+    instance:addInteraction(ImGui.Mod_Alt, 'add %asset to selected media item(s)',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
             local selectedItems, msg = helpers.getSelectedItemsWithConfirmation(tempStore, asset.context, context, mods,
                 contextData,

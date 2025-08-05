@@ -245,10 +245,9 @@ RunApp = function()
             end,
             execute = function(self, keyMods, resultContext, contextData, confirm)
                 local results = app.temp.resultsForExecution
-
                 -- Group results by asset type
                 local resultsByType = {}
-                for _, result in pairs(results) do
+                for i, result in pairs(results) do
                     if result.execute then
                         local assetType = result.type
                         if not resultsByType[assetType] then
@@ -616,7 +615,7 @@ RunApp = function()
                 app.temp.numResults = #app.temp.searchResults
                 resetOrRestoreSelection()
             end,
-            executeSelectedResults = function(ctx, results, resultContext, keyMods, contextData, confirm)
+            executeSelectedResults = function(results, resultContext, keyMods, contextData, confirm)
                 local keyMods = keyMods or ImGui.GetKeyMods(app.gui.ctx)
                 app.temp.resultsForExecution = results or app.temp.resultsForExecution
                 local resultCount = OD_TableLength(app.temp.resultsForExecution)
@@ -768,7 +767,7 @@ RunApp = function()
 
                         if shouldClose then
                             app.flow.loadQuickChain(qc)
-                            app.flow.executeSelectedResults(app.gui.ctx, app.temp.quickChain,
+                            app.flow.executeSelectedResults(app.temp.quickChain,
                                 qc.keymods | RESULT_CONTEXT.QUICK_CHAIN)
                             app.temp.quickChain = currentQuickChain                     -- Restore previous Quick Chain
                             app.settings.current.showQuickChain =
@@ -776,7 +775,7 @@ RunApp = function()
                             app.flow.close()
                         else
                             app.flow.loadQuickChain(qc)
-                            app.flow.executeSelectedResults(app.gui.ctx, app.temp.quickChain,
+                            app.flow.executeSelectedResults(app.temp.quickChain,
                                 qc.keymods | RESULT_CONTEXT.QUICK_CHAIN)
                             app.temp.quickChain = currentQuickChain                     -- Restore previous Quick Chain
                             app.settings.current.showQuickChain =
@@ -1019,6 +1018,7 @@ RunApp = function()
                 local mods = mods or ImGui.GetKeyMods(app.gui.ctx)
 
                 -- Check if selection spans multiple asset types
+                local asset = OD_BfCheck(context, RESULT_CONTEXT.QUICK_CHAIN) and app.temp.quickChain[1] or asset 
                 if count > 1 then
                     local selectedResults = OD_BfCheck(context, RESULT_CONTEXT.QUICK_CHAIN) and app.temp.quickChain or
                         app.selection:results()
@@ -1374,7 +1374,7 @@ RunApp = function()
                     quickChainMinimizedW,
                     select(2, ImGui.GetContentRegionAvail(ctx))
                 local sideBarScreenX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - sideBarW -- X position for tag area
-                -- local quickChainScreenX = sideBarScreenX - quickChainW -- X position for quick chain area
+                -- local quickChainPresetscreenX = sideBarScreenX - quickChainW -- X position for quick chain area
                 local upperRowY = ImGui.GetCursorPosY(ctx)                                     -- Y position for upper row, used for "sticky" first group title
                 local upperRowScreenY = select(2, ImGui.GetCursorScreenPos(ctx))               -- Y position for upper row, used for "sticky" first group title
                 local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx) +
@@ -1536,7 +1536,7 @@ RunApp = function()
                         end
                         if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragToObject then
                             if app.temp.dragToObject == -1 then
-                                app.flow.executeSelectedResults(ctx, app.selection:results(),
+                                app.flow.executeSelectedResults(app.selection:results(),
                                     RESULT_CONTEXT.DRAGGED_TO_BLANK)
                             else
                                 if app.logger.level >= app.logger.LOG_LEVEL.DEBUG then
@@ -1548,7 +1548,7 @@ RunApp = function()
                                         itemName = select(2, r.GetTrackName(app.temp.dragToObject))
                                     end
                                 end
-                                app.flow.executeSelectedResults(ctx, app.selection:results(),
+                                app.flow.executeSelectedResults(app.selection:results(),
                                     RESULT_CONTEXT.DRAGGED_TO_OBJECT, nil, app.temp
                                     .dragToObject)
                             end
@@ -1695,7 +1695,7 @@ RunApp = function()
                                                     app.selection:selectOnly(row.index)
                                                 end
                                                 if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
-                                                    app.flow.executeSelectedResults(ctx, app.selection:results(),
+                                                    app.flow.executeSelectedResults(app.selection:results(),
                                                         RESULT_CONTEXT.MOUSE_DOUBLE_CLICK)
                                                 end
                                             end
@@ -1715,7 +1715,7 @@ RunApp = function()
                                                 local rv, keymod = app.guiHelpers.actionContextMenu(ctx, result,
                                                     app.selection:count(), RESULT_CONTEXT.KEYBOARD)
                                                 if rv then
-                                                    app.flow.executeSelectedResults(ctx, app.selection:results(),
+                                                    app.flow.executeSelectedResults(app.selection:results(),
                                                         keymod)
                                                 end
                                                 ImGui.EndPopup(ctx)
@@ -1879,7 +1879,7 @@ RunApp = function()
                         separatorY + h,
                         ImGui.GetStyleColor(ctx, ImGui.Col_Separator))
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - paddingX)
-                    ImGui.InvisibleButton(ctx, '##quickChainSeparator', paddingX * 2, quickChainH)
+                    ImGui.InvisibleButton(ctx, '##quickChainPresetseparator', paddingX * 2, quickChainH)
                     if ImGui.IsItemHovered(ctx) then
                         app:setHoveredHint('main', 'Drag to change Quick Chain width')
                         ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
@@ -1901,7 +1901,7 @@ RunApp = function()
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - spacingX * 2 + paddingX)
                     ImGui.Dummy(ctx, 0, 0)
                 end
-                local drawQuickChainSeparator = function()
+                local drawquickChainPresetseparator = function()
                     -- Separator Resize Line
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX)
                     local separatorX, separatorY = ImGui.GetCursorScreenPos(ctx)
@@ -1909,7 +1909,7 @@ RunApp = function()
                         separatorY + h,
                         ImGui.GetStyleColor(ctx, ImGui.Col_Separator))
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - paddingX)
-                    ImGui.InvisibleButton(ctx, '##quickChainSeparator', paddingX * 2, quickChainH)
+                    ImGui.InvisibleButton(ctx, '##quickChainPresetseparator', paddingX * 2, quickChainH)
                     if ImGui.IsItemHovered(ctx) then
                         app:setHoveredHint('main', 'Drag to change Quick Chain width')
                         ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
@@ -2416,7 +2416,7 @@ RunApp = function()
                         end
                         if ImGui.BeginPopup(ctx, 'Quick Chain Preset Menu') then
                             app:setHint('main', '')
-                            local numOfPresets = OD_TableLength(app.userdata.current.quickChains)
+                            local numOfPresets = OD_TableLength(app.userdata.current.quickChainPresets)
                             if app.temp.currentlyLoadedQuickChain then
                                 if ImGui.MenuItem(ctx, 'Update preset...') then
                                     app.temp.showCreateQuickChainDialog = true
@@ -2446,7 +2446,7 @@ RunApp = function()
                                 ImGui.Text(ctx, 'No Quick Chain presets available')
                             end
                             -- Show saved Quick Chain presets
-                            for quickChainId, quickChain in pairs(app.userdata.current.quickChains or {}) do
+                            for quickChainId, quickChain in pairs(app.userdata.current.quickChainPresets or {}) do
                                 if ImGui.MenuItem(ctx, quickChain.name, quickChain.word) then
                                     app.flow.loadQuickChain(quickChain)
                                 end
@@ -2531,10 +2531,10 @@ RunApp = function()
                                 end
                                 if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragFromChainToObject then
                                     if app.temp.dragFromChainToObject == -1 then
-                                        app.flow.executeSelectedResults(ctx, app.temp.quickChain,
+                                        app.flow.executeSelectedResults(app.temp.quickChain,
                                             RESULT_CONTEXT.DRAGGED_TO_BLANK)
                                     else
-                                        app.flow.executeSelectedResults(ctx, app.temp.quickChain,
+                                        app.flow.executeSelectedResults(app.temp.quickChain,
                                             RESULT_CONTEXT.DRAGGED_TO_OBJECT, nil, app.temp
                                             .dragFromChainToObject)
                                     end
@@ -2577,7 +2577,7 @@ RunApp = function()
                         ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
                         if ImGui.Button(ctx, ICONS.LIGHTNING .. '##quickChainAdd',
                                 w - spacingX - paddingX * 2 - ImGui.CalcTextSize(ctx, ICONS.ELLIPSIS)) then
-                            app.flow.executeSelectedResults(ctx, app.temp.quickChain,
+                            app.flow.executeSelectedResults(app.temp.quickChain,
                                 RESULT_CONTEXT.QUICK_CHAIN)
                         end
                         if #app.temp.quickChain > 0 then
@@ -2598,7 +2598,7 @@ RunApp = function()
                             local rv, keymod = app.guiHelpers.actionContextMenu(ctx, app.temp.quickChain[1],
                                 #app.temp.quickChain, RESULT_CONTEXT.QUICK_CHAIN)
                             if rv then
-                                app.flow.executeSelectedResults(ctx, app.temp.quickChain,
+                                app.flow.executeSelectedResults(app.temp.quickChain,
                                     keymod | RESULT_CONTEXT.QUICK_CHAIN)
                             end
                             ImGui.Separator(ctx)
@@ -2642,7 +2642,7 @@ RunApp = function()
                 end
                 if app.settings.current.showQuickChain then
                     ImGui.SameLine(ctx)
-                    drawQuickChainSeparator()
+                    drawquickChainPresetseparator()
                     ImGui.SameLine(ctx)
                     drawQuickChain()
                 end
@@ -2746,7 +2746,7 @@ RunApp = function()
                                 local goWithQuickChain = app.temp.searchMode == SEARCH_MODE.MAIN and
                                     app.settings.current.showQuickChain and
                                     #app.temp.quickChain > 0
-                                app.flow.executeSelectedResults(ctx,
+                                app.flow.executeSelectedResults(
                                     goWithQuickChain and app.temp.quickChain or app.selection:results(),
                                     RESULT_CONTEXT.KEYBOARD)
                             end
@@ -3623,7 +3623,7 @@ RunApp = function()
                         'You selected ' ..
                         app.temp.confirmMultipleResults.count .. ' items.\nAre you sure you want to continue?')
                     if confirm then
-                        app.flow.executeSelectedResults(ctx, nil, app.temp.confirmMultipleResults.resultContext,
+                        app.flow.executeSelectedResults(nil, app.temp.confirmMultipleResults.resultContext,
                             app.temp.confirmMultipleResults.keyMods,
                             app.temp.confirmMultipleResults.contextData, { multipleResults = true })
                     end
@@ -3643,7 +3643,7 @@ RunApp = function()
                     if confirm then
                         local confirmations = object.confirm or {}
                         confirmations[app.temp.confirmMultipleTracks and 'multipleTracks' or 'multipleMediaItems'] = true
-                        app.flow.executeSelectedResults(ctx, nil, object.resultContext,
+                        app.flow.executeSelectedResults(nil, object.resultContext,
                             object.keyMods,
                             object.contextData,
                             confirmations)
@@ -3867,7 +3867,7 @@ RunApp = function()
 
                         if canSaveQuickChain then
                             -- Check for duplicate name (excluding self when editing)
-                            for quickChainId, quickChain in pairs(app.userdata.current.quickChains) do
+                            for quickChainId, quickChain in pairs(app.userdata.current.quickChainPresets) do
                                 if quickChain.name:lower() == trimmedName:lower() and quickChainId ~= app.temp.editingQuickChainId then
                                     canSaveQuickChain = false
                                     errorMessage = "Name already exists"
