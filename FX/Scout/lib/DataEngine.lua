@@ -1717,3 +1717,18 @@ PB_DataEngine.isMagicWordUsed = function(self, word, excludeType, excludeId)
 
     return false, nil, nil
 end
+
+-- Get Quick Chains from UserData
+PB_DataEngine.getQuickChains = function(self)
+    self.app.logger:logDebug('-- PB_DataEngine.getQuickChains()')
+    
+    -- Quick Chains are stored in UserData, so just return them
+    local quickChains = self.app.userdata.current.quickChains or {}
+    local count = 0
+    for _ in pairs(quickChains) do
+        count = count + 1
+    end
+    
+    self.app.logger:logDebug('Found ' .. count .. ' Quick Chains')
+    return quickChains
+end

@@ -66,6 +66,7 @@ PB_Settings = OD_Settings:new({
             SPECIAL_GROUPS.RECENTS,     -- Recents (special group)
             SPECIAL_GROUPS.FAVORITES,   -- Favorites (special group)
             SPECIAL_GROUPS.PLUGINS,     -- Placeholder for all FX types (VST3, AU, etc.)
+            "QuickChainAssetType",      -- QuickChain asset type
             "FXChainAssetType",         -- FX Chains asset type
             "TrackTemplateAssetType",   -- Track Templates asset type
             "ProjectTemplateAssetType", -- Project Templates asset type
@@ -78,19 +79,20 @@ PB_Settings = OD_Settings:new({
             "ActionAssetType",          -- Actions asset type
         },
         groupVisibility = {
-            [SPECIAL_GROUPS.RECENTS] = true,    -- Recents (special group)
-            [SPECIAL_GROUPS.FAVORITES] = true,  -- Favorites (special group)
-            [SPECIAL_GROUPS.PLUGINS] = true,    -- Placeholder for all FX types (VST3, AU, etc.)
-            ["FXChainAssetType"] = true,        -- FX Chains asset type
-            ["TrackAssetType"] = true,          -- Tracks asset type
-            ["TakeAssetType"] = true,           -- Takes asset type
-            ["TrackTemplateAssetType"] = true,  -- Track Templates asset type
-            ["ActionAssetType"] = true,         -- Actions asset type
-            ["ProjectAssetType"] = true,        -- Projects asset type
-            ["MarkerAssetType"] = true,         -- Markers asset type
-            ["TakeMarkerAssetType"] = true,     -- Take Markers asset type
-            ["RegionAssetType"] = true,         -- Markers asset type
-            ["ProjectTemplateAssetType"] = true -- Project Templates asset type
+            [SPECIAL_GROUPS.RECENTS] = true,     -- Recents (special group)
+            [SPECIAL_GROUPS.FAVORITES] = true,   -- Favorites (special group)
+            [SPECIAL_GROUPS.PLUGINS] = true,     -- Placeholder for all FX types (VST3, AU, etc.)
+            ["FXChainAssetType"] = true,         -- FX Chains asset type
+            ["TrackAssetType"] = true,           -- Tracks asset type
+            ["TakeAssetType"] = true,            -- Takes asset type
+            ["TrackTemplateAssetType"] = true,   -- Track Templates asset type
+            ["ActionAssetType"] = true,          -- Actions asset type
+            ["ProjectAssetType"] = true,         -- Projects asset type
+            ["MarkerAssetType"] = true,          -- Markers asset type
+            ["TakeMarkerAssetType"] = true,      -- Take Markers asset type
+            ["RegionAssetType"] = true,          -- Markers asset type
+            ["ProjectTemplateAssetType"] = true, -- Project Templates asset type
+            ["QuickChainAssetType"] = true       -- Project Templates asset type
         },
         uiScale = 1,
 

@@ -1906,6 +1906,12 @@ function PB_UserData:createQuickChain(name, items, word)
 
     self:save()
     self.app.engine:getQuickChains() -- Notify engine to refresh its runtime data
+    
+    -- Refresh Quick Chain assets so they appear in the UI immediately
+    if self.app.engine then
+        self.app.engine:assembleAssets()
+    end
+    
     return quickChain
 end
 
@@ -1922,6 +1928,11 @@ function PB_UserData:deleteQuickChain(quickChainId)
 
     self:save()
     self.app.engine:getQuickChains() -- Notify engine to refresh its runtime data
+
+    -- Refresh Quick Chain assets so they are removed from the UI immediately
+    if self.app.engine then
+        self.app.engine:assembleAssets()
+    end
 
     return true
 end
@@ -1964,6 +1975,11 @@ function PB_UserData:updateQuickChain(quickChainId, name, items, word)
 
     self:save()
     self.app.engine:getQuickChains() -- Notify engine to refresh its runtime data
+
+    -- Refresh Quick Chain assets so changes appear in the UI immediately
+    if self.app.engine then
+        self.app.engine:assembleAssets()
+    end
 
     return self.current.quickChains[quickChainId]
 end
