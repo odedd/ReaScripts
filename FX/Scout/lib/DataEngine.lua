@@ -1670,7 +1670,7 @@ PB_DataEngine.getAssetsByKeys = function(self, assetKeys)
     return foundAssets
 end
 
--- Check if a magic word is already in use by presets or QuickChains
+-- Check if a magic word is already in use by presets or QuickChain presets
 -- Returns: isUsed (boolean), conflictType (string), conflictName (string)
 PB_DataEngine.isMagicWordUsed = function(self, word, excludeType, excludeId)
     if not word or word == '' then
@@ -1697,20 +1697,20 @@ PB_DataEngine.isMagicWordUsed = function(self, word, excludeType, excludeId)
         end
     end
 
-    -- Check QuickChains (unless we're excluding a QuickChain)
-    if excludeType ~= 'quickChain' then
-        for quickChainId, quickChain in pairs(self.app.userdata.current.quickChainPresets or {}) do
-            if quickChain.word and quickChain.word ~= '' and quickChain.word:lower() == wordLower then
-                if excludeType ~= 'quickChain' or quickChainId ~= excludeId then
-                    return true, 'quickChain', quickChain.name
+    -- Check QuickChain Presets (unless we're excluding a QuickChain)
+    if excludeType ~= 'quickChainPreset' then
+        for quickChainPresetId, quickChainPreset in pairs(self.app.userdata.current.quickChainPresets or {}) do
+            if quickChainPreset.word and quickChainPreset.word ~= '' and quickChainPreset.word:lower() == wordLower then
+                if excludeType ~= 'quickChainPreset' or quickChainPresetId ~= excludeId then
+                    return true, 'quickChainPreset', quickChainPreset.name
                 end
             end
         end
     else
-        -- When excluding a QuickChain, still check other QuickChains
-        for quickChainId, quickChain in pairs(self.app.userdata.current.quickChainPresets or {}) do
-            if quickChain.word and quickChain.word ~= '' and quickChain.word:lower() == wordLower and quickChainId ~= excludeId then
-                return true, 'quickChain', quickChain.name
+        -- When excluding a QuickChain, still check other QuickChain Presets
+        for quickChainPresetId, quickChainPreset in pairs(self.app.userdata.current.quickChainPresets or {}) do
+            if quickChainPreset.word and quickChainPreset.word ~= '' and quickChainPreset.word:lower() == wordLower and quickChainPresetId ~= excludeId then
+                return true, 'quickChainPreset', quickChainPreset.name
             end
         end
     end
@@ -1718,17 +1718,17 @@ PB_DataEngine.isMagicWordUsed = function(self, word, excludeType, excludeId)
     return false, nil, nil
 end
 
--- Get QuickChains from UserData
+-- Get QuickChain Presets from UserData
 PB_DataEngine.getquickChainPresets = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.getquickChainPresets()')
     
-    -- QuickChains are stored in UserData, so just return them
+    -- QuickChain Presets are stored in UserData, so just return them
     local quickChainPresets = self.app.userdata.current.quickChainPresets or {}
     local count = 0
     for _ in pairs(quickChainPresets) do
         count = count + 1
     end
     
-    self.app.logger:logDebug('Found ' .. count .. ' QuickChains')
+    self.app.logger:logDebug('Found ' .. count .. ' QuickChain Presets')
     return quickChainPresets
 end

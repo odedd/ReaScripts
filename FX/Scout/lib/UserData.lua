@@ -1516,6 +1516,7 @@ function PB_UserData:import(args)
     if self.app.engine then
         self.app.engine:getTags(true)    -- Pass true to reassemble tag filter assets
         self.app.engine:getPresets(true) -- Refresh presets
+        self.app.engine:getMagicWords()  -- Refresh magic words
         self.app.engine:assembleAssets()
     end
 
@@ -1784,6 +1785,7 @@ function PB_UserData:deletePreset(presetId)
     -- Notify engine to refresh its runtime data
     if self.app.engine then
         self.app.engine:getPresets(true)
+        self.app.engine:getMagicWords() -- Refresh magic words
     end
 
     return true
@@ -1850,6 +1852,7 @@ function PB_UserData:updatePreset(presetId, name, filter, word)
     -- Notify engine to refresh its runtime data
     if self.app.engine then
         self.app.engine:getPresets(true)
+        self.app.engine:getMagicWords() -- Refresh magic words
     end
 
     return self.current.presets[presetId]
@@ -1910,6 +1913,7 @@ function PB_UserData:createQuickChainPreset(name, items, word)
     -- Refresh QuickChain preset assets so they appear in the UI immediately
     if self.app.engine then
         self.app.engine:assembleAssets()
+        self.app.engine:getMagicWords() -- Refresh magic words
     end
     
     return quickChainPreset
@@ -1932,6 +1936,7 @@ function PB_UserData:deleteQuickChainPreset(quickChainPresetId)
     -- Refresh QuickChain preset assets so they are removed from the UI immediately
     if self.app.engine then
         self.app.engine:assembleAssets()
+        self.app.engine:getMagicWords() -- Refresh magic words
     end
 
     return true
@@ -1979,6 +1984,7 @@ function PB_UserData:updateQuickChainPreset(quickChainPresetId, name, items, wor
     -- Refresh QuickChain preset assets so changes appear in the UI immediately
     if self.app.engine then
         self.app.engine:assembleAssets()
+        self.app.engine:getMagicWords() -- Refresh magic words
     end
 
     return self.current.quickChainPresets[quickChainPresetId]

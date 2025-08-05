@@ -350,7 +350,6 @@ RunApp = function()
                     end
                     if query.clearText then
                         app.guiHelpers.clearSearchInputText()
-                        -- app.temp.searchInput = ''
                         app.temp.filter.text = ''
                     end
                     query.text = query.text or app.temp.filter.text or ''
@@ -975,6 +974,7 @@ RunApp = function()
                 app.temp.selectSearchInputText = true
             end,
             clearSearchInputText = function()
+                app.temp.searchInput = ''
                 app.temp.clearSearchInputText = true
             end,
             shortCutToText = function(keychord)
@@ -2824,7 +2824,6 @@ RunApp = function()
                             inputFlags = inputFlags | ImGui.InputTextFlags_AutoSelectAll
                         end
                         if app.temp.clearSearchInputText then
-                            -- FIX: Doesn't seem to work
                             inputFlags = inputFlags | ImGui.InputTextFlags_CallbackAlways
                             callback = app.gui.clearInputIfNeeded
                         end
@@ -2843,8 +2842,6 @@ RunApp = function()
                             app.temp.selectSearchInputText = nil
                             app.temp.selectSearchInputTextOnNextFrame = true
                         end
-                        -- handleSpecialKeys()
-                        -- app.temp.blockNextCharacter = nil
                         app.temp.clearSearchInputText = nil
                         if ImGui.IsItemFocused(ctx) then
                             if ImGui.IsKeyReleased(ctx, ImGui.Key_Tab) then
@@ -3762,11 +3759,7 @@ RunApp = function()
                                     'preset', app.temp.editingPresetId)
                                 if isUsed then
                                     canSavePreset = false
-                                    if conflictType == 'preset' then
-                                        errorMessage = "A preset with this word exists"
-                                    else
-                                        errorMessage = "A QuickChain with this word exists"
-                                    end
+                                    errorMessage = "Magic word already exists"
                                 end
                             end
                         end
@@ -3897,7 +3890,7 @@ RunApp = function()
                         -- Check for duplicate word across both QuickChains and Presets
                         if (trimmedName == "" or canSaveQuickChain) and trimmedWord ~= "" then
                             local isUsed, conflictType, conflictName = app.engine:isMagicWordUsed(trimmedWord,
-                                'quickChain', app.temp.editingQuickChainId)
+                                'quickChainPreset', app.temp.editingQuickChainId)
                             if isUsed then
                                 canSaveQuickChain = false
                                 errorMessage = "Magic word already exists"
