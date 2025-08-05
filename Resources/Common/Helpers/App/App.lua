@@ -150,14 +150,14 @@ function OD_Gui_App:drawPopup(popupType, title, data)
         r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_WindowPadding()) * 4, textHeight + 90 * (self.gui.scale or 1))
         r.ImGui_SetNextWindowPos(ctx, center[1], center[2], r.ImGui_Cond_Appearing(), 0.5, 0.5)
         r.ImGui_PushStyleVar(ctx, r.ImGui_StyleVar_WindowTitleAlign(), 0.5, 0.5)
-        
+        r.ImGui_SetNextWindowFocus(ctx)
                 if self.gui.st.vars.popups then
                     self.gui:pushStyles(self.gui.st.vars.popups)
                 end
                 if self.gui.st.vars.popupsTitle then
                     self.gui:pushStyles(self.gui.st.vars.popupsTitle)
                 end
-        if r.ImGui_BeginPopupModal(ctx, title, false, r.ImGui_WindowFlags_NoResize() | r.ImGui_WindowFlags_NoDocking()) then
+                if r.ImGui_BeginPopupModal(ctx, title, false, r.ImGui_WindowFlags_NoResize() | r.ImGui_WindowFlags_NoDocking()) then
             if self.gui.st.vars.popupsTitle then
                 self.gui:popStyles(self.gui.st.vars.popupsTitle)
             end
@@ -181,8 +181,7 @@ function OD_Gui_App:drawPopup(popupType, title, data)
                     r.ImGui_GetStyleVar(ctx, r.ImGui_StyleVar_FramePadding()) * 2
             end
             r.ImGui_SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
-
-            if r.ImGui_Button(ctx, okButtonLabel) or (r.ImGui_IsItemFocused(ctx) and r.ImGui_IsKeyPressed(ctx, closeKey)) then
+            if r.ImGui_Button(ctx, okButtonLabel) or r.ImGui_Shortcut(ctx, closeKey) then
                 okPressed = true
                 r.ImGui_CloseCurrentPopup(ctx)
             end

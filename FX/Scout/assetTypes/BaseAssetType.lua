@@ -161,8 +161,8 @@ function BaseAssetType:executeAndAddToRecents()
 
             if success and result == true then
                 -- Only add to recents if execution was successful AND returned true
-                if asset.addToRecents then
-                    asset:addToRecents()
+                if asset.addToRecents and not OD_BfCheck(context, RESULT_CONTEXT.QUICK_CHAIN) then
+                    asset:addToRecents(index == total)
                 end
                 assetType.context.logger:logInfo(logMsg)
                 if assetType.context.settings.current.closeAfterExecute then
@@ -351,13 +351,16 @@ BaseAssetType.assetActions = {
             key .. '" from position ' .. currentPosition .. ' to position ' .. targetPosition)
         return true
     end,
-    addToRecents = function(self)
+    addToRecents = function(self, filterResults)
+        if filterResults == nil then filterResults = true end
         self.context.userdata:addAssetToRecents(self.key)
 
         -- Use the unified special groups marking function
-        self.engine:markSpecialGroups()
-        self.engine:sortAssets()
-        self.context.flow.filterResults(nil, nil, { self }) -- Use multi-target to maintain selection on this asset
+        if filterResults then
+            self.engine:markSpecialGroups()
+            self.engine:sortAssets()
+            self.context.flow.filterResults(nil, nil, { self }) -- Use multi-target to maintain selection on this asset
+        end
     end,
     addTag = function(self, tag, saveToDB)
         local save = (saveToDB == nil) and true or saveToDB

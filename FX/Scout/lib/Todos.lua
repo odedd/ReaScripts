@@ -38,12 +38,13 @@
 -- DONE: Some asset types make no sense in multiple selections (markers/regions/projects/project templates). Make selecting them impossible via a switch in their assetType so that it is more robust.
 -- DONE: disable selecting multiple filters of the same type? (this is a petty one)
 -- DONE: write help
+-- DONE: WHen running quickchain, don't put the content in the recents section
+-- DONE: WHen running an external command that needs to show a msgbox (eg. no track selected), an error pops up
+-- DONE: If script was docked, it is undocked when started again or when woken up
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Test on windows
 -- TODO: Add Quick Chains to UserData import/export
 -- TODO: When importin/Exporting UserData, check for magic word conflicts across both presets and quick chains
--- TODO: WHen running an external command that needs to show a msgbox (eg. no track selected), an error pops up
--- TODO: If script was docked, it is undocked when started again or when woken up
 ---------------------------------------
 -- AFTER LAUNCH -----------------------
 ---------------------------------------

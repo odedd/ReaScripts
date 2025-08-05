@@ -103,6 +103,7 @@ PB_Settings = OD_Settings:new({
         minSideBarWidth = 140,
         minQuickChainWidth = 140,
         lastDockId = nil,
+        lastDockedState = false,
         numberOfResultsThatRequireConfirmation = 10,
         numberOfTracksThatRequireConfirmation = 6,
         numberOfMediaItemsThatRequireConfirmation = 6,

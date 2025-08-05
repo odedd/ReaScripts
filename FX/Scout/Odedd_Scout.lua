@@ -32,7 +32,7 @@ else
     dofile(p .. '../../Resources/Common/Common.lua')
 end
 
-LOG_LEVEL = OD_Logger.LOG_LEVEL.ERROR
+LOG_LEVEL = OD_Logger.LOG_LEVEL.NONE
 
 OD_Init()
 
@@ -312,7 +312,6 @@ RunApp = function()
             end,
             msg = function(msg)
                 if (r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE') then
-                    r.ClearConsole()
                     r.MB(msg, Scr.name, 0)
                 else
                     app:msg(msg)
@@ -771,16 +770,17 @@ RunApp = function()
                             app.flow.loadQuickChain(qc)
                             app.flow.executeSelectedResults(app.gui.ctx, app.temp.quickChain,
                                 qc.keymods | RESULT_CONTEXT.QUICK_CHAIN)
-                            app.temp.quickChain = currentQuickChain     -- Restore previous Quick Chain
-                            app.settings.current.showQuickChain = currentQuickChainOpen -- Restore previous Quick Chain visibility
+                            app.temp.quickChain = currentQuickChain                     -- Restore previous Quick Chain
+                            app.settings.current.showQuickChain =
+                            currentQuickChainOpen                                       -- Restore previous Quick Chain visibility
                             app.flow.close()
                         else
                             app.flow.loadQuickChain(qc)
                             app.flow.executeSelectedResults(app.gui.ctx, app.temp.quickChain,
                                 qc.keymods | RESULT_CONTEXT.QUICK_CHAIN)
-                            app.temp.quickChain = currentQuickChain     -- Restore previous Quick Chain
-                            app.settings.current.showQuickChain = currentQuickChainOpen -- Restore previous Quick Chain visibility
-
+                            app.temp.quickChain = currentQuickChain                     -- Restore previous Quick Chain
+                            app.settings.current.showQuickChain =
+                            currentQuickChainOpen                                       -- Restore previous Quick Chain visibility
                         end
                     end
                 end
@@ -951,6 +951,10 @@ RunApp = function()
                         app.gui.mainWindow.dockId = ImGui.GetWindowDockID(ctx)
                         if app.gui.mainWindow.dockId < 0 then
                             app.settings.current.lastDockId = app.gui.mainWindow.dockId
+                            app.settings.current.lastDockedState = true
+                            app.settings:save()
+                        else
+                            app.settings.current.lastDockedState = false
                             app.settings:save()
                         end
                     end
@@ -2940,7 +2944,7 @@ RunApp = function()
                             if not app.temp.showHelpWindow then
                                 local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or
                                     r.JS_Window_Find(Scr.name, true)
-                                if scriptHwnd then
+                                if scriptHwnd ~= r.JS_Window_GetFocus() then
                                     r.JS_Window_SetFocus(scriptHwnd)
                                 end
                             end
@@ -3531,7 +3535,7 @@ RunApp = function()
                     if not open or not app.temp.showHelpWindow then
                         app.temp.showHelpWindow = nil
                         local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or r.JS_Window_Find(Scr.name, true)
-                        if scriptHwnd then
+                        if scriptHwnd ~= r.JS_Window_GetFocus() then
                             r.JS_Window_SetFocus(scriptHwnd)
                         end
                     end
@@ -4191,8 +4195,8 @@ RunApp = function()
                 local center = { viewPortW / 2,
                     viewPortH / 2 }
                 ImGui.SetNextWindowPos(ctx, center[1], center[2] / (app.settings.current.minimalMode and 1.5 or 1),
-                    app.settings.current.centerOnOpen and ImGui.Cond_Appearing or ImGui.Cond_FirstUseEver, 0.5, 0.5)
-
+                    (app.settings.current.lastDockedState == false) and ImGui.Cond_Appearing or ImGui.Cond_FirstUseEver,
+                    0.5, 0.5)
                 app.flow.getActiveFilters()
                 app.temp.fullWindow = true
                 if app.settings.current.minimalMode then
@@ -4258,14 +4262,14 @@ RunApp = function()
 
             app.hide = false
             app.guiHelpers.initFrame(ctx)
+            app.flow.checkExternalCommand() -- should happen before setting 'RUNNING' state so that external commmand can asses if the script is running
 
-            app.flow.checkExternalCommand()
             r.SetExtState(Scr.ext_name, 'RUNNING', 'TRUE', false)
             if r.GetExtState(Scr.ext_name, 'FOCUS') == 'GO' then
                 r.SetExtState(Scr.ext_name, 'FOCUS', '', false)
                 app.temp.focusWindowOn = ImGui.GetFrameCount(ctx) + 3
             end
-            if app.temp.focusWindowOn == ImGui.GetFrameCount(ctx) then
+            if app.temp.focusWindowOn and app.temp.focusWindowOn <= ImGui.GetFrameCount(ctx) and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then
                 app.temp.focusWindowOn = nil
                 app.temp.focusTextInput = true
                 ImGui.SetNextWindowFocus(ctx)
@@ -4400,7 +4404,8 @@ CheckIfHybernating = function()
     elseif r.GetExtState(Scr.ext_name, 'RUNNING') == 'TRUE' then
         -- Script is already running, just bring it to focus
         local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or r.JS_Window_FindTop(Scr.name, true)
-        if scriptHwnd then
+
+        if scriptHwnd ~= r.JS_Window_GetFocus() then
             r.SetExtState(Scr.ext_name, 'FOCUS', 'GO', false)
             r.JS_Window_SetFocus(scriptHwnd)
         end
