@@ -147,8 +147,9 @@ function PB_UserData:export(filename)
         local filterString = table.concat(filterParts, "&")
 
         local sanitizedName = OD_EscapeCSV(preset.name)
+        local sanitizedWord = OD_EscapeCSV(preset.word or '')
         local sanitizedFilter = OD_EscapeCSV(filterString)
-        file:write(string.format('%d,%s,%s\n', id, sanitizedName, sanitizedFilter))
+        file:write(string.format('%d,%s,%s,%s\n', id, sanitizedName, sanitizedWord, sanitizedFilter))
         presetsCount = presetsCount + 1
     end
     file:write('\n')
@@ -442,9 +443,49 @@ function PB_UserData:import(args)
                 self.app.logger:logError('No colon separator found in taggedAssets line', line)
             end
         elseif section == "presets" and line ~= "" then
-            -- Parse presets: id,name,filter
+            -- Parse presets: id,name,word,filter
             local fields = OD_ParseCSVLine(line, ",")
             if #fields >= 4 then
+                local id, name, word, filterString = fields[1], fields[2], fields[3], fields[4]
+                if id and name and tonumber(id) then
+                    -- Parse filter string back to table format
+                    local filter = {}
+                    if filterString and filterString ~= "" then
+                        for pair in filterString:gmatch("([^&]+)") do
+                            local key, value = pair:match("([^=]+)=(.+)")
+                            if key and value then
+                                if key == "tags" then
+                                    -- Special handling for tags
+                                    filter.tags = {}
+                                    for tagPair in value:gmatch("([^;]+)") do
+                                        local tagId, positive = tagPair:match("([^=]+)=(.+)")
+                                        if tagId and positive then
+                                            filter.tags[tonumber(tagId)] = (positive == "1")
+                                        end
+                                    end
+                                elseif tonumber(value) then
+                                    filter[key] = tonumber(value)
+                                elseif value == "1" then
+                                    filter[key] = true
+                                elseif value == "0" then
+                                    filter[key] = false
+                                else
+                                    filter[key] = value
+                                end
+                            end
+                        end
+                    end
+
+                    importedPresets[tonumber(id)] = {
+                        name = name,
+                        word = (word ~= "" and word or nil), -- Convert empty string to nil
+                        filter = filter
+                    }
+                else
+                    self.app.logger:logError('Invalid presets line format', line)
+                end
+            elseif #fields == 3 then
+                -- Legacy format: id,name,filter (no magic word)
                 local id, name, filterString = fields[1], fields[2], fields[3]
                 if id and name and tonumber(id) then
                     -- Parse filter string back to table format
@@ -477,6 +518,7 @@ function PB_UserData:import(args)
 
                     importedPresets[tonumber(id)] = {
                         name = name,
+                        word = nil, -- No magic word in legacy format
                         filter = filter
                     }
                 else
@@ -495,7 +537,12 @@ function PB_UserData:import(args)
                     local items = {}
                     if itemsString and itemsString ~= "" then
                         for item in itemsString:gmatch("([^,]+)") do
-                            table.insert(items, item)
+                            -- Filter out items that don't exist in the current system
+                            -- Only include FX and FX Chain assets
+                            local assetTypeId = tonumber(item:match("^(%d+)"))
+                            if assetTypeId and (assetTypeId == ASSET_TYPE.PluginAssetType or assetTypeId == ASSET_TYPE.FXChainAssetType) then
+                                table.insert(items, item)
+                            end
                         end
                     end
 
@@ -519,14 +566,16 @@ function PB_UserData:import(args)
                 self.app.logger:logError('Invalid favorites line format', line)
             end
         end
-        count[section] = (count[section] or 0) + 1
-        if count[section] % YIELD_FREQUENCY == 0 or count[section] == sectionCounts[section] then
-            coroutine.yield({
-                progress = true,
-                msg = (T.PROGRESS.IMPORT.PARSING):format(section),
-                index = count[section],
-                total = sectionCounts[section]
-            })
+        if section then
+            count[section] = (count[section] or 0) + 1
+            if count[section] % YIELD_FREQUENCY == 0 or count[section] == (sectionCounts[section] or 0) then
+                coroutine.yield({
+                    progress = true,
+                    msg = (T.PROGRESS.IMPORT.PARSING):format(section),
+                    index = count[section],
+                    total = sectionCounts[section] or 0
+                })
+            end
         end
     end
     file:close()
@@ -1234,6 +1283,7 @@ function PB_UserData:import(args)
             finalPresets[newId] = {
                 id = newId,
                 name = importedPreset.name,
+                word = importedPreset.word,
                 filter = OD_DeepCopy(importedPreset.filter),
             }
 
@@ -1275,6 +1325,73 @@ function PB_UserData:import(args)
     end
 
     for importedId, importedQuickChain in pairs(importedQuickChains) do
+        -- Enhanced magic word conflict checking
+        local hasConflict = false
+        local conflictDetails = ""
+        
+        if importedQuickChain.word and importedQuickChain.word ~= "" then
+            -- Check for conflicts with existing presets
+            for _, preset in pairs(finalPresets) do
+                if preset.word and preset.word:upper() == importedQuickChain.word:upper() then
+                    hasConflict = true
+                    conflictDetails = 'magic word "' .. importedQuickChain.word .. '" conflicts with existing preset "' .. preset.name .. '"'
+                    break
+                end
+            end
+            
+            -- Check for conflicts with existing Quick Chains (only if no preset conflict found)
+            if not hasConflict then
+                for id, quickChain in pairs(finalQuickChains) do
+                    if quickChain.word and quickChain.word:upper() == importedQuickChain.word:upper() then
+                        if mergeMode then
+                            -- In merge mode, check if it's not the same Quick Chain by name
+                            if quickChain.name ~= importedQuickChain.name then
+                                hasConflict = true
+                                conflictDetails = 'magic word "' .. importedQuickChain.word .. '" conflicts with existing Quick Chain "' .. quickChain.name .. '"'
+                                break
+                            end
+                        else
+                            -- In replace mode, check if it's not the same ID
+                            if id ~= importedId then
+                                hasConflict = true
+                                conflictDetails = 'magic word "' .. importedQuickChain.word .. '" conflicts with existing Quick Chain "' .. quickChain.name .. '"'
+                                break
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        if hasConflict then
+            skippedQuickChainsCount = skippedQuickChainsCount + 1
+            self.app.logger:logDebug('✗ Skipped Quick Chain "' .. importedQuickChain.name .. '": ' .. conflictDetails)
+            goto continue_quickchain
+        end
+        
+        -- Map Quick Chain items to existing assets where possible
+        local mappedItems = {}
+        local skippedItems = 0
+        
+        for _, item in ipairs(importedQuickChain.items) do
+            local mappedAssetId, mappedAssetType = mapImportedAssetToSystem(item)
+            if mappedAssetId then
+                table.insert(mappedItems, mappedAssetId)
+                self.app.logger:logDebug('✓ Mapped Quick Chain item: "' .. item .. '" -> "' .. mappedAssetId .. '"')
+            else
+                -- Skip items that are missing from the receiving system
+                skippedItems = skippedItems + 1
+                self.app.logger:logDebug('✗ Skipped missing Quick Chain item: "' .. item .. '"')
+            end
+        end
+        
+        -- Only import the Quick Chain if it has at least one valid item
+        if #mappedItems == 0 then
+            skippedQuickChainsCount = skippedQuickChainsCount + 1
+            self.app.logger:logDebug('✗ Skipped Quick Chain "' .. importedQuickChain.name .. '": no valid items found (all ' .. skippedItems .. ' items missing from system)')
+            goto continue_quickchain
+        end
+        
         -- Import Quick Chain
         local newId = importedId
         local existingQuickChainId = nil
@@ -1285,21 +1402,6 @@ function PB_UserData:import(args)
                 if quickChain.name == importedQuickChain.name then
                     existingQuickChainId = id
                     break
-                end
-            end
-
-            -- Also check for magic word conflicts
-            if importedQuickChain.word and importedQuickChain.word ~= "" then
-                for id, quickChain in pairs(finalQuickChains) do
-                    if quickChain.word and quickChain.word:upper() == importedQuickChain.word:upper() then
-                        if not existingQuickChainId then
-                            skippedQuickChainsCount = skippedQuickChainsCount + 1
-                            self.app.logger:logDebug('✗ Skipped Quick Chain "' .. importedQuickChain.name .. 
-                                '": magic word "' .. importedQuickChain.word .. '" already exists')
-                            goto continue_quickchain
-                        end
-                        break
-                    end
                 end
             end
 
@@ -1314,28 +1416,23 @@ function PB_UserData:import(args)
                     newId = newId + 1
                 end
             end
-        else
-            -- Check for magic word conflicts in replace mode
-            if importedQuickChain.word and importedQuickChain.word ~= "" then
-                for id, quickChain in pairs(finalQuickChains) do
-                    if quickChain.word and quickChain.word:upper() == importedQuickChain.word:upper() and id ~= newId then
-                        skippedQuickChainsCount = skippedQuickChainsCount + 1
-                        self.app.logger:logDebug('✗ Skipped Quick Chain "' .. importedQuickChain.name .. 
-                            '": magic word "' .. importedQuickChain.word .. '" conflicts with existing Quick Chain')
-                        goto continue_quickchain
-                    end
-                end
-            end
         end
 
         finalQuickChains[newId] = {
             id = newId,
             name = importedQuickChain.name,
             word = importedQuickChain.word,
-            items = OD_DeepCopy(importedQuickChain.items),
+            items = mappedItems, -- Use mapped items instead of original items
         }
 
         mappedQuickChainsCount = mappedQuickChainsCount + 1
+        
+        if skippedItems > 0 then
+            self.app.logger:logDebug('✓ Imported Quick Chain "' .. importedQuickChain.name .. '" with ' .. #mappedItems .. ' items (' .. skippedItems .. ' items skipped)')
+        else
+            self.app.logger:logDebug('✓ Imported Quick Chain "' .. importedQuickChain.name .. '" with ' .. #mappedItems .. ' items')
+        end
+        
         if existingQuickChainId then
             self.app.logger:logDebug('✓ Updated Quick Chain "' .. importedQuickChain.name .. '" with ID ' .. newId)
         else
@@ -1360,6 +1457,58 @@ function PB_UserData:import(args)
     self.app.logger:logInfo('Quick Chains import: ' ..
         mappedQuickChainsCount ..
         ' imported, ' .. skippedQuickChainsCount .. ' skipped, total Quick Chains: ' .. OD_TableLength(finalQuickChains))
+
+    -- Final magic word conflict check across presets and Quick Chains
+    local magicWordConflicts = {}
+    local conflictCount = 0
+    
+    -- Collect all magic words from presets
+    for presetId, preset in pairs(finalPresets) do
+        if preset.word and preset.word ~= "" then
+            local wordUpper = preset.word:upper()
+            if not magicWordConflicts[wordUpper] then
+                magicWordConflicts[wordUpper] = {}
+            end
+            table.insert(magicWordConflicts[wordUpper], {
+                type = "preset",
+                id = presetId,
+                name = preset.name
+            })
+        end
+    end
+    
+    -- Collect all magic words from Quick Chains and check for conflicts
+    for quickChainId, quickChain in pairs(finalQuickChains) do
+        if quickChain.word and quickChain.word ~= "" then
+            local wordUpper = quickChain.word:upper()
+            if not magicWordConflicts[wordUpper] then
+                magicWordConflicts[wordUpper] = {}
+            end
+            table.insert(magicWordConflicts[wordUpper], {
+                type = "quickChain",
+                id = quickChainId,
+                name = quickChain.name
+            })
+        end
+    end
+    
+    -- Report any conflicts found
+    for word, conflicts in pairs(magicWordConflicts) do
+        if #conflicts > 1 then
+            conflictCount = conflictCount + 1
+            local conflictNames = {}
+            for _, conflict in ipairs(conflicts) do
+                table.insert(conflictNames, conflict.type .. ' "' .. conflict.name .. '"')
+            end
+            self.app.logger:logWarning('Magic word conflict detected: "' .. word .. '" is used by: ' .. table.concat(conflictNames, ", "))
+        end
+    end
+    
+    if conflictCount > 0 then
+        self.app.logger:logWarning('Found ' .. conflictCount .. ' magic word conflicts after import. Some magic words may not work as expected.')
+    else
+        self.app.logger:logDebug('No magic word conflicts detected after import')
+    end
 
     self:save()
 

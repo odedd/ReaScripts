@@ -43,8 +43,9 @@
 -- DONE: If script was docked, it is undocked when started again or when woken up
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Test on windows
--- TODO: Add Quick Chains to UserData import/export. Make sure to map assets to existing ones, just like with all other assets on import, and skip those items in the chain that are missing from the receiving system (but still import the chain, unless it will be completly empty)
--- TODO: When importin/Exporting UserData, check for magic word conflicts across both presets and quick chains
+-- TODO: Text QuickChain import/export, as well as magic word conflicts
+-- DONE: Add Quick Chains to UserData import/export. Make sure to map assets to existing ones, just like with all other assets on import, and skip those items in the chain that are missing from the receiving system (but still import the chain, unless it will be completly empty)
+-- DONE: When importin/Exporting UserData, check for magic word conflicts across both presets and quick chains
 ---------------------------------------
 -- AFTER LAUNCH -----------------------
 ---------------------------------------
