@@ -26,9 +26,9 @@
 -- DONE: Settings window - add Convert Folders/Categories to tags
 -- DONE: Import progress bar (coroutine?)
 -- DONE: Add recent Projects
--- DONE: Quick Chain - only accept FX and FX Chains
--- DONE: Quick Chain - drag to objects, tracks and blank
--- DONE: Quick Chain
+-- DONE: QuickChain - only accept FX and FX Chains
+-- DONE: QuickChain - drag to objects, tracks and blank
+-- DONE: QuickChain
 -- DONE: Setting to override default send volume
 -- DONE: Docking
 -- DONE: Add take markers
@@ -41,8 +41,8 @@
 -- DONE: WHen running quickchain, don't put the content in the recents section
 -- DONE: WHen running an external command that needs to show a msgbox (eg. no track selected), an error pops up
 -- DONE: If script was docked, it is undocked when started again or when woken up
--- DONE: Add Quick Chains to UserData import/export. Make sure to map assets to existing ones, just like with all other assets on import, and skip those items in the chain that are missing from the receiving system (but still import the chain, unless it will be completly empty)
--- DONE: When importin/Exporting UserData, check for magic word conflicts across both presets and quick chains
+-- DONE: Add QuickChains to UserData import/export. Make sure to map assets to existing ones, just like with all other assets on import, and skip those items in the chain that are missing from the receiving system (but still import the chain, unless it will be completly empty)
+-- DONE: When importin/Exporting UserData, check for magic word conflicts across both presets and quickchains
 -- DONE: Create QuickChainPresetAssetType
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Test on windows

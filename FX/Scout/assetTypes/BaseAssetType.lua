@@ -128,8 +128,8 @@ function BaseAssetType:getInteractionHintFor(mods, context, contextData, count)
     local correctContext = class:determineCorrectContext(mods, context)
     interactionHint = class.interactionHints[correctContext].text
     local quickChain = OD_BfCheck(context, RESULT_CONTEXT.QUICK_CHAIN)
-    local assetName = quickChain and 'Quick Chain' or self.searchText[1].text
-    local pluralName = quickChain and 'Quick Chain items' or (self.pluralName):lower()
+    local assetName = quickChain and 'QuickChain' or self.searchText[1].text
+    local pluralName = quickChain and 'QuickChain items' or (self.pluralName):lower()
     return class:parseInteractionHintTemplate(interactionHint, count, contextData, assetName,
         pluralName), correctContext | context
 end
@@ -236,7 +236,7 @@ function BaseAssetType:createStandardConstructor(name, group)
         -- Default: not file-based (can be overridden by subclasses)
         instance.shouldMapBaseFilenames = false
 
-        -- Default: not allowed in quick chain (can be overridden by subclasses)
+        -- Default: not allowed in quickchain (can be overridden by subclasses)
         instance.allowInQuickChain = false
 
         -- Default: do not refresh item on project refresh

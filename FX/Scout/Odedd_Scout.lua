@@ -769,17 +769,17 @@ RunApp = function()
                             app.flow.loadQuickChain(qc)
                             app.flow.executeSelectedResults(app.temp.quickChain,
                                 qc.keymods | RESULT_CONTEXT.QUICK_CHAIN)
-                            app.temp.quickChain = currentQuickChain -- Restore previous Quick Chain
+                            app.temp.quickChain = currentQuickChain -- Restore previous QuickChain
                             app.settings.current.showQuickChain =
-                                currentQuickChainOpen               -- Restore previous Quick Chain visibility
+                                currentQuickChainOpen               -- Restore previous QuickChain visibility
                             app.flow.close()
                         else
                             app.flow.loadQuickChain(qc)
                             app.flow.executeSelectedResults(app.temp.quickChain,
                                 qc.keymods | RESULT_CONTEXT.QUICK_CHAIN)
-                            app.temp.quickChain = currentQuickChain -- Restore previous Quick Chain
+                            app.temp.quickChain = currentQuickChain -- Restore previous QuickChain
                             app.settings.current.showQuickChain =
-                                currentQuickChainOpen               -- Restore previous Quick Chain visibility
+                                currentQuickChainOpen               -- Restore previous QuickChain visibility
                         end
                     end
                 end
@@ -826,7 +826,7 @@ RunApp = function()
                 end
             end,
             loadQuickChain = function(qc)
-                -- Clear current Quick Chain
+                -- Clear current QuickChain
                 app.temp.quickChain = {}
                 if qc.name then -- if there's no name then it's not a preset, but probably from external command, so no need to set currentlyLoadedQuickChain
                     app.temp.currentlyLoadedQuickChain = qc
@@ -834,12 +834,12 @@ RunApp = function()
                 -- Resolve asset keys to assembled assets directly using DataEngine
                 local resolvedAssets = app.engine:getAssetsByKeys(qc.items)
 
-                -- Load resolved assets into Quick Chain
+                -- Load resolved assets into QuickChain
                 for _, asset in ipairs(resolvedAssets) do
                     table.insert(app.temp.quickChain, asset)
                 end
 
-                -- Show Quick Chain panel if it's not already visible
+                -- Show QuickChain panel if it's not already visible
                 if not app.settings.current.showQuickChain then
                     app.settings.current.showQuickChain = true
                 end
@@ -1381,7 +1381,7 @@ RunApp = function()
                     quickChainMinimizedW,
                     select(2, ImGui.GetContentRegionAvail(ctx))
                 local sideBarScreenX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - sideBarW -- X position for tag area
-                -- local quickChainPresetscreenX = sideBarScreenX - quickChainW -- X position for quick chain area
+                -- local quickChainPresetscreenX = sideBarScreenX - quickChainW -- X position for quickchain area
                 local upperRowY = ImGui.GetCursorPosY(ctx)                                     -- Y position for upper row, used for "sticky" first group title
                 local upperRowScreenY = select(2, ImGui.GetCursorScreenPos(ctx))               -- Y position for upper row, used for "sticky" first group title
                 local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx) +
@@ -1888,7 +1888,7 @@ RunApp = function()
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - paddingX)
                     ImGui.InvisibleButton(ctx, '##quickChainPresetseparator', paddingX * 2, quickChainH)
                     if ImGui.IsItemHovered(ctx) then
-                        app:setHoveredHint('main', 'Drag to change Quick Chain width')
+                        app:setHoveredHint('main', 'Drag to change QuickChain width')
                         ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
                     end
                     if ImGui.IsItemActive(ctx) then
@@ -1918,7 +1918,7 @@ RunApp = function()
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - paddingX)
                     ImGui.InvisibleButton(ctx, '##quickChainPresetseparator', paddingX * 2, quickChainH)
                     if ImGui.IsItemHovered(ctx) then
-                        app:setHoveredHint('main', 'Drag to change Quick Chain width')
+                        app:setHoveredHint('main', 'Drag to change QuickChain width')
                         ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
                     end
                     if ImGui.IsItemActive(ctx) then
@@ -2399,7 +2399,7 @@ RunApp = function()
                     if ImGui.BeginChild(ctx, 'quickChain', quickChainW - spacingX * 2, quickChainH) then
                         ImGui.Spacing(ctx)
                         app.temp.quickChain = app.temp.quickChain or {}
-                        ImGui.SeparatorText(ctx, "Quick Chain")
+                        ImGui.SeparatorText(ctx, "QuickChain")
                         ImGui.BeginGroup(ctx)
                         ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
                         local btnW = ImGui.CalcTextSize(ctx, ICONS.DISK) + paddingX * 2
@@ -2419,9 +2419,9 @@ RunApp = function()
                             end
                         end
                         if ImGui.Button(ctx, text .. '##quickChainOpenPresetMenu', ImGui.GetContentRegionAvail(ctx) - spacingX - btnW) then
-                            ImGui.OpenPopup(ctx, 'Quick Chain Preset Menu')
+                            ImGui.OpenPopup(ctx, 'QuickChain Preset Menu')
                         end
-                        if ImGui.BeginPopup(ctx, 'Quick Chain Preset Menu') then
+                        if ImGui.BeginPopup(ctx, 'QuickChain Preset Menu') then
                             app:setHint('main', '')
                             local numOfPresets = OD_TableLength(app.userdata.current.quickChainPresets)
                             if app.temp.currentlyLoadedQuickChain then
@@ -2450,9 +2450,9 @@ RunApp = function()
                                 end
                             end
                             if numOfPresets == 0 then
-                                ImGui.Text(ctx, 'No Quick Chain presets available')
+                                ImGui.Text(ctx, 'No QuickChain presets available')
                             end
-                            -- Show saved Quick Chain presets
+                            -- Show saved QuickChain presets
                             for quickChainId, quickChain in pairs(app.userdata.current.quickChainPresets or {}) do
                                 if ImGui.MenuItem(ctx, quickChain.name, quickChain.word) then
                                     app.flow.loadQuickChain(quickChain)
@@ -2466,10 +2466,10 @@ RunApp = function()
                             ImGui.BeginDisabled(ctx)
                         end
                         if app.guiHelpers.iconButton(ctx, 'DISK', app.gui.st.col.buttons.activeFilterAction, nil, nil, 'saveQCPreset') then
-                            ImGui.OpenPopup(ctx, 'Save Quick Chain Context Menu')
+                            ImGui.OpenPopup(ctx, 'Save QuickChain Context Menu')
                         end
                         app:setHoveredHint('main', T.HINTS.SAVE_FILTERS)
-                        if ImGui.BeginPopup(ctx, 'Save Quick Chain Context Menu') then
+                        if ImGui.BeginPopup(ctx, 'Save QuickChain Context Menu') then
                             app:setHint('main', '')
                             if ImGui.MenuItem(ctx, 'Save preset...') then
                                 app.temp.showCreateQuickChainDialog = true
@@ -2595,11 +2595,11 @@ RunApp = function()
                         end
                         ImGui.SameLine(ctx)
                         if ImGui.Button(ctx, ICONS.ELLIPSIS .. '##quickChainMoreActions') then
-                            ImGui.OpenPopup(ctx, 'Quick Chain Actions')
+                            ImGui.OpenPopup(ctx, 'QuickChain Actions')
                         end
                         if #app.temp.quickChain > 0 then app:setHoveredHint('main', T.HINTS.QUICK_CHAIN_MORE_ACTIONS) end
                         ImGui.PopFont(ctx)
-                        if ImGui.BeginPopup(ctx, 'Quick Chain Actions') then
+                        if ImGui.BeginPopup(ctx, 'QuickChain Actions') then
                             -- local group = result.assetType
                             app:setHint('main', '')
                             local rv, keymod = app.guiHelpers.actionContextMenu(ctx, app.temp.quickChain[1],
@@ -2609,7 +2609,7 @@ RunApp = function()
                                     keymod | RESULT_CONTEXT.QUICK_CHAIN)
                             end
                             ImGui.Separator(ctx)
-                            if ImGui.MenuItem(ctx, 'Clear Quick Chain') then
+                            if ImGui.MenuItem(ctx, 'Clear QuickChain') then
                                 app.temp.clearQuickChain = true
                             end
 
@@ -2692,8 +2692,8 @@ RunApp = function()
                         table.insert(menu,
                             {
                                 icon = 'lightning',
-                                hint = app.settings.current.showQuickChain and 'Hide Quick Chain' or
-                                    'Show Quick Chain',
+                                hint = app.settings.current.showQuickChain and 'Hide QuickChain' or
+                                    'Show QuickChain',
                                 active = app.settings.current.showQuickChain,
                                 shortcut = 'toggleQuickChain'
                             })
@@ -2992,8 +2992,8 @@ RunApp = function()
                 local lineHeight = ImGui.GetTextLineHeight(ctx)
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
                 local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
-                local w = 1390 * app.gui.scale
-                local h = 760 * app.gui.scale + #app.settings.current.projectScanFolders * (lineHeight + paddingY)
+                local w = 1420 * app.gui.scale
+                local h = 820 * app.gui.scale + #app.settings.current.projectScanFolders * (lineHeight + paddingY)
                 -- local h = select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)) * 2
                 -- h = h + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) + lineHeight
                 -- h = h + (numOfPreferences + numOfSeparators + #app.settings.current.projectScanFolders) *
@@ -3743,7 +3743,7 @@ RunApp = function()
                                 end
                             end
 
-                            -- Check for duplicate word across both Presets and Quick Chains
+                            -- Check for duplicate word across both Presets and QuickChains
                             if canSavePreset and trimmedMagicWord ~= "" then
                                 local isUsed, conflictType, conflictName = app.engine:isMagicWordUsed(trimmedMagicWord,
                                     'preset', app.temp.editingPresetId)
@@ -3752,7 +3752,7 @@ RunApp = function()
                                     if conflictType == 'preset' then
                                         errorMessage = "A preset with this word exists"
                                     else
-                                        errorMessage = "A Quick Chain with this word exists"
+                                        errorMessage = "A QuickChain with this word exists"
                                     end
                                 end
                             end
@@ -3833,7 +3833,7 @@ RunApp = function()
             createQuickChainDialog = function(ctx)
                 if app.temp.showCreateQuickChainDialog then
                     local isEditing = app.temp.editingQuickChainId ~= nil
-                    local title = isEditing and 'Edit Quick Chain' or 'Create Quick Chain'
+                    local title = isEditing and 'Edit QuickChain' or 'Create QuickChain'
                     if not ImGui.IsPopupOpen(ctx, title) then
                         ImGui.OpenPopup(ctx, title)
                         if not app.temp.quickChainName then
@@ -3858,7 +3858,7 @@ RunApp = function()
                             ImGui.SetKeyboardFocusHere(ctx, 0)
                         end
                         app.temp.quickChainName = app.gui:setting('text', 'Name',
-                            'Quick Chain name', app.temp.quickChainName,
+                            'QuickChain name', app.temp.quickChainName,
                             { hintWindow = 'editQuickChainWindow' })
                         local trimmedName = OD_Trim(app.temp.quickChainName)
                         local canSaveQuickChain = trimmedName ~= ""
@@ -3881,7 +3881,7 @@ RunApp = function()
                             end
                         end
 
-                        -- Check for duplicate word across both Quick Chains and Presets
+                        -- Check for duplicate word across both QuickChains and Presets
                         if (trimmedName == "" or canSaveQuickChain) and trimmedWord ~= "" then
                             local isUsed, conflictType, conflictName = app.engine:isMagicWordUsed(trimmedWord,
                                 'quickChain', app.temp.editingQuickChainId)
@@ -3902,7 +3902,7 @@ RunApp = function()
                         end
 
                         if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSaveQuickChain) or app.gui:setting('button', '',
-                                'Save Quick Chain', nil,
+                                'Save QuickChain', nil,
                                 { label = isEditing and 'Update' or 'Create', hintWindow = 'editQuickChainWindow' }) then
                             -- Convert assembled assets to keys for storage
                             local itemKeys = {}
@@ -3913,18 +3913,18 @@ RunApp = function()
                                 end
                             end
 
-                            -- Create new Quick Chain - use converted keys
+                            -- Create new QuickChain - use converted keys
                             if not isEditing then
                                 local quickChain = app.userdata:createQuickChainPreset(trimmedName, itemKeys, trimmedWord)
                                 if quickChain then
                                     app.temp.currentlyLoadedQuickChain = quickChain
-                                    app.logger:logInfo('Created Quick Chain "' .. quickChain.name .. '"')
+                                    app.logger:logInfo('Created QuickChain "' .. quickChain.name .. '"')
                                 end
                             else
                                 local quickChain = app.userdata:updateQuickChainPreset(app.temp.editingQuickChainId,
                                     trimmedName, itemKeys, trimmedWord)
                                 if quickChain then
-                                    app.logger:logInfo('Updated Quick Chain "' .. quickChain.name .. '"')
+                                    app.logger:logInfo('Updated QuickChain "' .. quickChain.name .. '"')
                                 end
                             end
                             app.temp.showCreateQuickChainDialog = false
@@ -4030,8 +4030,8 @@ RunApp = function()
             end,
             exportQuickChainActionDialog = function(ctx)
                 if app.temp.showExportQuickChainActionDialog then
-                    if not ImGui.IsPopupOpen(ctx, 'Export Quick Chain as Reaper Action') then
-                        ImGui.OpenPopup(ctx, 'Export Quick Chain as Reaper Action')
+                    if not ImGui.IsPopupOpen(ctx, 'Export QuickChain as Reaper Action') then
+                        ImGui.OpenPopup(ctx, 'Export QuickChain as Reaper Action')
                         if not app.temp.actionName then
                             app.temp.actionName = ""
                             app.temp.exportActionType = 0
@@ -4043,7 +4043,7 @@ RunApp = function()
                         app.gui.mainWindow.pos[2] + (app.gui.mainWindow.size[2] / 2), ImGui.Cond_Appearing, 0.5, 0.5)
                     app.gui:pushStyles(app.gui.st.vars.popupsTitle)
 
-                    local visible, open = ImGui.BeginPopupModal(ctx, 'Export Quick Chain as Reaper Action', true,
+                    local visible, open = ImGui.BeginPopupModal(ctx, 'Export QuickChain as Reaper Action', true,
                         ImGui.WindowFlags_AlwaysAutoResize)
 
                     if ImGui.IsWindowAppearing(ctx) then

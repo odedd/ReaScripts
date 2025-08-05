@@ -1,5 +1,5 @@
 -- @noindex
--- Quick Chain Asset Type Module
+-- QuickChain Asset Type Module
 
 QuickChainPresetAssetType = {}
 QuickChainPresetAssetType.__index = QuickChainPresetAssetType
@@ -16,15 +16,15 @@ helpers.performQuickChainPresetAction = function(asset, resultContext, mods, con
     return true
 end
 function QuickChainPresetAssetType.new(class, context)
-    local instance = BaseAssetType:createStandardConstructor("Quick Chain Preset", "Quick Chains Presets")(class, context)
+    local instance = BaseAssetType:createStandardConstructor("QuickChain Preset", "QuickChain Presets")(class, context)
 
-    -- Quick Chains do not require mapping on import (they are user-created)
+    -- QuickChains do not require mapping on import (they are user-created)
     instance.requiresMappingOnImport = false
     instance.allowMultiple = false
 
     -- Add interaction using the new system
 
-    instance:addInteraction(ImGui.Mod_Ctrl, 'load %asset to active Quick Chain',
+    instance:addInteraction(ImGui.Mod_Ctrl, 'load %asset to active QuickChain',
         function(asset, mods, context, contextData, confirm, total, index, tempStore)
             asset.context.flow.loadQuickChain(asset.object)
             return true
@@ -74,7 +74,7 @@ end
 function QuickChainPresetAssetType:getData()
     local data = {}
 
-    -- Get Quick Chains from UserData
+    -- Get QuickChains from UserData
     local quickChainPresets = self.context.userdata.current.quickChainPresets or {}
 
     for id, quickChainPreset in pairs(quickChainPresets) do
@@ -102,7 +102,7 @@ function QuickChainPresetAssetType:assembleAsset(quickChainPresetData)
         group = self.group,
     })
 
-    -- Add Quick Chain specific properties
+    -- Add QuickChain specific properties
     asset.quickChainId = quickChainPresetData.id
     asset.word = quickChainPresetData.word
     asset.items = quickChainPresetData.items

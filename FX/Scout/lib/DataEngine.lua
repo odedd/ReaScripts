@@ -1670,7 +1670,7 @@ PB_DataEngine.getAssetsByKeys = function(self, assetKeys)
     return foundAssets
 end
 
--- Check if a magic word is already in use by presets or Quick Chains
+-- Check if a magic word is already in use by presets or QuickChains
 -- Returns: isUsed (boolean), conflictType (string), conflictName (string)
 PB_DataEngine.isMagicWordUsed = function(self, word, excludeType, excludeId)
     if not word or word == '' then
@@ -1697,7 +1697,7 @@ PB_DataEngine.isMagicWordUsed = function(self, word, excludeType, excludeId)
         end
     end
 
-    -- Check Quick Chains (unless we're excluding a Quick Chain)
+    -- Check QuickChains (unless we're excluding a QuickChain)
     if excludeType ~= 'quickChain' then
         for quickChainId, quickChain in pairs(self.app.userdata.current.quickChainPresets or {}) do
             if quickChain.word and quickChain.word ~= '' and quickChain.word:lower() == wordLower then
@@ -1707,7 +1707,7 @@ PB_DataEngine.isMagicWordUsed = function(self, word, excludeType, excludeId)
             end
         end
     else
-        -- When excluding a Quick Chain, still check other Quick Chains
+        -- When excluding a QuickChain, still check other QuickChains
         for quickChainId, quickChain in pairs(self.app.userdata.current.quickChainPresets or {}) do
             if quickChain.word and quickChain.word ~= '' and quickChain.word:lower() == wordLower and quickChainId ~= excludeId then
                 return true, 'quickChain', quickChain.name
@@ -1718,17 +1718,17 @@ PB_DataEngine.isMagicWordUsed = function(self, word, excludeType, excludeId)
     return false, nil, nil
 end
 
--- Get Quick Chains from UserData
+-- Get QuickChains from UserData
 PB_DataEngine.getquickChainPresets = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.getquickChainPresets()')
     
-    -- Quick Chains are stored in UserData, so just return them
+    -- QuickChains are stored in UserData, so just return them
     local quickChainPresets = self.app.userdata.current.quickChainPresets or {}
     local count = 0
     for _ in pairs(quickChainPresets) do
         count = count + 1
     end
     
-    self.app.logger:logDebug('Found ' .. count .. ' Quick Chains')
+    self.app.logger:logDebug('Found ' .. count .. ' QuickChains')
     return quickChainPresets
 end

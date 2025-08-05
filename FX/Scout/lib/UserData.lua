@@ -156,11 +156,11 @@ function PB_UserData:export(filename)
 
     self.app.logger:logDebug('Exported presets', presetsCount)
 
-    -- Export Quick Chain Presets
+    -- Export QuickChain Presets
     file:write('[quickChainPresets]\n')
     local quickChainPresetsCount = 0
     for id, quickChainPreset in pairs(self.current.quickChainPresets) do
-        -- Serialize Quick chain preset items as comma-separated list
+        -- Serialize QuickChain preset items as comma-separated list
         local itemsString = table.concat(quickChainPreset.items, ',')
         
         local sanitizedName = OD_EscapeCSV(quickChainPreset.name)
@@ -172,7 +172,7 @@ function PB_UserData:export(filename)
     end
     file:write('\n')
 
-    self.app.logger:logDebug('Exported Quick Chain Presets', quickChainPresetsCount)
+    self.app.logger:logDebug('Exported QuickChain Presets', quickChainPresetsCount)
 
     -- Export favorites
     file:write('[favorites]\n')
@@ -191,7 +191,7 @@ function PB_UserData:export(filename)
         tagCount ..
         ' tags, ' ..
         assetCount ..
-        ' tagged assets, ' .. presetsCount .. ' presets, ' .. quickChainPresetsCount .. ' Quick Chain Presets, and ' .. favoritesCount .. ' favorites to ' .. filename)
+        ' tagged assets, ' .. presetsCount .. ' presets, ' .. quickChainPresetsCount .. ' QuickChain Presets, and ' .. favoritesCount .. ' favorites to ' .. filename)
 
     return true
 end
@@ -272,7 +272,7 @@ function PB_UserData:import(args)
     local importedTagInfo = {}
     local importedTaggedAssets = {}
     local importedPresets = {}    -- Track imported presets
-    local importedquickChainPresets = {} -- Track imported Quick Chain Presets
+    local importedquickChainPresets = {} -- Track imported QuickChain Presets
     local importedFavorites = {}  -- Track imported favorites
     local importedAssetTypes = {} -- Map of imported asset type ID -> class name
     local assetTypeMapping = {}   -- Map of imported asset type ID -> current system asset type ID
@@ -528,7 +528,7 @@ function PB_UserData:import(args)
                 self.app.logger:logError('Insufficient fields in presets line', line)
             end
         elseif section == "quickChainPresets" and line ~= "" then
-            -- Parse Quick Chain Presets: id,name,word,items
+            -- Parse QuickChain Presets: id,name,word,items
             local fields = OD_ParseCSVLine(line, ",")
             if #fields >= 4 then
                 local id, name, word, itemsString = fields[1], fields[2], fields[3], fields[4]
@@ -595,7 +595,7 @@ function PB_UserData:import(args)
         importedAssetCount ..
         ' tagged assets, ' ..
         importedPresetsCount .. ' presets, ' .. 
-        importedquickChainPresetsCount .. ' Quick Chain Presets, and ' .. 
+        importedquickChainPresetsCount .. ' QuickChain Presets, and ' .. 
         importedFavoritesCount .. ' favorites from file')
     if fileVersion then
         self.app.logger:logDebug('File version', fileVersion)
@@ -1312,13 +1312,13 @@ function PB_UserData:import(args)
         mappedPresetsCount ..
         ' imported, ' .. skippedPresetsCount .. ' skipped, total presets: ' .. OD_TableLength(finalPresets))
 
-    -- Process imported Quick Chain Presets
+    -- Process imported QuickChain Presets
     local mappedquickChainPresetsCount = 0
     local skippedquickChainPresetsCount = 0
     local finalquickChainPresets = {}
 
     if mergeMode then
-        -- In merge mode, preserve existing Quick Chain Presets
+        -- In merge mode, preserve existing QuickChain Presets
         for id, quickChainPreset in pairs(self.current.quickChainPresets) do
             finalquickChainPresets[id] = quickChainPreset
         end
@@ -1339,22 +1339,22 @@ function PB_UserData:import(args)
                 end
             end
             
-            -- Check for conflicts with existing Quick Chain Presets (only if no preset conflict found)
+            -- Check for conflicts with existing QuickChain Presets (only if no preset conflict found)
             if not hasConflict then
                 for id, quickChainPreset in pairs(finalquickChainPresets) do
                     if quickChainPreset.word and quickChainPreset.word:upper() == importedQuickChainPreset.word:upper() then
                         if mergeMode then
-                            -- In merge mode, check if it's not the same Quick Chain by name
+                            -- In merge mode, check if it's not the same QuickChain by name
                             if quickChainPreset.name ~= importedQuickChainPreset.name then
                                 hasConflict = true
-                                conflictDetails = 'magic word "' .. importedQuickChainPreset.word .. '" conflicts with existing Quick Chain "' .. quickChainPreset.name .. '"'
+                                conflictDetails = 'magic word "' .. importedQuickChainPreset.word .. '" conflicts with existing QuickChain "' .. quickChainPreset.name .. '"'
                                 break
                             end
                         else
                             -- In replace mode, check if it's not the same ID
                             if id ~= importedId then
                                 hasConflict = true
-                                conflictDetails = 'magic word "' .. importedQuickChainPreset.word .. '" conflicts with existing Quick Chain "' .. quickChainPreset.name .. '"'
+                                conflictDetails = 'magic word "' .. importedQuickChainPreset.word .. '" conflicts with existing QuickChain "' .. quickChainPreset.name .. '"'
                                 break
                             end
                         end
@@ -1365,11 +1365,11 @@ function PB_UserData:import(args)
         
         if hasConflict then
             skippedquickChainPresetsCount = skippedquickChainPresetsCount + 1
-            self.app.logger:logDebug('✗ Skipped Quick chain preset "' .. importedQuickChainPreset.name .. '": ' .. conflictDetails)
+            self.app.logger:logDebug('✗ Skipped QuickChain preset "' .. importedQuickChainPreset.name .. '": ' .. conflictDetails)
             goto continue_quickchain_presets
         end
         
-        -- Map Quick chain preset items to existing assets where possible
+        -- Map QuickChain preset items to existing assets where possible
         local mappedItems = {}
         local skippedItems = 0
         
@@ -1377,27 +1377,27 @@ function PB_UserData:import(args)
             local mappedAssetId, mappedAssetType = mapImportedAssetToSystem(item)
             if mappedAssetId then
                 table.insert(mappedItems, mappedAssetId)
-                self.app.logger:logDebug('✓ Mapped Quick chain preset item: "' .. item .. '" -> "' .. mappedAssetId .. '"')
+                self.app.logger:logDebug('✓ Mapped QuickChain preset item: "' .. item .. '" -> "' .. mappedAssetId .. '"')
             else
                 -- Skip items that are missing from the receiving system
                 skippedItems = skippedItems + 1
-                self.app.logger:logDebug('✗ Skipped missing Quick chain preset item: "' .. item .. '"')
+                self.app.logger:logDebug('✗ Skipped missing QuickChain preset item: "' .. item .. '"')
             end
         end
         
-        -- Only import the Quick chain preset if it has at least one valid item
+        -- Only import the QuickChain preset if it has at least one valid item
         if #mappedItems == 0 then
             skippedquickChainPresetsCount = skippedquickChainPresetsCount + 1
-            self.app.logger:logDebug('✗ Skipped Quick chain preset "' .. importedQuickChainPreset.name .. '": no valid items found (all ' .. skippedItems .. ' items missing from system)')
+            self.app.logger:logDebug('✗ Skipped QuickChain preset "' .. importedQuickChainPreset.name .. '": no valid items found (all ' .. skippedItems .. ' items missing from system)')
             goto continue_quickchain_presets
         end
         
-        -- Import Quick chain preset
+        -- Import QuickChain preset
         local newId = importedId
         local existingQuickChainPresetId = nil
 
         if mergeMode then
-            -- In merge mode, check if a Quick chain preset with the same name already exists
+            -- In merge mode, check if a QuickChain preset with the same name already exists
             for id, quickChainPreset in pairs(finalquickChainPresets) do
                 if quickChainPreset.name == importedQuickChainPreset.name then
                     existingQuickChainPresetId = id
@@ -1406,9 +1406,9 @@ function PB_UserData:import(args)
             end
 
             if existingQuickChainPresetId then
-                -- Update existing Quick chain preset with same name
+                -- Update existing QuickChain preset with same name
                 newId = existingQuickChainPresetId
-                self.app.logger:logDebug('⟳ Updating existing Quick chain preset "' ..
+                self.app.logger:logDebug('⟳ Updating existing QuickChain preset "' ..
                     importedQuickChainPreset.name .. '" (ID ' .. newId .. ')')
             else
                 -- Find next available ID if no name conflict exists
@@ -1428,24 +1428,24 @@ function PB_UserData:import(args)
         mappedquickChainPresetsCount = mappedquickChainPresetsCount + 1
         
         if skippedItems > 0 then
-            self.app.logger:logDebug('✓ Imported Quick chain preset "' .. importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items (' .. skippedItems .. ' items skipped)')
+            self.app.logger:logDebug('✓ Imported QuickChain preset "' .. importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items (' .. skippedItems .. ' items skipped)')
         else
-            self.app.logger:logDebug('✓ Imported Quick chain preset "' .. importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items')
+            self.app.logger:logDebug('✓ Imported QuickChain preset "' .. importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items')
         end
         
         if existingQuickChainPresetId then
-            self.app.logger:logDebug('✓ Updated Quick chain preset "' .. importedQuickChainPreset.name .. '" with ID ' .. newId)
+            self.app.logger:logDebug('✓ Updated QuickChain preset "' .. importedQuickChainPreset.name .. '" with ID ' .. newId)
         else
-            self.app.logger:logDebug('✓ Imported Quick chain preset "' .. importedQuickChainPreset.name .. '" with ID ' .. newId)
+            self.app.logger:logDebug('✓ Imported QuickChain preset "' .. importedQuickChainPreset.name .. '" with ID ' .. newId)
         end
 
         ::continue_quickchain_presets::
     end
 
-    -- Update Quick chain preset Presets and quickChainPresetIdCount
+    -- Update QuickChain preset Presets and quickChainPresetIdCount
     self.current.quickChainPresets = finalquickChainPresets
 
-    -- Update quickChainPresetIdCount to be higher than any Quick chain preset ID
+    -- Update quickChainPresetIdCount to be higher than any QuickChain preset ID
     local maxQuickChainPresetId = self.current.quickChainPresetIdCount or 0
     for id, _ in pairs(finalquickChainPresets) do
         if id > maxQuickChainPresetId then maxQuickChainPresetId = id end
@@ -1454,11 +1454,11 @@ function PB_UserData:import(args)
         self.current.quickChainPresetIdCount = maxQuickChainPresetId
     end
 
-    self.app.logger:logInfo('Quick Chain Presets import: ' ..
+    self.app.logger:logInfo('QuickChain Presets import: ' ..
         mappedquickChainPresetsCount ..
-        ' imported, ' .. skippedquickChainPresetsCount .. ' skipped, total Quick Chain Presets: ' .. OD_TableLength(finalquickChainPresets))
+        ' imported, ' .. skippedquickChainPresetsCount .. ' skipped, total QuickChain Presets: ' .. OD_TableLength(finalquickChainPresets))
 
-    -- Final magic word conflict check across presets and Quick Chain Presets
+    -- Final magic word conflict check across presets and QuickChain Presets
     local magicWordConflicts = {}
     local conflictCount = 0
     
@@ -1477,7 +1477,7 @@ function PB_UserData:import(args)
         end
     end
     
-    -- Collect all magic words from Quick Chain Presets and check for conflicts
+    -- Collect all magic words from QuickChain Presets and check for conflicts
     for quickChainPresetId, quickChainPreset in pairs(finalquickChainPresets) do
         if quickChainPreset.word and quickChainPreset.word ~= "" then
             local wordUpper = quickChainPreset.word:upper()
@@ -1863,25 +1863,25 @@ function PB_UserData:getAllPresets()
     return self.current.presets
 end
 
--- Quick chain preset management functions
+-- QuickChain preset management functions
 function PB_UserData:createQuickChainPreset(name, items, word)
     if not name or name == '' then
-        self.app.logger:logError('Cannot create quick chain preset: name is required')
+        self.app.logger:logError('Cannot create quickchain preset: name is required')
         return nil
     end
 
     if not items or type(items) ~= 'table' then
-        self.app.logger:logError('Cannot create quick chain preset: items array is required')
+        self.app.logger:logError('Cannot create quickchain preset: items array is required')
         return nil
     end
 
-    -- Check if magic word is already used by another quick chain preset
+    -- Check if magic word is already used by another quickchain preset
     if word and word ~= '' then
         if OD_TableLength(OD_TableFilter(self.current.quickChainPresets, function(k, v)
                 return v.word ~= nil and v.word ~= '' and
                     v.word:upper() == word:upper()
             end)) > 0 then
-            self.app.logger:logError('Cannot create quick chain preset: quick chain preset with magic word "' .. word .. '" already exists')
+            self.app.logger:logError('Cannot create quickchain preset: quickchain preset with magic word "' .. word .. '" already exists')
             return nil
         end
     end
@@ -1901,13 +1901,13 @@ function PB_UserData:createQuickChainPreset(name, items, word)
 
     self.current.quickChainPresets[newId] = quickChainPreset
 
-    self.app.logger:logInfo('Created quick chain preset "' .. name .. '" with id ' .. newId .. 
+    self.app.logger:logInfo('Created quickchain preset "' .. name .. '" with id ' .. newId .. 
         (word and (' and magic word "' .. word .. '"') or ''))
 
     self:save()
     self.app.engine:getquickChainPresets() -- Notify engine to refresh its runtime data
     
-    -- Refresh Quick chain preset assets so they appear in the UI immediately
+    -- Refresh QuickChain preset assets so they appear in the UI immediately
     if self.app.engine then
         self.app.engine:assembleAssets()
     end
@@ -1917,19 +1917,19 @@ end
 
 function PB_UserData:deleteQuickChainPreset(quickChainPresetId)
     if not self.current.quickChainPresets[quickChainPresetId] then
-        self.app.logger:logError('Cannot delete quick chain preset: quick chain preset with id ' .. quickChainPresetId .. ' not found')
+        self.app.logger:logError('Cannot delete quickchain preset: quickchain preset with id ' .. quickChainPresetId .. ' not found')
         return false
     end
 
     local quickChainPresetName = self.current.quickChainPresets[quickChainPresetId].name
     self.current.quickChainPresets[quickChainPresetId] = nil
 
-    self.app.logger:logInfo('Deleted quick chain preset "' .. quickChainPresetName .. '" with id ' .. quickChainPresetId)
+    self.app.logger:logInfo('Deleted quickchain preset "' .. quickChainPresetName .. '" with id ' .. quickChainPresetId)
 
     self:save()
     self.app.engine:getquickChainPresets() -- Notify engine to refresh its runtime data
 
-    -- Refresh Quick chain preset assets so they are removed from the UI immediately
+    -- Refresh QuickChain preset assets so they are removed from the UI immediately
     if self.app.engine then
         self.app.engine:assembleAssets()
     end
@@ -1939,27 +1939,27 @@ end
 
 function PB_UserData:updateQuickChainPreset(quickChainPresetId, name, items, word)
     if not self.current.quickChainPresets[quickChainPresetId] then
-        self.app.logger:logError('Cannot update quick chain preset: quick chain preset with id ' .. quickChainPresetId .. ' not found')
+        self.app.logger:logError('Cannot update quickchain preset: quickchain preset with id ' .. quickChainPresetId .. ' not found')
         return nil
     end
 
     if not name or name == '' then
-        self.app.logger:logError('Cannot update quick chain preset: name is required')
+        self.app.logger:logError('Cannot update quickchain preset: name is required')
         return nil
     end
 
     if not items or type(items) ~= 'table' then
-        self.app.logger:logError('Cannot update quick chain preset: items array is required')
+        self.app.logger:logError('Cannot update quickchain preset: items array is required')
         return nil
     end
 
-    -- Check if magic word is already used by another quick chain preset
+    -- Check if magic word is already used by another quickchain preset
     if word and word ~= '' then
         if OD_TableLength(OD_TableFilter(self.current.quickChainPresets, function(k, v) 
                 return (v.id ~= quickChainPresetId and v.word ~= nil and v.word ~= '' and 
                     v.word:upper() == word:upper()) 
             end)) > 0 then
-            self.app.logger:logError('Cannot update quick chain preset: quick chain preset with magic word "' .. word .. '" already exists')
+            self.app.logger:logError('Cannot update quickchain preset: quickchain preset with magic word "' .. word .. '" already exists')
             return nil
         end
     end
@@ -1971,12 +1971,12 @@ function PB_UserData:updateQuickChainPreset(quickChainPresetId, name, items, wor
     self.current.quickChainPresets[quickChainPresetId].word = word
     self.current.quickChainPresets[quickChainPresetId].items = quickChainPresetItems
 
-    self.app.logger:logInfo('Updated quick chain preset "' .. name .. '" with id ' .. quickChainPresetId)
+    self.app.logger:logInfo('Updated quickchain preset "' .. name .. '" with id ' .. quickChainPresetId)
 
     self:save()
     self.app.engine:getquickChainPresets() -- Notify engine to refresh its runtime data
 
-    -- Refresh Quick chain preset assets so changes appear in the UI immediately
+    -- Refresh QuickChain preset assets so changes appear in the UI immediately
     if self.app.engine then
         self.app.engine:assembleAssets()
     end
@@ -2006,26 +2006,26 @@ function PB_UserData:getQuickChainPresetByWord(word)
     return nil
 end
 
--- Resolve Quick chain preset items from asset keys to full asset objects
+-- Resolve QuickChain preset items from asset keys to full asset objects
 function PB_UserData:resolveQuickChainPresetAssets(quickChainPresetId)
     local quickChainPreset = self:getQuickChainPreset(quickChainPresetId)
     if not quickChainPreset then
-        self.app.logger:logError('Cannot resolve Quick chain preset assets: Quick chain preset with id ' .. quickChainPresetId .. ' not found')
+        self.app.logger:logError('Cannot resolve QuickChain preset assets: QuickChain preset with id ' .. quickChainPresetId .. ' not found')
         return nil
     end
 
     if not self.app.engine then
-        self.app.logger:logError('Cannot resolve Quick chain preset assets: DataEngine not available')
+        self.app.logger:logError('Cannot resolve QuickChain preset assets: DataEngine not available')
         return nil
     end
 
-    -- Get all assets for the Quick chain preset items
+    -- Get all assets for the QuickChain preset items
     local resolvedAssets = self.app.engine:getAssetsByKeys(quickChainPreset.items)
     
     if #resolvedAssets ~= #quickChainPreset.items then
         local foundCount = #resolvedAssets
         local totalCount = #quickChainPreset.items
-        self.app.logger:logInfo('Quick Chain "' .. quickChainPreset.name .. '": resolved ' .. 
+        self.app.logger:logInfo('QuickChain "' .. quickChainPreset.name .. '": resolved ' .. 
             foundCount .. ' of ' .. totalCount .. ' assets (some assets may no longer be available)')
     end
 
@@ -2038,7 +2038,7 @@ function PB_UserData:resolveQuickChainPresetAssets(quickChainPresetId)
     }
 end
 
--- Resolve all Quick Chain Presets with their assets
+-- Resolve all QuickChain Presets with their assets
 function PB_UserData:getAllquickChainPresetsWithAssets()
     local quickChainPresetsWithAssets = {}
     
@@ -2052,7 +2052,7 @@ function PB_UserData:getAllquickChainPresetsWithAssets()
     return quickChainPresetsWithAssets
 end
 
--- Quick lookup for resolved Quick chain preset by magic word
+-- Quick lookup for resolved QuickChain preset by magic word
 function PB_UserData:resolveQuickChainPresetByWord(word)
     local quickChainPreset = self:getQuickChainPresetByWord(word)
     if not quickChainPreset then

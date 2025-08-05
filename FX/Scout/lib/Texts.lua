@@ -143,11 +143,11 @@ T.SETTINGS = {
         HINT = 'Open and float FX after adding'
     },
     SHOW_INVISIBLE_TAKE_MARKERS = {
-        LABEL = 'Show invisible take markers',
+        LABEL = 'Invisible take markers',
         HINT = 'Show take markers that are outside the item boundaries.',
     },
     SHOW_INVISIBLE_TRACKS = {
-        LABEL = 'Show invisible tracks',
+        LABEL = 'Invisible tracks',
         HINT = 'Show tracks that are not visible in the TCP.',
     },
     SHORTCUTS = {
@@ -168,12 +168,12 @@ T.SETTINGS = {
             HINT = 'Randomly select one of the results and run it.',
         },
         ADD_TO_QUICK_CHAIN = {
-            LABEL = 'Add to Quick Chain',
-            HINT = 'Add selected FX/FX Chains to the Quick Chain.',
+            LABEL = 'Add to QuickChain',
+            HINT = 'Add selected FX/FX Chains to the QuickChain.',
         },
         CLEAR_QUICK_CHAIN = {
-            LABEL = 'Clear Quick Chain',
-            HINT = 'Clear the Quick Chain.',
+            LABEL = 'Clear QuickChain',
+            HINT = 'Clear the QuickChain.',
         },
         MARK_FAVORITE = {
             LABEL = 'Mark favorite',
@@ -184,8 +184,8 @@ T.SETTINGS = {
             HINT = 'Show/hide the side bar.',
         },
         TOGGLE_QUICK_CHAIN = {
-            LABEL = 'Toggle Quick Chain',
-            HINT = 'Show/hide the Quick Chain.',
+            LABEL = 'Toggle QuickChain',
+            HINT = 'Show/hide the QuickChain.',
         },
         SHOW_SETTINGS = {
             LABEL = 'Show settings',
@@ -380,7 +380,7 @@ T.HINTS = {
     DRAG_TAG_INTO_TAG = 'Move tag \'%s\' into tag \'%s\'.',
     DRAG_TAG_TO_POSITION_RELATIVE_TO_TAG = 'Move tag \'%s\' %s tag \'%s\'.',
     QUICK_CHAIN_MORE_ACTIONS = 'See all possible actions.',
-    QUICK_CHAIN_HOVER = 'Drag FX/Chains here to add them to the Quick Chain. Alt/Option+Click to remove.',
+    QUICK_CHAIN_HOVER = 'Drag FX/Chains here to add them to the QuickChain. Alt/Option+Click to remove.',
 }
 
 
@@ -406,7 +406,7 @@ $script searches for #Plugins#, #Actions#, #Projects#, #Project Templates#, #Tra
 - Use `Shift/$ctrl` to select multiple results
 - `Drag` results to tracks to add them directly
 - `Drag` results to an empty area to create a new track
-- Create #Quick Chains# to batch process FX and chains
+- Create #QuickChains# to batch process FX and chains
 - Randomly execute a results with $shortcut:runRandomResult
 - Use $script in `minimal mode` for a more compact interface
 
@@ -434,13 +434,13 @@ $script searches for #Plugins#, #Actions#, #Projects#, #Project Templates#, #Tra
 - `Enter` applies filter and returns to item search
 - `Shift+Enter` applies filter without returning to item search
 
-#`QUICK CHAIN`#
-- Click icon or press $shortcut:toggleQuickChain to show/hide the Quick Chain sidebar 
+#`QUICKCHAIN`#
+- Click icon or press $shortcut:toggleQuickChain to show/hide the QuickChain sidebar 
 - Build chains by combining FX/FX Chains from search results
 - Control order and add items from different searches
-- `Drag/Drop` or press $shortcut:addToQuickChain to add FX/Chains to the Quick Chain
-- `$alt/+Click` to removes items from the Quick Chain
-- $shortcut:clearQuickChain to clear the Quick Chain
+- `Drag/Drop` or press $shortcut:addToQuickChain to add FX/Chains to the QuickChain
+- `$alt/+Click` to removes items from the QuickChain
+- $shortcut:clearQuickChain to clear the QuickChain
 - Execute chain by pressing `Enter` or by clicking the Lightning button
 - Click the `...` menu for more actions and keyboard shortcuts
 
@@ -467,5 +467,5 @@ $script searches for #Plugins#, #Actions#, #Projects#, #Project Templates#, #Tra
 - Use Magic Words and Reaper actions to quickly load presets
 - Boost your creativity by letting $script run `random results`
 - Use `filter search mode` to work quicker using the keyboard
-- Use `Quick Chain` to batch process FX and chains efficiently
+- Use `QuickChain` to batch process FX and chains efficiently
 - Use the settings to `customize` $script to your workflow]]
