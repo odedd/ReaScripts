@@ -84,12 +84,12 @@ function OD_Logger:getLogCodePosition(depth)
 end
 
 function OD_Logger:log(level, msg, msg_val, depth_offset)
-    if level <= self.level then
-        local fullMsg =
-            self.LOG_LEVEL_INFO[level].name..' '..os.date("%c") .. ' ' .. self:getLogCodePosition(4+(depth_offset or 0)) .. ": " ..
-            msg .. ((msg_val ~= nil) and (' (' .. tostring(msg_val) .. ')') or '')
-            self:sendToLog(fullMsg)
-    end
+    if level > self.level then return msg_val end
+    
+    local fullMsg =
+        self.LOG_LEVEL_INFO[level].name..' '..os.date("%c") .. ' ' .. self:getLogCodePosition(4+(depth_offset or 0)) .. ": " ..
+        msg .. ((msg_val ~= nil) and (' (' .. tostring(msg_val) .. ')') or '')
+    self:sendToLog(fullMsg)
     return msg_val
 end
 
