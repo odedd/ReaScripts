@@ -267,6 +267,7 @@ PB_DataEngine = {
     end,
     lastGuids = {}, -- use to check if a track has been removed or added
     init = function(self, forceRebuildCache)
+
         self.app.logger:logDebug('-- PB_DataEngine.init()')
         self.currentProjectStateChangeCount = r.GetProjectStateChangeCount(0)
         self.previousProjectStateChangeCount = self.currentProjectStateChangeCount
@@ -282,10 +283,8 @@ PB_DataEngine = {
         self:getFXCategories()
 
         -- Load and initialize AssetTypeManager (after FX data is ready)
-        dofile(debug.getinfo(1, "S").source:match("@(.*/)") .. "AssetTypeManager.lua")
+        dofile(Scr.dir .. "lib/AssetTypeManager.lua")
         self.assetTypeManager = AssetTypeManager:new(self)
-
-        -- if self.app.logger.profile then Profile.start() end
 
         self:getTags()
         self:getPresets()
@@ -298,10 +297,6 @@ PB_DataEngine = {
 
         -- Build filter assets (after filter menus are populated)
         self:assembleFilterAssets()
-        -- if self.app.logger.profile then
-        --     Profile.stop()
-        --     r.ShowConsoleMsg(Profile.report(10))
-        -- end
     end,
     sync = function(self)
         -- self.app.logger:logDebug('-- PB_DataEngine.sync()')
@@ -1487,12 +1482,8 @@ PB_DataEngine.removeLowPriorityPlugins = function(self)
             local id = asset.name .. (asset.vendor or '')
             if foundPlugins[id] then
                 table.insert(assetsIdxToRemove, i)
-                self.app.logger:logDebug('Marking duplicate plugin for removal: ' ..
-                    asset.name .. ' (' .. asset.fx_type .. ')')
             else
                 foundPlugins[id] = true
-                self.app.logger:logDebug('Keeping highest priority plugin: ' ..
-                    asset.name .. ' (' .. asset.fx_type .. ')')
             end
         end
     end
@@ -1578,24 +1569,21 @@ PB_DataEngine.markAssetDates = function(self)
         local newAssetsCount = 0
 
         for line in file:lines() do
-            local colonPos = OD_FindUnescapedChar(line, ":")
+            -- First unescape the entire line, then find the last colon
+            local unescapedLine = OD_UnescapeCSV(line)
+            local colonPos = unescapedLine:find(":[^:]*$") -- Find last colon
 
             if colonPos then
-                local assetKey = OD_UnescapeCSV(line:sub(1, colonPos - 1))
-                local dateAdded = line:sub(colonPos + 1)
+                local assetKey = unescapedLine:sub(1, colonPos - 1)
+                local dateAdded = unescapedLine:sub(colonPos + 1)
 
                 if assetKey and dateAdded and assetKey ~= "" and dateAdded ~= "" then
                     if assetsToCheck[assetKey] then
                         assetsToCheck[assetKey].addedAt = tonumber(dateAdded)
-                        self.app.logger:logDebug(('Found add date for %s (%s)'):format(assetKey,
-                            os.date('%x', tonumber(dateAdded))))
                     else
-                        self.app.logger:logDebug(('Found missing asset (%s)'):format(assetKey))
                         newAssetsCount = newAssetsCount + 1
                     end
                 end
-            else
-                self.app.logger:logError('No colon separator found in line', line)
             end
         end
         file:close()
@@ -1609,7 +1597,6 @@ PB_DataEngine.markAssetDates = function(self)
         for _, assetType in ipairs(self.assetTypeManager.assetTypes) do
             if assetType.trackAddDate then
                 table.insert(assetTypesToCheck, assetType.assetTypeId)
-                self.app.logger:logDebug('Asset type "' .. assetType.name .. '" will be checked for add date')
             end
         end
 

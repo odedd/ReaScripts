@@ -89,18 +89,26 @@ RunApp = function()
         app:init()
         app.logger:init()
 
-        if app.logger.profile then
-            Profile = dofile(p .. '../../Resources/Common/Helpers/Lua/Profiler.lua')
-        end
-
         local settings = PB_Settings:new({})
         local userdata = PB_UserData:new({})
+
+        local profiler
+        if logger.profile then
+            profiler = dofile(reaper.GetResourcePath() ..
+                '/Scripts/ReaTeam Scripts/Development/cfillion_Lua profiler.lua')
+            reaper.defer = profiler.defer
+            profiler.attachToWorld() -- after all functions have been defined
+            profiler.run()
+            profiler.start()
+        end
+
 
         app:connect('settings', settings)
         app:connect('userdata', userdata)
         app.settings:load({ 'fxTypeOrder', 'groupOrder' })
         app.userdata:load()
         app.gui:init();
+
 
         app.temp.focusWindowOn = 3
         ---------------------------------------
@@ -4299,13 +4307,9 @@ RunApp = function()
                 app.gui:pushColors(app.gui.st.col.main)
                 app.gui:pushStyles(app.gui.st.vars.main)
                 ImGui.PushFont(ctx, app.gui.st.fonts.default)
-                if app.logger.profile then Profile.start() end
 
                 app.draw.mainWindow(ctx)
 
-                if app.logger.profile then
-                    Profile.stop()
-                end
                 ImGui.PopFont(ctx)
                 app.gui:popColors(app.gui.st.col.main)
                 app.gui:popStyles(app.gui.st.vars.main)
@@ -4353,7 +4357,10 @@ RunApp = function()
 
         function Release()
             app.logger:logDebug('Release')
-            if app.logger.profile then r.ShowConsoleMsg(Profile.report(10)) end
+            if app.logger.profile then
+                -- profiler.
+            end
+            -- if app.logger.profile then r.ShowConsoleMsg(Profile.report(10)) end
 
             r.SetExtState(Scr.ext_name, 'RUNNING', '', false)
         end
@@ -4391,6 +4398,7 @@ RunApp = function()
             app.cacheHelpers:invalidateAllAssetSearchCaches()
         end
         app.flow.setPage(APP_PAGE.SEARCH)
+        if app.logger.profile then profiler.stop() end
         PDefer(app.loop)
     end
 end

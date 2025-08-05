@@ -14,12 +14,22 @@ end
 
 function OD_UnescapeCSV(str)
     if not str then return "" end
-    -- Unescape in reverse order
-    str = str:gsub("\\r", "\r")   -- Unescape carriage returns
-    str = str:gsub("\\n", "\n")   -- Unescape newlines
-    str = str:gsub("\\:", ":")    -- Unescape colons
-    str = str:gsub("\\,", ",")    -- Unescape commas
-    str = str:gsub("\\\\", "\\")  -- Unescape backslashes last
+    -- Process escape sequences to reverse exactly what OD_EscapeCSV does
+    -- For asset keys (file paths), \n and \r are always literal parts of Windows paths,
+    -- never actual newline/carriage return characters
+    
+    -- DEBUG: Test the specific case we're seeing
+    
+    str = str:gsub("\\(.)", function(c)
+        if c == "\\" then return "\\"      -- \\\\ -> \ (restore backslash)
+        elseif c == ":" then return ":"    -- \\: -> : (restore colon)
+        elseif c == "," then return ","    -- \\, -> , (restore comma)
+        elseif c == "n" then return "\n"  -- \\n -> \n (literal backslash + n, not newline)
+        elseif c == "r" then return "\r"  -- \\r -> \r (literal backslash + r, not carriage return)
+        else return "\\" .. c              -- Keep unknown escapes as literal backslash + character
+        end
+    end)
+    
     return str
 end
 
@@ -58,23 +68,37 @@ function OD_ParseCSVLine(line, separator)
 end
 
 function OD_FindUnescapedChar(line, char)
-    local pos = nil
-    local i = 1
-    local inEscape = false
+    if not line or not char then return nil end
     
-    -- Find the first unescaped occurrence of char
-    while i <= #line do
-        local currentChar = line:sub(i, i)
-        if inEscape then
-            inEscape = false
-        elseif currentChar == "\\" then
-            inEscape = true
-        elseif currentChar == char then
-            pos = i
-            break
-        end
-        i = i + 1
+    -- Fast path: if no backslashes, just use string.find
+    if not line:find("\\", 1, true) then
+        return line:find(char, 1, true)
     end
     
-    return pos
+    -- Use pattern matching for better performance
+    local pos = 1
+    while pos <= #line do
+        local foundPos = line:find(char, pos, true)
+        if not foundPos then
+            return nil  -- Character not found
+        end
+        
+        -- Count consecutive backslashes before this position
+        local backslashCount = 0
+        local checkPos = foundPos - 1
+        while checkPos > 0 and line:sub(checkPos, checkPos) == "\\" do
+            backslashCount = backslashCount + 1
+            checkPos = checkPos - 1
+        end
+        
+        -- If even number of backslashes (or zero), character is not escaped
+        if backslashCount % 2 == 0 then
+            return foundPos
+        end
+        
+        -- Character is escaped, continue searching after this position
+        pos = foundPos + 1
+    end
+    
+    return nil
 end

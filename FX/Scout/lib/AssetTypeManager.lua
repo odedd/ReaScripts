@@ -46,7 +46,7 @@ end
 function AssetTypeManager:loadAssetTypes()
     -- Get the current script path to locate modules
     local info = debug.getinfo(1, "S")
-    local scriptPath = info.source:match("@(.*[/\\])") or ""
+    local scriptPath = Scr.dir-- info.source:match("@(.*[/\\])") or ""
     local assetTypesPath = scriptPath:gsub("lib[/\\]?$", "") .. "assetTypes/"
 
     self.context.logger:logDebug('Loading asset types from: ' .. assetTypesPath)

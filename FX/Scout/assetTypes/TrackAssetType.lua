@@ -6,7 +6,7 @@ TrackAssetType.__index = TrackAssetType
 setmetatable(TrackAssetType, BaseAssetType)
 
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
-local helpers = dofile(p .. 'AssetTypeHelpers.lua')
+local helpers = dofile(Scr.dir .. 'AssetTypes/AssetTypeHelpers.lua')
 function TrackAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Track", "Tracks")(class, context)
     -- Tracks should be imported even if they can't be mapped to existing tracks

@@ -48,7 +48,6 @@
 -- TODO: Test on windows
 -- TODO: Text QuickChain import/export, as well as magic word conflicts
 -- BUG: Jumping focus issue keeps coming up every now and then after closing QuickChain preset window
--- BUG: Scrolling issue vs selected height
 ---------------------------------------
 -- AFTER LAUNCH -----------------------
 ---------------------------------------

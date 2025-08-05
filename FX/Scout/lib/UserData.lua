@@ -160,8 +160,12 @@ function PB_UserData:export(filename)
     file:write('[quickChainPresets]\n')
     local quickChainPresetsCount = 0
     for id, quickChainPreset in pairs(self.current.quickChainPresets) do
-        -- Serialize QuickChain preset items as comma-separated list
-        local itemsString = table.concat(quickChainPreset.items, ',')
+        -- Serialize QuickChain preset items as comma-separated list with individual escaping
+        local escapedItems = {}
+        for _, item in ipairs(quickChainPreset.items) do
+            table.insert(escapedItems, OD_EscapeCSV(item))
+        end
+        local itemsString = table.concat(escapedItems, ',')
         
         local sanitizedName = OD_EscapeCSV(quickChainPreset.name)
         local sanitizedWord = OD_EscapeCSV(quickChainPreset.word or '')
@@ -348,11 +352,12 @@ function PB_UserData:import(args)
                 self.app.logger:logError('Insufficient fields in tagInfo line', line)
             end
         elseif section == "taggedAssets" and line ~= "" then
-            -- Use safe parsing for colon-separated asset line
-            local colonPos = OD_FindUnescapedChar(line, ":")
+            -- First unescape the entire line, then find the last colon
+            local unescapedLine = OD_UnescapeCSV(line)
+            local colonPos = unescapedLine:find(":[^:]*$") -- Find last colon
             if colonPos then
-                local asset = OD_UnescapeCSV(line:sub(1, colonPos - 1))
-                local tagsStr = line:sub(colonPos + 1)
+                local asset = unescapedLine:sub(1, colonPos - 1)
+                local tagsStr = unescapedLine:sub(colonPos + 1)
 
                 if asset and tagsStr and asset ~= "" and tagsStr ~= "" then
                     -- Extract asset type ID from imported asset
@@ -533,15 +538,16 @@ function PB_UserData:import(args)
             if #fields >= 4 then
                 local id, name, word, itemsString = fields[1], fields[2], fields[3], fields[4]
                 if id and name and tonumber(id) then
-                    -- Parse items string back to array
+                    -- Parse items string back to array with individual unescaping
                     local items = {}
                     if itemsString and itemsString ~= "" then
                         for item in itemsString:gmatch("([^,]+)") do
-                            -- Filter out items that don't exist in the current system
+                            -- Unescape each individual asset ID before adding to items
+                            local unescapedItem = OD_UnescapeCSV(item)
                             -- Only include FX and FX Chain assets
-                            local assetTypeId = tonumber(item:match("^(%d+)"))
+                            local assetTypeId = tonumber(unescapedItem:match("^(%d+)"))
                             if assetTypeId and (assetTypeId == ASSET_TYPE.PluginAssetType or assetTypeId == ASSET_TYPE.FXChainAssetType) then
-                                table.insert(items, item)
+                                table.insert(items, unescapedItem)
                             end
                         end
                     end
@@ -881,15 +887,66 @@ function PB_UserData:import(args)
             return nil, nil
         end
 
+        -- Helper function to normalize path separators and handle REAPER built-in effects
+        local function normalizePathForComparison(path)
+            if not path then return nil end
+            
+            -- Normalize path separators (convert both \\ and \\\\ to /)
+            local normalizedPath = path:gsub("\\\\", "/"):gsub("\\", "/")
+            
+            -- Check if this is a REAPER built-in effect by looking for Plugins/FX/
+            local isReaperBuiltIn = normalizedPath:find("Plugins/FX/") ~= nil
+            
+            if isReaperBuiltIn then
+                -- For REAPER built-in effects, normalize the extension and create a comparable identifier
+                -- Remove platform-specific extensions and use base name for comparison
+                local baseName = normalizedPath:match("([^/]+)%.%w+%.?%w*$") or normalizedPath:match("([^/]+)%.%w+$")
+                if baseName then
+                    -- Create a normalized identifier for REAPER built-ins: keep path structure but normalize filename
+                    local pathWithoutFile = normalizedPath:match("^(.*/)")
+                    return pathWithoutFile and (pathWithoutFile .. baseName) or baseName
+                end
+            end
+            
+            return normalizedPath
+        end
+
+        -- Helper function to extract comparable basename, handling REAPER built-ins specially
+        local function getComparableBasename(fullPath)
+            if not fullPath then return nil end
+            
+            local normalizedPath = normalizePathForComparison(fullPath)
+            if not normalizedPath then return nil end
+            
+            -- Check if this is a REAPER built-in effect
+            local isReaperBuiltIn = normalizedPath:find("Plugins/FX/") ~= nil
+            
+            if isReaperBuiltIn then
+                -- For REAPER built-ins, extract base name without extension
+                local baseName = normalizedPath:match("([^/]+)%.%w+%.?%w*$") or normalizedPath:match("([^/]+)%.%w+$")
+                if baseName then
+                    return baseName
+                end
+            end
+            
+            -- Standard basename extraction
+            local basename = normalizedPath:match("([^/]+)$")
+            if basename and basename:find("<") then
+                basename = basename:match("^(.+)<")
+            end
+            
+            return basename
+        end
+
         -- Search for matching system asset using cached asset data
         local cachedAssetTypeData = getAssetTypeData(mappedAssetTypeId)
         if not cachedAssetTypeData then
             return nil, mappedAssetTypeId
         end
 
-        -- For file-based assets, try exact path match first, then basename fallback
+        -- For file-based assets, try exact path match first, then smart matching
         if cachedAssetTypeData.assetType.shouldMapBaseFilenames then
-            -- Step 1: Try exact path match
+            -- Step 1: Try exact path match (this handles same-platform imports)
             for _, data in ipairs(cachedAssetTypeData.data) do
                 local asset = cachedAssetTypeData.assetType:assembleAsset(data)
                 if asset then
@@ -901,25 +958,36 @@ function PB_UserData:import(args)
                 end
             end
 
-            -- Step 2: Fallback to basename matching only if the exact path doesn't exist
-            local importedBasename = importedFullPath:match("([^/\\]+)$")
-            if importedBasename and importedBasename:find("<") then
-                importedBasename = importedBasename:match("^(.+)<")
+            -- Step 2: Try normalized path matching (for cross-platform compatibility)
+            local normalizedImportedPath = normalizePathForComparison(importedFullPath)
+            if normalizedImportedPath then
+                for _, data in ipairs(cachedAssetTypeData.data) do
+                    local asset = cachedAssetTypeData.assetType:assembleAsset(data)
+                    if asset then
+                        local systemFullPath = asset.id:match("^%d+%s+(.+)$")
+                        local normalizedSystemPath = normalizePathForComparison(systemFullPath)
+                        
+                        if normalizedSystemPath == normalizedImportedPath then
+                            self.app.logger:logDebug('✓ Normalized path match found: "' .. 
+                                importedFullPath .. '" -> "' .. systemFullPath .. '"')
+                            return asset.id, mappedAssetTypeId
+                        end
+                    end
+                end
             end
 
+            -- Step 3: Fallback to smart basename matching
+            local importedBasename = getComparableBasename(importedFullPath)
             if importedBasename then
                 for _, data in ipairs(cachedAssetTypeData.data) do
                     local asset = cachedAssetTypeData.assetType:assembleAsset(data)
                     if asset then
                         local systemFullPath = asset.id:match("^%d+%s+(.+)$")
-                        local systemBasename = systemFullPath and systemFullPath:match("([^/\\]+)$")
-                        if systemBasename and systemBasename:find("<") then
-                            systemBasename = systemBasename:match("^(.+)<")
-                        end
+                        local systemBasename = getComparableBasename(systemFullPath)
 
                         if systemBasename == importedBasename then
-                            self.app.logger:logDebug('✓ Basename fallback match: "' ..
-                                importedFullPath .. '" -> "' .. systemFullPath .. '"')
+                            self.app.logger:logDebug('✓ Smart basename match: "' ..
+                                importedFullPath .. '" -> "' .. systemFullPath .. '" (basename: "' .. importedBasename .. '")')
                             return asset.id, mappedAssetTypeId
                         end
                     end
