@@ -5,7 +5,6 @@ PluginAssetType = {}
 PluginAssetType.__index = PluginAssetType
 setmetatable(PluginAssetType, BaseAssetType)
 
-local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
 local helpers = dofile(Scr.dir .. 'AssetTypes/AssetTypeHelpers.lua')
 function PluginAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("FX")(class, context)

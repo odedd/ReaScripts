@@ -5,7 +5,6 @@ TrackTemplateAssetType = {}
 TrackTemplateAssetType.__index = TrackTemplateAssetType
 setmetatable(TrackTemplateAssetType, BaseAssetType)
 
-local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
 local helpers = dofile(Scr.dir .. 'AssetTypes/AssetTypeHelpers.lua')
 function TrackTemplateAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Track Template", "Track Templates")(class, context)

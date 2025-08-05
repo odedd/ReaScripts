@@ -5,7 +5,6 @@ FXChainAssetType = {}
 FXChainAssetType.__index = FXChainAssetType
 setmetatable(FXChainAssetType, BaseAssetType)
 
-local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
 local helpers = dofile(Scr.dir .. 'AssetTypes/AssetTypeHelpers.lua')
 function FXChainAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("FX Chain", "FX Chains")(class, context)
