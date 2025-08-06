@@ -490,7 +490,7 @@ RunApp = function()
                                 for _, tagId in ipairs(asset.tags) do
                                     assetTagLookup[tagId] = true
                                 end
-                                
+
                                 for tagId, positive in pairs(filterTags) do
                                     local hasValue = assetTagLookup[tagId] == true
                                     if not hasValue then
@@ -857,7 +857,7 @@ RunApp = function()
                     app.settings.current.showQuickChain = true
                 end
             end
-        
+
         }
         app.guiHelpers = {
             initFrame = function(ctx)
@@ -983,7 +983,7 @@ RunApp = function()
                     return false
                 end
                 local keyChord = shortcut or 0
-                return ImGui.Shortcut(app.gui.ctx, keyChord, ImGui.InputFlags_RouteAlways)
+                return ImGui.Shortcut(app.gui.ctx, keyChord, ImGui.InputFlags_RouteAlways | ImGui.InputFlags_RouteFromRootWindow)
             end,
             selectSearchInputText = function()
                 app.temp.selectSearchInputText = true
@@ -2753,70 +2753,6 @@ RunApp = function()
                 local menuW, h = calculateDimensions()
                 app.temp.menuH = h + winPaddingY * 2
 
-                local handleSpecialKeys = function()
-                    if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and ImGui.IsWindowFocused(ctx) then
-                        local pressed = false
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) then
-                            -- if not app.temp.ignoreEscapeKey then
-                            if app.temp.searchInput == '' then
-                                if app.temp.activeFilters and OD_TableLength(app.temp.activeFilters) > 0 then
-                                    app.flow.filterResults({ clear = true })
-                                else
-                                    app.flow.close()
-                                end
-                            end
-                            pressed = true
-                        elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter, false) then
-                            if not app.temp.tagRename then
-                                local goWithQuickChain = app.temp.searchMode == SEARCH_MODE.MAIN and
-                                    app.settings.current.showQuickChain and
-                                    #app.temp.quickChain > 0
-                                app.flow.executeSelectedResults(
-                                    goWithQuickChain and app.temp.quickChain or app.selection:results(),
-                                    RESULT_CONTEXT.KEYBOARD)
-                            end
-                            pressed = true
-                        elseif app.guiHelpers.isShortcutPressed('selectAllResults') then
-                            app.selection:selectRange(1, #app.temp.searchResults)
-                            pressed = true
-                        elseif app.guiHelpers.isShortcutPressed('hardCloseScript') then
-                            app.hardExit = true
-                            pressed = true
-                        elseif app.guiHelpers.isShortcutPressed('runRandomResult') then
-                            if #app.temp.searchResults > 0 then
-                                app.flow.executeRandomResult()
-                            end
-                            pressed = true
-                        elseif app.guiHelpers.isShortcutPressed('clearFilters') then
-                            app.flow.filterResults({ clear = true })
-                            pressed = true
-                        elseif app.guiHelpers.isShortcutPressed('addToQuickChain') then
-                            app.flow.addSelectionToQuickChain()
-                            pressed = true
-                        elseif app.guiHelpers.isShortcutPressed('clearQuickChain') then
-                            app.temp.quickChain = {}
-                            pressed = true
-                        elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.guiHelpers.isShortcutPressed('markFavorite') and app.selection.keyboardPos then
-                            -- Toggle favorite status for all selected assets
-                            pressed = true
-                            local selectedResults = app.selection:results()
-                            if #selectedResults > 0 then
-                                -- Use the first selected asset to determine the action (favorite or unfavorite)
-                                local firstResult = selectedResults[1]
-                                local willFavorite = not firstResult.favorite
-
-                                -- Use the batch operation for efficiency
-                                local changed = firstResult:batchToggleFavorites(selectedResults, willFavorite)
-
-                                if changed then
-                                    -- Use filterResults to maintain selection on all affected assets
-                                    app.flow.filterResults(nil, nil, true)
-                                end
-                            end
-                        end
-                        if pressed then app.temp.shortcutPressed = true end
-                    end
-                end
                 local drawTextSearchInput = function()
                     if app.pageSwitched then
                         app.flow.filterResults({ text = '' })
@@ -2835,7 +2771,6 @@ RunApp = function()
                             app.temp.focusTextInput = nil
                             ImGui.SetKeyboardFocusHere(ctx, 0)
                         end
-                        handleSpecialKeys()
                         local callback = nil
                         local inputFlags = ImGui.InputTextFlags_EscapeClearsAll
                         if app.temp.selectSearchInputTextOnNextFrame then
@@ -3094,12 +3029,14 @@ RunApp = function()
 
                         -- Convert Folders to Tags button
                         if app.gui:setting('button', T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.LABEL, T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.HINT, nil, { label = T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.BUTTON_LABEL, divideWidth = 2 }) then
-                            app.temp.progressCoroutine = OD_CreateSafeCoroutine(app.userdata.convertFoldersToTags, app.logger.level > app.logger.LOG_LEVEL.NONE)
+                            app.temp.progressCoroutine = OD_CreateSafeCoroutine(app.userdata.convertFoldersToTags,
+                                app.logger.level > app.logger.LOG_LEVEL.NONE)
                         end
 
                         -- Convert Categories to Tags button
                         if app.gui:setting('button', T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.LABEL, T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.HINT, nil, { label = T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.BUTTON_LABEL }, true) then
-                            app.temp.progressCoroutine = OD_CreateSafeCoroutine(app.userdata.convertCategoriesToTags, app.logger.level > app.logger.LOG_LEVEL.NONE)
+                            app.temp.progressCoroutine = OD_CreateSafeCoroutine(app.userdata.convertCategoriesToTags,
+                                app.logger.level > app.logger.LOG_LEVEL.NONE)
                         end
 
                         -- Import button
@@ -3112,7 +3049,8 @@ RunApp = function()
                                 'scout')
                             if rv and filename then
                                 app.temp.coroutineArgs = { filename = filename, mergeMode = mergeMode }
-                                app.temp.progressCoroutine = OD_CreateSafeCoroutine(app.userdata.import, app.logger.level > app.logger.LOG_LEVEL.NONE)
+                                app.temp.progressCoroutine = OD_CreateSafeCoroutine(app.userdata.import,
+                                    app.logger.level > app.logger.LOG_LEVEL.NONE)
                             end
                         end
 
@@ -3812,7 +3750,8 @@ RunApp = function()
                                 end
                             else
                                 -- When editing, use current filters if checkbox is checked, otherwise use original
-                                local filterToUse = app.temp.updatePresetWithCurrentFilters and app.temp.filter or app.temp.originalPresetFilter
+                                local filterToUse = app.temp.updatePresetWithCurrentFilters and app.temp.filter or
+                                app.temp.originalPresetFilter
                                 local preset = app.userdata:updatePreset(app.temp.editingPresetId, trimmedName,
                                     filterToUse, trimmedMagicWord)
                                 if preset then
@@ -4276,6 +4215,72 @@ RunApp = function()
                             app.gui.mainWindow.debugOverLay[2] + app.gui.mainWindow.debugOverLay[4] + top, 0xff000088, 0,
                             ImGui.DrawFlags_Closed)
                     end
+                    local handleShortcuts = function()
+                        if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then
+                            local pressed = false
+                            if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) then
+                                -- if not app.temp.ignoreEscapeKey then
+                                if app.temp.searchInput == '' then
+                                    if app.temp.activeFilters and OD_TableLength(app.temp.activeFilters) > 0 then
+                                        app.flow.filterResults({ clear = true })
+                                    else
+                                        app.flow.close()
+                                    end
+                                end
+                                pressed = true
+                            elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter, false) then
+                                if not app.temp.tagRename then
+                                    local goWithQuickChain = app.temp.searchMode == SEARCH_MODE.MAIN and
+                                        app.settings.current.showQuickChain and
+                                        #app.temp.quickChain > 0
+                                    app.flow.executeSelectedResults(
+                                        goWithQuickChain and app.temp.quickChain or app.selection:results(),
+                                        RESULT_CONTEXT.KEYBOARD)
+                                end
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('selectAllResults') then
+                                app.selection:selectRange(1, #app.temp.searchResults)
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('hardCloseScript') then
+                                app.hardExit = true
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('runRandomResult') then
+                                if #app.temp.searchResults > 0 then
+                                    app.flow.executeRandomResult()
+                                end
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('clearFilters') then
+                                app.flow.filterResults({ clear = true })
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('addToQuickChain') then
+                                app.flow.addSelectionToQuickChain()
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('clearQuickChain') then
+                                app.temp.quickChain = {}
+                                pressed = true
+                            elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.guiHelpers.isShortcutPressed('markFavorite') and app.selection.keyboardPos then
+                                -- Toggle favorite status for all selected assets
+                                pressed = true
+                                local selectedResults = app.selection:results()
+                                if #selectedResults > 0 then
+                                    -- Use the first selected asset to determine the action (favorite or unfavorite)
+                                    local firstResult = selectedResults[1]
+                                    local willFavorite = not firstResult.favorite
+
+                                    -- Use the batch operation for efficiency
+                                    local changed = firstResult:batchToggleFavorites(selectedResults, willFavorite)
+
+                                    if changed then
+                                        -- Use filterResults to maintain selection on all affected assets
+                                        app.flow.filterResults(nil, nil, true)
+                                    end
+                                end
+                            end
+                            if pressed then app.temp.shortcutPressed = true end
+                        end
+                    end
+
+                    handleShortcuts()
 
                     app.draw.topBar(ctx)
 
