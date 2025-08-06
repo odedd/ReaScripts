@@ -483,15 +483,21 @@ RunApp = function()
                                 end
                             end
 
-                            -- Tag filters with early exit
+                            -- Tag filters with early exit and optimization
                             if hasTagFilters then
+                                -- Create a lookup table for asset tags for O(1) access
+                                local assetTagLookup = {}
+                                for _, tagId in ipairs(asset.tags) do
+                                    assetTagLookup[tagId] = true
+                                end
+                                
                                 for tagId, positive in pairs(filterTags) do
-                                    local hasValue = OD_HasValue(asset.tags, tagId)
+                                    local hasValue = assetTagLookup[tagId] == true
                                     if not hasValue then
                                         local tag = tagsTable[tagId]
                                         if tag and tag.descendants then
                                             for d = 1, #tag.descendants do
-                                                if OD_HasValue(asset.tags, tag.descendants[d].id) then
+                                                if assetTagLookup[tag.descendants[d].id] then
                                                     hasValue = true
                                                     break
                                                 end
