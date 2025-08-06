@@ -2787,15 +2787,15 @@ RunApp = function()
                         if app.temp.clearSearchInputText then
                             inputFlags = inputFlags | ImGui.InputTextFlags_CallbackAlways
                             callback = app.gui.clearInputIfNeeded
-                        end
-                        if app.temp.shortcutPressed then
+                        -- if clear was sent there's no need to reject character
+                        elseif app.temp.shortcutPressed then
                             inputFlags = inputFlags | ImGui.InputTextFlags_CallbackCharFilter
                             callback = app.gui.rejectCharacter
                             app.temp.shortcutPressed = nil
                         end
                         rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput" .. app.temp.searchMode,
-                            T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput,
-                            inputFlags, callback)
+                        T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput,
+                        inputFlags, callback)
                         if not app.temp.selectSearchInputText then -- wait 1 frame for selection to work
                             app.temp.lastSearchMode = app.temp.searchMode
                             app.temp.selectSearchInputTextOnNextFrame = nil
