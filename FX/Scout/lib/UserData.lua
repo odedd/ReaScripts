@@ -638,6 +638,10 @@ function PB_UserData:import(args)
     local newTagsCount = 0 -- For comprehensive import reporting
     local existingTagsCount = 0 -- For comprehensive import reporting
     
+    -- Track original tag count for reporting
+    local originalTagCount = 0
+    for _ in pairs(self.current.tagInfo) do originalTagCount = originalTagCount + 1 end
+    
     if mergeMode then
         self.app.logger:logDebug('Processing import in merge mode')
 
@@ -666,29 +670,52 @@ function PB_UserData:import(args)
             return path
         end
 
-        -- Helper function to find existing tag with same name and parent path
-        local function findExistingTag(importedTag, importedParentId, idMappingTable)
-            local importedPath = getTagPath(importedParentId, importedTagInfo, idMappingTable, {})
-
-            for existingTagId, existingTag in pairs(self.current.tagInfo) do
-                if existingTag.name == importedTag.name then
-                    local existingPath = getTagPath(existingTag.parentId, self.current.tagInfo, nil, {})
-
-                    -- Compare paths
-                    if #importedPath == #existingPath then
-                        local pathMatch = true
-                        for i = 1, #importedPath do
-                            if importedPath[i] ~= existingPath[i] then
-                                pathMatch = false
-                                break
-                            end
-                        end
-                        if pathMatch then
-                            return existingTagId
-                        end
-                    end
-                end
+        -- Pre-build optimized lookup structures for performance
+        local existingTagsByParent = {} -- parentId -> { tagName -> tagId }
+        local existingTagPaths = {} -- tagId -> path array (cached)
+        
+        -- Build hierarchical lookup index
+        for tagId, tag in pairs(self.current.tagInfo) do
+            if not existingTagsByParent[tag.parentId] then
+                existingTagsByParent[tag.parentId] = {}
             end
+            existingTagsByParent[tag.parentId][tag.name] = tagId
+            -- Cache the path for this tag
+            existingTagPaths[tagId] = getTagPath(tag.parentId, self.current.tagInfo, nil, {})
+        end
+
+        -- Path cache for imported tags
+        local importedPathCache = {}
+
+        -- Helper function to get cached imported tag path
+        local function getCachedImportedPath(parentId, idMappingTable)
+            local key = tostring(parentId) .. "_" .. (idMappingTable and "mapped" or "direct")
+            if not importedPathCache[key] then
+                importedPathCache[key] = getTagPath(parentId, importedTagInfo, idMappingTable, {})
+            end
+            return importedPathCache[key]
+        end
+
+        -- Optimized function to find existing tag with same name and parent path
+        local function findExistingTag(importedTag, importedParentId, idMappingTable)
+            local importedPath = getCachedImportedPath(importedParentId, idMappingTable)
+            
+            -- Fast lookup by traversing the path hierarchy
+            local currentParentId = TAGS_ROOT_PARENT
+            for _, pathSegment in ipairs(importedPath) do
+                local candidates = existingTagsByParent[currentParentId]
+                if not candidates or not candidates[pathSegment] then
+                    return nil -- Path doesn't exist in current system
+                end
+                currentParentId = candidates[pathSegment]
+            end
+            
+            -- Now check if the final tag name exists under this parent
+            local finalCandidates = existingTagsByParent[currentParentId]
+            if finalCandidates and finalCandidates[importedTag.name] then
+                return finalCandidates[importedTag.name]
+            end
+            
             return nil
         end
 
@@ -762,17 +789,20 @@ function PB_UserData:import(args)
             -- First ensure the parent hierarchy exists
             local mappedParentId = ensureParentExists(importedTag.parentId, idMapping, nextNewIdRef, {})
 
-            -- Look for existing tag with same name and parent path
+            -- Look for existing tag with same name and parent path using optimized lookup
             local existingId = findExistingTag(importedTag, importedTag.parentId, idMapping)
 
             if existingId then
                 -- Tag exists, use existing ID
                 idMapping[importedId] = existingId
                 existingTagsCount = existingTagsCount + 1
-                local pathStr = table.concat(getTagPath(importedTag.parentId, importedTagInfo, idMapping, {}), " > ")
-                self.app.logger:logDebug('Tag "' ..
-                    importedTag.name ..
-                    '" at path "' .. pathStr .. '" already exists, mapping ' .. importedId .. ' -> ' .. existingId)
+                -- Defer expensive string operations for debug logging
+                if self.app.logger and self.app.logger.logDebug then
+                    local pathStr = table.concat(getCachedImportedPath(importedTag.parentId, idMapping), " > ")
+                    self.app.logger:logDebug('Tag "' ..
+                        importedTag.name ..
+                        '" at path "' .. pathStr .. '" already exists, mapping ' .. importedId .. ' -> ' .. existingId)
+                end
             else
                 -- New tag, assign new ID
                 idMapping[importedId] = nextNewIdRef[1]
@@ -781,10 +811,20 @@ function PB_UserData:import(args)
                     parentId = mappedParentId,
                     order = importedTag.order or 0
                 }
+                
+                -- Update the lookup index with the new tag
+                if not existingTagsByParent[mappedParentId] then
+                    existingTagsByParent[mappedParentId] = {}
+                end
+                existingTagsByParent[mappedParentId][importedTag.name] = nextNewIdRef[1]
+                
                 newTagsCount = newTagsCount + 1
-                local pathStr = table.concat(getTagPath(mappedParentId, self.current.tagInfo, nil, {}), " > ")
-                self.app.logger:logDebug(
-                    'Adding new tag "' .. importedTag.name .. '" at path "' .. pathStr .. '" with ID', nextNewIdRef[1])
+                -- Defer expensive string operations for debug logging
+                if self.app.logger and self.app.logger.logDebug then
+                    local pathStr = table.concat(getTagPath(mappedParentId, self.current.tagInfo, nil, {}), " > ")
+                    self.app.logger:logDebug(
+                        'Adding new tag "' .. importedTag.name .. '" at path "' .. pathStr .. '" with ID', nextNewIdRef[1])
+                end
                 nextNewIdRef[1] = nextNewIdRef[1] + 1
             end
             local count = newTagsCount + existingTagsCount
@@ -1642,6 +1682,7 @@ function PB_UserData:import(args)
 
     -- Calculate comprehensive import counts
     local totalTagsImported = 0
+    local totalTagsNotImported = 0 -- Existing tags that were not imported
     local totalAssetsImported = mappedAssetsCount or 0
     local totalPresetsImported = mappedPresetsCount or 0
     local totalQuickChainPresetsImported = mappedquickChainPresetsCount or 0
@@ -1654,13 +1695,17 @@ function PB_UserData:import(args)
     if mergeMode then
         -- In merge mode, count new tags created
         totalTagsImported = (newTagsCount or 0)
+        -- Count existing tags that were preserved (not imported)
+        totalTagsNotImported = originalTagCount - (existingTagsCount or 0)
     else
         -- In replace mode, count all imported tags
         totalTagsImported = importedTagCount or 0
+        -- In overwrite mode, all original tags were replaced
+        totalTagsNotImported = originalTagCount
     end
 
     local msg = (mergeMode and T.PROGRESS.IMPORT.SUCCESS_MERGE or T.PROGRESS.IMPORT.SUCCESS_OVERWRITE):format(
-        totalTagsImported, 0, -- tags imported, tags skipped (always 0 since we don't skip individual tags)
+        totalTagsImported, totalTagsNotImported, -- tags imported, existing tags preserved/replaced
         totalAssetsImported, totalAssetsSkipped, -- items tagged, items skipped
         totalPresetsImported, totalPresetsSkipped, -- presets imported, presets skipped
         totalQuickChainPresetsImported, totalQuickChainPresetsSkipped, -- QuickChain presets imported, skipped

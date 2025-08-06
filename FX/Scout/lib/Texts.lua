@@ -258,8 +258,8 @@ T.PROGRESS = {
         PARSING = 'Parsing items (%s)...',
         MAPPING_TAGS = 'Mapping tags...',
         MAPPING_ITEMS = 'Mapping items...',
-        SUCCESS_MERGE = 'Import successful (merged).\n\n%d tags imported, %d skipped\n%d items were tagged, %d were skipped\n%d presets imported, %d skipped\n%d QuickChain presets imported, %d skipped\n%d favorites imported, %d skipped',
-        SUCCESS_OVERWRITE = 'Import successful (overwritten).\n\n%d tags imported, %d skipped\n%d items were tagged, %d were skipped\n%d presets imported, %d skipped\n%d QuickChain presets imported, %d skipped\n%d favorites imported, %d skipped'
+        SUCCESS_MERGE = 'Import successful (merged).\n\n%d tags imported, %d existing tags preserved\n%d items were tagged, %d were skipped\n%d presets imported, %d skipped\n%d QuickChain presets imported, %d skipped\n%d favorites imported, %d skipped',
+        SUCCESS_OVERWRITE = 'Import successful (overwritten).\n\n%d tags imported, %d existing tags replaced\n%d items were tagged, %d were skipped\n%d presets imported, %d skipped\n%d QuickChain presets imported, %d skipped\n%d favorites imported, %d skipped'
     }
 }
 
