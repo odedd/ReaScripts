@@ -1240,18 +1240,16 @@ function PB_UserData:import(args)
         local mappedAssetId, mappedAssetType = mapImportedAssetToSystem(importedFavorite)
 
         if mappedAssetId then
-            mappedFavoritesCount = mappedFavoritesCount + 1
-
             -- Add to favorites if not already present
             if not OD_HasValue(finalFavorites, mappedAssetId) then
                 table.insert(finalFavorites, mappedAssetId)
+                mappedFavoritesCount = mappedFavoritesCount + 1
                 self.app.logger:logDebug('✓ Mapped favorite "' .. importedFavorite .. '" to "' .. mappedAssetId .. '"')
             else
+                -- Don't count duplicates as mapped
                 self.app.logger:logDebug('✓ Favorite "' .. mappedAssetId .. '" already exists, skipping duplicate')
             end
         else
-            skippedFavoritesCount = skippedFavoritesCount + 1
-
             -- Check if we should import unmapped favorites (e.g., for tracks)
             local importedAssetTypeId = tonumber(importedFavorite:match("^(%d+)"))
             local mappedAssetTypeId = assetTypeMapping[importedAssetTypeId] or importedAssetTypeId
@@ -1269,11 +1267,14 @@ function PB_UserData:import(args)
                 if not OD_HasValue(finalFavorites, remappedAssetId) then
                     table.insert(finalFavorites, remappedAssetId)
                     mappedFavoritesCount = mappedFavoritesCount + 1
-                    skippedFavoritesCount = skippedFavoritesCount - 1
                     self.app.logger:logDebug('✓ Imported unmapped favorite "' ..
                         remappedAssetId .. '" (will apply when asset becomes available)')
+                else
+                    -- Don't count duplicates as mapped
+                    self.app.logger:logDebug('✓ Unmapped favorite "' .. remappedAssetId .. '" already exists, skipping duplicate')
                 end
             else
+                skippedFavoritesCount = skippedFavoritesCount + 1
                 self.app.logger:logDebug('✗ Favorite "' .. importedFavorite .. '" not found in system assets')
             end
         end
