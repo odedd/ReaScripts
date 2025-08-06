@@ -1010,6 +1010,7 @@ function PB_UserData:import(args)
         return nil, mappedAssetTypeId
     end
     local count = 0
+    local total = OD_TableLength(importedTaggedAssets)
     for imported_basename, assetData in pairs(importedTaggedAssets) do
         count = count + 1
         self.app.logger:logDebug('Processing imported asset: basename="' ..
@@ -1139,12 +1140,12 @@ function PB_UserData:import(args)
                 })
             end
         end
-        if count % YIELD_FREQUENCY == 0 or count == sectionCounts.taggedAssets then
+        if count % YIELD_FREQUENCY == 0 or count == total then
             coroutine.yield({
                 progress = true,
                 msg = T.PROGRESS.IMPORT.MAPPING_ITEMS,
                 index = count,
-                total = sectionCounts.taggedAssets
+                total = total
             })
         end
         ::continue::
