@@ -3318,7 +3318,7 @@ RunApp = function()
                         ImGui.EndChild(ctx)
                     end
                     app.draw.hint(ctx, 'settings')
-                    if app.temp.captureCounter > 3 and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) and not ImGui.IsPopupOpen(ctx, 'Operation in Progress') and not ImGui.IsPopupOpen(ctx, 'Scout##msg') then
+                    if app.temp.captureCounter > 3 and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopupId) then
                         ImGui.CloseCurrentPopup(ctx)
                     end
                     app.draw.progressBarWindow(ctx)
@@ -3532,8 +3532,8 @@ RunApp = function()
                 app:setHint(window, '')
             end,
             popup = function(ctx, id, text)
-                local currentWindowPos = app.gui.mainWindow.pos
-                local currentWindowSize = app.gui.mainWindow.size
+                local currentWindowPos = { ImGui.GetWindowPos(ctx) }
+                local currentWindowSize = { ImGui.GetWindowSize(ctx) }
                 local center = { currentWindowPos[1] + currentWindowSize[1] / 2,
                     currentWindowPos[2] + currentWindowSize[2] / 2 }
                 local okButtonLabel = 'Yes'
@@ -3919,7 +3919,7 @@ RunApp = function()
                             ImGui.EndDisabled(ctx)
                         end
 
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', '',
+                        if (ImGui.IsKeyPressed(ctx, ImGui.Key_Escape)) or app.gui:setting('button', '',
                                 'Close dialog', nil,
                                 { label = 'Cancel', hintWindow = 'editQuickChainWindow' }) then
                             app.temp.showCreateQuickChainDialog = false
@@ -4132,8 +4132,8 @@ RunApp = function()
                         ImGui.OpenPopup(ctx, 'Operation in Progress')
                     end
 
-                    local currentWindowPos = app.gui.mainWindow.pos
-                    local currentWindowSize = app.gui.mainWindow.size
+                    local currentWindowPos = { ImGui.GetWindowPos(ctx) }
+                    local currentWindowSize = { ImGui.GetWindowSize(ctx) }
                     local center = { currentWindowPos[1] + currentWindowSize[1] / 2,
                         currentWindowPos[2] + currentWindowSize[2] / 2 }
 
