@@ -983,7 +983,8 @@ RunApp = function()
                     return false
                 end
                 local keyChord = shortcut or 0
-                return ImGui.Shortcut(app.gui.ctx, keyChord, ImGui.InputFlags_RouteAlways | ImGui.InputFlags_RouteFromRootWindow)
+                return ImGui.Shortcut(app.gui.ctx, keyChord,
+                    ImGui.InputFlags_RouteAlways | ImGui.InputFlags_RouteFromRootWindow)
             end,
             selectSearchInputText = function()
                 app.temp.selectSearchInputText = true
@@ -1244,7 +1245,7 @@ RunApp = function()
                     ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx))
 
                     if app.guiHelpers.iconButton(ctx, 'CLOSE', app.gui.st.col.buttons.activeFilterAction) then
-                        app.flow.filterResults({ clear = true })
+                        app.flow.filterResults({ clear = true }, nil, true)
                     end
                     app:setHoveredHint('main', T.HINTS.RESET_FILTERS)
                     ImGui.SameLine(ctx, 0, 0)
@@ -1628,7 +1629,7 @@ RunApp = function()
                                 (w - ImGui.CalcTextSize(ctx, text) - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2) /
                                 2)
                             if ImGui.Button(ctx, text) then
-                                app.flow.filterResults({ clear = true, clearText = true })
+                                app.flow.filterResults({ clear = true, clearText = true }, nil, true)
                             end
                             app:setHoveredHint('main', T.HINTS.RESET_FILTERS)
                             ImGui.EndChild(ctx)
@@ -2105,6 +2106,20 @@ RunApp = function()
                                     app:setHint('main', '')
                                     ImGui.Text(ctx, tag.name)
                                     ImGui.Separator(ctx)
+                                    if tag.hasDescendants and tag.open then
+                                        if ImGui.MenuItem(ctx, 'Collapse all nested tags') then
+                                            tag:toggleAllDescendants(false, true)
+                                        end
+                                        app:setHoveredHint('main',
+                                            (T.HINTS.TAG_CONTEXT_MENU_COLLAPSE_DESCENDANTS):format(tag.name))
+                                    end
+                                    -- Sort Children option (only show if tag has direct children)
+                                    if tag.hasDescendants then
+                                        if ImGui.MenuItem(ctx, 'Sort nested tags A-Z') then
+                                            tag:sortChildren(true)
+                                        end
+                                        app:setHoveredHint('main', 'Sort nested tags of "' .. tag.name .. '" alphabetically')
+                                    end
                                     if ImGui.MenuItem(ctx, 'Rename') then
                                         app.temp.tagRename = tag.id
                                         app.temp.tagRenameBuffer = tag.name
@@ -3751,7 +3766,7 @@ RunApp = function()
                             else
                                 -- When editing, use current filters if checkbox is checked, otherwise use original
                                 local filterToUse = app.temp.updatePresetWithCurrentFilters and app.temp.filter or
-                                app.temp.originalPresetFilter
+                                    app.temp.originalPresetFilter
                                 local preset = app.userdata:updatePreset(app.temp.editingPresetId, trimmedName,
                                     filterToUse, trimmedMagicWord)
                                 if preset then
@@ -4222,7 +4237,7 @@ RunApp = function()
                                 -- if not app.temp.ignoreEscapeKey then
                                 if app.temp.searchInput == '' then
                                     if app.temp.activeFilters and OD_TableLength(app.temp.activeFilters) > 0 then
-                                        app.flow.filterResults({ clear = true })
+                                        app.flow.filterResults({ clear = true }, nil, true)
                                     else
                                         app.flow.close()
                                     end
@@ -4250,7 +4265,7 @@ RunApp = function()
                                 end
                                 pressed = true
                             elseif app.guiHelpers.isShortcutPressed('clearFilters') then
-                                app.flow.filterResults({ clear = true })
+                                app.flow.filterResults({ clear = true }, nil, true)
                                 pressed = true
                             elseif app.guiHelpers.isShortcutPressed('addToQuickChain') then
                                 app.flow.addSelectionToQuickChain()

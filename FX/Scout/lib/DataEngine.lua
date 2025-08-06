@@ -648,6 +648,55 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
             self.open = state
             self.app.userdata:toggleTagOpen(self.id, state, persist)
         end
+        self.tags[id].toggleAllDescendants = function(self, state, persist)
+            -- Recursively toggle all descendant tags without persisting each one
+            local function toggleDescendantsRecursive(tag)
+                if tag.descendants then
+                    for _, descendant in ipairs(tag.descendants) do
+                        descendant.open = state
+                        descendant.app.userdata:toggleTagOpen(descendant.id, state, false) -- Don't persist individually
+                        toggleDescendantsRecursive(descendant) -- Recursively process nested descendants
+                    end
+                end
+            end
+            
+            -- Toggle all descendants
+            toggleDescendantsRecursive(self)
+            
+            -- Also close the parent tag itself
+            self.open = state
+            self.app.userdata:toggleTagOpen(self.id, state, false) -- Don't persist individually
+            
+            -- Persist only once at the end if requested
+            if persist then
+                self.app.userdata:save()
+            end
+        end
+        self.tags[id].sortChildren = function(self, persist)
+            -- Get all direct children of this tag
+            local children = {}
+            for id, tag in pairs(self.engine.tags) do
+                if tag.parentId == self.id then
+                    table.insert(children, tag)
+                end
+            end
+            
+            -- Sort children alphabetically by name (case-insensitive)
+            table.sort(children, function(a, b)
+                return string.lower(a.name) < string.lower(b.name)
+            end)
+            
+            -- Reorder the children by updating their order values in tagInfo
+            for i, child in ipairs(children) do
+                child.order = i
+                self.app.userdata.current.tagInfo[child.id].order = i
+            end
+            
+            -- Persist only once at the end if requested
+            if persist then
+                self.app.userdata:save()
+            end
+        end
         self.tags[id].rename = function(self, name, persist)
             self.name = name
             self.app.userdata:renameTag(self.id, name, persist)
