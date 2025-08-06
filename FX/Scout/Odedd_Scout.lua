@@ -3733,7 +3733,7 @@ RunApp = function()
                         end
                     end
 
-                    ImGui.SetNextWindowSize(ctx, 350 * app.gui.scale, 0, ImGui.Cond_Always)
+                    ImGui.SetNextWindowSize(ctx, 550 * app.gui.scale, 0, ImGui.Cond_Always)
                     ImGui.SetNextWindowPos(ctx, app.gui.mainWindow.pos[1] + (app.gui.mainWindow.size[1] / 2),
                         app.gui.mainWindow.pos[2] + (app.gui.mainWindow.size[2] / 2), ImGui.Cond_Appearing, 0.5, 0.5)
                     app.gui:pushStyles(app.gui.st.vars.popupsTitle)
@@ -3759,6 +3759,17 @@ RunApp = function()
 
                         local trimmedMagicWord = OD_Trim(app.temp.presetWord)
 
+                        -- Update with current filters checkbox (only when editing)
+                        if isEditing then
+                            if not app.temp.updatePresetWithCurrentFilters then
+                                app.temp.updatePresetWithCurrentFilters = false
+                            end
+                            app.temp.updatePresetWithCurrentFilters = app.gui:setting('checkbox',
+                                T.EDIT_PRESET_DIALOG.UPDATE_PRESET_WITH_CURRENT_FILTERS.LABEL,
+                                T.EDIT_PRESET_DIALOG.UPDATE_PRESET_WITH_CURRENT_FILTERS.HINT,
+                                app.temp.updatePresetWithCurrentFilters,
+                                { hintWindow = 'editFilterWindow' })
+                        end
 
                         if canSavePreset then
                             -- Check for duplicate name (excluding self when editing)
@@ -3800,8 +3811,10 @@ RunApp = function()
                                     app.logger:logInfo('Created preset "' .. preset.name .. '"')
                                 end
                             else
+                                -- When editing, use current filters if checkbox is checked, otherwise use original
+                                local filterToUse = app.temp.updatePresetWithCurrentFilters and app.temp.filter or app.temp.originalPresetFilter
                                 local preset = app.userdata:updatePreset(app.temp.editingPresetId, trimmedName,
-                                    app.temp.originalPresetFilter, trimmedMagicWord)
+                                    filterToUse, trimmedMagicWord)
                                 if preset then
                                     app.logger:logInfo('Updated preset "' .. preset.name .. '"')
                                 end
@@ -3848,6 +3861,7 @@ RunApp = function()
                         app.temp.editingPresetId = nil
                         app.temp.presetName = nil
                         app.temp.presetWord = nil
+                        app.temp.updatePresetWithCurrentFilters = nil
                         app.temp.editingPresetId = nil
                         app.temp.originalPresetFilter = nil
                     end
@@ -3867,7 +3881,7 @@ RunApp = function()
                         end
                     end
 
-                    ImGui.SetNextWindowSize(ctx, 350 * app.gui.scale, 0, ImGui.Cond_Always)
+                    ImGui.SetNextWindowSize(ctx, 550 * app.gui.scale, 0, ImGui.Cond_Always)
                     ImGui.SetNextWindowPos(ctx, app.gui.mainWindow.pos[1] + (app.gui.mainWindow.size[1] / 2),
                         app.gui.mainWindow.pos[2] + (app.gui.mainWindow.size[2] / 2), ImGui.Cond_Appearing, 0.5, 0.5)
                     app.gui:pushStyles(app.gui.st.vars.popupsTitle)

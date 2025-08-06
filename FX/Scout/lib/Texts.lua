@@ -61,6 +61,10 @@ T.EDIT_PRESET_DIALOG = {
         LABEL = 'Magic Word',
         HINT = 'Typing word + space loads preset',
     },
+    UPDATE_PRESET_WITH_CURRENT_FILTERS = {
+        LABEL = 'Update filters',
+        HINT = 'Update preset with current filters',
+    },
     SAVE_PRESET = {
         LABEL = '',
         BUTTON_CREATE = 'Save as Preset',
