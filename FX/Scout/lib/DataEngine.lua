@@ -729,8 +729,8 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
             -- Determine new parent
             if position == "inside" then
                 newParentId = targetTag.id
-                targetTag:toggleOpen(true, false)
-                self.app.logger:logDebug('open "' .. targetTag.name .. '"')
+                -- targetTag:toggleOpen(true, false)
+                -- self.app.logger:logDebug('open "' .. targetTag.name .. '"')
             elseif position == "before" or position == "after" then
                 newParentId = targetTag.parentId
                 if targetTag.parent then
@@ -769,7 +769,7 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
 
             -- Insert self at the correct position
             if position == "inside" then
-                table.insert(filteredSiblings, 1, self.id)
+                table.insert(filteredSiblings, self.id)  -- Insert at end (last position)
             elseif position == "before" then
                 -- If targetIndex is nil, insert at end (shouldn't happen, but fallback)
                 table.insert(filteredSiblings, targetIndex or (#filteredSiblings + 1), self.id)

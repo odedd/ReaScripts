@@ -2344,11 +2344,50 @@ function PB_UserData:convertFoldersToTags()
         return { error = true, msg = 'No FX folders data available' }
     end
 
+    -- Create or find the "Imported Tags" parent tag
+    local importedTagsParentId = nil
+    for tagId, tagData in pairs(self.current.tagInfo) do
+        if tagData.name == 'Imported Tags' and tagData.parentId == TAGS_ROOT_PARENT then
+            importedTagsParentId = tagId
+            break
+        end
+    end
+    
+    if not importedTagsParentId then
+        importedTagsParentId = self.current.tagIdCount + 1
+        self.current.tagIdCount = importedTagsParentId
+        self.current.tagInfo[importedTagsParentId] = {
+            name = 'Imported Tags',
+            parentId = TAGS_ROOT_PARENT,
+            order = importedTagsParentId
+        }
+        self.app.logger:logDebug('Created parent tag "Imported Tags" with ID ' .. importedTagsParentId)
+    end
+
+    -- Create or find the "From Folders" child tag
+    local fromFoldersParentId = nil
+    for tagId, tagData in pairs(self.current.tagInfo) do
+        if tagData.name == 'From Folders' and tagData.parentId == importedTagsParentId then
+            fromFoldersParentId = tagId
+            break
+        end
+    end
+    
+    if not fromFoldersParentId then
+        fromFoldersParentId = self.current.tagIdCount + 1
+        self.current.tagIdCount = fromFoldersParentId
+        self.current.tagInfo[fromFoldersParentId] = {
+            name = 'From Folders',
+            parentId = importedTagsParentId,
+            order = fromFoldersParentId
+        }
+        self.app.logger:logDebug('Created child tag "From Folders" with ID ' .. fromFoldersParentId)
+    end
+
     local foldersConverted = 0
     local assetsTagged = 0
     local count = 0
     local totalFolders = OD_TableLength(self.app.engine.fxFolders)
-    -- Iterate through each category
 
     self.app.logger:logDebug('Available folders', OD_TableLength(self.app.engine.fxFolders))
 
@@ -2363,17 +2402,18 @@ function PB_UserData:convertFoldersToTags()
             total = totalFolders
         })
 
-
         local folderName = folderData.name
         if not folderName or folderName == '' then
             goto continue_folder
         end
 
         self.app.logger:logDebug('Processing folder: ' ..
-            folderName .. ' with ' .. OD_TableLength(folderData.items or {}) .. ' items') -- Check if tag already exists (case insensitive)
+            folderName .. ' with ' .. OD_TableLength(folderData.items or {}) .. ' items')
+        
+        -- Check if tag already exists under "From Folders" (case insensitive)
         local existingTagId = nil
         for tagId, tagData in pairs(self.current.tagInfo) do
-            if tagData.name:lower() == folderName:lower() and tagData.parentId == TAGS_ROOT_PARENT then
+            if tagData.name:lower() == folderName:lower() and tagData.parentId == fromFoldersParentId then
                 existingTagId = tagId
                 break
             end
@@ -2387,10 +2427,10 @@ function PB_UserData:convertFoldersToTags()
             self.current.tagIdCount = targetTagId
             self.current.tagInfo[targetTagId] = {
                 name = folderName,
-                parentId = TAGS_ROOT_PARENT,
+                parentId = fromFoldersParentId,
                 order = targetTagId
             }
-            self.app.logger:logDebug('Created tag "' .. folderName .. '" with ID ' .. targetTagId)
+            self.app.logger:logDebug('Created tag "' .. folderName .. '" with ID ' .. targetTagId .. ' under "From Folders"')
             isNewTag = true
             foldersConverted = foldersConverted + 1
         else
@@ -2477,10 +2517,51 @@ function PB_UserData:convertCategoriesToTags(args)
         coroutine.yield { error = true, msg = 'No FX categories data available' }
     end
 
+    -- Create or find the "Imported Tags" parent tag
+    local importedTagsParentId = nil
+    for tagId, tagData in pairs(self.current.tagInfo) do
+        if tagData.name == 'Imported Tags' and tagData.parentId == TAGS_ROOT_PARENT then
+            importedTagsParentId = tagId
+            break
+        end
+    end
+    
+    if not importedTagsParentId then
+        importedTagsParentId = self.current.tagIdCount + 1
+        self.current.tagIdCount = importedTagsParentId
+        self.current.tagInfo[importedTagsParentId] = {
+            name = 'Imported Tags',
+            parentId = TAGS_ROOT_PARENT,
+            order = importedTagsParentId
+        }
+        self.app.logger:logDebug('Created parent tag "Imported Tags" with ID ' .. importedTagsParentId)
+    end
+
+    -- Create or find the "From Categories" child tag
+    local fromCategoriesParentId = nil
+    for tagId, tagData in pairs(self.current.tagInfo) do
+        if tagData.name == 'From Categories' and tagData.parentId == importedTagsParentId then
+            fromCategoriesParentId = tagId
+            break
+        end
+    end
+    
+    if not fromCategoriesParentId then
+        fromCategoriesParentId = self.current.tagIdCount + 1
+        self.current.tagIdCount = fromCategoriesParentId
+        self.current.tagInfo[fromCategoriesParentId] = {
+            name = 'From Categories',
+            parentId = importedTagsParentId,
+            order = fromCategoriesParentId
+        }
+        self.app.logger:logDebug('Created child tag "From Categories" with ID ' .. fromCategoriesParentId)
+    end
+
     local categoriesConverted = 0
     local assetsTagged = 0
     local count = 0
     local totalCategories = OD_TableLength(self.app.engine.fxCategories)
+    
     -- Iterate through each category
     for categoryName, pluginList in pairs(self.app.engine.fxCategories) do
         count = count + 1
@@ -2495,10 +2576,10 @@ function PB_UserData:convertCategoriesToTags(args)
             goto continue_category
         end
 
-        -- Check if tag already exists (case insensitive)
+        -- Check if tag already exists under "From Categories" (case insensitive)
         local existingTagId = nil
         for tagId, tagData in pairs(self.current.tagInfo) do
-            if tagData.name:lower() == categoryName:lower() and tagData.parentId == TAGS_ROOT_PARENT then
+            if tagData.name:lower() == categoryName:lower() and tagData.parentId == fromCategoriesParentId then
                 existingTagId = tagId
                 break
             end
@@ -2511,10 +2592,10 @@ function PB_UserData:convertCategoriesToTags(args)
             self.current.tagIdCount = targetTagId
             self.current.tagInfo[targetTagId] = {
                 name = categoryName,
-                parentId = TAGS_ROOT_PARENT,
+                parentId = fromCategoriesParentId,
                 order = targetTagId
             }
-            self.app.logger:logDebug('Created tag "' .. categoryName .. '" with ID ' .. targetTagId)
+            self.app.logger:logDebug('Created tag "' .. categoryName .. '" with ID ' .. targetTagId .. ' under "From Categories"')
             categoriesConverted = categoriesConverted + 1
         else
             self.app.logger:logDebug('Using existing tag "' .. categoryName .. '" with ID ' .. targetTagId)

@@ -1895,7 +1895,7 @@ RunApp = function()
                         separatorY + h,
                         ImGui.GetStyleColor(ctx, ImGui.Col_Separator))
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) - paddingX)
-                    ImGui.InvisibleButton(ctx, '##quickChainPresetseparator', paddingX * 2, quickChainH)
+                    ImGui.InvisibleButton(ctx, '##sideBarSeparator', paddingX * 2, quickChainH)
                     if ImGui.IsItemHovered(ctx) then
                         app:setHoveredHint('main', 'Drag to change QuickChain width')
                         ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_ResizeEW)
