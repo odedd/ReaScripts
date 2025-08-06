@@ -1466,10 +1466,39 @@ function PB_UserData:import(args)
                 end
 
                 if existingPresetId then
-                    -- Update existing preset with same name
+                    -- Check if existing preset is identical to imported one
+                    local existingPreset = finalPresets[existingPresetId]
+                    
+                    -- Simple deep comparison for preset data
+                    local function deepCompareFilters(a, b)
+                        if type(a) ~= type(b) then return false end
+                        if type(a) ~= "table" then return a == b end
+                        
+                        for k, v in pairs(a) do
+                            if not deepCompareFilters(v, b[k]) then return false end
+                        end
+                        for k, v in pairs(b) do
+                            if not deepCompareFilters(v, a[k]) then return false end
+                        end
+                        return true
+                    end
+                    
+                    local isIdentical = (existingPreset.name == presetToImport.name and
+                                       existingPreset.word == presetToImport.word and
+                                       deepCompareFilters(existingPreset.filter, presetToImport.filter))
+                    
                     newId = existingPresetId
-                    self.app.logger:logDebug('⟳ Updating existing preset "' ..
-                        presetToImport.name .. '" (ID ' .. newId .. ')')
+                    if isIdentical then
+                        -- Skip identical preset
+                        skippedPresetsCount = skippedPresetsCount + 1
+                        self.app.logger:logDebug('◦ Skipped identical preset "' ..
+                            presetToImport.name .. '" (ID ' .. newId .. ')')
+                        goto continue_preset
+                    else
+                        -- Update existing preset with different content
+                        self.app.logger:logDebug('⟳ Updating existing preset "' ..
+                            presetToImport.name .. '" (ID ' .. newId .. ')')
+                    end
                 else
                     -- Find next available ID if no name conflict exists
                     while finalPresets[newId] do
@@ -1492,6 +1521,8 @@ function PB_UserData:import(args)
                 self.app.logger:logDebug('✓ Imported preset "' .. presetToImport.name .. '" with ID ' .. newId)
             end
         end
+        
+        ::continue_preset::
     end
 
     -- Update presets and presetIdCount
@@ -1593,27 +1624,55 @@ function PB_UserData:import(args)
         -- Import QuickChain preset
         local newId = importedId
         local existingQuickChainPresetId = nil
+        local isContentIdentical = false
 
         if mergeMode then
             -- In merge mode, check if a QuickChain preset with the same name already exists
             for id, quickChainPreset in pairs(finalquickChainPresets) do
                 if quickChainPreset.name == importedQuickChainPreset.name then
                     existingQuickChainPresetId = id
+                    
+                    -- Deep comparison for QuickChain preset content
+                    local itemsEqual = true
+                    if #quickChainPreset.items ~= #mappedItems then
+                        itemsEqual = false
+                    else
+                        -- Compare each item
+                        for i, item in ipairs(quickChainPreset.items) do
+                            if item ~= mappedItems[i] then
+                                itemsEqual = false
+                                break
+                            end
+                        end
+                    end
+                    
+                    if quickChainPreset.word == importedQuickChainPreset.word and itemsEqual then
+                        isContentIdentical = true
+                        self.app.logger:logDebug('◦ QuickChain preset "' .. importedQuickChainPreset.name .. '" is identical, skipping')
+                        skippedquickChainPresetsCount = skippedquickChainPresetsCount + 1
+                        goto continue_quickchain_presets
+                    else
+                        self.app.logger:logDebug('⟳ Updating existing QuickChain preset "' ..
+                            importedQuickChainPreset.name .. '" (ID ' .. id .. ') - content differs')
+                    end
                     break
                 end
             end
 
-            if existingQuickChainPresetId then
+            if existingQuickChainPresetId and not isContentIdentical then
                 -- Update existing QuickChain preset with same name
                 newId = existingQuickChainPresetId
-                self.app.logger:logDebug('⟳ Updating existing QuickChain preset "' ..
-                    importedQuickChainPreset.name .. '" (ID ' .. newId .. ')')
-            else
+            elseif not existingQuickChainPresetId then
                 -- Find next available ID if no name conflict exists
                 while finalquickChainPresets[newId] do
                     newId = newId + 1
                 end
             end
+        end
+
+        -- Skip if content is identical (already handled above)
+        if isContentIdentical then
+            goto continue_quickchain_presets
         end
 
         finalquickChainPresets[newId] = {
@@ -1626,15 +1685,17 @@ function PB_UserData:import(args)
         mappedquickChainPresetsCount = mappedquickChainPresetsCount + 1
         
         if skippedItems > 0 then
-            self.app.logger:logDebug('✓ Imported QuickChain preset "' .. importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items (' .. skippedItems .. ' items skipped)')
+            if existingQuickChainPresetId then
+                self.app.logger:logDebug('⟳ Updated QuickChain preset "' .. importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items (' .. skippedItems .. ' items skipped)')
+            else
+                self.app.logger:logDebug('✓ Imported QuickChain preset "' .. importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items (' .. skippedItems .. ' items skipped)')
+            end
         else
-            self.app.logger:logDebug('✓ Imported QuickChain preset "' .. importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items')
-        end
-        
-        if existingQuickChainPresetId then
-            self.app.logger:logDebug('✓ Updated QuickChain preset "' .. importedQuickChainPreset.name .. '" with ID ' .. newId)
-        else
-            self.app.logger:logDebug('✓ Imported QuickChain preset "' .. importedQuickChainPreset.name .. '" with ID ' .. newId)
+            if existingQuickChainPresetId then
+                self.app.logger:logDebug('⟳ Updated QuickChain preset "' .. importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items')
+            else
+                self.app.logger:logDebug('✓ Imported QuickChain preset "' .. importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items')
+            end
         end
 
         ::continue_quickchain_presets::
