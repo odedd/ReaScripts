@@ -2879,7 +2879,6 @@ RunApp = function()
                                 elseif word.type == MAGIC_WORD_TYPE.QUICK_CHAIN then
                                     wordActivated = true
                                     app.flow.loadQuickChain(word.quickChain)
-                                    app.flow.filterResults(word.filter)
                                     app.flow.setSearchMode(SEARCH_MODE.MAIN)
                                     app.guiHelpers.clearSearchInputText()
                                 end

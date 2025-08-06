@@ -851,7 +851,12 @@ PB_DataEngine.getMagicWords = function(self)
             self.magicWords[quickChain.word:upper()] = { type = MAGIC_WORD_TYPE.QUICK_CHAIN, quickChain = quickChain }
         end
     end
-    self.app.logger:logDebug('Found ' .. #self.magicWords .. ' magic words')
+    
+    local count = 0
+    for _ in pairs(self.magicWords) do
+        count = count + 1
+    end
+    self.app.logger:logDebug('Found ' .. count .. ' magic words')
 end
 PB_DataEngine.getPresets = function(self, reassemblePresetFilterAssets)
     self.app.logger:logDebug('-- PB_DataEngine.getPresets()')
@@ -912,12 +917,14 @@ PB_DataEngine.getPresets = function(self, reassemblePresetFilterAssets)
 
     -- Update the filter menu whenever presets change
     self:updatePresetsFilterMenu()
+    
+    -- Always refresh magic words when presets change since magic words depend on presets
+    self:getMagicWords()
 end
 PB_DataEngine.refreshPresets = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.refreshPresets()')
     -- Simple wrapper around getPresets for external refresh calls
     self:getPresets(true)
-    self:getMagicWords()
 end
 PB_DataEngine.markSpecialGroups = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.markSpecialGroups()')
@@ -1717,5 +1724,9 @@ PB_DataEngine.getquickChainPresets = function(self)
     end
     
     self.app.logger:logDebug('Found ' .. count .. ' QuickChain Presets')
+    
+    -- Always refresh magic words when QuickChain presets change since magic words depend on them
+    self:getMagicWords()
+    
     return quickChainPresets
 end
