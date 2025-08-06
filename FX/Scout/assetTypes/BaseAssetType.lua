@@ -188,6 +188,8 @@ function BaseAssetType:executeAndAddToRecents()
                 assetType.context.logger:logInfo(logMsg)
                 if assetType.context.settings.current.closeAfterExecute then
                     assetType.context.flow.close()
+                else
+                    assetType.context.flow.clearSearchInputText()
                 end
                 -- Return the actual result from the execute function
                 return result

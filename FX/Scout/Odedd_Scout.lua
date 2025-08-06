@@ -73,7 +73,7 @@ RunApp = function()
 
         local logger = OD_Logger:new({
             level = LOG_LEVEL,
-            output = OD_Logger.LOG_OUTPUT.CONSOLE,
+            output = OD_Logger.LOG_OUTPUT.FILE,
             -- filename = projPath .. Scr.name .. '_' .. projFileName .. '.log',
             filename = p .. Scr.name .. '_' .. projFileName .. '.log',
             showImGuiDebugWindows = false,
@@ -353,11 +353,11 @@ RunApp = function()
                     query = OD_DeepCopy(query) or {}
                     if query.clear then
                         -- app.temp.searchInput = ''
-                        -- app.guiHelpers.clearSearchInputText()
+                        -- app.flow.clearSearchInputText()
                         app.temp.filter = { text = app.temp.filter.text }
                     end
                     if query.clearText then
-                        app.guiHelpers.clearSearchInputText()
+                        app.flow.clearSearchInputText()
                         app.temp.filter.text = ''
                     end
                     query.text = query.text or app.temp.filter.text or ''
@@ -721,6 +721,13 @@ RunApp = function()
                 app.temp.activeFilters = activeFilters
                 return activeFilters
             end,
+            selectSearchInputText = function()
+                app.temp.selectSearchInputText = true
+            end,
+            clearSearchInputText = function()
+                app.temp.searchInput = ''
+                app.temp.clearSearchInputText = true
+            end,
             createAction = function(actionName, cmd)
                 local snActionName = OD_SanitizeFilename(actionName)
                 local filename = ('%s - %s'):format(Scr.no_ext, snActionName)
@@ -985,13 +992,6 @@ RunApp = function()
                 local keyChord = shortcut or 0
                 return ImGui.Shortcut(app.gui.ctx, keyChord,
                     ImGui.InputFlags_RouteAlways | ImGui.InputFlags_RouteFromRootWindow)
-            end,
-            selectSearchInputText = function()
-                app.temp.selectSearchInputText = true
-            end,
-            clearSearchInputText = function()
-                app.temp.searchInput = ''
-                app.temp.clearSearchInputText = true
             end,
             shortCutToText = function(keychord)
                 if keychord == nil or keychord == 0 or keychord == -1 then return '' end
@@ -1782,7 +1782,8 @@ RunApp = function()
                                                     if j > 1 then
                                                         ImGui.Text(ctx, ' ')
                                                         ImGui.SameLine(ctx)
-                                                        app.gui:pushColors(st.color or app.gui.st.col.search.secondaryResult)
+                                                        app.gui:pushColors(st.color or
+                                                        app.gui.st.col.search.secondaryResult)
                                                     else
                                                         app.gui:pushColors(st.color or app.gui.st.col.search.mainResult)
                                                     end
@@ -1808,7 +1809,8 @@ RunApp = function()
                                                         ImGui.SameLine(ctx)
                                                     end
                                                     if j < 1 then
-                                                        app.gui:popColors(st.color or app.gui.st.col.search.secondaryResult)
+                                                        app.gui:popColors(st.color or
+                                                        app.gui.st.col.search.secondaryResult)
                                                     else
                                                         app.gui:popColors(st.color or app.gui.st.col.search.mainResult)
                                                     end
@@ -2108,7 +2110,8 @@ RunApp = function()
                                         if ImGui.MenuItem(ctx, 'Sort nested tags A-Z') then
                                             tag:sortChildren(true)
                                         end
-                                        app:setHoveredHint('main', 'Sort nested tags of "' .. tag.name .. '" alphabetically')
+                                        app:setHoveredHint('main',
+                                            'Sort nested tags of "' .. tag.name .. '" alphabetically')
                                     end
                                     if ImGui.MenuItem(ctx, 'Rename') then
                                         app.temp.tagRename = tag.id
@@ -2821,12 +2824,12 @@ RunApp = function()
                                     app.flow.filterResults(word.filter)
                                     if wordAction == '?' then app.flow.executeRandomResult() end
                                     app.flow.setSearchMode(SEARCH_MODE.MAIN)
-                                    app.guiHelpers.clearSearchInputText()
+                                    app.flow.clearSearchInputText()
                                 elseif word.type == MAGIC_WORD_TYPE.QUICK_CHAIN then
                                     wordActivated = true
                                     app.flow.loadQuickChain(word.quickChain)
                                     app.flow.setSearchMode(SEARCH_MODE.MAIN)
-                                    app.guiHelpers.clearSearchInputText()
+                                    app.flow.clearSearchInputText()
                                 end
                             end
                             if not wordActivated then

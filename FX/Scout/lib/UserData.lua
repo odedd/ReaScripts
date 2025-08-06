@@ -367,19 +367,27 @@ function PB_UserData:import(args)
                         goto continue_asset_parsing
                     end
 
-                    -- Check if we have a mapping for this asset type
-                    local mappedAssetTypeId = assetTypeMapping[importedAssetTypeId]
-                    if not mappedAssetTypeId then
-                        -- Check if this is an unmapped asset type
-                        local className = importedAssetTypes[importedAssetTypeId]
-                        if className then
-                            self.app.logger:logDebug('Skipping asset with unmapped asset type',
+                    -- Use the mapped asset type if available, otherwise use the original (for same-system imports)
+                    local mappedAssetTypeId = assetTypeMapping[importedAssetTypeId] or importedAssetTypeId
+                    
+                    -- Verify the asset type exists in the current system (skip validation for same-system imports)
+                    local targetAssetType = nil
+                    local isSameSystemImport = (next(assetTypeMapping) == nil) -- Empty mapping means same system
+                    
+                    if not isSameSystemImport then
+                        targetAssetType = self.app.engine.assetTypeManager:getAssetTypeById(mappedAssetTypeId)
+                        if not targetAssetType then
+                            local className = importedAssetTypes[importedAssetTypeId] or "unknown"
+                            self.app.logger:logDebug('Skipping asset with unsupported asset type',
                                 className .. ' (ID: ' .. importedAssetTypeId .. '): ' .. asset)
-                        else
-                            self.app.logger:logDebug('Skipping asset with unknown asset type ID',
-                                importedAssetTypeId .. ': ' .. asset)
+                            goto continue_asset_parsing
                         end
-                        goto continue_asset_parsing
+                    else
+                        -- For same-system imports, create a dummy asset type object or assume it's valid
+                        -- File-based asset types: 1=Plugins, 2=FXChains, 3=TrackTemplates, 4=ProjectTemplates, 10=Projects
+                        targetAssetType = { 
+                            shouldMapBaseFilenames = (mappedAssetTypeId == 1 or mappedAssetTypeId == 2 or mappedAssetTypeId == 3 or mappedAssetTypeId == 4 or mappedAssetTypeId == 10)
+                        }
                     end
 
                     -- Extract basename for matching - different logic for different asset types
@@ -387,16 +395,12 @@ function PB_UserData:import(args)
                     local assetType = mappedAssetTypeId -- Use mapped asset type for processing
 
                     -- Check if this asset type is file-based
-                    local targetAssetType = self.app.engine.assetTypeManager:getAssetTypeById(assetType)
-                    local shouldMapBaseFilenames = targetAssetType and targetAssetType.shouldMapBaseFilenames
+                    local shouldMapBaseFilenames = targetAssetType.shouldMapBaseFilenames
 
                     if shouldMapBaseFilenames then
                         -- For file-based assets, extract basename from path
                         imported_basename = asset:match("([^/\\]+)$")
-                        -- For assets with <numbers (like WaveShell), remove the <numbers part
-                        if imported_basename and imported_basename:find("<") then
-                            imported_basename = imported_basename:match("^(.+)<")
-                        end
+                        -- Keep full basename including <uniqueID> for WaveShell plugins to prevent collisions
                     else
                         -- For non-file-based assets, use the full identifier minus the asset type prefix
                         imported_basename = asset:match("^%d+%s+(.+)$")
@@ -404,10 +408,7 @@ function PB_UserData:import(args)
                         -- Fallback: try to extract basename from path if the above didn't work
                         if not imported_basename then
                             imported_basename = asset:match("([^/\\]+)$")
-                            -- For assets with <numbers (like WaveShell), remove the <numbers part
-                            if imported_basename and imported_basename:find("<") then
-                                imported_basename = imported_basename:match("^(.+)<")
-                            end
+                            -- Keep full basename including <uniqueID> for WaveShell plugins to prevent collisions
                         end
                     end
 
@@ -427,11 +428,12 @@ function PB_UserData:import(args)
                                 self.app.logger:logDebug('Remapped asset ID', asset .. ' -> ' .. remappedAssetId)
                             end
 
-                            importedTaggedAssets[imported_basename] = {
+                            importedTaggedAssets[asset] = {
                                 tagIds = tag_ids,
                                 originalAssetId = asset,
                                 remappedAssetId = remappedAssetId,
-                                mappedAssetType = mappedAssetTypeId
+                                mappedAssetType = mappedAssetTypeId,
+                                basename = imported_basename  -- Store basename for later use in mapping
                             }
                         else
                             self.app.logger:logError('No valid tag IDs found in line', line)
@@ -758,9 +760,9 @@ function PB_UserData:import(args)
                     if not processedTags[tagId] then
                         local importedTag = importedTagInfo[tagId]
                         
-                        -- Enhanced findExistingTag with three-tier matching strategy
+                        -- Enhanced findExistingTag with exact hierarchical matching
                         local function findExistingTagEnhanced(importedTag, importedParentId, idMappingTable)
-                            -- Tier 1: Try exact hierarchical match (same name + same parent path)
+                            -- Try exact hierarchical match (same name + same parent path)
                             local importedPath = getCachedImportedPath(importedParentId, idMappingTable)
                             
                             -- Fast lookup by traversing the path hierarchy
@@ -779,14 +781,7 @@ function PB_UserData:import(args)
                                 return finalCandidates[importedTag.name]
                             end
                             
-                            -- Tier 2: Fallback to name-only match (same name, any parent)
-                            for candidateId, candidate in pairs(self.current.tagInfo) do
-                                if candidate.name == importedTag.name then
-                                    return candidateId -- Found tag with same name
-                                end
-                            end
-                            
-                            -- Tier 3: No match found, will create new tag
+                            -- No exact match found, will create new tag
                             return nil
                         end
                         
@@ -893,7 +888,7 @@ function PB_UserData:import(args)
 
         -- Remap tag IDs in imported tagged assets
         local remappedImportedTaggedAssets = {}
-        for basename, assetData in pairs(importedTaggedAssets) do
+        for fullAssetId, assetData in pairs(importedTaggedAssets) do
             local remappedTagIds = {}
             for _, tagId in ipairs(assetData.tagIds) do
                 if idMapping[tagId] then
@@ -901,9 +896,12 @@ function PB_UserData:import(args)
                 end
             end
             if #remappedTagIds > 0 then
-                remappedImportedTaggedAssets[basename] = {
+                remappedImportedTaggedAssets[fullAssetId] = {
                     tagIds = remappedTagIds,
-                    originalAssetId = assetData.originalAssetId
+                    originalAssetId = assetData.originalAssetId,
+                    remappedAssetId = assetData.remappedAssetId,
+                    mappedAssetType = assetData.mappedAssetType,
+                    basename = assetData.basename
                 }
             end
         end
@@ -1031,9 +1029,7 @@ function PB_UserData:import(args)
             
             -- Standard basename extraction
             local basename = normalizedPath:match("([^/]+)$")
-            if basename and basename:find("<") then
-                basename = basename:match("^(.+)<")
-            end
+            -- Keep full basename including <uniqueID> for WaveShell plugins to prevent collisions
             
             return basename
         end
@@ -1111,10 +1107,10 @@ function PB_UserData:import(args)
     end
     local count = 0
     local total = OD_TableLength(importedTaggedAssets)
-    for imported_basename, assetData in pairs(importedTaggedAssets) do
+    for fullAssetId, assetData in pairs(importedTaggedAssets) do
         count = count + 1
-        self.app.logger:logDebug('Processing imported asset: basename="' ..
-            imported_basename .. '" originalAssetId="' .. assetData.originalAssetId .. '"')
+        self.app.logger:logDebug('Processing imported asset: fullAssetId="' ..
+            fullAssetId .. '" originalAssetId="' .. assetData.originalAssetId .. '"')
 
         -- Use mapped asset type if available, fallback to extracted from original
         local assetType = assetData.mappedAssetType or tonumber(assetData.originalAssetId:match("^(%d+)"))
@@ -1124,7 +1120,7 @@ function PB_UserData:import(args)
         end
 
         if assetData.mappedAssetType then
-            self.app.logger:logDebug('Using mapped asset type', assetType .. ' for ' .. imported_basename)
+            self.app.logger:logDebug('Using mapped asset type', assetType .. ' for ' .. (assetData.basename or fullAssetId))
         end
 
         -- Use the improved mapping function that tries exact path first, then basename fallback
@@ -1140,7 +1136,7 @@ function PB_UserData:import(args)
             end
 
             self.app.logger:logDebug('✓ Mapped asset "' ..
-                imported_basename .. '" to system asset "' .. matchedSystemAssetId .. '"')
+                (assetData.basename or fullAssetId) .. '" to system asset "' .. matchedSystemAssetId .. '"')
 
             if mergeMode then
                 -- In merge mode, combine with existing tags for this asset
@@ -1185,7 +1181,7 @@ function PB_UserData:import(args)
                 -- Use the remapped asset ID from the import data
                 local unmappedAssetId = assetData.remappedAssetId or assetData.originalAssetId
                 self.app.logger:logDebug('✓ Imported unmapped asset "' ..
-                    imported_basename .. '" as "' .. unmappedAssetId .. '" (will apply when asset becomes available)')
+                    (assetData.basename or fullAssetId) .. '" as "' .. unmappedAssetId .. '" (will apply when asset becomes available)')
 
                 if mergeMode then
                     -- In merge mode, combine with existing tags for this asset
@@ -1217,7 +1213,7 @@ function PB_UserData:import(args)
 
                 local finalAssetType = mappedAssetType or assetType
                 self.app.logger:logDebug('✗ Asset "' ..
-                    imported_basename .. '" (type ' .. (finalAssetType or "unknown") .. ') not found in system assets')
+                    (assetData.basename or fullAssetId) .. '" (type ' .. (finalAssetType or "unknown") .. ') not found in system assets')
 
                 -- Get asset type name from the actual asset type definition
                 local assetTypeName = "unknown"
@@ -1233,7 +1229,7 @@ function PB_UserData:import(args)
 
                 -- Record the skipped asset with its reason
                 table.insert(skippedAssets, {
-                    basename = imported_basename,
+                    basename = assetData.basename or fullAssetId,
                     originalAssetId = assetData.originalAssetId,
                     reason = IMPORT_SKIP_REASON.ASSET_NOT_FOUND,
                     assetTypeGuess = assetTypeName
@@ -1741,8 +1737,8 @@ function PB_UserData:import(args)
     if mergeMode then
         -- In merge mode, count new tags created
         totalTagsImported = (newTagsCount or 0)
-        -- Count existing tags that were preserved (not imported)
-        totalTagsNotImported = originalTagCount - (existingTagsCount or 0)
+        -- Count existing tags that were preserved (original tags that remain unchanged)
+        totalTagsNotImported = originalTagCount
     else
         -- In replace mode, count all imported tags
         totalTagsImported = importedTagCount or 0
