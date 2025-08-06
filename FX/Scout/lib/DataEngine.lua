@@ -28,21 +28,21 @@ PB_DataEngine = {
 
         -- Validate FX-related filters
         if validatedFilter.fxFolderId and (not self.fxFolders or not self.fxFolders[validatedFilter.fxFolderId]) then
-            self.app.logger:logError('FX Folder ID ' ..
+            self.app.logger:logWarning('FX Folder ID ' ..
                 tostring(validatedFilter.fxFolderId) .. ' does not exist, ignoring filter')
             validatedFilter.fxFolderId = nil
             hasIssues = true
         end
 
         if validatedFilter.fxCategory and (not self.fxCategories or not self.fxCategories[validatedFilter.fxCategory]) then
-            self.app.logger:logError('FX Category "' ..
+            self.app.logger:logWarning('FX Category "' ..
                 tostring(validatedFilter.fxCategory) .. '" does not exist, ignoring filter')
             validatedFilter.fxCategory = nil
             hasIssues = true
         end
 
         if validatedFilter.fxDeveloper and (not self.fxDevelopers or not self.fxDevelopers[validatedFilter.fxDeveloper]) then
-            self.app.logger:logError('Developer "' ..
+            self.app.logger:logWarning('Developer "' ..
                 tostring(validatedFilter.fxDeveloper) .. '" does not exist, ignoring filter')
             validatedFilter.fxDeveloper = nil
             hasIssues = true
@@ -55,7 +55,7 @@ PB_DataEngine = {
                 if self.tags and self.tags[tagId] then
                     validTags[tagId] = positive
                 else
-                    self.app.logger:logError('Tag ID ' .. tostring(tagId) .. ' does not exist, ignoring tag filter')
+                    self.app.logger:logWarning('Tag ID ' .. tostring(tagId) .. ' does not exist, ignoring tag filter')
                     hasIssues = true
                 end
             end
@@ -93,7 +93,7 @@ PB_DataEngine = {
         -- Refresh data for each asset type that needs it
         local refreshedAssetTypes = {}
         for _, assetType in ipairs(assetTypesToRefresh) do
-            local newAssets = assetType:getDataWithLogging()
+            local newAssets = assetType:getDataWithLogging(true) -- Force refresh for project-related assets
             if newAssets then
                 -- Store the refreshed assets for later assembly
                 refreshedAssetTypes[assetType.assetTypeId] = {
@@ -622,7 +622,7 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
     for id, tagInfo in pairs(self.app.userdata.current.tagInfo) do
         -- Remove illegal parentId if it would cause a stack overflow (cycle)
         if tagInfo.parentId and tagInfo.parentId ~= TAGS_ROOT_PARENT and (tagInfo.parentId == id or hasCycle(id)) then
-            self.app.logger:logError('Cycle detected for tag "' ..
+            self.app.logger:logWarning('Cycle detected for tag "' ..
                 (self.tags[id] and self.tags[id].name or tostring(id)) .. '", removing parentId')
             self.tags[id].parentId = TAGS_ROOT_PARENT
             tagInfo.parentId = TAGS_ROOT_PARENT
@@ -633,9 +633,9 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
             self.app.logger:logDebug('Added "' ..
                 self.tags[id].name .. '" (parent: "' .. self.tags[id].parent.name .. '")')
         elseif tagInfo.parentId and tagInfo.parentId == id then
-            self.app.logger:logError('Illegal parent ID for tag "' .. self.tags[id].name .. '" (parent=own ID)')
+            self.app.logger:logWarning('Illegal parent ID for tag "' .. self.tags[id].name .. '" (parent=own ID)')
         elseif tagInfo.parentId and tagInfo.parentId ~= TAGS_ROOT_PARENT then
-            self.app.logger:logError('Illegal parent ID for tag "' .. self.tags[id].name .. '"')
+            self.app.logger:logWarning('Illegal parent ID for tag "' .. self.tags[id].name .. '"')
         else
             self.app.logger:logDebug('Added "' .. self.tags[id].name .. '"')
         end

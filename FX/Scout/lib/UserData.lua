@@ -609,9 +609,9 @@ function PB_UserData:import(args)
 
     -- Report unmapped asset types
     if #unmappedAssetTypes > 0 then
-        self.app.logger:logInfo('Found ' .. #unmappedAssetTypes .. ' unmapped asset types in imported file:')
+        self.app.logger:logWarning('Found ' .. #unmappedAssetTypes .. ' unmapped asset types in imported file:')
         for _, unmappedType in ipairs(unmappedAssetTypes) do
-            self.app.logger:logInfo('  ' ..
+            self.app.logger:logWarning('  ' ..
                 unmappedType.className ..
                 ' (imported ID: ' .. unmappedType.importedId .. ') - not available in current system')
         end
@@ -630,7 +630,7 @@ function PB_UserData:import(args)
         return { error = true, msg = errorMsg }
     elseif fileVersion == nil then
         -- No version info found - assume legacy format
-        self.app.logger:logInfo('No version information found in tags file. Assuming legacy format.')
+        self.app.logger:logWarning('No version information found in tags file. Assuming legacy format.')
     end
 
     -- Handle tagInfo based on merge mode
@@ -859,7 +859,7 @@ function PB_UserData:import(args)
             if targetAssetType then
                 assetTypeDataCache[assetType] = {
                     assetType = targetAssetType,
-                    data = targetAssetType:getDataWithLogging()
+                    data = targetAssetType:getDataWithLogging(false) -- Use cached data, don't force refresh
                 }
                 self.app.logger:logDebug('Cached asset data for asset type', assetType)
             else
@@ -1321,7 +1321,7 @@ function PB_UserData:import(args)
 
         if #issues > 0 then
             skippedPresetsCount = skippedPresetsCount + 1
-            self.app.logger:logDebug('✗ Skipped preset "' .. importedPreset.name .. '": ' .. table.concat(issues, ", "))
+            self.app.logger:logWarning('✗ Skipped preset "' .. importedPreset.name .. '": ' .. table.concat(issues, ", "))
         else
             -- Import preset
             local newId = importedId
@@ -1434,7 +1434,7 @@ function PB_UserData:import(args)
         
         if hasConflict then
             skippedquickChainPresetsCount = skippedquickChainPresetsCount + 1
-            self.app.logger:logDebug('✗ Skipped QuickChain preset "' .. importedQuickChainPreset.name .. '": ' .. conflictDetails)
+            self.app.logger:logWarning('✗ Skipped QuickChain preset "' .. importedQuickChainPreset.name .. '": ' .. conflictDetails)
             goto continue_quickchain_presets
         end
         
@@ -1457,7 +1457,7 @@ function PB_UserData:import(args)
         -- Only import the QuickChain preset if it has at least one valid item
         if #mappedItems == 0 then
             skippedquickChainPresetsCount = skippedquickChainPresetsCount + 1
-            self.app.logger:logDebug('✗ Skipped QuickChain preset "' .. importedQuickChainPreset.name .. '": no valid items found (all ' .. skippedItems .. ' items missing from system)')
+            self.app.logger:logWarning('✗ Skipped QuickChain preset "' .. importedQuickChainPreset.name .. '": no valid items found (all ' .. skippedItems .. ' items missing from system)')
             goto continue_quickchain_presets
         end
         
@@ -1596,7 +1596,7 @@ function PB_UserData:import(args)
 
     local msg = (mergeMode and T.PROGRESS.IMPORT.SUCCESS_MERGE or T.PROGRESS.IMPORT.SUCCESS_OVERWRITE):format(
         mappedAssetsCount or 0, skippedAssetsCount or 0)
-    return { success = true, msg = msg }
+        return { success = true, msg = msg }
 end
 
 function PB_UserData:toggleAssetFavorite(assetKey)

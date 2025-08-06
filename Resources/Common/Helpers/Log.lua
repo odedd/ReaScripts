@@ -5,7 +5,8 @@ OD_Logger = {
         NONE = 0,
         ERROR = 1,
         INFO = 2,
-        DEBUG = 3
+        WARNING = 3,
+        DEBUG = 4
     },
     LOG_OUTPUT = {
         CONSOLE = 0,
@@ -25,6 +26,7 @@ function OD_Logger:init()
         [self.LOG_LEVEL.NONE] = {order = self.LOG_LEVEL.NONE, name = "NONE", description = "None"},
         [self.LOG_LEVEL.ERROR] = {order = self.LOG_LEVEL.ERROR, name = "ERROR", description = "Errors only"},
         [self.LOG_LEVEL.INFO] = {order = self.LOG_LEVEL.INFO, name = "INFO", description = "Information & Errors"},
+        [self.LOG_LEVEL.WARNING] = {order = self.LOG_LEVEL.WARNING, name = "WARNING", description = "Warnings, Information & Errors"},
         [self.LOG_LEVEL.DEBUG] = {order = self.LOG_LEVEL.DEBUG, name = "DEBUG", description = "Everything (A lot!)"},
     }
     self.level = self.level or self.LOG_LEVEL.INFO
@@ -98,6 +100,9 @@ function OD_Logger:logDebug(msg, msg_val, depth_offset)
 end
 function OD_Logger:logInfo(msg, msg_val, depth_offset)
     return self:log(self.LOG_LEVEL.INFO, msg, msg_val, depth_offset)
+end
+function OD_Logger:logWarning(msg, msg_val, depth_offset)
+    return self:log(self.LOG_LEVEL.WARNING, msg, msg_val, depth_offset)
 end
 function OD_Logger:logError(msg, msg_val, depth_offset)
     return self:log(self.LOG_LEVEL.ERROR, msg, msg_val, depth_offset)

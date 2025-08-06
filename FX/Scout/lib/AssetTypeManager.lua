@@ -154,7 +154,7 @@ function AssetTypeManager:assembleAllAssets()
         -- Check if this asset type's class is visible using the class name as key
         local className = assetType.className
         if self.context.settings.current.groupVisibility[className] ~= false then
-            local assetData = assetType:getDataWithLogging()
+            local assetData = assetType:getDataWithLogging(true) -- Use cached data, don't force refresh
 
             for _, data in ipairs(assetData) do
                 local asset = assetType:assembleAsset(data)

@@ -21,8 +21,8 @@ function BaseAssetType:getData()
     error("BaseAssetType:getData() must be implemented by subclass")
 end
 
-function BaseAssetType:getDataWithLogging()
-    -- Wrapper that provides standard logging around getData()
+function BaseAssetType:getDataWithLogging(forceRefresh)
+    -- Wrapper that provides standard logging around getData() with caching support
     local className = getmetatable(self).__index == self and "BaseAssetType" or nil
     if not className then
         for globalName, globalValue in pairs(_G) do
@@ -33,13 +33,34 @@ function BaseAssetType:getDataWithLogging()
         end
     end
 
-    self.context.logger:logDebug('-- ' .. (className or "Unknown") .. ':getData()')
+    -- Check if data is already cached and forceRefresh is not requested
+    if not forceRefresh and self._cachedData and #self._cachedData > 0 then
+        local count = #self._cachedData
+        local itemType = (self.group or self.name or "items"):lower()
+        self.context.logger:logDebug('-- ' .. (className or "Unknown") .. ':getData() using cached data')
+        self.context.logger:logInfo('Found ' .. count .. ' ' .. itemType .. ' (cached)')
+        return self._cachedData
+    end
+
+    self.context.logger:logDebug('-- ' .. (className or "Unknown") .. ':getData()' .. (forceRefresh and ' (forced refresh)' or ''))
     local data = self:getData()
     local count = data and #data or 0
     -- Use group name (plural) for logging instead of singular name
     local itemType = (self.group or self.name or "items"):lower()
     self.context.logger:logInfo('Found ' .. count .. ' ' .. itemType)
+    
+    -- Cache the data for future use
+    self._cachedData = data
     return data
+end
+
+function BaseAssetType:clearCache()
+    -- Clear cached data to force refresh on next call
+    self._cachedData = nil
+    -- Also clear legacy self.data cache if it exists (for PluginAssetType compatibility)
+    if self.data then
+        self.data = nil
+    end
 end
 
 function BaseAssetType:assembleAsset(assetData)

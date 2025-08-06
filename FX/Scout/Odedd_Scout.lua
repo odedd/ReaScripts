@@ -32,7 +32,7 @@ else
     dofile(p .. '../../Resources/Common/Common.lua')
 end
 
-LOG_LEVEL = OD_Logger.LOG_LEVEL.NONE
+LOG_LEVEL = OD_Logger.LOG_LEVEL.WARNING
 
 OD_Init()
 
@@ -851,6 +851,7 @@ RunApp = function()
                     app.settings.current.showQuickChain = true
                 end
             end
+        
         }
         app.guiHelpers = {
             initFrame = function(ctx)
@@ -3088,12 +3089,12 @@ RunApp = function()
 
                         -- Convert Folders to Tags button
                         if app.gui:setting('button', T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.LABEL, T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.HINT, nil, { label = T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.BUTTON_LABEL, divideWidth = 2 }) then
-                            app.temp.progressCoroutine = coroutine.create(app.userdata.convertFoldersToTags)
+                            app.temp.progressCoroutine = OD_CreateSafeCoroutine(app.userdata.convertFoldersToTags, app.logger.level > app.logger.LOG_LEVEL.NONE)
                         end
 
                         -- Convert Categories to Tags button
                         if app.gui:setting('button', T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.LABEL, T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.HINT, nil, { label = T.SETTINGS.CONVERT_CATEGORIES_TO_TAGS.BUTTON_LABEL }, true) then
-                            app.temp.progressCoroutine = coroutine.create(app.userdata.convertCategoriesToTags)
+                            app.temp.progressCoroutine = OD_CreateSafeCoroutine(app.userdata.convertCategoriesToTags, app.logger.level > app.logger.LOG_LEVEL.NONE)
                         end
 
                         -- Import button
@@ -3106,7 +3107,7 @@ RunApp = function()
                                 'scout')
                             if rv and filename then
                                 app.temp.coroutineArgs = { filename = filename, mergeMode = mergeMode }
-                                app.temp.progressCoroutine = coroutine.create(app.userdata.import)
+                                app.temp.progressCoroutine = OD_CreateSafeCoroutine(app.userdata.import, app.logger.level > app.logger.LOG_LEVEL.NONE)
                             end
                         end
 
@@ -4187,19 +4188,24 @@ RunApp = function()
                             end
 
                             if coroutine.status(app.temp.progressCoroutine) == "suspended" then
-                                local _, rv = coroutine
+                                local success, rv = coroutine
                                     .resume(app.temp.progressCoroutine, app.userdata,
                                         app.temp.coroutineArgs)
-                                if rv.progress then
+                                if rv and rv.progress then
                                     ImGui.Text(ctx, rv.msg)
                                     ImGui.ProgressBar(ctx, (rv.index or 0) / (rv.total or 1), nil, nil,
                                         ("%s/%s"):format(rv.index, rv.total))
-                                elseif rv.success or rv.error then
+                                elseif coroutine.status(app.temp.progressCoroutine) == "dead" then
                                     releaseCoroutine()
                                     ImGui.CloseCurrentPopup(ctx)
-                                    app.flow.msg(rv.msg)
+                                    if rv.error then
+                                        app.flow.msg("Operation failed:\n" .. rv.msg)
+                                    elseif rv then
+                                        app.flow.msg(rv.msg or "Operation completed")
+                                    end
                                 end
                             elseif coroutine.status(app.temp.progressCoroutine) == "dead" then
+                                -- This should rarely happen now since we handle completion above
                                 ImGui.CloseCurrentPopup(ctx)
                                 releaseCoroutine()
                             end
