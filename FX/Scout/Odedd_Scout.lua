@@ -1344,9 +1344,9 @@ RunApp = function()
                                 ImGui.SameLine(ctx, 0, spacingX * 2)
                                 if app.guiHelpers.tinyIcon(ctx, 'removeFilter', ICONS.CLOSE, nil, nil, T.HINTS.ACTIVE_FILTER_REMOVE, 2) then
                                     if filter.type == FILTER_TYPES.TAG then
-                                        app.flow.filterResults({ removeTags = { filter.item.id } })
+                                        app.flow.filterResults({ removeTags = { filter.item.id } }, false, true)
                                     else
-                                        app.flow.filterResults(filter.allQuery)
+                                        app.flow.filterResults(filter.allQuery, false, true)
                                     end
                                 end
                                 ImGui.SetCursorScreenPos(ctx, x2, y2)

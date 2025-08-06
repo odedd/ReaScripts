@@ -719,123 +719,170 @@ function PB_UserData:import(args)
             return nil
         end
 
-        -- Helper function to ensure parent hierarchy exists and return the parent ID
-        local function ensureParentExists(importedParentId, idMappingTable, nextNewIdRef, visitedIds)
-            if not importedParentId or importedParentId == -1 or importedParentId == TAGS_ROOT_PARENT then
-                return TAGS_ROOT_PARENT
-            end
-
-            -- Prevent infinite recursion by tracking visited IDs
-            visitedIds = visitedIds or {}
-            if visitedIds[importedParentId] then
-                self.app.logger:logError('Circular reference detected for parent tag ID', importedParentId)
-                return TAGS_ROOT_PARENT
-            end
-            visitedIds[importedParentId] = true
-
-            -- Check if parent is already mapped
-            if idMappingTable[importedParentId] then
-                return idMappingTable[importedParentId]
-            end
-
-            -- Parent doesn't exist yet, we need to create it
-            local importedParent = importedTagInfo[importedParentId]
-            if not importedParent then
-                self.app.logger:logError('Imported parent tag not found', importedParentId)
-                return TAGS_ROOT_PARENT
-            end
-
-            -- Recursively ensure the parent's parent exists
-            local grandParentId = ensureParentExists(importedParent.parentId, idMappingTable, nextNewIdRef, visitedIds)
-
-            -- Check if this parent already exists in the target system by looking at already mapped parents only
-            local existingParentId = nil
-            if grandParentId then
-                -- Build the imported parent path correctly by only using already mapped parents
-                for existingTagId, existingTag in pairs(self.current.tagInfo) do
-                    if existingTag.name == importedParent.name and existingTag.parentId == grandParentId then
-                        existingParentId = existingTagId
-                        break
-                    end
-                end
-            end
-
-            if existingParentId then
-                idMappingTable[importedParentId] = existingParentId
-                return existingParentId
-            end
-
-            -- Create the parent tag
-            local newParentId = nextNewIdRef[1]
-            nextNewIdRef[1] = nextNewIdRef[1] + 1
-
-            self.current.tagInfo[newParentId] = {
-                name = importedParent.name,
-                parentId = grandParentId,
-                order = importedParent.order or 0
-            }
-
-            idMappingTable[importedParentId] = newParentId
-            self.app.logger:logDebug('Created parent tag "' .. importedParent.name .. '" with ID', newParentId)
-
-            return newParentId
-        end
-
         -- Merge mode: find existing tags with same name and parent path, create hierarchy as needed
         -- idMapping already declared at higher scope for use in preset processing
         local nextNewIdRef = { self.current.tagIdCount + 1 } -- Use table for reference
         -- newTagsCount and existingTagsCount declared at higher scope for reporting
-        for importedId, importedTag in pairs(importedTagInfo) do
-            -- First ensure the parent hierarchy exists
-            local mappedParentId = ensureParentExists(importedTag.parentId, idMapping, nextNewIdRef, {})
-
-            -- Look for existing tag with same name and parent path using optimized lookup
-            local existingId = findExistingTag(importedTag, importedTag.parentId, idMapping)
-
-            if existingId then
-                -- Tag exists, use existing ID
-                idMapping[importedId] = existingId
-                existingTagsCount = existingTagsCount + 1
-                -- Defer expensive string operations for debug logging
-                if self.app.logger and self.app.logger.logDebug then
-                    local pathStr = table.concat(getCachedImportedPath(importedTag.parentId, idMapping), " > ")
-                    self.app.logger:logDebug('Tag "' ..
-                        importedTag.name ..
-                        '" at path "' .. pathStr .. '" already exists, mapping ' .. importedId .. ' -> ' .. existingId)
+        
+        -- Helper function to process tags in hierarchical dependency order (parents before children)
+        local function processTagsHierarchically()
+            local processedTags = {} -- Set of processed tag IDs
+            local processingQueue = {} -- List of tags ready to process (dependencies resolved)
+            
+            -- Build dependency map: child -> parent
+            local childToParent = {}
+            local parentToChildren = {}
+            for tagId, tag in pairs(importedTagInfo) do
+                if tag.parentId and tag.parentId ~= TAGS_ROOT_PARENT then
+                    childToParent[tagId] = tag.parentId
+                    if not parentToChildren[tag.parentId] then
+                        parentToChildren[tag.parentId] = {}
+                    end
+                    table.insert(parentToChildren[tag.parentId], tagId)
                 end
-            else
-                -- New tag, assign new ID
-                idMapping[importedId] = nextNewIdRef[1]
-                self.current.tagInfo[nextNewIdRef[1]] = {
-                    name = importedTag.name,
-                    parentId = mappedParentId,
-                    order = importedTag.order or 0
-                }
-                
-                -- Update the lookup index with the new tag
-                if not existingTagsByParent[mappedParentId] then
-                    existingTagsByParent[mappedParentId] = {}
-                end
-                existingTagsByParent[mappedParentId][importedTag.name] = nextNewIdRef[1]
-                
-                newTagsCount = newTagsCount + 1
-                -- Defer expensive string operations for debug logging
-                if self.app.logger and self.app.logger.logDebug then
-                    local pathStr = table.concat(getTagPath(mappedParentId, self.current.tagInfo, nil, {}), " > ")
-                    self.app.logger:logDebug(
-                        'Adding new tag "' .. importedTag.name .. '" at path "' .. pathStr .. '" with ID', nextNewIdRef[1])
-                end
-                nextNewIdRef[1] = nextNewIdRef[1] + 1
             end
-            local count = newTagsCount + existingTagsCount
-            if count % YIELD_FREQUENCY == 0 or count == sectionCounts.tagInfo then
-                coroutine.yield({
-                    progress = true,
-                    msg = T.PROGRESS.IMPORT.MAPPING_TAGS,
-                    index = count,
-                    total = sectionCounts.tagInfo
-                })
+            
+            -- Find all root tags (no dependencies) to start processing
+            for tagId, tag in pairs(importedTagInfo) do
+                if not tag.parentId or tag.parentId == TAGS_ROOT_PARENT then
+                    table.insert(processingQueue, tagId)
+                end
             end
+            
+            -- Process tags level by level
+            while #processingQueue > 0 or OD_TableLength(processedTags) < OD_TableLength(importedTagInfo) do
+                local nextQueue = {}
+                
+                -- Process all tags in current queue
+                for _, tagId in ipairs(processingQueue) do
+                    if not processedTags[tagId] then
+                        local importedTag = importedTagInfo[tagId]
+                        
+                        -- Enhanced findExistingTag with three-tier matching strategy
+                        local function findExistingTagEnhanced(importedTag, importedParentId, idMappingTable)
+                            -- Tier 1: Try exact hierarchical match (same name + same parent path)
+                            local importedPath = getCachedImportedPath(importedParentId, idMappingTable)
+                            
+                            -- Fast lookup by traversing the path hierarchy
+                            local currentParentId = TAGS_ROOT_PARENT
+                            for _, pathSegment in ipairs(importedPath) do
+                                local candidates = existingTagsByParent[currentParentId]
+                                if not candidates or not candidates[pathSegment] then
+                                    break -- Path doesn't exist, move to tier 2
+                                end
+                                currentParentId = candidates[pathSegment]
+                            end
+                            
+                            -- Check if the final tag name exists under this parent (exact hierarchy match)
+                            local finalCandidates = existingTagsByParent[currentParentId]
+                            if finalCandidates and finalCandidates[importedTag.name] then
+                                return finalCandidates[importedTag.name]
+                            end
+                            
+                            -- Tier 2: Fallback to name-only match (same name, any parent)
+                            for candidateId, candidate in pairs(self.current.tagInfo) do
+                                if candidate.name == importedTag.name then
+                                    return candidateId -- Found tag with same name
+                                end
+                            end
+                            
+                            -- Tier 3: No match found, will create new tag
+                            return nil
+                        end
+                        
+                        -- First ensure the parent hierarchy exists (only if dependencies are resolved)
+                        local mappedParentId = TAGS_ROOT_PARENT
+                        if importedTag.parentId and importedTag.parentId ~= TAGS_ROOT_PARENT then
+                            if idMapping[importedTag.parentId] then
+                                mappedParentId = idMapping[importedTag.parentId]
+                            else
+                                -- Parent not processed yet, skip this tag for now
+                                table.insert(nextQueue, tagId)
+                                goto continue_tag_processing
+                            end
+                        end
+                        
+                        -- Look for existing tag with enhanced three-tier matching
+                        local existingId = findExistingTagEnhanced(importedTag, importedTag.parentId, idMapping)
+                        
+                        if existingId then
+                            -- Tag exists, use existing ID
+                            idMapping[tagId] = existingId
+                            existingTagsCount = existingTagsCount + 1
+                            -- Defer expensive string operations for debug logging
+                            if self.app.logger and self.app.logger.logDebug then
+                                local pathStr = table.concat(getCachedImportedPath(importedTag.parentId, idMapping), " > ")
+                                self.app.logger:logDebug('Tag "' ..
+                                    importedTag.name ..
+                                    '" at path "' .. pathStr .. '" already exists, mapping ' .. tagId .. ' -> ' .. existingId)
+                            end
+                        else
+                            -- New tag, assign new ID
+                            idMapping[tagId] = nextNewIdRef[1]
+                            self.current.tagInfo[nextNewIdRef[1]] = {
+                                name = importedTag.name,
+                                parentId = mappedParentId,
+                                order = importedTag.order or 0
+                            }
+                            
+                            -- Update the lookup index with the new tag
+                            if not existingTagsByParent[mappedParentId] then
+                                existingTagsByParent[mappedParentId] = {}
+                            end
+                            existingTagsByParent[mappedParentId][importedTag.name] = nextNewIdRef[1]
+                            
+                            newTagsCount = newTagsCount + 1
+                            -- Defer expensive string operations for debug logging
+                            if self.app.logger and self.app.logger.logDebug then
+                                local pathStr = table.concat(getTagPath(mappedParentId, self.current.tagInfo, nil, {}), " > ")
+                                self.app.logger:logDebug(
+                                    'Adding new tag "' .. importedTag.name .. '" at path "' .. pathStr .. '" with ID', nextNewIdRef[1])
+                            end
+                            nextNewIdRef[1] = nextNewIdRef[1] + 1
+                        end
+                        
+                        processedTags[tagId] = true
+                        
+                        -- Add children of this tag to next processing queue
+                        if parentToChildren[tagId] then
+                            for _, childId in ipairs(parentToChildren[tagId]) do
+                                if not processedTags[childId] then
+                                    table.insert(nextQueue, childId)
+                                end
+                            end
+                        end
+                        
+                        ::continue_tag_processing::
+                    end
+                end
+                
+                processingQueue = nextQueue
+                
+                -- Safety valve: prevent infinite loop if there are unresolvable dependencies
+                if #processingQueue == 0 and OD_TableLength(processedTags) < OD_TableLength(importedTagInfo) then
+                    -- Find unprocessed tags and process them (likely orphaned)
+                    for tagId, _ in pairs(importedTagInfo) do
+                        if not processedTags[tagId] then
+                            table.insert(processingQueue, tagId)
+                            self.app.logger:logWarning('Processing orphaned tag with unresolved dependencies: ' .. (importedTagInfo[tagId].name or tagId))
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- Process all tags in hierarchical order
+        processTagsHierarchically()
+        
+        -- Progress tracking for the hierarchical processing
+        local count = newTagsCount + existingTagsCount
+        if count % YIELD_FREQUENCY == 0 or count == sectionCounts.tagInfo then
+            coroutine.yield({
+                progress = true,
+                msg = T.PROGRESS.IMPORT.MAPPING_TAGS,
+                index = count,
+                total = sectionCounts.tagInfo
+            })
         end
 
         -- Update idCount
