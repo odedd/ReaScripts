@@ -1782,9 +1782,9 @@ RunApp = function()
                                                     if j > 1 then
                                                         ImGui.Text(ctx, ' ')
                                                         ImGui.SameLine(ctx)
-                                                        app.gui:pushColors(app.gui.st.col.search.secondaryResult)
+                                                        app.gui:pushColors(st.color or app.gui.st.col.search.secondaryResult)
                                                     else
-                                                        app.gui:pushColors(app.gui.st.col.search.mainResult)
+                                                        app.gui:pushColors(st.color or app.gui.st.col.search.mainResult)
                                                     end
                                                     local curIndex = 1
                                                     for _, highlight in OD_PairsByOrder(result.foundIndexes[j] or {}) do
@@ -1807,10 +1807,10 @@ RunApp = function()
                                                         ImGui.Text(ctx, txt)
                                                         ImGui.SameLine(ctx)
                                                     end
-                                                    if j > 1 then
-                                                        app.gui:popColors(app.gui.st.col.search.secondaryResult)
+                                                    if j < 1 then
+                                                        app.gui:popColors(st.color or app.gui.st.col.search.secondaryResult)
                                                     else
-                                                        app.gui:popColors(app.gui.st.col.search.mainResult)
+                                                        app.gui:popColors(st.color or app.gui.st.col.search.mainResult)
                                                     end
                                                 end
                                             end
@@ -1837,16 +1837,6 @@ RunApp = function()
                                                     end
                                                 end
                                                 ImGui.Text(ctx, text)
-                                                app.gui:popColors(app.gui.st.col.search.thirdResult)
-                                            end
-                                            if (result.parents and #result.parents > 0) then
-                                                app.gui:pushColors(app.gui.st.col.search.thirdResult)
-                                                local text = ' < '
-                                                for i = #result.parents, 1, -1 do
-                                                    local parent = result.parents[i]
-                                                    text = text .. parent.name .. ' < '
-                                                end
-                                                ImGui.Text(ctx, text:sub(1, -3))
                                                 app.gui:popColors(app.gui.st.col.search.thirdResult)
                                             end
                                             ImGui.PopID(ctx)

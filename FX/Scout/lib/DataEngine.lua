@@ -267,7 +267,6 @@ PB_DataEngine = {
     end,
     lastGuids = {}, -- use to check if a track has been removed or added
     init = function(self, forceRebuildCache)
-
         self.app.logger:logDebug('-- PB_DataEngine.init()')
         self.currentProjectStateChangeCount = r.GetProjectStateChangeCount(0)
         self.previousProjectStateChangeCount = self.currentProjectStateChangeCount
@@ -655,18 +654,18 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
                     for _, descendant in ipairs(tag.descendants) do
                         descendant.open = state
                         descendant.app.userdata:toggleTagOpen(descendant.id, state, false) -- Don't persist individually
-                        toggleDescendantsRecursive(descendant) -- Recursively process nested descendants
+                        toggleDescendantsRecursive(descendant)                             -- Recursively process nested descendants
                     end
                 end
             end
-            
+
             -- Toggle all descendants
             toggleDescendantsRecursive(self)
-            
+
             -- Also close the parent tag itself
             self.open = state
             self.app.userdata:toggleTagOpen(self.id, state, false) -- Don't persist individually
-            
+
             -- Persist only once at the end if requested
             if persist then
                 self.app.userdata:save()
@@ -680,18 +679,18 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
                     table.insert(children, tag)
                 end
             end
-            
+
             -- Sort children alphabetically by name (case-insensitive)
             table.sort(children, function(a, b)
                 return string.lower(a.name) < string.lower(b.name)
             end)
-            
+
             -- Reorder the children by updating their order values in tagInfo
             for i, child in ipairs(children) do
                 child.order = i
                 self.app.userdata.current.tagInfo[child.id].order = i
             end
-            
+
             -- Persist only once at the end if requested
             if persist then
                 self.app.userdata:save()
@@ -818,7 +817,7 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
 
             -- Insert self at the correct position
             if position == "inside" then
-                table.insert(filteredSiblings, self.id)  -- Insert at end (last position)
+                table.insert(filteredSiblings, self.id) -- Insert at end (last position)
             elseif position == "before" then
                 -- If targetIndex is nil, insert at end (shouldn't happen, but fallback)
                 table.insert(filteredSiblings, targetIndex or (#filteredSiblings + 1), self.id)
@@ -900,7 +899,7 @@ PB_DataEngine.getMagicWords = function(self)
             self.magicWords[quickChain.word:upper()] = { type = MAGIC_WORD_TYPE.QUICK_CHAIN, quickChain = quickChain }
         end
     end
-    
+
     local count = 0
     for _ in pairs(self.magicWords) do
         count = count + 1
@@ -966,7 +965,7 @@ PB_DataEngine.getPresets = function(self, reassemblePresetFilterAssets)
 
     -- Update the filter menu whenever presets change
     self:updatePresetsFilterMenu()
-    
+
     -- Always refresh magic words when presets change since magic words depend on presets
     self:getMagicWords()
 end
@@ -1296,6 +1295,16 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
             flattenTagsOfParent(TAGS_ROOT_PARENT)
 
             for tagId, tag in pairs(flatTags) do
+                local parentNames
+                if (tag.parents and #tag.parents > 0) then
+                    local parents = {}
+                    for i = #tag.parents, 1, -1 do
+                        local parent = tag.parents[i]
+                        table.insert(parents, parent.name)
+                    end
+                    parentNames = '< ' .. (table.concat(parents, ' < '))
+                end
+
                 local tagAsset = {
                     engine = self,
                     app = self.app, -- Add app context for executeFilter
@@ -1310,6 +1319,9 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                             context, count, tag.name, T.FILTER_NAMES_PLURAL[FILTER_TYPES.TAG])
                     end
                 }
+                if parentNames then
+                    table.insert(tagAsset.searchText, { text = parentNames, color =  self.app.gui.st.col.search.thirdResult})
+                end
                 -- Add execute function directly to the asset
                 tagAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore)
                     return filterExecuteFunction(asset, mods | context)
@@ -1764,18 +1776,18 @@ end
 -- Get QuickChain Presets from UserData
 PB_DataEngine.getquickChainPresets = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.getquickChainPresets()')
-    
+
     -- QuickChain Presets are stored in UserData, so just return them
     local quickChainPresets = self.app.userdata.current.quickChainPresets or {}
     local count = 0
     for _ in pairs(quickChainPresets) do
         count = count + 1
     end
-    
+
     self.app.logger:logDebug('Found ' .. count .. ' QuickChain Presets')
-    
+
     -- Always refresh magic words when QuickChain presets change since magic words depend on them
     self:getMagicWords()
-    
+
     return quickChainPresets
 end
