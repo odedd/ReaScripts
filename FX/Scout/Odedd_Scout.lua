@@ -92,23 +92,22 @@ RunApp = function()
         local settings = PB_Settings:new({})
         local userdata = PB_UserData:new({})
 
-        local profiler
-        if logger.profile then
-            profiler = dofile(reaper.GetResourcePath() ..
-                '/Scripts/ReaTeam Scripts/Development/cfillion_Lua profiler.lua')
-            reaper.defer = profiler.defer
-            profiler.attachToWorld() -- after all functions have been defined
-            profiler.run()
-            profiler.start()
-        end
-
-
         app:connect('settings', settings)
         app:connect('userdata', userdata)
         app.settings:load({ 'fxTypeOrder', 'groupOrder' })
         app.userdata:load()
         app.gui:init();
 
+        local profiler
+        if logger.profile then
+            profiler = dofile(reaper.GetResourcePath() ..
+                '/Scripts/ReaTeam Scripts/Development/cfillion_Lua profiler.lua')
+            reaper.defer = profiler.defer
+            -- profiler.attachToWorld() -- after all functions have been defined
+            profiler.attachToWorld() -- after all functions have been defined
+            profiler.run()
+            app.profiler = profiler
+        end
 
         app.temp.focusWindowOn = 3
         ---------------------------------------
@@ -1783,7 +1782,7 @@ RunApp = function()
                                                         ImGui.Text(ctx, ' ')
                                                         ImGui.SameLine(ctx)
                                                         app.gui:pushColors(st.color or
-                                                        app.gui.st.col.search.secondaryResult)
+                                                            app.gui.st.col.search.secondaryResult)
                                                     else
                                                         app.gui:pushColors(st.color or app.gui.st.col.search.mainResult)
                                                     end
@@ -1810,7 +1809,7 @@ RunApp = function()
                                                     end
                                                     if j < 1 then
                                                         app.gui:popColors(st.color or
-                                                        app.gui.st.col.search.secondaryResult)
+                                                            app.gui.st.col.search.secondaryResult)
                                                     else
                                                         app.gui:popColors(st.color or app.gui.st.col.search.mainResult)
                                                     end
@@ -2787,15 +2786,15 @@ RunApp = function()
                         if app.temp.clearSearchInputText then
                             inputFlags = inputFlags | ImGui.InputTextFlags_CallbackAlways
                             callback = app.gui.clearInputIfNeeded
-                        -- if clear was sent there's no need to reject character
+                            -- if clear was sent there's no need to reject character
                         elseif app.temp.shortcutPressed then
                             inputFlags = inputFlags | ImGui.InputTextFlags_CallbackCharFilter
                             callback = app.gui.rejectCharacter
                             app.temp.shortcutPressed = nil
                         end
                         rv, app.temp.searchInput = ImGui.InputTextWithHint(ctx, "##searchInput" .. app.temp.searchMode,
-                        T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput,
-                        inputFlags, callback)
+                            T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput,
+                            inputFlags, callback)
                         if not app.temp.selectSearchInputText then -- wait 1 frame for selection to work
                             app.temp.lastSearchMode = app.temp.searchMode
                             app.temp.selectSearchInputTextOnNextFrame = nil
@@ -3057,8 +3056,12 @@ RunApp = function()
                                 'scout')
                             if rv and filename then
                                 app.temp.coroutineArgs = { filename = filename, mergeMode = mergeMode }
-                                app.temp.progressCoroutine = OD_CreateSafeCoroutine(app.userdata.import,
-                                    app.logger.level > app.logger.LOG_LEVEL.NONE)
+                                if app.logger.profile then
+                                    app.userdata:import(app.temp.coroutineArgs)
+                                else
+                                    app.temp.progressCoroutine = OD_CreateSafeCoroutine(app.userdata.import,
+                                        app.logger.level > app.logger.LOG_LEVEL.NONE)
+                                end
                             end
                         end
 
@@ -4157,6 +4160,7 @@ RunApp = function()
                                 local success, rv = coroutine
                                     .resume(app.temp.progressCoroutine, app.userdata,
                                         app.temp.coroutineArgs)
+
                                 if rv and rv.progress then
                                     ImGui.Text(ctx, rv.msg)
                                     ImGui.ProgressBar(ctx, (rv.index or 0) / (rv.total or 1), nil, nil,
@@ -4319,7 +4323,6 @@ RunApp = function()
         function app.loop()
             local ctx = app.gui.ctx
 
-
             app.hide = false
             app.guiHelpers.initFrame(ctx)
             app.flow.checkExternalCommand() -- should happen before setting 'RUNNING' state so that external commmand can asses if the script is running
@@ -4345,13 +4348,15 @@ RunApp = function()
                 app.gui:pushColors(app.gui.st.col.main)
                 app.gui:pushStyles(app.gui.st.vars.main)
                 ImGui.PushFont(ctx, app.gui.st.fonts.default)
-
+                -- if app.logger.profile then profiler.start() end
                 app.draw.mainWindow(ctx)
+                -- if app.logger.profile then profiler.stop() end
 
                 ImGui.PopFont(ctx)
                 app.gui:popColors(app.gui.st.col.main)
                 app.gui:popStyles(app.gui.st.vars.main)
             end
+
 
             if not app.hide and not app.hardExit then
                 PDefer(app.loop)
@@ -4395,10 +4400,6 @@ RunApp = function()
 
         function Release()
             app.logger:logDebug('Release')
-            if app.logger.profile then
-                -- profiler.
-            end
-            -- if app.logger.profile then r.ShowConsoleMsg(Profile.report(10)) end
 
             r.SetExtState(Scr.ext_name, 'RUNNING', '', false)
         end
@@ -4436,7 +4437,6 @@ RunApp = function()
             app.cacheHelpers:invalidateAllAssetSearchCaches()
         end
         app.flow.setPage(APP_PAGE.SEARCH)
-        if app.logger.profile then profiler.stop() end
         PDefer(app.loop)
     end
 end

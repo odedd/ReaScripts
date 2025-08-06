@@ -166,11 +166,11 @@ function PB_UserData:export(filename)
             table.insert(escapedItems, OD_EscapeCSV(item))
         end
         local itemsString = table.concat(escapedItems, ',')
-        
+
         local sanitizedName = OD_EscapeCSV(quickChainPreset.name)
         local sanitizedWord = OD_EscapeCSV(quickChainPreset.word or '')
         local sanitizedItems = OD_EscapeCSV(itemsString)
-        
+
         file:write(string.format('%d,%s,%s,%s\n', id, sanitizedName, sanitizedWord, sanitizedItems))
         quickChainPresetsCount = quickChainPresetsCount + 1
     end
@@ -195,18 +195,25 @@ function PB_UserData:export(filename)
         tagCount ..
         ' tags, ' ..
         assetCount ..
-        ' tagged assets, ' .. presetsCount .. ' presets, ' .. quickChainPresetsCount .. ' QuickChain Presets, and ' .. favoritesCount .. ' favorites to ' .. filename)
+        ' tagged assets, ' ..
+        presetsCount ..
+        ' presets, ' ..
+        quickChainPresetsCount .. ' QuickChain Presets, and ' .. favoritesCount .. ' favorites to ' .. filename)
 
     return true
 end
 
 function PB_UserData:import(args)
+    if self.app.logger.profile then self.app.profiler.start() end
     -- mergeMode: true = merge with existing tags, false = replace all tags (default: false)
     args = args or {}
     local filename = args.filename or ''
     local mergeMode = args.mergeMode or false
 
-    self.app.logger:logDebug('-- PB_UserData:import() from ' .. filename .. ' mergeMode: ' .. tostring(mergeMode))
+    -- Only perform expensive string concatenation for debug logging if needed
+    if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+        self.app.logger:logDebug('-- PB_UserData:import() from ' .. filename .. ' mergeMode: ' .. tostring(mergeMode))
+    end
 
     -- Check for AssetTypeManager that could cause "attempt to index a nil value" errors
     if not self.app.engine.assetTypeManager then
@@ -275,13 +282,21 @@ function PB_UserData:import(args)
     local section = nil
     local importedTagInfo = {}
     local importedTaggedAssets = {}
-    local importedPresets = {}    -- Track imported presets
+    local importedPresets = {}           -- Track imported presets
     local importedquickChainPresets = {} -- Track imported QuickChain Presets
-    local importedFavorites = {}  -- Track imported favorites
-    local importedAssetTypes = {} -- Map of imported asset type ID -> class name
-    local assetTypeMapping = {}   -- Map of imported asset type ID -> current system asset type ID
-    local unmappedAssetTypes = {} -- Track asset types that couldn't be mapped
+    local importedFavorites = {}         -- Track imported favorites
+    local importedAssetTypes = {}        -- Map of imported asset type ID -> class name
+    local assetTypeMapping = {}          -- Map of imported asset type ID -> current system asset type ID
+    local unmappedAssetTypes = {}        -- Track asset types that couldn't be mapped
     local fileVersion = nil
+
+    -- Pre-compile ALL patterns once before the parsing loop to avoid exponential recreation
+    local colonPattern = ":[^:]*$"
+    local assetTypePattern = "^(%d+)"
+    local fullPathPattern = "^%d+%s+(.+)$"
+    local basenamePattern = "([^/\\]+)$"
+    local tagPattern = "(%d+)"
+    local replacePatternCache = {} -- Cache for dynamic replacement patterns
 
     self.app.logger:logDebug('Parsing tags file...')
 
@@ -354,14 +369,14 @@ function PB_UserData:import(args)
         elseif section == "taggedAssets" and line ~= "" then
             -- First unescape the entire line, then find the last colon
             local unescapedLine = OD_UnescapeCSV(line)
-            local colonPos = unescapedLine:find(":[^:]*$") -- Find last colon
+            local colonPos = unescapedLine:find(colonPattern) -- Find last colon
             if colonPos then
                 local asset = unescapedLine:sub(1, colonPos - 1)
                 local tagsStr = unescapedLine:sub(colonPos + 1)
 
                 if asset and tagsStr and asset ~= "" and tagsStr ~= "" then
-                    -- Extract asset type ID from imported asset
-                    local importedAssetTypeId = tonumber(asset:match("^(%d+)"))
+                    -- Extract asset type ID from imported asset (cached extraction)
+                    local importedAssetTypeId = tonumber(asset:match(assetTypePattern))
                     if not importedAssetTypeId then
                         self.app.logger:logError('Could not extract asset type ID from asset', asset)
                         goto continue_asset_parsing
@@ -369,11 +384,11 @@ function PB_UserData:import(args)
 
                     -- Use the mapped asset type if available, otherwise use the original (for same-system imports)
                     local mappedAssetTypeId = assetTypeMapping[importedAssetTypeId] or importedAssetTypeId
-                    
+
                     -- Verify the asset type exists in the current system (skip validation for same-system imports)
                     local targetAssetType = nil
                     local isSameSystemImport = (next(assetTypeMapping) == nil) -- Empty mapping means same system
-                    
+
                     if not isSameSystemImport then
                         targetAssetType = self.app.engine.assetTypeManager:getAssetTypeById(mappedAssetTypeId)
                         if not targetAssetType then
@@ -385,7 +400,7 @@ function PB_UserData:import(args)
                     else
                         -- For same-system imports, create a dummy asset type object or assume it's valid
                         -- File-based asset types: 1=Plugins, 2=FXChains, 3=TrackTemplates, 4=ProjectTemplates, 10=Projects
-                        targetAssetType = { 
+                        targetAssetType = {
                             shouldMapBaseFilenames = (mappedAssetTypeId == 1 or mappedAssetTypeId == 2 or mappedAssetTypeId == 3 or mappedAssetTypeId == 4 or mappedAssetTypeId == 10)
                         }
                     end
@@ -399,33 +414,46 @@ function PB_UserData:import(args)
 
                     if shouldMapBaseFilenames then
                         -- For file-based assets, extract basename from path
-                        imported_basename = asset:match("([^/\\]+)$")
+                        imported_basename = asset:match(basenamePattern)
                         -- Keep full basename including <uniqueID> for WaveShell plugins to prevent collisions
                     else
                         -- For non-file-based assets, use the full identifier minus the asset type prefix
-                        imported_basename = asset:match("^%d+%s+(.+)$")
+                        imported_basename = asset:match(fullPathPattern)
 
                         -- Fallback: try to extract basename from path if the above didn't work
                         if not imported_basename then
-                            imported_basename = asset:match("([^/\\]+)$")
+                            imported_basename = asset:match(basenamePattern)
                             -- Keep full basename including <uniqueID> for WaveShell plugins to prevent collisions
                         end
                     end
 
                     if imported_basename then
+                        -- Use efficient direct table building instead of table.insert in loop
                         local tag_ids = {}
-                        for tag_id in tagsStr:gmatch("(%d+)") do
+                        local tag_count = 0
+                        
+                        -- Use efficient pattern matching for tag extraction
+                        for tag_id in tagsStr:gmatch(tagPattern) do
                             local numericId = tonumber(tag_id)
                             if numericId then
-                                table.insert(tag_ids, numericId)
+                                tag_count = tag_count + 1
+                                tag_ids[tag_count] = numericId
                             end
                         end
-                        if #tag_ids > 0 then
+                        if tag_count > 0 then
                             -- Create remapped asset ID with the current system's asset type ID
                             local remappedAssetId = asset
                             if importedAssetTypeId and mappedAssetTypeId and importedAssetTypeId ~= mappedAssetTypeId then
-                                remappedAssetId = asset:gsub("^" .. importedAssetTypeId, tostring(mappedAssetTypeId))
-                                self.app.logger:logDebug('Remapped asset ID', asset .. ' -> ' .. remappedAssetId)
+                                -- Use cached replacement pattern to avoid string concatenation
+                                local replacePattern = replacePatternCache[importedAssetTypeId]
+                                if not replacePattern then
+                                    replacePattern = "^" .. importedAssetTypeId
+                                    replacePatternCache[importedAssetTypeId] = replacePattern
+                                end
+                                remappedAssetId = asset:gsub(replacePattern, tostring(mappedAssetTypeId))
+                                if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                                    self.app.logger:logDebug('Remapped asset ID', asset .. ' -> ' .. remappedAssetId)
+                                end
                             end
 
                             importedTaggedAssets[asset] = {
@@ -433,7 +461,7 @@ function PB_UserData:import(args)
                                 originalAssetId = asset,
                                 remappedAssetId = remappedAssetId,
                                 mappedAssetType = mappedAssetTypeId,
-                                basename = imported_basename  -- Store basename for later use in mapping
+                                basename = imported_basename -- Store basename for later use in mapping
                             }
                         else
                             self.app.logger:logError('No valid tag IDs found in line', line)
@@ -576,13 +604,15 @@ function PB_UserData:import(args)
         end
         if section then
             count[section] = (count[section] or 0) + 1
-            if count[section] % YIELD_FREQUENCY == 0 or count[section] == (sectionCounts[section] or 0) then
-                coroutine.yield({
-                    progress = true,
-                    msg = (T.PROGRESS.IMPORT.PARSING):format(section),
-                    index = count[section],
-                    total = sectionCounts[section] or 0
-                })
+            if not self.app.logger.profile then
+                if count[section] % YIELD_FREQUENCY == 0 or count[section] == (sectionCounts[section] or 0) then
+                    coroutine.yield({
+                        progress = true,
+                        msg = (T.PROGRESS.IMPORT.PARSING):format(section),
+                        index = count[section],
+                        total = sectionCounts[section] or 0
+                    })
+                end
             end
         end
     end
@@ -602,8 +632,8 @@ function PB_UserData:import(args)
         ' tags, ' ..
         importedAssetCount ..
         ' tagged assets, ' ..
-        importedPresetsCount .. ' presets, ' .. 
-        importedquickChainPresetsCount .. ' QuickChain Presets, and ' .. 
+        importedPresetsCount .. ' presets, ' ..
+        importedquickChainPresetsCount .. ' QuickChain Presets, and ' ..
         importedFavoritesCount .. ' favorites from file')
     if fileVersion then
         self.app.logger:logDebug('File version', fileVersion)
@@ -636,14 +666,14 @@ function PB_UserData:import(args)
     end
 
     -- Handle tagInfo based on merge mode
-    local idMapping = {} -- Tag ID mapping for use in preset processing later
-    local newTagsCount = 0 -- For comprehensive import reporting
+    local idMapping = {}        -- Tag ID mapping for use in preset processing later
+    local newTagsCount = 0      -- For comprehensive import reporting
     local existingTagsCount = 0 -- For comprehensive import reporting
-    
+
     -- Track original tag count for reporting
     local originalTagCount = 0
     for _ in pairs(self.current.tagInfo) do originalTagCount = originalTagCount + 1 end
-    
+
     if mergeMode then
         self.app.logger:logDebug('Processing import in merge mode')
 
@@ -674,8 +704,8 @@ function PB_UserData:import(args)
 
         -- Pre-build optimized lookup structures for performance
         local existingTagsByParent = {} -- parentId -> { tagName -> tagId }
-        local existingTagPaths = {} -- tagId -> path array (cached)
-        
+        local existingTagPaths = {}     -- tagId -> path array (cached)
+
         -- Build hierarchical lookup index
         for tagId, tag in pairs(self.current.tagInfo) do
             if not existingTagsByParent[tag.parentId] then
@@ -686,22 +716,25 @@ function PB_UserData:import(args)
             existingTagPaths[tagId] = getTagPath(tag.parentId, self.current.tagInfo, nil, {})
         end
 
-        -- Path cache for imported tags
-        local importedPathCache = {}
+        -- Path cache for imported tags - use nested tables instead of string concatenation
+        local importedPathCache = {
+            mapped = {}, -- Cache for mapped paths
+            direct = {}  -- Cache for direct paths
+        }
 
         -- Helper function to get cached imported tag path
         local function getCachedImportedPath(parentId, idMappingTable)
-            local key = tostring(parentId) .. "_" .. (idMappingTable and "mapped" or "direct")
-            if not importedPathCache[key] then
-                importedPathCache[key] = getTagPath(parentId, importedTagInfo, idMappingTable, {})
+            local cache = idMappingTable and importedPathCache.mapped or importedPathCache.direct
+            if not cache[parentId] then
+                cache[parentId] = getTagPath(parentId, importedTagInfo, idMappingTable, {})
             end
-            return importedPathCache[key]
+            return cache[parentId]
         end
 
         -- Optimized function to find existing tag with same name and parent path
         local function findExistingTag(importedTag, importedParentId, idMappingTable)
             local importedPath = getCachedImportedPath(importedParentId, idMappingTable)
-            
+
             -- Fast lookup by traversing the path hierarchy
             local currentParentId = TAGS_ROOT_PARENT
             for _, pathSegment in ipairs(importedPath) do
@@ -711,13 +744,13 @@ function PB_UserData:import(args)
                 end
                 currentParentId = candidates[pathSegment]
             end
-            
+
             -- Now check if the final tag name exists under this parent
             local finalCandidates = existingTagsByParent[currentParentId]
             if finalCandidates and finalCandidates[importedTag.name] then
                 return finalCandidates[importedTag.name]
             end
-            
+
             return nil
         end
 
@@ -725,12 +758,13 @@ function PB_UserData:import(args)
         -- idMapping already declared at higher scope for use in preset processing
         local nextNewIdRef = { self.current.tagIdCount + 1 } -- Use table for reference
         -- newTagsCount and existingTagsCount declared at higher scope for reporting
-        
+
         -- Helper function to process tags in hierarchical dependency order (parents before children)
         local function processTagsHierarchically()
-            local processedTags = {} -- Set of processed tag IDs
+            local processedTags = {}   -- Set of processed tag IDs
+            local processedTagCount = 0 -- Counter for processed tags (avoid OD_TableLength calls)
             local processingQueue = {} -- List of tags ready to process (dependencies resolved)
-            
+
             -- Build dependency map: child -> parent
             local childToParent = {}
             local parentToChildren = {}
@@ -743,28 +777,34 @@ function PB_UserData:import(args)
                     table.insert(parentToChildren[tag.parentId], tagId)
                 end
             end
-            
+
             -- Find all root tags (no dependencies) to start processing
             for tagId, tag in pairs(importedTagInfo) do
                 if not tag.parentId or tag.parentId == TAGS_ROOT_PARENT then
                     table.insert(processingQueue, tagId)
                 end
             end
-            
+
+            -- Cache total imported tag count to avoid expensive recalculation in loop
+            local totalImportedTagCount = 0
+            for _ in pairs(importedTagInfo) do
+                totalImportedTagCount = totalImportedTagCount + 1
+            end
+
             -- Process tags level by level
-            while #processingQueue > 0 or OD_TableLength(processedTags) < OD_TableLength(importedTagInfo) do
+            while #processingQueue > 0 or processedTagCount < totalImportedTagCount do
                 local nextQueue = {}
-                
+
                 -- Process all tags in current queue
                 for _, tagId in ipairs(processingQueue) do
                     if not processedTags[tagId] then
                         local importedTag = importedTagInfo[tagId]
-                        
+
                         -- Enhanced findExistingTag with exact hierarchical matching
                         local function findExistingTagEnhanced(importedTag, importedParentId, idMappingTable)
                             -- Try exact hierarchical match (same name + same parent path)
                             local importedPath = getCachedImportedPath(importedParentId, idMappingTable)
-                            
+
                             -- Fast lookup by traversing the path hierarchy
                             local currentParentId = TAGS_ROOT_PARENT
                             for _, pathSegment in ipairs(importedPath) do
@@ -774,17 +814,17 @@ function PB_UserData:import(args)
                                 end
                                 currentParentId = candidates[pathSegment]
                             end
-                            
+
                             -- Check if the final tag name exists under this parent (exact hierarchy match)
                             local finalCandidates = existingTagsByParent[currentParentId]
                             if finalCandidates and finalCandidates[importedTag.name] then
                                 return finalCandidates[importedTag.name]
                             end
-                            
+
                             -- No exact match found, will create new tag
                             return nil
                         end
-                        
+
                         -- First ensure the parent hierarchy exists (only if dependencies are resolved)
                         local mappedParentId = TAGS_ROOT_PARENT
                         if importedTag.parentId and importedTag.parentId ~= TAGS_ROOT_PARENT then
@@ -796,20 +836,22 @@ function PB_UserData:import(args)
                                 goto continue_tag_processing
                             end
                         end
-                        
+
                         -- Look for existing tag with enhanced three-tier matching
                         local existingId = findExistingTagEnhanced(importedTag, importedTag.parentId, idMapping)
-                        
+
                         if existingId then
                             -- Tag exists, use existing ID
                             idMapping[tagId] = existingId
                             existingTagsCount = existingTagsCount + 1
-                            -- Defer expensive string operations for debug logging
-                            if self.app.logger and self.app.logger.logDebug then
-                                local pathStr = table.concat(getCachedImportedPath(importedTag.parentId, idMapping), " > ")
+                            -- Only perform expensive logging operations if debug logging is enabled
+                            if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                                local pathStr = table.concat(getCachedImportedPath(importedTag.parentId, idMapping),
+                                    " > ")
                                 self.app.logger:logDebug('Tag "' ..
                                     importedTag.name ..
-                                    '" at path "' .. pathStr .. '" already exists, mapping ' .. tagId .. ' -> ' .. existingId)
+                                    '" at path "' ..
+                                    pathStr .. '" already exists, mapping ' .. tagId .. ' -> ' .. existingId)
                             end
                         else
                             -- New tag, assign new ID
@@ -819,25 +861,28 @@ function PB_UserData:import(args)
                                 parentId = mappedParentId,
                                 order = importedTag.order or 0
                             }
-                            
+
                             -- Update the lookup index with the new tag
                             if not existingTagsByParent[mappedParentId] then
                                 existingTagsByParent[mappedParentId] = {}
                             end
                             existingTagsByParent[mappedParentId][importedTag.name] = nextNewIdRef[1]
-                            
+
                             newTagsCount = newTagsCount + 1
-                            -- Defer expensive string operations for debug logging
-                            if self.app.logger and self.app.logger.logDebug then
-                                local pathStr = table.concat(getTagPath(mappedParentId, self.current.tagInfo, nil, {}), " > ")
+                            -- Only perform expensive logging operations if debug logging is enabled
+                            if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                                local pathStr = table.concat(getTagPath(mappedParentId, self.current.tagInfo, nil, {}),
+                                    " > ")
                                 self.app.logger:logDebug(
-                                    'Adding new tag "' .. importedTag.name .. '" at path "' .. pathStr .. '" with ID', nextNewIdRef[1])
+                                    'Adding new tag "' .. importedTag.name .. '" at path "' .. pathStr .. '" with ID',
+                                    nextNewIdRef[1])
                             end
                             nextNewIdRef[1] = nextNewIdRef[1] + 1
                         end
-                        
+
                         processedTags[tagId] = true
-                        
+                        processedTagCount = processedTagCount + 1
+
                         -- Add children of this tag to next processing queue
                         if parentToChildren[tagId] then
                             for _, childId in ipairs(parentToChildren[tagId]) do
@@ -846,38 +891,41 @@ function PB_UserData:import(args)
                                 end
                             end
                         end
-                        
+
                         ::continue_tag_processing::
                     end
                 end
-                
+
                 processingQueue = nextQueue
-                
+
                 -- Safety valve: prevent infinite loop if there are unresolvable dependencies
-                if #processingQueue == 0 and OD_TableLength(processedTags) < OD_TableLength(importedTagInfo) then
+                if #processingQueue == 0 and processedTagCount < totalImportedTagCount then
                     -- Find unprocessed tags and process them (likely orphaned)
                     for tagId, _ in pairs(importedTagInfo) do
                         if not processedTags[tagId] then
                             table.insert(processingQueue, tagId)
-                            self.app.logger:logWarning('Processing orphaned tag with unresolved dependencies: ' .. (importedTagInfo[tagId].name or tagId))
+                            self.app.logger:logWarning('Processing orphaned tag with unresolved dependencies: ' ..
+                                (importedTagInfo[tagId].name or tagId))
                         end
                     end
                 end
             end
         end
-        
+
         -- Process all tags in hierarchical order
         processTagsHierarchically()
-        
+
         -- Progress tracking for the hierarchical processing
         local count = newTagsCount + existingTagsCount
-        if count % YIELD_FREQUENCY == 0 or count == sectionCounts.tagInfo then
-            coroutine.yield({
-                progress = true,
-                msg = T.PROGRESS.IMPORT.MAPPING_TAGS,
-                index = count,
-                total = sectionCounts.tagInfo
-            })
+        if not self.app.logger.profile then
+            if count % YIELD_FREQUENCY == 0 or count == sectionCounts.tagInfo then
+                coroutine.yield({
+                    progress = true,
+                    msg = T.PROGRESS.IMPORT.MAPPING_TAGS,
+                    index = count,
+                    total = sectionCounts.tagInfo
+                })
+            end
         end
 
         -- Update idCount
@@ -926,11 +974,11 @@ function PB_UserData:import(args)
         -- Clear UI state to prevent "tag not found" errors during import
         -- This is similar to what deleteAllTags() does to refresh the UI
         if self.app.engine then
-            self.app.engine:getTags(true)  -- Refresh engine tag data with new tags
-            self.app.engine:tagAssets()    -- Retag assets with new tag structure
+            self.app.engine:getTags(true) -- Refresh engine tag data with new tags
+            self.app.engine:tagAssets()   -- Retag assets with new tag structure
         end
         if self.app.flow then
-            self.app.flow.filterResults({ clear = true })  -- Clear UI filter state
+            self.app.flow.filterResults({ clear = true }) -- Clear UI filter state
         end
     end
 
@@ -968,10 +1016,19 @@ function PB_UserData:import(args)
         return assetTypeDataCache[assetType]
     end
 
+    -- Shared caches for asset mapping to avoid exponential recreation
+    local normalizedPathCache = {}
+    local basenameCache = {}
+    local systemAssetsCache = {} -- Cache processed system assets per asset type
+    
+    -- Pre-compiled patterns for asset mapping (shared across all calls)
+    local mapAssetTypePattern = "^(%d+)"
+    local mapAssetPathPattern = "^%d+%s+(.+)$"
+
     -- Helper function to map imported asset IDs to current system asset IDs (DRY principle)
     local function mapImportedAssetToSystem(importedAssetId)
         -- Extract asset type from imported asset ID
-        local importedAssetTypeId = tonumber(importedAssetId:match("^(%d+)"))
+        local importedAssetTypeId = tonumber(importedAssetId:match(mapAssetTypePattern))
         if not importedAssetTypeId then
             return nil, nil
         end
@@ -979,8 +1036,8 @@ function PB_UserData:import(args)
         -- Get mapped asset type ID
         local mappedAssetTypeId = assetTypeMapping[importedAssetTypeId] or importedAssetTypeId
 
-        -- Extract the full path/identifier and basename from imported asset
-        local importedFullPath = importedAssetId:match("^%d+%s+(.+)$")
+        -- Extract the full path/identifier from imported asset (cached)
+        local importedFullPath = importedAssetId:match(mapAssetPathPattern)
         if not importedFullPath then
             return nil, nil
         end
@@ -988,13 +1045,18 @@ function PB_UserData:import(args)
         -- Helper function to normalize path separators and handle REAPER built-in effects
         local function normalizePathForComparison(path)
             if not path then return nil end
-            
+
+            -- Use shared cache to avoid repeated normalization
+            if normalizedPathCache[path] then
+                return normalizedPathCache[path]
+            end
+
             -- Normalize path separators (convert both \\ and \\\\ to /)
             local normalizedPath = path:gsub("\\\\", "/"):gsub("\\", "/")
-            
+
             -- Check if this is a REAPER built-in effect by looking for Plugins/FX/
             local isReaperBuiltIn = normalizedPath:find("Plugins/FX/") ~= nil
-            
+
             if isReaperBuiltIn then
                 -- For REAPER built-in effects, normalize the extension and create a comparable identifier
                 -- Remove platform-specific extensions and use base name for comparison
@@ -1002,35 +1064,47 @@ function PB_UserData:import(args)
                 if baseName then
                     -- Create a normalized identifier for REAPER built-ins: keep path structure but normalize filename
                     local pathWithoutFile = normalizedPath:match("^(.*/)")
-                    return pathWithoutFile and (pathWithoutFile .. baseName) or baseName
+                    normalizedPath = pathWithoutFile and (pathWithoutFile .. baseName) or baseName
                 end
             end
-            
+
+            -- Cache the result
+            normalizedPathCache[path] = normalizedPath
+            normalizedPathCache[path] = normalizedPath
             return normalizedPath
         end
 
+        -- Cache basename extraction to avoid repeated regex operations
         -- Helper function to extract comparable basename, handling REAPER built-ins specially
         local function getComparableBasename(fullPath)
             if not fullPath then return nil end
-            
+
+            -- Use shared cache to avoid repeated processing
+            if basenameCache[fullPath] then
+                return basenameCache[fullPath]
+            end
+
             local normalizedPath = normalizePathForComparison(fullPath)
-            if not normalizedPath then return nil end
-            
+            if not normalizedPath then
+                basenameCache[fullPath] = nil
+                return nil
+            end
+
             -- Check if this is a REAPER built-in effect
             local isReaperBuiltIn = normalizedPath:find("Plugins/FX/") ~= nil
-            
+            local basename
+
             if isReaperBuiltIn then
                 -- For REAPER built-ins, extract base name without extension
-                local baseName = normalizedPath:match("([^/]+)%.%w+%.?%w*$") or normalizedPath:match("([^/]+)%.%w+$")
-                if baseName then
-                    return baseName
-                end
+                basename = normalizedPath:match("([^/]+)%.%w+%.?%w*$") or normalizedPath:match("([^/]+)%.%w+$")
+            else
+                -- Standard basename extraction
+                basename = normalizedPath:match("([^/]+)$")
+                -- Keep full basename including <uniqueID> for WaveShell plugins to prevent collisions
             end
-            
-            -- Standard basename extraction
-            local basename = normalizedPath:match("([^/]+)$")
-            -- Keep full basename including <uniqueID> for WaveShell plugins to prevent collisions
-            
+
+            -- Cache the result
+            basenameCache[fullPath] = basename
             return basename
         end
 
@@ -1040,34 +1114,54 @@ function PB_UserData:import(args)
             return nil, mappedAssetTypeId
         end
 
-        -- For file-based assets, try exact path match first, then smart matching
-        if cachedAssetTypeData.assetType.shouldMapBaseFilenames then
-            -- Step 1: Try exact path match (this handles same-platform imports)
+        -- Use cached system assets to avoid repeated processing
+        local systemAssets = systemAssetsCache[mappedAssetTypeId]
+        if not systemAssets then
+            systemAssets = {}
             for _, data in ipairs(cachedAssetTypeData.data) do
                 local asset = cachedAssetTypeData.assetType:assembleAsset(data)
                 if asset then
-                    local systemFullPath = asset.id:match("^%d+%s+(.+)$")
-                    if systemFullPath == importedFullPath then
-                        self.app.logger:logDebug('✓ Exact path match found for "' .. importedFullPath .. '"')
-                        return asset.id, mappedAssetTypeId
+                    local systemFullPath = asset.id:match(mapAssetPathPattern) -- Only call match once per asset
+                    if systemFullPath then
+                        table.insert(systemAssets, {
+                            id = asset.id,
+                            fullPath = systemFullPath,
+                            normalizedPath = nil, -- Will be computed on-demand
+                            basename = nil        -- Will be computed on-demand
+                        })
                     end
+                end
+            end
+            systemAssetsCache[mappedAssetTypeId] = systemAssets
+        end
+
+        -- For file-based assets, try exact path match first, then smart matching
+        if cachedAssetTypeData.assetType.shouldMapBaseFilenames then
+            -- Step 1: Try exact path match (this handles same-platform imports)
+            for _, systemAsset in ipairs(systemAssets) do
+                if systemAsset.fullPath == importedFullPath then
+                    if self.app.logger and self.app.logger.logDebug then
+                        self.app.logger:logDebug('✓ Exact path match found for "' .. importedFullPath .. '"')
+                    end
+                    return systemAsset.id, mappedAssetTypeId
                 end
             end
 
             -- Step 2: Try normalized path matching (for cross-platform compatibility)
             local normalizedImportedPath = normalizePathForComparison(importedFullPath)
             if normalizedImportedPath then
-                for _, data in ipairs(cachedAssetTypeData.data) do
-                    local asset = cachedAssetTypeData.assetType:assembleAsset(data)
-                    if asset then
-                        local systemFullPath = asset.id:match("^%d+%s+(.+)$")
-                        local normalizedSystemPath = normalizePathForComparison(systemFullPath)
-                        
-                        if normalizedSystemPath == normalizedImportedPath then
-                            self.app.logger:logDebug('✓ Normalized path match found: "' .. 
-                                importedFullPath .. '" -> "' .. systemFullPath .. '"')
-                            return asset.id, mappedAssetTypeId
+                for _, systemAsset in ipairs(systemAssets) do
+                    -- Compute normalized path on-demand and cache it
+                    if systemAsset.normalizedPath == nil then
+                        systemAsset.normalizedPath = normalizePathForComparison(systemAsset.fullPath)
+                    end
+
+                    if systemAsset.normalizedPath == normalizedImportedPath then
+                        if self.app.logger and self.app.logger.logDebug then
+                            self.app.logger:logDebug('✓ Normalized path match found: "' ..
+                                importedFullPath .. '" -> "' .. systemAsset.fullPath .. '"')
                         end
+                        return systemAsset.id, mappedAssetTypeId
                     end
                 end
             end
@@ -1075,30 +1169,30 @@ function PB_UserData:import(args)
             -- Step 3: Fallback to smart basename matching
             local importedBasename = getComparableBasename(importedFullPath)
             if importedBasename then
-                for _, data in ipairs(cachedAssetTypeData.data) do
-                    local asset = cachedAssetTypeData.assetType:assembleAsset(data)
-                    if asset then
-                        local systemFullPath = asset.id:match("^%d+%s+(.+)$")
-                        local systemBasename = getComparableBasename(systemFullPath)
+                for _, systemAsset in ipairs(systemAssets) do
+                    -- Compute basename on-demand and cache it
+                    if systemAsset.basename == nil then
+                        systemAsset.basename = getComparableBasename(systemAsset.fullPath)
+                    end
 
-                        if systemBasename == importedBasename then
+                    if systemAsset.basename == importedBasename then
+                        if self.app.logger and self.app.logger.logDebug then
                             self.app.logger:logDebug('✓ Smart basename match: "' ..
-                                importedFullPath .. '" -> "' .. systemFullPath .. '" (basename: "' .. importedBasename .. '")')
-                            return asset.id, mappedAssetTypeId
+                                importedFullPath ..
+                                '" -> "' .. systemAsset.fullPath .. '" (basename: "' .. importedBasename .. '")')
                         end
+                        return systemAsset.id, mappedAssetTypeId
                     end
                 end
             end
         elseif not cachedAssetTypeData.assetType.shouldMapBaseFilenames then
             -- For non-file-based assets, try exact identifier match
-            for _, data in ipairs(cachedAssetTypeData.data) do
-                local asset = cachedAssetTypeData.assetType:assembleAsset(data)
-                if asset then
-                    local systemIdentifier = asset.id:match("^%d+%s+(.+)$")
-                    if systemIdentifier == importedFullPath then
+            for _, systemAsset in ipairs(systemAssets) do
+                if systemAsset.fullPath == importedFullPath then
+                    if self.app.logger and self.app.logger.logDebug then
                         self.app.logger:logDebug('✓ Exact identifier match found for "' .. importedFullPath .. '"')
-                        return asset.id, mappedAssetTypeId
                     end
+                    return systemAsset.id, mappedAssetTypeId
                 end
             end
         end
@@ -1109,8 +1203,10 @@ function PB_UserData:import(args)
     local total = OD_TableLength(importedTaggedAssets)
     for fullAssetId, assetData in pairs(importedTaggedAssets) do
         count = count + 1
-        self.app.logger:logDebug('Processing imported asset: fullAssetId="' ..
-            fullAssetId .. '" originalAssetId="' .. assetData.originalAssetId .. '"')
+        if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+            self.app.logger:logDebug('Processing imported asset: fullAssetId="' ..
+                fullAssetId .. '" originalAssetId="' .. assetData.originalAssetId .. '"')
+        end
 
         -- Use mapped asset type if available, fallback to extracted from original
         local assetType = assetData.mappedAssetType or tonumber(assetData.originalAssetId:match("^(%d+)"))
@@ -1120,7 +1216,8 @@ function PB_UserData:import(args)
         end
 
         if assetData.mappedAssetType then
-            self.app.logger:logDebug('Using mapped asset type', assetType .. ' for ' .. (assetData.basename or fullAssetId))
+            self.app.logger:logDebug('Using mapped asset type',
+                assetType .. ' for ' .. (assetData.basename or fullAssetId))
         end
 
         -- Use the improved mapping function that tries exact path first, then basename fallback
@@ -1135,25 +1232,30 @@ function PB_UserData:import(args)
                 assetTypeCounts[mappedAssetType].mapped = assetTypeCounts[mappedAssetType].mapped + 1
             end
 
-            self.app.logger:logDebug('✓ Mapped asset "' ..
-                (assetData.basename or fullAssetId) .. '" to system asset "' .. matchedSystemAssetId .. '"')
+            if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                self.app.logger:logDebug('✓ Mapped asset "' ..
+                    (assetData.basename or fullAssetId) .. '" to system asset "' .. matchedSystemAssetId .. '"')
+            end
 
             if mergeMode then
                 -- In merge mode, combine with existing tags for this asset
                 local existingTags = self.current.taggedAssets[matchedSystemAssetId] or {}
                 local combinedTags = {}
+                local tagIdSet = {} -- Use lookup set for O(1) duplicate checking instead of O(n) OD_HasValue
 
                 -- Add existing tags
                 for _, tagId in ipairs(existingTags) do
-                    if not OD_HasValue(combinedTags, tagId) then
+                    if not tagIdSet[tagId] then
                         table.insert(combinedTags, tagId)
+                        tagIdSet[tagId] = true
                     end
                 end
 
                 -- Add imported tags
                 for _, tagId in ipairs(assetData.tagIds) do
-                    if not OD_HasValue(combinedTags, tagId) then
+                    if not tagIdSet[tagId] then
                         table.insert(combinedTags, tagId)
+                        tagIdSet[tagId] = true
                     end
                 end
 
@@ -1180,25 +1282,31 @@ function PB_UserData:import(args)
 
                 -- Use the remapped asset ID from the import data
                 local unmappedAssetId = assetData.remappedAssetId or assetData.originalAssetId
-                self.app.logger:logDebug('✓ Imported unmapped asset "' ..
-                    (assetData.basename or fullAssetId) .. '" as "' .. unmappedAssetId .. '" (will apply when asset becomes available)')
+                if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                    self.app.logger:logDebug('✓ Imported unmapped asset "' ..
+                        (assetData.basename or fullAssetId) ..
+                        '" as "' .. unmappedAssetId .. '" (will apply when asset becomes available)')
+                end
 
                 if mergeMode then
                     -- In merge mode, combine with existing tags for this asset
                     local existingTags = self.current.taggedAssets[unmappedAssetId] or {}
                     local combinedTags = {}
+                    local tagIdSet = {} -- Use lookup set for O(1) duplicate checking
 
                     -- Add existing tags
                     for _, tagId in ipairs(existingTags) do
-                        if not OD_HasValue(combinedTags, tagId) then
+                        if not tagIdSet[tagId] then
                             table.insert(combinedTags, tagId)
+                            tagIdSet[tagId] = true
                         end
                     end
 
                     -- Add imported tags
                     for _, tagId in ipairs(assetData.tagIds) do
-                        if not OD_HasValue(combinedTags, tagId) then
+                        if not tagIdSet[tagId] then
                             table.insert(combinedTags, tagId)
+                            tagIdSet[tagId] = true
                         end
                     end
 
@@ -1213,7 +1321,8 @@ function PB_UserData:import(args)
 
                 local finalAssetType = mappedAssetType or assetType
                 self.app.logger:logDebug('✗ Asset "' ..
-                    (assetData.basename or fullAssetId) .. '" (type ' .. (finalAssetType or "unknown") .. ') not found in system assets')
+                    (assetData.basename or fullAssetId) ..
+                    '" (type ' .. (finalAssetType or "unknown") .. ') not found in system assets')
 
                 -- Get asset type name from the actual asset type definition
                 local assetTypeName = "unknown"
@@ -1236,13 +1345,15 @@ function PB_UserData:import(args)
                 })
             end
         end
-        if count % YIELD_FREQUENCY == 0 or count == total then
-            coroutine.yield({
-                progress = true,
-                msg = T.PROGRESS.IMPORT.MAPPING_ITEMS,
-                index = count,
-                total = total
-            })
+        if not self.app.logger.profile then
+            if count % YIELD_FREQUENCY == 0 or count == total then
+                coroutine.yield({
+                    progress = true,
+                    msg = T.PROGRESS.IMPORT.MAPPING_ITEMS,
+                    index = count,
+                    total = total
+                })
+            end
         end
         ::continue::
     end
@@ -1308,12 +1419,14 @@ function PB_UserData:import(args)
     local mappedFavoritesCount = 0
     local skippedFavoritesCount = 0
     local finalFavorites = {}
+    local favoriteSet = {} -- Use lookup set for O(1) duplicate checking
 
     if mergeMode then
         -- In merge mode, preserve existing favorites
         for _, favoriteAsset in ipairs(self.current.favorites) do
-            if not OD_HasValue(finalFavorites, favoriteAsset) then
+            if not favoriteSet[favoriteAsset] then
                 table.insert(finalFavorites, favoriteAsset)
+                favoriteSet[favoriteAsset] = true
             end
         end
     end
@@ -1324,8 +1437,9 @@ function PB_UserData:import(args)
 
         if mappedAssetId then
             -- Add to favorites if not already present
-            if not OD_HasValue(finalFavorites, mappedAssetId) then
+            if not favoriteSet[mappedAssetId] then
                 table.insert(finalFavorites, mappedAssetId)
+                favoriteSet[mappedAssetId] = true
                 mappedFavoritesCount = mappedFavoritesCount + 1
                 self.app.logger:logDebug('✓ Mapped favorite "' .. importedFavorite .. '" to "' .. mappedAssetId .. '"')
             else
@@ -1347,14 +1461,16 @@ function PB_UserData:import(args)
                     remappedAssetId = importedFavorite:gsub("^" .. importedAssetTypeId, tostring(mappedAssetTypeId))
                 end
 
-                if not OD_HasValue(finalFavorites, remappedAssetId) then
+                if not favoriteSet[remappedAssetId] then
                     table.insert(finalFavorites, remappedAssetId)
+                    favoriteSet[remappedAssetId] = true
                     mappedFavoritesCount = mappedFavoritesCount + 1
                     self.app.logger:logDebug('✓ Imported unmapped favorite "' ..
                         remappedAssetId .. '" (will apply when asset becomes available)')
                 else
                     -- Don't count duplicates as mapped
-                    self.app.logger:logDebug('✓ Unmapped favorite "' .. remappedAssetId .. '" already exists, skipping duplicate')
+                    self.app.logger:logDebug('✓ Unmapped favorite "' ..
+                        remappedAssetId .. '" already exists, skipping duplicate')
                 end
             else
                 skippedFavoritesCount = skippedFavoritesCount + 1
@@ -1424,22 +1540,24 @@ function PB_UserData:import(args)
         if mergeMode and idMapping and presetToImport.filter and presetToImport.filter.tags then
             local remappedTags = {}
             local hasRemappedTags = false
-            
+
             for importedTagId, positive in pairs(presetToImport.filter.tags) do
                 local mappedTagId = idMapping[importedTagId]
                 if mappedTagId then
                     remappedTags[mappedTagId] = positive
                     hasRemappedTags = true
                     if mappedTagId ~= importedTagId then
-                        self.app.logger:logDebug('Remapped tag ID in preset "' .. presetToImport.name .. '": ' .. importedTagId .. ' -> ' .. mappedTagId)
+                        self.app.logger:logDebug('Remapped tag ID in preset "' ..
+                            presetToImport.name .. '": ' .. importedTagId .. ' -> ' .. mappedTagId)
                     end
                 else
                     -- Tag wasn't imported (probably failed validation) - keep original ID and let validation catch it
                     remappedTags[importedTagId] = positive
-                    self.app.logger:logDebug('Tag ID ' .. importedTagId .. ' in preset "' .. presetToImport.name .. '" was not mapped (may be invalid)')
+                    self.app.logger:logDebug('Tag ID ' ..
+                        importedTagId .. ' in preset "' .. presetToImport.name .. '" was not mapped (may be invalid)')
                 end
             end
-            
+
             if hasRemappedTags then
                 presetToImport.filter.tags = remappedTags
             end
@@ -1468,12 +1586,12 @@ function PB_UserData:import(args)
                 if existingPresetId then
                     -- Check if existing preset is identical to imported one
                     local existingPreset = finalPresets[existingPresetId]
-                    
+
                     -- Simple deep comparison for preset data
                     local function deepCompareFilters(a, b)
                         if type(a) ~= type(b) then return false end
                         if type(a) ~= "table" then return a == b end
-                        
+
                         for k, v in pairs(a) do
                             if not deepCompareFilters(v, b[k]) then return false end
                         end
@@ -1482,11 +1600,11 @@ function PB_UserData:import(args)
                         end
                         return true
                     end
-                    
+
                     local isIdentical = (existingPreset.name == presetToImport.name and
-                                       existingPreset.word == presetToImport.word and
-                                       deepCompareFilters(existingPreset.filter, presetToImport.filter))
-                    
+                        existingPreset.word == presetToImport.word and
+                        deepCompareFilters(existingPreset.filter, presetToImport.filter))
+
                     newId = existingPresetId
                     if isIdentical then
                         -- Skip identical preset
@@ -1521,7 +1639,7 @@ function PB_UserData:import(args)
                 self.app.logger:logDebug('✓ Imported preset "' .. presetToImport.name .. '" with ID ' .. newId)
             end
         end
-        
+
         ::continue_preset::
     end
 
@@ -1557,17 +1675,18 @@ function PB_UserData:import(args)
         -- Enhanced magic word conflict checking
         local hasConflict = false
         local conflictDetails = ""
-        
+
         if importedQuickChainPreset.word and importedQuickChainPreset.word ~= "" then
             -- Check for conflicts with existing presets
             for _, preset in pairs(finalPresets) do
                 if preset.word and preset.word:upper() == importedQuickChainPreset.word:upper() then
                     hasConflict = true
-                    conflictDetails = 'magic word "' .. importedQuickChainPreset.word .. '" conflicts with existing preset "' .. preset.name .. '"'
+                    conflictDetails = 'magic word "' ..
+                        importedQuickChainPreset.word .. '" conflicts with existing preset "' .. preset.name .. '"'
                     break
                 end
             end
-            
+
             -- Check for conflicts with existing QuickChain Presets (only if no preset conflict found)
             if not hasConflict then
                 for id, quickChainPreset in pairs(finalquickChainPresets) do
@@ -1576,14 +1695,18 @@ function PB_UserData:import(args)
                             -- In merge mode, check if it's not the same QuickChain by name
                             if quickChainPreset.name ~= importedQuickChainPreset.name then
                                 hasConflict = true
-                                conflictDetails = 'magic word "' .. importedQuickChainPreset.word .. '" conflicts with existing QuickChain "' .. quickChainPreset.name .. '"'
+                                conflictDetails = 'magic word "' ..
+                                    importedQuickChainPreset.word ..
+                                    '" conflicts with existing QuickChain "' .. quickChainPreset.name .. '"'
                                 break
                             end
                         else
                             -- In replace mode, check if it's not the same ID
                             if id ~= importedId then
                                 hasConflict = true
-                                conflictDetails = 'magic word "' .. importedQuickChainPreset.word .. '" conflicts with existing QuickChain "' .. quickChainPreset.name .. '"'
+                                conflictDetails = 'magic word "' ..
+                                    importedQuickChainPreset.word ..
+                                    '" conflicts with existing QuickChain "' .. quickChainPreset.name .. '"'
                                 break
                             end
                         end
@@ -1591,17 +1714,18 @@ function PB_UserData:import(args)
                 end
             end
         end
-        
+
         if hasConflict then
             skippedquickChainPresetsCount = skippedquickChainPresetsCount + 1
-            self.app.logger:logWarning('✗ Skipped QuickChain preset "' .. importedQuickChainPreset.name .. '": ' .. conflictDetails)
+            self.app.logger:logWarning('✗ Skipped QuickChain preset "' ..
+                importedQuickChainPreset.name .. '": ' .. conflictDetails)
             goto continue_quickchain_presets
         end
-        
+
         -- Map QuickChain preset items to existing assets where possible
         local mappedItems = {}
         local skippedItems = 0
-        
+
         for _, item in ipairs(importedQuickChainPreset.items) do
             local mappedAssetId, mappedAssetType = mapImportedAssetToSystem(item)
             if mappedAssetId then
@@ -1613,14 +1737,16 @@ function PB_UserData:import(args)
                 self.app.logger:logDebug('✗ Skipped missing QuickChain preset item: "' .. item .. '"')
             end
         end
-        
+
         -- Only import the QuickChain preset if it has at least one valid item
         if #mappedItems == 0 then
             skippedquickChainPresetsCount = skippedquickChainPresetsCount + 1
-            self.app.logger:logWarning('✗ Skipped QuickChain preset "' .. importedQuickChainPreset.name .. '": no valid items found (all ' .. skippedItems .. ' items missing from system)')
+            self.app.logger:logWarning('✗ Skipped QuickChain preset "' ..
+                importedQuickChainPreset.name ..
+                '": no valid items found (all ' .. skippedItems .. ' items missing from system)')
             goto continue_quickchain_presets
         end
-        
+
         -- Import QuickChain preset
         local newId = importedId
         local existingQuickChainPresetId = nil
@@ -1631,7 +1757,7 @@ function PB_UserData:import(args)
             for id, quickChainPreset in pairs(finalquickChainPresets) do
                 if quickChainPreset.name == importedQuickChainPreset.name then
                     existingQuickChainPresetId = id
-                    
+
                     -- Deep comparison for QuickChain preset content
                     local itemsEqual = true
                     if #quickChainPreset.items ~= #mappedItems then
@@ -1645,10 +1771,11 @@ function PB_UserData:import(args)
                             end
                         end
                     end
-                    
+
                     if quickChainPreset.word == importedQuickChainPreset.word and itemsEqual then
                         isContentIdentical = true
-                        self.app.logger:logDebug('◦ QuickChain preset "' .. importedQuickChainPreset.name .. '" is identical, skipping')
+                        self.app.logger:logDebug('◦ QuickChain preset "' ..
+                            importedQuickChainPreset.name .. '" is identical, skipping')
                         skippedquickChainPresetsCount = skippedquickChainPresetsCount + 1
                         goto continue_quickchain_presets
                     else
@@ -1683,18 +1810,24 @@ function PB_UserData:import(args)
         }
 
         mappedquickChainPresetsCount = mappedquickChainPresetsCount + 1
-        
+
         if skippedItems > 0 then
             if existingQuickChainPresetId then
-                self.app.logger:logDebug('⟳ Updated QuickChain preset "' .. importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items (' .. skippedItems .. ' items skipped)')
+                self.app.logger:logDebug('⟳ Updated QuickChain preset "' ..
+                    importedQuickChainPreset.name ..
+                    '" with ' .. #mappedItems .. ' items (' .. skippedItems .. ' items skipped)')
             else
-                self.app.logger:logDebug('✓ Imported QuickChain preset "' .. importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items (' .. skippedItems .. ' items skipped)')
+                self.app.logger:logDebug('✓ Imported QuickChain preset "' ..
+                    importedQuickChainPreset.name ..
+                    '" with ' .. #mappedItems .. ' items (' .. skippedItems .. ' items skipped)')
             end
         else
             if existingQuickChainPresetId then
-                self.app.logger:logDebug('⟳ Updated QuickChain preset "' .. importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items')
+                self.app.logger:logDebug('⟳ Updated QuickChain preset "' ..
+                    importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items')
             else
-                self.app.logger:logDebug('✓ Imported QuickChain preset "' .. importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items')
+                self.app.logger:logDebug('✓ Imported QuickChain preset "' ..
+                    importedQuickChainPreset.name .. '" with ' .. #mappedItems .. ' items')
             end
         end
 
@@ -1715,12 +1848,13 @@ function PB_UserData:import(args)
 
     self.app.logger:logInfo('QuickChain Presets import: ' ..
         mappedquickChainPresetsCount ..
-        ' imported, ' .. skippedquickChainPresetsCount .. ' skipped, total QuickChain Presets: ' .. OD_TableLength(finalquickChainPresets))
+        ' imported, ' ..
+        skippedquickChainPresetsCount .. ' skipped, total QuickChain Presets: ' .. OD_TableLength(finalquickChainPresets))
 
     -- Final magic word conflict check across presets and QuickChain Presets
     local magicWordConflicts = {}
     local conflictCount = 0
-    
+
     -- Collect all magic words from presets
     for presetId, preset in pairs(finalPresets) do
         if preset.word and preset.word ~= "" then
@@ -1735,7 +1869,7 @@ function PB_UserData:import(args)
             })
         end
     end
-    
+
     -- Collect all magic words from QuickChain Presets and check for conflicts
     for quickChainPresetId, quickChainPreset in pairs(finalquickChainPresets) do
         if quickChainPreset.word and quickChainPreset.word ~= "" then
@@ -1750,7 +1884,7 @@ function PB_UserData:import(args)
             })
         end
     end
-    
+
     -- Report any conflicts found
     for word, conflicts in pairs(magicWordConflicts) do
         if #conflicts > 1 then
@@ -1759,12 +1893,14 @@ function PB_UserData:import(args)
             for _, conflict in ipairs(conflicts) do
                 table.insert(conflictNames, conflict.type .. ' "' .. conflict.name .. '"')
             end
-            self.app.logger:logWarning('Magic word conflict detected: "' .. word .. '" is used by: ' .. table.concat(conflictNames, ", "))
+            self.app.logger:logWarning('Magic word conflict detected: "' ..
+                word .. '" is used by: ' .. table.concat(conflictNames, ", "))
         end
     end
-    
+
     if conflictCount > 0 then
-        self.app.logger:logWarning('Found ' .. conflictCount .. ' magic word conflicts after import. Some magic words may not work as expected.')
+        self.app.logger:logWarning('Found ' ..
+            conflictCount .. ' magic word conflicts after import. Some magic words may not work as expected.')
     else
         self.app.logger:logDebug('No magic word conflicts detected after import')
     end
@@ -1794,7 +1930,7 @@ function PB_UserData:import(args)
     local totalPresetsSkipped = skippedPresetsCount or 0
     local totalQuickChainPresetsSkipped = skippedquickChainPresetsCount or 0
     local totalFavoritesSkipped = skippedFavoritesCount or 0
-    
+
     if mergeMode then
         -- In merge mode, count new tags created
         totalTagsImported = (newTagsCount or 0)
@@ -1808,11 +1944,13 @@ function PB_UserData:import(args)
     end
 
     local msg = (mergeMode and T.PROGRESS.IMPORT.SUCCESS_MERGE or T.PROGRESS.IMPORT.SUCCESS_OVERWRITE):format(
-        totalTagsImported, totalTagsNotImported, -- tags imported, existing tags preserved/replaced
-        totalAssetsImported, totalAssetsSkipped, -- items tagged, items skipped
-        totalPresetsImported, totalPresetsSkipped, -- presets imported, presets skipped
+        totalTagsImported, totalTagsNotImported,                       -- tags imported, existing tags preserved/replaced
+        totalAssetsImported, totalAssetsSkipped,                       -- items tagged, items skipped
+        totalPresetsImported, totalPresetsSkipped,                     -- presets imported, presets skipped
         totalQuickChainPresetsImported, totalQuickChainPresetsSkipped, -- QuickChain presets imported, skipped
-        totalFavoritesImported, totalFavoritesSkipped) -- favorites imported, favorites skipped
+        totalFavoritesImported, totalFavoritesSkipped)                 -- favorites imported, favorites skipped
+    if self.app.logger.profile then self.app.profiler.stop() end
+
     return { success = true, msg = msg }
 end
 
@@ -1968,27 +2106,31 @@ function PB_UserData:deleteTag(tagId, persistAndReload)
                 end
 
                 -- Check if the preset filter is now empty or ineffective
-                local hasOtherFilters = preset.filter.fxFolderId or 
-                                      preset.filter.fxCategory or 
-                                      preset.filter.fxDeveloper or
-                                      preset.filter.fx_type or
-                                      preset.filter.type or
-                                      preset.filter.searchText
+                local hasOtherFilters = preset.filter.fxFolderId or
+                    preset.filter.fxCategory or
+                    preset.filter.fxDeveloper or
+                    preset.filter.fx_type or
+                    preset.filter.type or
+                    preset.filter.searchText
 
                 if remainingTagCount == 0 and not hasOtherFilters then
                     -- Preset only had tag filters and now has nothing - delete it
                     table.insert(presetsToDelete, presetId)
-                    self.app.logger:logWarning('Preset "' .. preset.name .. '" will be deleted - all its tag filters were removed and it has no other filters')
+                    self.app.logger:logWarning('Preset "' ..
+                        preset.name .. '" will be deleted - all its tag filters were removed and it has no other filters')
                 elseif remainingTagCount == 0 then
                     -- Remove the empty tags table but keep the preset (it has other filters)
                     preset.filter.tags = nil
                     presetsModified = presetsModified + 1
-                    self.app.logger:logInfo('Removed all tag filters from preset "' .. preset.name .. '" (keeping preset - has other filters)')
+                    self.app.logger:logInfo('Removed all tag filters from preset "' ..
+                        preset.name .. '" (keeping preset - has other filters)')
                 else
                     -- Some tags remain
                     presetsModified = presetsModified + 1
                     local removedCount = originalTagCount - remainingTagCount
-                    self.app.logger:logInfo('Removed ' .. removedCount .. ' tag filter(s) from preset "' .. preset.name .. '" (' .. remainingTagCount .. ' tags remaining)')
+                    self.app.logger:logInfo('Removed ' ..
+                        removedCount ..
+                        ' tag filter(s) from preset "' .. preset.name .. '" (' .. remainingTagCount .. ' tags remaining)')
                 end
             end
         end
@@ -2012,7 +2154,8 @@ function PB_UserData:deleteTag(tagId, persistAndReload)
 
     -- Log summary
     if presetsModified > 0 or #presetsToDelete > 0 then
-        self.app.logger:logInfo('Tag deletion cleanup: ' .. presetsModified .. ' presets modified, ' .. #presetsToDelete .. ' presets deleted')
+        self.app.logger:logInfo('Tag deletion cleanup: ' ..
+            presetsModified .. ' presets modified, ' .. #presetsToDelete .. ' presets deleted')
     end
 
     -- Adjust sibling order
@@ -2258,7 +2401,8 @@ function PB_UserData:createQuickChainPreset(name, items, word)
                 return v.word ~= nil and v.word ~= '' and
                     v.word:upper() == word:upper()
             end)) > 0 then
-            self.app.logger:logError('Cannot create quickchain preset: quickchain preset with magic word "' .. word .. '" already exists')
+            self.app.logger:logError('Cannot create quickchain preset: quickchain preset with magic word "' ..
+                word .. '" already exists')
             return nil
         end
     end
@@ -2278,23 +2422,24 @@ function PB_UserData:createQuickChainPreset(name, items, word)
 
     self.current.quickChainPresets[newId] = quickChainPreset
 
-    self.app.logger:logInfo('Created quickchain preset "' .. name .. '" with id ' .. newId .. 
+    self.app.logger:logInfo('Created quickchain preset "' .. name .. '" with id ' .. newId ..
         (word and (' and magic word "' .. word .. '"') or ''))
 
     self:save()
     self.app.engine:getquickChainPresets() -- Notify engine to refresh its runtime data
-    
+
     -- Refresh QuickChain preset assets so they appear in the UI immediately
     if self.app.engine then
         self.app.engine:assembleAssets()
     end
-    
+
     return quickChainPreset
 end
 
 function PB_UserData:deleteQuickChainPreset(quickChainPresetId)
     if not self.current.quickChainPresets[quickChainPresetId] then
-        self.app.logger:logError('Cannot delete quickchain preset: quickchain preset with id ' .. quickChainPresetId .. ' not found')
+        self.app.logger:logError('Cannot delete quickchain preset: quickchain preset with id ' ..
+            quickChainPresetId .. ' not found')
         return false
     end
 
@@ -2316,7 +2461,8 @@ end
 
 function PB_UserData:updateQuickChainPreset(quickChainPresetId, name, items, word)
     if not self.current.quickChainPresets[quickChainPresetId] then
-        self.app.logger:logError('Cannot update quickchain preset: quickchain preset with id ' .. quickChainPresetId .. ' not found')
+        self.app.logger:logError('Cannot update quickchain preset: quickchain preset with id ' ..
+            quickChainPresetId .. ' not found')
         return nil
     end
 
@@ -2332,11 +2478,12 @@ function PB_UserData:updateQuickChainPreset(quickChainPresetId, name, items, wor
 
     -- Check if magic word is already used by another quickchain preset
     if word and word ~= '' then
-        if OD_TableLength(OD_TableFilter(self.current.quickChainPresets, function(k, v) 
-                return (v.id ~= quickChainPresetId and v.word ~= nil and v.word ~= '' and 
-                    v.word:upper() == word:upper()) 
+        if OD_TableLength(OD_TableFilter(self.current.quickChainPresets, function(k, v)
+                return (v.id ~= quickChainPresetId and v.word ~= nil and v.word ~= '' and
+                    v.word:upper() == word:upper())
             end)) > 0 then
-            self.app.logger:logError('Cannot update quickchain preset: quickchain preset with magic word "' .. word .. '" already exists')
+            self.app.logger:logError('Cannot update quickchain preset: quickchain preset with magic word "' ..
+                word .. '" already exists')
             return nil
         end
     end
@@ -2387,7 +2534,8 @@ end
 function PB_UserData:resolveQuickChainPresetAssets(quickChainPresetId)
     local quickChainPreset = self:getQuickChainPreset(quickChainPresetId)
     if not quickChainPreset then
-        self.app.logger:logError('Cannot resolve QuickChain preset assets: QuickChain preset with id ' .. quickChainPresetId .. ' not found')
+        self.app.logger:logError('Cannot resolve QuickChain preset assets: QuickChain preset with id ' ..
+            quickChainPresetId .. ' not found')
         return nil
     end
 
@@ -2398,11 +2546,11 @@ function PB_UserData:resolveQuickChainPresetAssets(quickChainPresetId)
 
     -- Get all assets for the QuickChain preset items
     local resolvedAssets = self.app.engine:getAssetsByKeys(quickChainPreset.items)
-    
+
     if #resolvedAssets ~= #quickChainPreset.items then
         local foundCount = #resolvedAssets
         local totalCount = #quickChainPreset.items
-        self.app.logger:logInfo('QuickChain "' .. quickChainPreset.name .. '": resolved ' .. 
+        self.app.logger:logInfo('QuickChain "' .. quickChainPreset.name .. '": resolved ' ..
             foundCount .. ' of ' .. totalCount .. ' assets (some assets may no longer be available)')
     end
 
@@ -2411,21 +2559,21 @@ function PB_UserData:resolveQuickChainPresetAssets(quickChainPresetId)
         name = quickChainPreset.name,
         word = quickChainPreset.word,
         items = quickChainPreset.items, -- Original asset keys
-        assets = resolvedAssets   -- Resolved asset objects
+        assets = resolvedAssets         -- Resolved asset objects
     }
 end
 
 -- Resolve all QuickChain Presets with their assets
 function PB_UserData:getAllquickChainPresetsWithAssets()
     local quickChainPresetsWithAssets = {}
-    
+
     for id, _ in pairs(self.current.quickChainPresets) do
         local resolvedQuickChainPreset = self:resolveQuickChainPresetAssets(id)
         if resolvedQuickChainPreset then
             quickChainPresetsWithAssets[id] = resolvedQuickChainPreset
         end
     end
-    
+
     return quickChainPresetsWithAssets
 end
 
@@ -2435,7 +2583,7 @@ function PB_UserData:resolveQuickChainPresetByWord(word)
     if not quickChainPreset then
         return nil
     end
-    
+
     return self:resolveQuickChainPresetAssets(quickChainPreset.id)
 end
 
@@ -2456,7 +2604,7 @@ function PB_UserData:convertFoldersToTags()
             break
         end
     end
-    
+
     if not importedTagsParentId then
         importedTagsParentId = self.current.tagIdCount + 1
         self.current.tagIdCount = importedTagsParentId
@@ -2476,7 +2624,7 @@ function PB_UserData:convertFoldersToTags()
             break
         end
     end
-    
+
     if not fromFoldersParentId then
         fromFoldersParentId = self.current.tagIdCount + 1
         self.current.tagIdCount = fromFoldersParentId
@@ -2491,9 +2639,32 @@ function PB_UserData:convertFoldersToTags()
     local foldersConverted = 0
     local assetsTagged = 0
     local count = 0
-    local totalFolders = OD_TableLength(self.app.engine.fxFolders)
+    
+    -- Cache total folders count to avoid expensive OD_TableLength calls
+    local totalFolders = 0
+    for _ in pairs(self.app.engine.fxFolders) do
+        totalFolders = totalFolders + 1
+    end
 
-    self.app.logger:logDebug('Available folders', OD_TableLength(self.app.engine.fxFolders))
+    self.app.logger:logDebug('Available folders', totalFolders)
+
+    -- Pre-build lookup cache for existing "From Folders" tags (case insensitive)
+    local existingFolderTags = {} -- folderName.lower() -> tagId
+    for tagId, tagData in pairs(self.current.tagInfo) do
+        if tagData.parentId == fromFoldersParentId then
+            existingFolderTags[tagData.name:lower()] = tagId
+        end
+    end
+
+    -- Cache plugin assets to avoid repeated type filtering in loops
+    local pluginAssets = {}
+    for _, asset in ipairs(self.app.engine.assets) do
+        if asset.type == ASSET_TYPE.PluginAssetType then
+            table.insert(pluginAssets, asset)
+        end
+    end
+    
+    self.app.logger:logDebug('Found ' .. #pluginAssets .. ' plugin assets to process')
 
     -- Iterate through each folder
     for folderId, folderData in pairs(self.app.engine.fxFolders) do
@@ -2511,17 +2682,12 @@ function PB_UserData:convertFoldersToTags()
             goto continue_folder
         end
 
-        self.app.logger:logDebug('Processing folder: ' ..
-            folderName .. ' with ' .. OD_TableLength(folderData.items or {}) .. ' items')
-        
-        -- Check if tag already exists under "From Folders" (case insensitive)
-        local existingTagId = nil
-        for tagId, tagData in pairs(self.current.tagInfo) do
-            if tagData.name:lower() == folderName:lower() and tagData.parentId == fromFoldersParentId then
-                existingTagId = tagId
-                break
-            end
+        if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+            self.app.logger:logDebug('Processing folder: ' .. folderName)
         end
+
+        -- Check if tag already exists using cached lookup (case insensitive)
+        local existingTagId = existingFolderTags[folderName:lower()]
 
         -- Create tag if it doesn't exist
         local targetTagId = existingTagId
@@ -2534,60 +2700,59 @@ function PB_UserData:convertFoldersToTags()
                 parentId = fromFoldersParentId,
                 order = targetTagId
             }
-            self.app.logger:logDebug('Created tag "' .. folderName .. '" with ID ' .. targetTagId .. ' under "From Folders"')
+            -- Update cache for future lookups
+            existingFolderTags[folderName:lower()] = targetTagId
+            
+            if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                self.app.logger:logDebug('Created tag "' ..
+                    folderName .. '" with ID ' .. targetTagId .. ' under "From Folders"')
+            end
             isNewTag = true
             foldersConverted = foldersConverted + 1
         else
-            self.app.logger:logDebug('Using existing tag "' .. folderName .. '" with ID ' .. targetTagId)
+            if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                self.app.logger:logDebug('Using existing tag "' .. folderName .. '" with ID ' .. targetTagId)
+            end
         end
 
-        -- Get all plugins in this folder and tag them
+        -- Get all plugins in this folder and tag them (use cached plugin list)
         local itemsInFolder = 0
-        local assetsChecked = 0
 
-        -- Debug: Check what assets we have
-        self.app.logger:logDebug('Total engine assets available', #(self.app.engine.assets or {}))
-        if self.app.engine.assets and #self.app.engine.assets > 0 then
-            local pluginAssets = 0
-            local assetTypes = {}
-            for _, asset in ipairs(self.app.engine.assets) do
-                local assetTypeName = tostring(asset.type or 'nil')
-                assetTypes[assetTypeName] = (assetTypes[assetTypeName] or 0) + 1
-                if asset.type == ASSET_TYPE.PluginAssetType then
-                    pluginAssets = pluginAssets + 1
+        for _, asset in ipairs(pluginAssets) do
+            if asset.isInFolder and asset:isInFolder(folderId) then
+                -- Direct tag addition without save overhead (each plugin can only be in one folder)
+                self.current.taggedAssets[asset.id] = self.current.taggedAssets[asset.id] or {}
+                local assetTags = self.current.taggedAssets[asset.id]
+                
+                -- Check if tag already exists using faster method than OD_HasValue
+                local tagExists = false
+                for _, existingTagId in ipairs(assetTags) do
+                    if existingTagId == targetTagId then
+                        tagExists = true
+                        break
+                    end
                 end
-            end
-            self.app.logger:logDebug('Plugin assets found', pluginAssets)
-            for typeName, count in pairs(assetTypes) do
-                self.app.logger:logDebug('Asset type: ' .. typeName, count)
-            end
-        end
-
-        for _, asset in ipairs(self.app.engine.assets) do
-            if asset.type == ASSET_TYPE.PluginAssetType then
-                assetsChecked = assetsChecked + 1
-                if asset.isInFolder then
-                    if asset:isInFolder(folderId) then
-                        -- Add tag to asset (each plugin can only be in one folder)
-                        local wasTagAdded = self:addTagToAsset(asset.id, targetTagId, false)
-                        if wasTagAdded then
-                            assetsTagged = assetsTagged + 1
-                            self.app.logger:logDebug('Tagged plugin "' ..
-                                (asset.name or 'Unknown') .. '" with folder tag "' .. folderName .. '"')
-                        else
-                            self.app.logger:logDebug('Plugin "' ..
-                                (asset.name or 'Unknown') .. '" already has folder tag "' .. folderName .. '"')
-                        end
-                        itemsInFolder = itemsInFolder + 1
+                
+                if not tagExists then
+                    table.insert(assetTags, targetTagId)
+                    assetsTagged = assetsTagged + 1
+                    if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                        self.app.logger:logDebug('Tagged plugin "' ..
+                            (asset.name or 'Unknown') .. '" with folder tag "' .. folderName .. '"')
                     end
                 else
-                    self.app.logger:logDebug('Asset missing isInFolder method:', asset.name or 'Unknown')
+                    if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                        self.app.logger:logDebug('Plugin "' ..
+                            (asset.name or 'Unknown') .. '" already has folder tag "' .. folderName .. '"')
+                    end
                 end
+                itemsInFolder = itemsInFolder + 1
             end
         end
 
-        self.app.logger:logDebug('Checked ' ..
-            assetsChecked .. ' plugin assets, found ' .. itemsInFolder .. ' plugins in folder "' .. folderName .. '"')
+        if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+            self.app.logger:logDebug('Found ' .. itemsInFolder .. ' plugins in folder "' .. folderName .. '"')
+        end
 
         ::continue_folder::
     end
@@ -2629,7 +2794,7 @@ function PB_UserData:convertCategoriesToTags(args)
             break
         end
     end
-    
+
     if not importedTagsParentId then
         importedTagsParentId = self.current.tagIdCount + 1
         self.current.tagIdCount = importedTagsParentId
@@ -2649,7 +2814,7 @@ function PB_UserData:convertCategoriesToTags(args)
             break
         end
     end
-    
+
     if not fromCategoriesParentId then
         fromCategoriesParentId = self.current.tagIdCount + 1
         self.current.tagIdCount = fromCategoriesParentId
@@ -2664,8 +2829,31 @@ function PB_UserData:convertCategoriesToTags(args)
     local categoriesConverted = 0
     local assetsTagged = 0
     local count = 0
-    local totalCategories = OD_TableLength(self.app.engine.fxCategories)
     
+    -- Cache total categories count to avoid expensive OD_TableLength calls
+    local totalCategories = 0
+    for _ in pairs(self.app.engine.fxCategories) do
+        totalCategories = totalCategories + 1
+    end
+
+    -- Pre-build lookup cache for existing "From Categories" tags (case insensitive)
+    local existingCategoryTags = {} -- categoryName.lower() -> tagId
+    for tagId, tagData in pairs(self.current.tagInfo) do
+        if tagData.parentId == fromCategoriesParentId then
+            existingCategoryTags[tagData.name:lower()] = tagId
+        end
+    end
+
+    -- Cache plugin assets to avoid repeated type filtering
+    local pluginAssets = {}
+    for _, asset in ipairs(self.app.engine.assets) do
+        if asset.type == ASSET_TYPE.PluginAssetType then
+            table.insert(pluginAssets, asset)
+        end
+    end
+    
+    self.app.logger:logDebug('Found ' .. #pluginAssets .. ' plugin assets to process')
+
     -- Iterate through each category
     for categoryName, pluginList in pairs(self.app.engine.fxCategories) do
         count = count + 1
@@ -2680,14 +2868,8 @@ function PB_UserData:convertCategoriesToTags(args)
             goto continue_category
         end
 
-        -- Check if tag already exists under "From Categories" (case insensitive)
-        local existingTagId = nil
-        for tagId, tagData in pairs(self.current.tagInfo) do
-            if tagData.name:lower() == categoryName:lower() and tagData.parentId == fromCategoriesParentId then
-                existingTagId = tagId
-                break
-            end
-        end
+        -- Check if tag already exists using cached lookup (case insensitive)
+        local existingTagId = existingCategoryTags[categoryName:lower()]
 
         -- Create tag if it doesn't exist
         local targetTagId = existingTagId
@@ -2699,42 +2881,58 @@ function PB_UserData:convertCategoriesToTags(args)
                 parentId = fromCategoriesParentId,
                 order = targetTagId
             }
-            self.app.logger:logDebug('Created tag "' .. categoryName .. '" with ID ' .. targetTagId .. ' under "From Categories"')
+            -- Update cache for future lookups
+            existingCategoryTags[categoryName:lower()] = targetTagId
+            
+            if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                self.app.logger:logDebug('Created tag "' ..
+                    categoryName .. '" with ID ' .. targetTagId .. ' under "From Categories"')
+            end
             categoriesConverted = categoriesConverted + 1
         else
-            self.app.logger:logDebug('Using existing tag "' .. categoryName .. '" with ID ' .. targetTagId)
-        end
-
-        -- Get all plugins in this category and tag them
-        local itemsInCategory = 0
-        local assetsChecked = 0
-
-        for _, asset in ipairs(self.app.engine.assets) do
-            if asset.type == ASSET_TYPE.PluginAssetType then
-                assetsChecked = assetsChecked + 1
-                if asset.isInCategory then
-                    if asset:isInCategory(categoryName) then
-                        -- Add tag to asset (plugins can be in multiple categories)
-                        local wasTagAdded = self:addTagToAsset(asset.id, targetTagId, false)
-                        if wasTagAdded then
-                            assetsTagged = assetsTagged + 1
-                            self.app.logger:logDebug('Tagged plugin "' ..
-                                (asset.name or 'Unknown') .. '" with category tag "' .. categoryName .. '"')
-                        else
-                            self.app.logger:logDebug('Plugin "' ..
-                                (asset.name or 'Unknown') .. '" already has category tag "' .. categoryName .. '"')
-                        end
-                        itemsInCategory = itemsInCategory + 1
-                    end
-                else
-                    self.app.logger:logDebug('Asset missing isInCategory method:', asset.name or 'Unknown')
-                end
+            if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                self.app.logger:logDebug('Using existing tag "' .. categoryName .. '" with ID ' .. targetTagId)
             end
         end
 
-        self.app.logger:logDebug('Checked ' ..
-            assetsChecked ..
-            ' plugin assets, found ' .. itemsInCategory .. ' plugins in category "' .. categoryName .. '"')
+        -- Get all plugins in this category and tag them (use cached plugin list)
+        local itemsInCategory = 0
+
+        for _, asset in ipairs(pluginAssets) do
+            if asset.isInCategory and asset:isInCategory(categoryName) then
+                -- Direct tag addition without save overhead
+                self.current.taggedAssets[asset.id] = self.current.taggedAssets[asset.id] or {}
+                local assetTags = self.current.taggedAssets[asset.id]
+                
+                -- Check if tag already exists using faster method than OD_HasValue
+                local tagExists = false
+                for _, existingTagId in ipairs(assetTags) do
+                    if existingTagId == targetTagId then
+                        tagExists = true
+                        break
+                    end
+                end
+                
+                if not tagExists then
+                    table.insert(assetTags, targetTagId)
+                    assetsTagged = assetsTagged + 1
+                    if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                        self.app.logger:logDebug('Tagged plugin "' ..
+                            (asset.name or 'Unknown') .. '" with category tag "' .. categoryName .. '"')
+                    end
+                else
+                    if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                        self.app.logger:logDebug('Plugin "' ..
+                            (asset.name or 'Unknown') .. '" already has category tag "' .. categoryName .. '"')
+                    end
+                end
+                itemsInCategory = itemsInCategory + 1
+            end
+        end
+
+        if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+            self.app.logger:logDebug('Found ' .. itemsInCategory .. ' plugins in category "' .. categoryName .. '"')
+        end
 
         ::continue_category::
     end
