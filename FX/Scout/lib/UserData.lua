@@ -634,6 +634,10 @@ function PB_UserData:import(args)
     end
 
     -- Handle tagInfo based on merge mode
+    local idMapping = {} -- Tag ID mapping for use in preset processing later
+    local newTagsCount = 0 -- For comprehensive import reporting
+    local existingTagsCount = 0 -- For comprehensive import reporting
+    
     if mergeMode then
         self.app.logger:logDebug('Processing import in merge mode')
 
@@ -751,10 +755,9 @@ function PB_UserData:import(args)
         end
 
         -- Merge mode: find existing tags with same name and parent path, create hierarchy as needed
-        local idMapping = {}                                 -- maps imported ID to existing ID
+        -- idMapping already declared at higher scope for use in preset processing
         local nextNewIdRef = { self.current.tagIdCount + 1 } -- Use table for reference
-        local newTagsCount = 0
-        local existingTagsCount = 0
+        -- newTagsCount and existingTagsCount declared at higher scope for reporting
         for importedId, importedTag in pairs(importedTagInfo) do
             -- First ensure the parent hierarchy exists
             local mappedParentId = ensureParentExists(importedTag.parentId, idMapping, nextNewIdRef, {})
@@ -834,6 +837,16 @@ function PB_UserData:import(args)
         local tagCount = 0
         for _ in pairs(importedTagInfo) do tagCount = tagCount + 1 end
         self.app.logger:logDebug('Replace mode: replaced all tags with ' .. tagCount .. ' imported tags')
+
+        -- Clear UI state to prevent "tag not found" errors during import
+        -- This is similar to what deleteAllTags() does to refresh the UI
+        if self.app.engine then
+            self.app.engine:getTags(true)  -- Refresh engine tag data with new tags
+            self.app.engine:tagAssets()    -- Retag assets with new tag structure
+        end
+        if self.app.flow then
+            self.app.flow.filterResults({ clear = true })  -- Clear UI filter state
+        end
     end
 
     -- Remap imported taggedAssets to your system's asset IDs
@@ -1289,18 +1302,24 @@ function PB_UserData:import(args)
         local issues = {}
 
         if filter.fxFolderId then
-            -- Check if FX folder exists (this would need folder validation logic)
-            -- For now, we'll assume folder validation happens at runtime
+            -- Check if FX folder exists using cached fxFolders
+            if not self.app.engine.fxFolders or not self.app.engine.fxFolders[filter.fxFolderId] then
+                table.insert(issues, "Missing FX folder ID: " .. tostring(filter.fxFolderId))
+            end
         end
 
         if filter.fxCategory then
-            -- Check if category exists in current system
-            -- Categories are dynamic, so we'll validate at runtime
+            -- Check if category exists using cached fxCategories
+            if not self.app.engine.fxCategories or not self.app.engine.fxCategories[filter.fxCategory] then
+                table.insert(issues, "Missing FX category: " .. tostring(filter.fxCategory))
+            end
         end
 
         if filter.fxDeveloper then
-            -- Check if developer exists in current system
-            -- Developers are dynamic, so we'll validate at runtime
+            -- Check if developer exists using cached fxDevelopers
+            if not self.app.engine.fxDevelopers or not self.app.engine.fxDevelopers[filter.fxDeveloper] then
+                table.insert(issues, "Missing FX developer: " .. tostring(filter.fxDeveloper))
+            end
         end
 
         if filter.tags then
@@ -1316,12 +1335,38 @@ function PB_UserData:import(args)
     end
 
     for importedId, importedPreset in pairs(importedPresets) do
-        -- Validate filter dependencies
-        local issues = validateFilterDependencies(importedPreset.filter)
+        -- Remap tag IDs in preset filter if we're in merge mode and have tag mappings
+        local presetToImport = OD_DeepCopy(importedPreset)
+        if mergeMode and idMapping and presetToImport.filter and presetToImport.filter.tags then
+            local remappedTags = {}
+            local hasRemappedTags = false
+            
+            for importedTagId, positive in pairs(presetToImport.filter.tags) do
+                local mappedTagId = idMapping[importedTagId]
+                if mappedTagId then
+                    remappedTags[mappedTagId] = positive
+                    hasRemappedTags = true
+                    if mappedTagId ~= importedTagId then
+                        self.app.logger:logDebug('Remapped tag ID in preset "' .. presetToImport.name .. '": ' .. importedTagId .. ' -> ' .. mappedTagId)
+                    end
+                else
+                    -- Tag wasn't imported (probably failed validation) - keep original ID and let validation catch it
+                    remappedTags[importedTagId] = positive
+                    self.app.logger:logDebug('Tag ID ' .. importedTagId .. ' in preset "' .. presetToImport.name .. '" was not mapped (may be invalid)')
+                end
+            end
+            
+            if hasRemappedTags then
+                presetToImport.filter.tags = remappedTags
+            end
+        end
+
+        -- Validate filter dependencies (using potentially remapped tag IDs)
+        local issues = validateFilterDependencies(presetToImport.filter)
 
         if #issues > 0 then
             skippedPresetsCount = skippedPresetsCount + 1
-            self.app.logger:logWarning('✗ Skipped preset "' .. importedPreset.name .. '": ' .. table.concat(issues, ", "))
+            self.app.logger:logWarning('✗ Skipped preset "' .. presetToImport.name .. '": ' .. table.concat(issues, ", "))
         else
             -- Import preset
             local newId = importedId
@@ -1330,7 +1375,7 @@ function PB_UserData:import(args)
             if mergeMode then
                 -- In merge mode, check if a preset with the same name already exists
                 for id, preset in pairs(finalPresets) do
-                    if preset.name == importedPreset.name then
+                    if preset.name == presetToImport.name then
                         existingPresetId = id
                         break
                     end
@@ -1340,7 +1385,7 @@ function PB_UserData:import(args)
                     -- Update existing preset with same name
                     newId = existingPresetId
                     self.app.logger:logDebug('⟳ Updating existing preset "' ..
-                        importedPreset.name .. '" (ID ' .. newId .. ')')
+                        presetToImport.name .. '" (ID ' .. newId .. ')')
                 else
                     -- Find next available ID if no name conflict exists
                     while finalPresets[newId] do
@@ -1351,16 +1396,16 @@ function PB_UserData:import(args)
 
             finalPresets[newId] = {
                 id = newId,
-                name = importedPreset.name,
-                word = importedPreset.word,
-                filter = OD_DeepCopy(importedPreset.filter),
+                name = presetToImport.name,
+                word = presetToImport.word,
+                filter = OD_DeepCopy(presetToImport.filter), -- Use the potentially remapped filter
             }
 
             mappedPresetsCount = mappedPresetsCount + 1
             if existingPresetId then
-                self.app.logger:logDebug('✓ Updated preset "' .. importedPreset.name .. '" with ID ' .. newId)
+                self.app.logger:logDebug('✓ Updated preset "' .. presetToImport.name .. '" with ID ' .. newId)
             else
-                self.app.logger:logDebug('✓ Imported preset "' .. importedPreset.name .. '" with ID ' .. newId)
+                self.app.logger:logDebug('✓ Imported preset "' .. presetToImport.name .. '" with ID ' .. newId)
             end
         end
     end
@@ -1594,9 +1639,32 @@ function PB_UserData:import(args)
         self.app.flow.filterResults()
     end
 
+    -- Calculate comprehensive import counts
+    local totalTagsImported = 0
+    local totalAssetsImported = mappedAssetsCount or 0
+    local totalPresetsImported = mappedPresetsCount or 0
+    local totalQuickChainPresetsImported = mappedquickChainPresetsCount or 0
+    local totalFavoritesImported = mappedFavoritesCount or 0
+    local totalAssetsSkipped = skippedAssetsCount or 0
+    local totalPresetsSkipped = skippedPresetsCount or 0
+    local totalQuickChainPresetsSkipped = skippedquickChainPresetsCount or 0
+    local totalFavoritesSkipped = skippedFavoritesCount or 0
+    
+    if mergeMode then
+        -- In merge mode, count new tags created
+        totalTagsImported = (newTagsCount or 0)
+    else
+        -- In replace mode, count all imported tags
+        totalTagsImported = importedTagCount or 0
+    end
+
     local msg = (mergeMode and T.PROGRESS.IMPORT.SUCCESS_MERGE or T.PROGRESS.IMPORT.SUCCESS_OVERWRITE):format(
-        mappedAssetsCount or 0, skippedAssetsCount or 0)
-        return { success = true, msg = msg }
+        totalTagsImported, 0, -- tags imported, tags skipped (always 0 since we don't skip individual tags)
+        totalAssetsImported, totalAssetsSkipped, -- items tagged, items skipped
+        totalPresetsImported, totalPresetsSkipped, -- presets imported, presets skipped
+        totalQuickChainPresetsImported, totalQuickChainPresetsSkipped, -- QuickChain presets imported, skipped
+        totalFavoritesImported, totalFavoritesSkipped) -- favorites imported, favorites skipped
+    return { success = true, msg = msg }
 end
 
 function PB_UserData:toggleAssetFavorite(assetKey)
@@ -1678,6 +1746,20 @@ function PB_UserData:deleteTag(tagId, persistAndReload)
     local tagInfo = self.current.tagInfo[tagId]
     if not tagInfo then return end
 
+    -- Collect all tag IDs that will be deleted (including descendants)
+    local tagsToDelete = { tagId }
+    local function collectDescendants(parentId)
+        for id, info in pairs(self.current.tagInfo) do
+            if info.parentId == parentId then
+                table.insert(tagsToDelete, id)
+                collectDescendants(id) -- Collect descendants recursively
+            end
+        end
+    end
+    collectDescendants(tagId)
+
+    self.app.logger:logDebug('Deleting tag ' .. tagId .. ' and ' .. (#tagsToDelete - 1) .. ' descendants')
+
     -- Remove from tagged assets first
     for assetId, tagIds in pairs(self.current.taggedAssets) do
         if OD_HasValue(tagIds, tagId) then
@@ -1710,6 +1792,80 @@ function PB_UserData:deleteTag(tagId, persistAndReload)
     end
     deleteDescendants(tagId)
 
+    -- Clean up presets that reference any of the deleted tags
+    local presetsToDelete = {}
+    local presetsModified = 0
+
+    for presetId, preset in pairs(self.current.presets) do
+        if preset.filter and preset.filter.tags then
+            local originalTagCount = 0
+            for tagId, _ in pairs(preset.filter.tags) do
+                originalTagCount = originalTagCount + 1
+            end
+
+            -- Remove any deleted tags from the preset's filter
+            local modifiedTags = false
+            for _, deletedTagId in ipairs(tagsToDelete) do
+                if preset.filter.tags[deletedTagId] then
+                    preset.filter.tags[deletedTagId] = nil
+                    modifiedTags = true
+                end
+            end
+
+            if modifiedTags then
+                local remainingTagCount = 0
+                for tagId, _ in pairs(preset.filter.tags) do
+                    remainingTagCount = remainingTagCount + 1
+                end
+
+                -- Check if the preset filter is now empty or ineffective
+                local hasOtherFilters = preset.filter.fxFolderId or 
+                                      preset.filter.fxCategory or 
+                                      preset.filter.fxDeveloper or
+                                      preset.filter.fx_type or
+                                      preset.filter.type or
+                                      preset.filter.searchText
+
+                if remainingTagCount == 0 and not hasOtherFilters then
+                    -- Preset only had tag filters and now has nothing - delete it
+                    table.insert(presetsToDelete, presetId)
+                    self.app.logger:logWarning('Preset "' .. preset.name .. '" will be deleted - all its tag filters were removed and it has no other filters')
+                elseif remainingTagCount == 0 then
+                    -- Remove the empty tags table but keep the preset (it has other filters)
+                    preset.filter.tags = nil
+                    presetsModified = presetsModified + 1
+                    self.app.logger:logInfo('Removed all tag filters from preset "' .. preset.name .. '" (keeping preset - has other filters)')
+                else
+                    -- Some tags remain
+                    presetsModified = presetsModified + 1
+                    local removedCount = originalTagCount - remainingTagCount
+                    self.app.logger:logInfo('Removed ' .. removedCount .. ' tag filter(s) from preset "' .. preset.name .. '" (' .. remainingTagCount .. ' tags remaining)')
+                end
+            end
+        end
+    end
+
+    -- Delete presets that became empty
+    for _, presetId in ipairs(presetsToDelete) do
+        local presetName = self.current.presets[presetId].name
+        self.current.presets[presetId] = nil
+        self.app.logger:logInfo('Deleted empty preset "' .. presetName .. '"')
+    end
+
+    -- Update preset ID count if we deleted presets
+    if #presetsToDelete > 0 then
+        local maxId = 0
+        for id, _ in pairs(self.current.presets) do
+            if id > maxId then maxId = id end
+        end
+        self.current.presetIdCount = maxId
+    end
+
+    -- Log summary
+    if presetsModified > 0 or #presetsToDelete > 0 then
+        self.app.logger:logInfo('Tag deletion cleanup: ' .. presetsModified .. ' presets modified, ' .. #presetsToDelete .. ' presets deleted')
+    end
+
     -- Adjust sibling order
     for sibId, sibInfo in pairs(self.current.tagInfo) do
         if sibInfo.parentId == tagInfo.parentId and sibInfo.order > tagInfo.order then
@@ -1724,6 +1880,8 @@ function PB_UserData:deleteTag(tagId, persistAndReload)
         -- Notify engine to refresh its runtime data
         self.app.engine:getTags(true)
         self.app.engine:tagAssets()
+        -- Also refresh presets since we may have modified or deleted some
+        self.app.engine:getPresets(true)
     end
 end
 
