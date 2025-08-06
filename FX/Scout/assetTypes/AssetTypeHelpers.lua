@@ -49,7 +49,7 @@ helpers.resetDefaultSendVolume = function(originalState)
 end
 helpers.setPluginUIState = function(settings)
     -- Sets up plugin UI state based on settings, returns original state
-    if settings.showFxUI then
+    if settings.showFxUI ~= SHOW_FX_UI.FOLLOW_PREFERENCE then
         local originalState = tonumber(select(2, r.get_config_var_string('fxfloat_focus')))
         r.SNM_SetIntConfigVar('fxfloat_focus',
             OD_BfSet(originalState, 4, settings.showFxUI == SHOW_FX_UI.OPEN))
