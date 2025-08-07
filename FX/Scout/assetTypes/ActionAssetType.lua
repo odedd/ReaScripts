@@ -80,7 +80,9 @@ function ActionAssetType:assembleAsset(action)
         searchText = { { text = action.name }, { text = action.prefix or '' } },
         group = self.group,
     })
-    asset.shortcuts = action.shortcuts
+    if action.shortcuts and #action.shortcuts > 0 then
+        table.insert(asset.searchText, { text = table.concat(action.shortcuts, ', '), dontSearch = true })
+    end
     asset.numericId = action.numericId -- Store for reference/debugging
     asset.namedId = action.namedId     -- Store for reference/debugging
     return asset

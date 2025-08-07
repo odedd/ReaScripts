@@ -189,7 +189,7 @@ function BaseAssetType:executeAndAddToRecents()
                 if assetType.context.settings.current.closeAfterExecute then
                     assetType.context.flow.close()
                 else
-                    assetType.context.flow.clearSearchInputText()
+                    assetType.context.flow.filterResults({clearText = true})
                 end
                 -- Return the actual result from the execute function
                 return result

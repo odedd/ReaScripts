@@ -1398,7 +1398,6 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                     app = self.app, -- Add app context for executeFilter
                     type = FILTER_TYPES.TAG,
                     searchText = { { text = tag.name, color = tag.displayColor } },
-                    -- parents = tag.parents,
                     order = tag.order,
                     load = tag.id,
                     -- displayColor = tag.displayColor,
@@ -1417,6 +1416,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                         table.insert(tagAsset.searchText,
                             {
                                 text = parent.name,
+                                dontSearch = true,
                                 color = parent.displayColor and
                                     OD_SetAlpha(parent.displayColor, self.app.settings.current.searchTagsAlpha)
                             })

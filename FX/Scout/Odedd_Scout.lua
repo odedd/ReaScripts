@@ -1946,23 +1946,6 @@ RunApp = function()
                                                 end
                                             end
                                             ImGui.PopStyleVar(ctx)
-                                            local sameLine = false
-                                            if result.additionalText then
-                                                app.gui:pushColors(app.gui.st.col.search.additionalText)
-                                                ImGui.Text(ctx, ' ' .. result.additionalText)
-                                                app.gui:popColors(app.gui.st.col.search.additionalText)
-                                                sameLine = true
-                                            end
-                                            if (result.shortcuts and #result.shortcuts > 0) then
-                                                if sameLine then
-                                                    ImGui.SameLine(ctx)
-                                                end
-                                                app.gui:pushColors(app.gui.st.col.search.shortcutText)
-                                                local text = ' ' .. table.concat(result.shortcuts, ', ')
-                                                ImGui.Text(ctx, text)
-                                                app.gui:popColors(app.gui.st.col.search.shortcutText)
-                                                sameLine = true
-                                            end
                                             ImGui.PopID(ctx)
                                         end
                                         rowIdx = rowIdx + 1
@@ -2998,9 +2981,6 @@ RunApp = function()
                             if not wordActivated then
                                 app.flow.filterResults({ text = app.temp.searchInput })
                             end
-                            -- -- else
-                            -- --     app.flow.filterResults({ text = app.temp.searchInput })
-                            -- end
                         end
                         ImGui.EndChild(ctx)
                     end
