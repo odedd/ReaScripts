@@ -28,6 +28,11 @@ function OD_Gui:createFonts(fonts)
         self:addFont(k, font.file, font.size)
     end
 end
+function OD_Gui:createFontsImGui010(fonts)
+    for k, font in pairs(fonts) do
+        self:addFontImGui010(k, font.file, font.flags)
+    end
+end
 
 function OD_Gui:addFont(key, file, size, recalculation)
     if not recalculation then
@@ -37,6 +42,14 @@ function OD_Gui:addFont(key, file, size, recalculation)
     self.st.fonts = self.st.fonts or {}
     local scale =  self.app.settings.current.uiScale 
     self.st.fonts[key] = r.ImGui_CreateFont(OD_LocalOrCommon(file, self.app.scr.dir), math.floor(size * scale))
+end
+function OD_Gui:addFontImGui010(key, file, flags, recalculation)
+    if not recalculation then
+        self.originalFonts = self.originalFonts or {}
+        self.originalFonts[key] = { file = file } -- save for recalculating zoom later
+    end
+    self.st.fonts = self.st.fonts or {}
+    self.st.fonts[key] = r.ImGui_CreateFontFromFile(OD_LocalOrCommon(file, self.app.scr.dir), flags)
 end
 
 -- function OD_Gui:getNormalizedScale(scale, font)

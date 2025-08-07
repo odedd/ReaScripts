@@ -5,23 +5,16 @@ PB_Gui = OD_Gui:new({
 })
 
 PB_Gui.init = function(self, fonts)
-    OD_Gui.addFont(self, 'vertical', 'Resources/Fonts/Cousine-90deg.otf', 11)
 
-    local tiny = 12
-    local small = 16
-    local default = 18
-    local large = 22
-    self:createFonts({
-        default = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = default },
-        bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = default },
-        -- tiny = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = tiny },
-        small = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = small },
-        large = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = large },
-        large_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = large },
-        icons = { file = 'Resources/Fonts/Icons-Regular.otf', size = tiny },
-        icons_tiny = { file = 'Resources/Fonts/Icons-Regular.otf', size = tiny },
-        icons_small = { file = 'Resources/Fonts/Icons-Regular.otf', size = small },
-        icons_large = { file = 'Resources/Fonts/Icons-Regular.otf', size = large }
+    self.tinyFontSize = 12
+    self.smallFontSize = 16
+    self.defaultFontSize = 18
+    self.largeFontSize = 22
+    self.scaledFonts = {}
+    self:createFontsImGui010({
+        default = { file = 'Resources/Fonts/Cousine-Regular.ttf' },
+        bold = { file = 'Resources/Fonts/Cousine-Regular.ttf', flags = ImGui.FontFlags_Bold },
+        icons = { file = 'Resources/Fonts/Icons-Regular.otf' },
     })
 
     OD_Gui.init(self, false)
@@ -222,6 +215,7 @@ PB_Gui.init = function(self, fonts)
             [ImGui.Col_FrameBg] = self.st.basecolors.darkBG
         },
         main = {
+            [ImGui.Col_NavCursor] = 0x00000000, 
             [ImGui.Col_Tab] = self.st.basecolors.darkHovered,
             [ImGui.Col_TabHovered] = self.st.basecolors.darkActive,
             -- [ImGui.Col_TabActive] = self.st.basecolors.darkActive,
@@ -273,6 +267,10 @@ PB_Gui.init = function(self, fonts)
 
     self.updateVarsToScale = function(self)
         local scale = self.scale
+        self.scaledFonts.tiny = self.tinyFontSize * scale
+        self.scaledFonts.small = self.smallFontSize * scale
+        self.scaledFonts.default = self.defaultFontSize * scale
+        self.scaledFonts.large = self.largeFontSize * scale
         self.st.vars = {
             main = {
                 [ImGui.StyleVar_FrameRounding] = { self.st.rounding * scale, nil },
@@ -343,20 +341,9 @@ PB_Gui.init = function(self, fonts)
         }
     end
 
-    self.updateCachedTextHeightsToScale = function(self)
-        ImGui.PushFont(self.ctx, self.st.fonts.vertical)
-        self.VERTICAL_TEXT_BASE_WIDTH, self.VERTICAL_TEXT_BASE_HEIGHT = ImGui.CalcTextSize(self.ctx, 'A')
-        self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET = -2
-        ImGui.PopFont(self.ctx)
-    end
-
     self.updateSizesToScale = function(self)
-        ImGui.PushFont(self.ctx, self.st.fonts.default) -- hint font! important!
+        ImGui.PushFont(self.ctx, self.st.fonts.default, self.scaledFonts.default) -- hint font! important!
         self.st.sizes = {
-            sendTypeSeparatorWidth = self.TEXT_BASE_HEIGHT,
-            sendTypeSeparatorHeight = 95 * self.scale,
-            minFaderHeight = 100 * self.scale,
-            mixerSeparatorWidth = 4 * self.scale,
             hintHeight = ImGui.GetTextLineHeightWithSpacing(self.ctx) +
                 select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_ItemSpacing)) +
                 select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_FramePadding)) * 2
@@ -370,12 +357,11 @@ PB_Gui.init = function(self, fonts)
                 (self.scale or scale) -- return change to allow for scaling of other elements (eg. Resize window)
             self.scale = scale
 
-            self:reAddFonts()
+            -- self:reAddFonts()
 
             self:updateVarsToScale()
             self:pushStyles(self.st.vars.main)
-            OD_Gui.recalculateZoom(self, scale)
-            self:updateCachedTextHeightsToScale()
+            -- OD_Gui.recalculateZoom(self, scale)
             self:updateSizesToScale()
             self:popStyles(self.st.vars.main)
             return change
@@ -388,31 +374,12 @@ PB_Gui.init = function(self, fonts)
 
     self.drawSadFace = function(self, sizeFactor, color)
         local x, y = ImGui.GetCursorScreenPos(self.ctx)
-        local sz = self.TEXT_BASE_WIDTH * sizeFactor
+        local sz = ImGui.CalcTextSize(self.ctx, 'X') * sizeFactor
         -- local sz = 20 * sizeFactor * self.scale
         ImGui.DrawList_AddCircleFilled(self.draw_list, x, y, sz, color, 36)
         ImGui.DrawList_AddCircleFilled(self.draw_list, x - sz / 3.5, y - sz / 5, sz / 9, 0x000000ff, 36)
         ImGui.DrawList_AddCircleFilled(self.draw_list, x + sz / 3.5, y - sz / 5, sz / 9, 0x000000ff, 36)
         ImGui.DrawList_AddLine(self.draw_list, x + sz / 2, y + sz / 10, x - sz / 2, y + sz / 2.5, 0x000000ff, sz / 9)
-    end
-
-    self.drawVerticalText = function(self, drawList, text, x, y, color, yIsTop, xIsRight)
-        local color = color or 0xffffffff
-        ImGui.PushFont(self.ctx, self.st.fonts.vertical)
-        local letterspacing = (self.VERTICAL_TEXT_BASE_HEIGHT + self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET)
-        if yIsTop then
-            y = y + letterspacing * #text
-        end
-        if xIsRight then
-            x = x - self.VERTICAL_TEXT_BASE_WIDTH
-        end
-        local posX, posY = (x or select(1, ImGui.GetCursorScreenPos(self.ctx))),
-            (y or select(2, ImGui.GetCursorScreenPos(self.ctx))) - letterspacing * #text
-        text = text:reverse()
-        for ci = 1, #text do
-            ImGui.DrawList_AddText(drawList, posX, posY + letterspacing * (ci - 1), color, text:sub(ci, ci))
-        end
-        ImGui.PopFont(self.ctx)
     end
 
     self.setting = function(self, stType, text, hint, val, data, sameline)
@@ -431,7 +398,7 @@ PB_Gui.init = function(self, fonts)
             if data.help then
                 ImGui.SameLine(ctx)
                 ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
-                ImGui.PushFont(ctx, self.st.fonts.icons_small)
+                ImGui.PushFont(ctx, self.st.fonts.icons, self.scaledFonts.tiny)
                 ImGui.TextColored(ctx, self.st.basecolors.textDarker, ICONS.QUESTION_CIRCLE)
                 ImGui.PopFont(ctx)
                 if ImGui.IsItemHovered(ctx) then
@@ -597,7 +564,7 @@ PB_Gui.init = function(self, fonts)
         elseif stType == 'orderable_list' then
             -- ImGui.Dummy(ctx, widgetWidth, 20)
             local orderList, enabledList = val[1], val[2]
-            if ImGui.BeginListBox(ctx, '##' .. text, widgetWidth, #orderList * self.TEXT_BASE_HEIGHT + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))) then
+            if ImGui.BeginListBox(ctx, '##' .. text, widgetWidth, #orderList * ImGui.GetTextLineHeightWithSpacing(ctx) + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))) then
                 for i, v in ipairs(orderList) do
                     self:pushColors(self.st.col.settings.selectable[enabledList[v]])
                     local label = T.SETTINGS.LISTS[text] and T.SETTINGS.LISTS[text][v] or v

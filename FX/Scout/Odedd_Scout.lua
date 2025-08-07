@@ -838,7 +838,7 @@ RunApp = function()
                 else
                     -- without this code the context gets invalidated, so it needs to be kept alive
                     local ctx = app.gui.ctx
-                    ImGui.PushFont(ctx, app.gui.st.fonts.default)
+                    ImGui.PushFont(ctx, app.gui.st.fonts.default, app.gui.scaledFonts.default)
                     ImGui.PopFont(ctx)
                     PDefer(app.flow.hibernate)
                 end
@@ -1092,7 +1092,7 @@ RunApp = function()
                     return table.unpack(app.temp.iconSizes[icon])
                 else
                     app.temp.iconSizesCacheZoom[icon] = app.gui.scale
-                    ImGui.PushFont(ctx, app.gui.st.fonts.icons_tiny)
+                    ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.tiny)
                     local iconW, iconH = ImGui.CalcTextSize(ctx, icon)
                     app.temp.iconSizes[icon] = table.pack(iconW, iconH)
                     ImGui.PopFont(ctx)
@@ -1125,16 +1125,14 @@ RunApp = function()
                     end
                 end
                 ImGui.SetCursorPos(ctx, x, y + paddingY + (textH - iconH) / 2)
-                ImGui.PushFont(ctx, app.gui.st.fonts.icons_tiny)
+                ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.tiny)
                 ImGui.TextColored(ctx, col, icon)
                 ImGui.PopFont(ctx)
                 ImGui.EndGroup(ctx)
                 if not disabled then return clicked end
             end,
             iconButton = function(ctx, icon, colClass, hint, shortcut, id)
-                -- local font = font or app.gui.st.fonts.icons_large
-                local font = app.gui.st.fonts.icons_large
-                ImGui.PushFont(ctx, font)
+                ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.large)
                 local x, y = ImGui.GetCursorPos(ctx)
                 local w = select(1, ImGui.CalcTextSize(ctx, ICONS[(icon):upper()])) +
                     ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding) * 2
@@ -1150,7 +1148,7 @@ RunApp = function()
                     if app.temp.fullWindow then
                         app:setHoveredHint('main', hint)
                     elseif ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
-                        ImGui.PushFont(ctx, app.gui.st.fonts.default)
+                        ImGui.PushFont(ctx, app.gui.st.fonts.default, app.gui.scaledFonts.default)
                         ImGui.SetTooltip(ctx, hint)
                         ImGui.PopFont(ctx)
                     end
@@ -1202,7 +1200,7 @@ RunApp = function()
                             b.keymod -- maintain consistent ordering for same type
                     end
                 end)
-                for _, item in ipairs(sortedList) do
+                for i, item in ipairs(sortedList) do
                     local keymod, hint = item.keymod, item.hint
 
                     local description = hint.text
@@ -1214,7 +1212,7 @@ RunApp = function()
                         :gsub(
                             "^%l", string.upper):gsub('%.$', ' ') -- Capitalize first letter and remove trailing dot
                     if item.disabled then ImGui.BeginDisabled(ctx) end
-                    if ImGui.MenuItem(ctx, (item.disabled and '(' .. mod .. ') ' or '') .. text, (not item.disabled) and mod or nil) then
+                    if ImGui.MenuItem(ctx, (item.disabled and '(' .. mod .. ') ' or '') .. text .. '##' .. i, (not item.disabled) and mod or nil) then
                         return true, keymod
                     end
                     if item.disabled then ImGui.EndDisabled(ctx) end
@@ -1360,7 +1358,7 @@ RunApp = function()
                 local lines = 1
                 local height = 0
 
-                ImGui.PushFont(ctx, app.gui.st.fonts.small)
+                ImGui.PushFont(ctx, app.gui.st.fonts.default, app.gui.scaledFonts.small)
                 if OD_Tablelength(app.temp.activeFilters) > 0 then
                     ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx))
 
@@ -1556,44 +1554,46 @@ RunApp = function()
                             hintContext = RESULT_CONTEXT.KEYBOARD |
                                 ((#app.temp.quickChain > 0 and app.settings.current.showQuickChain) and RESULT_CONTEXT.QUICK_CHAIN or 0)
                             local newIdx = nil
-                            if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) and app.selection.keyboardPos < #searchResults then
-                                newIdx =
-                                    app.selection.keyboardPos + 1
-                            end
-                            if ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) and app.selection.keyboardPos > 1 then
-                                newIdx = app
-                                    .selection.keyboardPos - 1
-                            end
-                            if ImGui.IsKeyPressed(ctx, ImGui.Key_PageDown) then
-                                newIdx = math.min(
-                                    app.selection.keyboardPos + maxSearchResults, #searchResults)
-                            end
-                            if ImGui.IsKeyPressed(ctx, ImGui.Key_PageUp) then
-                                newIdx = math.max(
-                                    app.selection.keyboardPos - maxSearchResults, 1)
-                            end
-                            if ImGui.IsKeyPressed(ctx, ImGui.Key_Home) then
-                                newIdx = 1
-                            end
-                            if ImGui.IsKeyPressed(ctx, ImGui.Key_End) then
-                                newIdx = #searchResults
-                            end
-                            if newIdx then
-                                if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
-                                    app.selection:selectRange(app.selection.keyboardPos, newIdx)
-                                elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl) then
-                                    -- For Cmd/Ctrl navigation, add to selection if item allows multiple
-                                    local targetResult = app.temp.searchResults[newIdx]
-                                    if targetResult and targetResult.allowMultiple ~= false then
-                                        -- Only add if it allows multiple selection
-                                        app.selection:add(newIdx)
-                                        app.selection:setKeyboardPos(newIdx)
+                            if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then
+                                if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) and app.selection.keyboardPos < #searchResults then
+                                    newIdx =
+                                        app.selection.keyboardPos + 1
+                                end
+                                if ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) and app.selection.keyboardPos > 1 then
+                                    newIdx = app
+                                        .selection.keyboardPos - 1
+                                end
+                                if ImGui.IsKeyPressed(ctx, ImGui.Key_PageDown) then
+                                    newIdx = math.min(
+                                        app.selection.keyboardPos + maxSearchResults, #searchResults)
+                                end
+                                if ImGui.IsKeyPressed(ctx, ImGui.Key_PageUp) then
+                                    newIdx = math.max(
+                                        app.selection.keyboardPos - maxSearchResults, 1)
+                                end
+                                if ImGui.IsKeyPressed(ctx, ImGui.Key_Home) then
+                                    newIdx = 1
+                                end
+                                if ImGui.IsKeyPressed(ctx, ImGui.Key_End) then
+                                    newIdx = #searchResults
+                                end
+                                if newIdx then
+                                    if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
+                                        app.selection:selectRange(app.selection.keyboardPos, newIdx)
+                                    elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl) then
+                                        -- For Cmd/Ctrl navigation, add to selection if item allows multiple
+                                        local targetResult = app.temp.searchResults[newIdx]
+                                        if targetResult and targetResult.allowMultiple ~= false then
+                                            -- Only add if it allows multiple selection
+                                            app.selection:add(newIdx)
+                                            app.selection:setKeyboardPos(newIdx)
+                                        else
+                                            -- If target doesn't allow multiple, select only it
+                                            app.selection:selectOnly(newIdx)
+                                        end
                                     else
-                                        -- If target doesn't allow multiple, select only it
                                         app.selection:selectOnly(newIdx)
                                     end
-                                else
-                                    app.selection:selectOnly(newIdx)
                                 end
                             end
                         end
@@ -1740,11 +1740,11 @@ RunApp = function()
                         if ImGui.BeginChild(ctx, '##noResults', w, h, nil, nil) then
                             ImGui.Dummy(ctx, w, h)
                             ImGui.SetCursorPos(ctx, w / 2,
-                                h / 2 - app.gui.TEXT_BASE_HEIGHT * 1)
+                                h / 2 - ImGui.GetTextLineHeightWithSpacing(ctx) * 1)
                             app.gui:drawSadFace(4, app.gui.st.basecolors.main)
                             local text = 'No results'
                             ImGui.SetCursorPos(ctx, (w - ImGui.CalcTextSize(ctx, text)) / 2,
-                                h / 2 + app.gui.TEXT_BASE_HEIGHT * 2)
+                                h / 2 + ImGui.GetTextLineHeightWithSpacing(ctx) * 2)
                             ImGui.Text(ctx, text)
                             local text = 'Clear Filters'
                             ImGui.SetCursorPosX(ctx,
@@ -1891,7 +1891,7 @@ RunApp = function()
 
                                             if result.favorite then
                                                 -- if result.group == SPECIAL_GROUPS.FAVORITES then
-                                                ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                                                ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.small)
                                                 app.gui:pushColors(app.gui.st.col.search.favorite)
                                                 ImGui.Text(ctx, ICONS.STAR)
                                                 app.gui:popColors(app.gui.st.col.search.favorite)
@@ -1900,7 +1900,7 @@ RunApp = function()
                                             end
                                             if app.temp.searchMode == SEARCH_MODE.FILTERS then
                                                 -- if result.group == SPECIAL_GROUPS.FAVORITES then
-                                                ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                                                ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.small)
                                                 app.gui:pushColors(app.gui.st.col.search.favorite)
                                                 ImGui.Text(ctx, FILTER_ICONS[result.type])
                                                 app.gui:popColors(app.gui.st.col.search.favorite)
@@ -2201,7 +2201,7 @@ RunApp = function()
                                 if not dragged then drawDropTarget(tag, spacingY, 'before', 0, 0) end
                                 app.gui:pushColors(app.gui.st.col.tag)
                                 app.gui:pushStyles(app.gui.st.vars.tag)
-                                ImGui.PushFont(ctx, app.gui.st.fonts.small)
+                                ImGui.PushFont(ctx, app.gui.st.fonts.default, app.gui.scaledFonts.small)
                                 local w = select(1, ImGui.GetContentRegionAvail(ctx))
                                 local globalX, globalY = ImGui.GetCursorScreenPos(ctx)
                                 local x, y = ImGui.GetCursorPos(ctx)
@@ -2556,7 +2556,7 @@ RunApp = function()
 
                         ImGui.SeparatorText(ctx, "Tags")
                         ImGui.SameLine(ctx)
-                        ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                        ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.small)
                         ImGui.SetCursorPosX(ctx,
                             ImGui.GetCursorPosX(ctx) + ImGui.GetContentRegionAvail(ctx) - spacingX - paddingX * 2 -
                             ImGui.CalcTextSize(ctx, ICONS.PLUS))
@@ -2590,7 +2590,7 @@ RunApp = function()
                         app.temp.quickChain = app.temp.quickChain or {}
                         ImGui.SeparatorText(ctx, "QuickChain")
                         ImGui.BeginGroup(ctx)
-                        ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
+                        ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.large)
                         local btnW = ImGui.CalcTextSize(ctx, ICONS.DISK) + paddingX * 2
                         ImGui.PopFont(ctx)
                         local text = app.temp.currentlyLoadedQuickChain and app.temp.currentlyLoadedQuickChain.name or
@@ -2773,7 +2773,7 @@ RunApp = function()
                         else
                             app.gui:pushColors(app.gui.st.col.buttons.default)
                         end
-                        ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                        ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.small)
                         if ImGui.Button(ctx, ICONS.LIGHTNING .. '##quickChainAdd',
                                 w - spacingX - paddingX * 2 - ImGui.CalcTextSize(ctx, ICONS.ELLIPSIS)) then
                             app.flow.executeSelectedResults(app.temp.quickChain,
@@ -2913,7 +2913,7 @@ RunApp = function()
                     return menu
                 end
                 local calculateDimensions = function()
-                    ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
+                    ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.large)
                     local menuW, h = 0, ImGui.GetTextLineHeight(ctx) + paddingY * 2 + winPaddingY * 2
                     for i, btn in ipairs(menu) do
                         menuW = menuW + select(1, ImGui.CalcTextSize(ctx, ICONS[(btn.icon):upper()])) +
@@ -3006,7 +3006,7 @@ RunApp = function()
                     end
                 end
                 local drawIconMenu = function(ctx, buttons)
-                    ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
+                    ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.large)
                     local clicked = nil
                     for i, btn in ipairs(buttons) do
                         local col = btn.active and app.gui.st.col.buttons.topBarActiveIcon or
@@ -3028,12 +3028,12 @@ RunApp = function()
                         col = app.gui.st.col.titleUnfocused[ImGui.Col_Text]
                     end
                     ImGui.PushStyleColor(ctx, ImGui.Col_Text, col)
-                    ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                    ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.small)
                     ImGui.AlignTextToFramePadding(ctx)
                     ImGui.Text(ctx, ICONS.SEARCH)
                     ImGui.PopFont(ctx)
                     ImGui.SameLine(ctx)
-                    ImGui.PushFont(ctx, app.gui.st.fonts.large)
+                    ImGui.PushFont(ctx, app.gui.st.fonts.default, app.gui.scaledFonts.large)
                     ImGui.AlignTextToFramePadding(ctx)
                     ImGui.Text(ctx, app.scr.name)
                     ImGui.PopStyleColor(ctx)
@@ -3041,7 +3041,7 @@ RunApp = function()
                     if app.temp.fullWindow then
                         app:setHoveredHint('main', app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
                     elseif ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
-                        ImGui.PushFont(ctx, app.gui.st.fonts.default)
+                        ImGui.PushFont(ctx, app.gui.st.fonts.default, app.gui.scaledFonts.default)
                         ImGui.SetTooltip(ctx, app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
                         ImGui.PopFont(ctx)
                     end
@@ -3617,7 +3617,8 @@ RunApp = function()
                                                                     (assetType.allowMultiple and (assetType.group):gsub('s$', '(s)'):lower() or (assetType.name):lower()))
                                                                 :gsub(
                                                                     "^%l", string.upper)
-                                                            ImGui.PushFont(ctx, app.gui.st.fonts.bold)
+                                                            ImGui.PushFont(ctx, app.gui.st.fonts.bold,
+                                                                app.gui.scaledFonts.default)
                                                             -- ImGui.TextWrapped(ctx, mod .. ': ')
                                                             ImGui.TextColored(ctx, app.gui.st.basecolors.mainBrightest,
                                                                 mod .. ': ')
@@ -4392,6 +4393,7 @@ RunApp = function()
                             ImGui.DrawFlags_Closed)
                     end
                     local handleShortcuts = function()
+                        -- FIX: this closes right after a menu has been closed
                         if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then
                             local pressed = false
                             if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) then
@@ -4511,7 +4513,7 @@ RunApp = function()
             if not app.hide then
                 app.gui:pushColors(app.gui.st.col.main)
                 app.gui:pushStyles(app.gui.st.vars.main)
-                ImGui.PushFont(ctx, app.gui.st.fonts.default)
+                ImGui.PushFont(ctx, app.gui.st.fonts.default, app.gui.scaledFonts.default)
                 -- if app.logger.profile then profiler.start() end
                 app.draw.mainWindow(ctx)
                 -- if app.logger.profile then profiler.stop() end
