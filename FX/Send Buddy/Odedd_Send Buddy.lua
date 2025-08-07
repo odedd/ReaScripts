@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.1.6
+-- @version 1.1.9
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Maintain currently selected track when adding a send to a folder track whose index is lower than the selected track's index
+--   Internal change for supporting future scripts
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -458,6 +458,7 @@ if OD_PrereqsOK({
                     return
                 end
                 local target = targetTrack and ((s.type == SEND_TYPE.SEND) and s.destTrack or s.srcTrack) or s
+                local v = OD_dBFromValue(target.vol)
                 ImGui.SetNextItemWidth(ctx, w)
                 if targetTrack then app.gui:pushColors(app.gui.st.col.targetFader) end
                 local rv, v3 = ImGui.DragDouble(ctx, '##db', v, 0, 0, 0, '%.2f')
@@ -1070,7 +1071,7 @@ if OD_PrereqsOK({
                         ImGui.DrawList_AddRectFilled(app.gui.draw_list, left - insertsPadding, top,
                             left + fillerW,
                             top + fillerH,
-                            gui.st.basecolors.darkestBG, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
+                            app.gui.st.basecolors.darkestBG, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
                     end
                     for i, s in OD_PairsByOrder(app.db.sends) do
                         if s.type == type then
@@ -1126,9 +1127,9 @@ if OD_PrereqsOK({
             ImGui.SetNextItemWidth(ctx, w)
             local x, y = ImGui.GetCursorScreenPos(ctx)
             ImGui.DrawList_AddLine(app.gui.draw_list, x, y - (sepH / 2),
-                x + w, y - (sepH / 2), gui.st.basecolors.midBG, 1 * app.settings.current.uiScale)
+                x + w, y - (sepH / 2), app.gui.st.basecolors.midBG, 1 * app.settings.current.uiScale)
             ImGui.DrawList_AddLine(app.gui.draw_list, x, y + (sepH / 2),
-                x + w, y + (sepH / 2), gui.st.basecolors.midBG, 1 * app.settings.current.uiScale)
+                x + w, y + (sepH / 2), app.gui.st.basecolors.midBG, 1 * app.settings.current.uiScale)
             ImGui.SetCursorPosY(ctx, postButtonY)
         end
 
@@ -1196,7 +1197,7 @@ if OD_PrereqsOK({
             local textTop = top + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))
             local textRight = left + w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
             app.gui:drawVerticalText(app.gui.draw_list, text, textRight,
-                textTop, gui.st.basecolors.text, true, true)
+                textTop, app.gui.st.basecolors.text, true, true)
             ImGui.Dummy(ctx, app.gui.st.sizes.sendTypeSeparatorWidth, 1)
             ImGui.EndGroup(ctx)
             ImGui.SameLine(ctx)
@@ -1622,8 +1623,8 @@ if OD_PrereqsOK({
             ImGui.SeparatorText(ctx, 'Shortcuts')
             local resetCounter = false
             app.settings.current.shortcuts.closeScript, resetCounter = app.gui:setting('shortcut',
-                T.SETTINGS.SHORTCUTS.ENTER_SLEEP_MODE.LABEL,
-                T.SETTINGS.SHORTCUTS.ENTER_SLEEP_MODE.HINT, app.settings.current.shortcuts.closeScript,
+                T.SETTINGS.SHORTCUTS.CLOSE_SCRIPT.LABEL,
+                T.SETTINGS.SHORTCUTS.CLOSE_SCRIPT.HINT, app.settings.current.shortcuts.closeScript,
                 {
                     existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                         function(k, v) return k ~= 'closeScript' end)

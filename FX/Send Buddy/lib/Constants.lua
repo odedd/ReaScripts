@@ -1,4 +1,6 @@
 -- @noindex
+package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
+ImGui = require 'imgui' '0.9.1'
 
 -- ! CONSTANTS
 DB_SCALE = math.log(10.0) * 0.05
@@ -16,29 +18,11 @@ VOL_TYPE = {
 }
 
 APP_PAGE = {
-    ['SEARCH'] = {width = 900, height = 409, minHeight = 409, windowFlags = ImGui.WindowFlags_None},
+    ['MIXER'] = {width = 609, minHeight = 409, windowFlags = ImGui.WindowFlags_None, giveFocus = true},
+    ['SEARCH_SEND'] = {width = 900, height = 409, minHeight = 409, windowFlags = ImGui.WindowFlags_None},
+    ['SEARCH_FX'] = {width = 900, height = 409, minHeight = 409, windowFlags = ImGui.WindowFlags_None},
+    ['NO_TRACK'] = {width = 409, height = 409*3/4, minHeight = 409*3/4, windowFlags = ImGui.WindowFlags_None, giveFocus = true},
     ['CLOSE'] = 'close',
-}
-
-ICONS = {
-    ['DOCK_DOWN'] = 'D',
-    ['UNDOCK'] = 'E',
-    ['ARROW_LEFT'] = 'F',
-    ['GEAR'] = 'G',
-    ['HEADPHONES'] = 'H',
-    ['LEFT'] = 'L',
-    ['MONEY'] = 'M',
-    ['POLARITY'] = 'O',
-    ['PLUS'] = 'P',
-    ['RIGHT'] = 'R',
-    ['STAR'] = 'S',
-    ['TRASH'] = 'T',
-    ['UNDO'] = 'U',
-    ['ENVELOPE'] = 'V',
-    ['ARROW_RIGHT'] = 'W',
-    ['CLOSE'] = 'X',
-    ['STEREO'] = 'Y',
-    ['MONO'] = 'Z'
 }
 
 ASSETS = {
