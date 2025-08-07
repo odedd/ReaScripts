@@ -87,7 +87,7 @@ end
 function OD_GetFilesInFolder(folder, ext, ignore_ds)
     local files = {}
     local i = 0
-    ext = ext:gsub('^%.', '')
+    ext = ((ext == nil) and '' or ext):gsub('^%.', '')
     repeat
         local retval = r.EnumerateFiles(folder, i)
         if retval and retval:lower():match("%."..OD_EscapePattern(ext):lower()..'$') and ((not ignore_ds) or retval ~= '.DS_Store') then
