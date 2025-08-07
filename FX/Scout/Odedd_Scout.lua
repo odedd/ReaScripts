@@ -1998,7 +1998,7 @@ RunApp = function()
                                             local payloadTag = app.engine.tags[tonumber(tagPayload)]
                                             local mergeMode = false
                                             if position == 'inside' then
-                                                if (ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
+                                                if (ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)) then
                                                     mergeMode = true
                                                 end
                                                 app:setHint('main',
@@ -2118,7 +2118,7 @@ RunApp = function()
                                         app.temp.showDeleteTagConfirmation = nil
                                         ImGui.OpenPopup(ctx, 'Tag Context Menu')
                                     end
-                                    app:setHint('main', (T.HINTS.TAG_DEFAULT):format(tag.name))
+                                    app:setHint('main', (ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) and T.HINTS.TAG_DEFAULT_SHIFT or T.HINTS.TAG_DEFAULT):format(tag.name))
                                 end
                                 if ImGui.BeginPopup(ctx, 'Tag Context Menu') then
                                     app:setHint('main', '')
