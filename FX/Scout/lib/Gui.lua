@@ -12,6 +12,7 @@ PB_Gui.init = function(self, fonts)
     self.largeFontSize = 22
     self.scaledFonts = {}
     self:createFontsImGui010({
+        -- default = { },
         default = { file = 'Resources/Fonts/Cousine-Regular.ttf' },
         bold = { file = 'Resources/Fonts/Cousine-Regular.ttf', flags = ImGui.FontFlags_Bold },
         icons = { file = 'Resources/Fonts/Icons-Regular.otf' },

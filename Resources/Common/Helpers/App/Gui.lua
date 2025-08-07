@@ -28,6 +28,7 @@ function OD_Gui:createFonts(fonts)
         self:addFont(k, font.file, font.size)
     end
 end
+
 function OD_Gui:createFontsImGui010(fonts)
     for k, font in pairs(fonts) do
         self:addFontImGui010(k, font.file, font.flags)
@@ -40,16 +41,21 @@ function OD_Gui:addFont(key, file, size, recalculation)
         self.originalFonts[key] = { file = file, size = size } -- save for recalculating zoom later
     end
     self.st.fonts = self.st.fonts or {}
-    local scale =  self.app.settings.current.uiScale 
+    local scale = self.app.settings.current.uiScale
     self.st.fonts[key] = r.ImGui_CreateFont(OD_LocalOrCommon(file, self.app.scr.dir), math.floor(size * scale))
 end
+
 function OD_Gui:addFontImGui010(key, file, flags, recalculation)
     if not recalculation then
         self.originalFonts = self.originalFonts or {}
         self.originalFonts[key] = { file = file } -- save for recalculating zoom later
     end
     self.st.fonts = self.st.fonts or {}
-    self.st.fonts[key] = r.ImGui_CreateFontFromFile(OD_LocalOrCommon(file, self.app.scr.dir), flags)
+    if file then
+        self.st.fonts[key] = r.ImGui_CreateFontFromFile(OD_LocalOrCommon(file, self.app.scr.dir), flags)
+    else
+        self.st.fonts[key] = r.ImGui_CreateFont(OD_LocalOrCommon('sans-serif', self.app.scr.dir), flags)
+    end
 end
 
 -- function OD_Gui:getNormalizedScale(scale, font)
@@ -111,7 +117,6 @@ function OD_Gui:init(addDefaultFonts)
 
     r.ImGui_Attach(self.ctx, self.icons.caution)
     r.ImGui_Attach(self.ctx, self.icons.error)
-
 end
 
 OD_Gui.recalculateZoom = function(self, scale)
@@ -119,7 +124,6 @@ OD_Gui.recalculateZoom = function(self, scale)
 end
 
 OD_Gui.updateCachedTextHeightsToScale = function(self)
-
     if self.st.fonts.default then
         r.ImGui_PushFont(self.ctx, self.st.fonts.default)
         self.TEXT_BASE_WIDTH, self.TEXT_BASE_HEIGHT = r.ImGui_CalcTextSize(self.ctx, 'A'),
