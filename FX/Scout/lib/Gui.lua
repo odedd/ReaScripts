@@ -60,6 +60,7 @@ PB_Gui.init = function(self, fonts)
         mainBright = 0xb73849ff,
         mainBrighter = 0xc74859ff,
         mainBrightest = 0xd75869ff,
+        highlight = 0x42f595ff,
         textBright = 0xd7d7d7ff,
         textDark = 0x7c7c7cff,
         textDarker = 0x444444ff,

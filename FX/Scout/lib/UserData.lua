@@ -2199,7 +2199,8 @@ function PB_UserData:deleteAllTags()
     return tagCount
 end
 
-function PB_UserData:createTag(name, parent)
+function PB_UserData:createTag(name, parent, putAtStart)
+    if putAtStart == nil then putAtStart = true end
     self.app.logger:logDebug('-- PB_UserData:createTag()')
     self.app.logger:logDebug('Creating tag "' .. name .. '"')
 
@@ -2209,6 +2210,9 @@ function PB_UserData:createTag(name, parent)
     -- Count existing tags at this level
     for id, tagInfo in pairs(self.current.tagInfo) do
         if tagInfo.parentId == parentId then
+            if putAtStart then
+            tagInfo.order = tagInfo.order + 1
+            end
             levelCount = levelCount + 1
         end
     end
@@ -2216,7 +2220,7 @@ function PB_UserData:createTag(name, parent)
     local newTag = {
         name = name,
         parentId = parentId,
-        order = levelCount + 1
+        order = putAtStart and 1 or levelCount + 1
     }
 
     local newId = self.current.tagIdCount + 1

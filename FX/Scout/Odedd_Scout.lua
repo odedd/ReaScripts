@@ -336,7 +336,8 @@ RunApp = function()
             end,
             filterResults = function(query, skipReset, maintainSelection)
                 local reset = (skipReset == nil) and true or (not skipReset)
-                local assets = (app.temp.searchMode == SEARCH_MODE.MAIN or app.temp.searchMode == SEARCH_MODE.SEND_BUDDY) and app.engine.assets or app.engine.filterAssets
+                local assets = (app.temp.searchMode == SEARCH_MODE.MAIN or app.temp.searchMode == SEARCH_MODE.SEND_BUDDY) and
+                    app.engine.assets or app.engine.filterAssets
                 local tagsTable = app.engine.tags
                 local oldResults, oldKeyboardPosResult, validatedFilter, hasIssues, filter, maintainTargets
                 local init = function()
@@ -1995,16 +1996,29 @@ RunApp = function()
                                         end
                                         if tagDropped then
                                             local payloadTag = app.engine.tags[tonumber(tagPayload)]
+                                            local mergeMode = false
                                             if position == 'inside' then
+                                                if (ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
+                                                    mergeMode = true
+                                                end
                                                 app:setHint('main',
-                                                    (T.HINTS.DRAG_TAG_INTO_TAG):format(payloadTag.name, tag.name), nil,
+                                                    (mergeMode and T.HINTS.DRAG_TAG_INTO_TAG_MERGE or T.HINTS.DRAG_TAG_INTO_TAG)
+                                                    :format(payloadTag.name, tag.name), nil,
                                                     nil, 2)
+                                                local col = mergeMode and app.gui.st.basecolors.highlight or
+                                                app.gui.st.basecolors.mainBright
                                                 ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX,
                                                     scrY - height - offsetY,
                                                     scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
-                                                    app.gui.st.basecolors.mainBright,
+                                                    col,
                                                     app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
                                                     nil, 1.5 * app.gui.scale)
+                                                ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), scrX,
+                                                    scrY - height - offsetY,
+                                                    scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
+                                                    (col & 0xffffff00) | 0x40,
+                                                    app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
+                                                    nil)
                                             else
                                                 app:setHint('main',
                                                     (T.HINTS.DRAG_TAG_TO_POSITION_RELATIVE_TO_TAG):format(
@@ -2017,7 +2031,11 @@ RunApp = function()
                                                     .mainBright, 15, nil, 1.5 * app.gui.scale)
                                             end
                                             if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
-                                                payloadTag:moveTo(tag, position)
+                                                if mergeMode then
+                                                    payloadTag:mergeWith(tag, true)
+                                                else
+                                                    payloadTag:moveTo(tag, position)
+                                                end
                                             end
                                         end
                                         if assetDropped then
@@ -2035,7 +2053,13 @@ RunApp = function()
                                                 app.gui.st.basecolors.mainBright,
                                                 app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
                                                 nil, 1.5 * app.gui.scale)
-                                            if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
+                                            ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), scrX,
+                                                    scrY - height - offsetY,
+                                                    scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
+                                                    (app.gui.st.basecolors.mainBright & 0xffffff00) | 0x40,
+                                                    app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
+                                                    nil)
+                                                if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
                                                 for i, result in ipairs(app.selection:results()) do
                                                     if remove then
                                                         result:removeTag(tag, false)
@@ -2799,7 +2823,7 @@ RunApp = function()
                             T.SEARCH_WINDOW.SEARCH_HINT[app.temp.searchMode], app.temp.searchInput,
                             inputFlags, callback)
                         if not app.temp.selectSearchInputText then -- wait 1 frame for selection to work
-                            app.temp.lastSearchMode = app.temp.searchMode
+                            -- app.temp.lastSearchMode = app.temp.searchMode
                             app.temp.selectSearchInputTextOnNextFrame = nil
                         else
                             app.temp.selectSearchInputText = nil

@@ -755,7 +755,54 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
         end
 
         -- Move this tag to a new position relative to a target tag
-        self.tags[id].moveTo = function(self, targetTag, position)
+        self.tags[id].mergeWith = function(self, targetTag)
+            -- Defensive checks
+            if not targetTag or not targetTag.id then
+                self.app.logger:logError('mergeWith: targetTag or targetTag.id is nil')
+                return false
+            end
+
+            -- Validate that targetTag isn't a descendant of this tag (prevent cycles)
+            if targetTag.parents then
+                for _, parent in ipairs(targetTag.parents) do
+                    if parent.id == self.id then
+                        self.app.logger:logError('mergeWith: Cannot merge tag into its own descendant (would create cycle)')
+                        return false
+                    end
+                end
+            end
+
+            self.app.logger:logInfo('Merging tag "' .. self.name .. '" into "' .. targetTag.name .. '"')
+
+            -- 1. Move all children to targetTag (appended after existing children)
+            local childrenMoved = 0
+            for childId, child in OD_PairsByOrder(self.allTags) do
+                if child.parentId == self.id then
+                    child:moveTo(targetTag, "inside", true) -- Don't persist each move
+                    childrenMoved = childrenMoved + 1
+                end
+            end
+
+            -- 2. Transfer all assets tagged with this tag to targetTag
+            local assetsTransferred = 0
+            for _, asset in ipairs(self.engine.assets) do
+                if OD_HasValue(asset.tags, self.id) then
+                    asset:addTag(targetTag, false) -- Don't save to DB each time
+                    assetsTransferred = assetsTransferred + 1
+                end
+            end
+
+            self.app.logger:logInfo('Moved ' .. childrenMoved .. ' children and transferred ' .. assetsTransferred .. ' assets')
+
+            -- 3. Delete this tag (handles persistence and reloading)
+            self:delete(true)
+
+            return true
+        end
+        self.tags[id].moveTo = function(self, targetTag, position, persistAndReload)
+            if persistAndReload == nil then
+                persistAndReload = true -- Default to persisting and reloading
+            end
             -- Defensive checks
             if not targetTag or not position then
                 self.app.logger:logError('moveTo: targetTag or position is nil')
@@ -857,11 +904,14 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
             end
 
             self.parentId = newParentId
-            self.order = nil -- will be set by above loop
+            -- self.order = nil -- order is taken care of by the above loop
+            -- self.order is now set in the loop above
 
-            self.app.userdata:save()
+            if persistAndReload then
+                self.app.userdata:save()
             -- Rescan tags into the engine after move
-            self.engine:getTags(true)
+                self.engine:getTags(true)
+            end
         end
     end
 
