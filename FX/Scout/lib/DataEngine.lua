@@ -766,7 +766,8 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
             if targetTag.parents then
                 for _, parent in ipairs(targetTag.parents) do
                     if parent.id == self.id then
-                        self.app.logger:logError('mergeWith: Cannot merge tag into its own descendant (would create cycle)')
+                        self.app.logger:logError(
+                        'mergeWith: Cannot merge tag into its own descendant (would create cycle)')
                         return false
                     end
                 end
@@ -792,7 +793,8 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
                 end
             end
 
-            self.app.logger:logInfo('Moved ' .. childrenMoved .. ' children and transferred ' .. assetsTransferred .. ' assets')
+            self.app.logger:logInfo('Moved ' ..
+            childrenMoved .. ' children and transferred ' .. assetsTransferred .. ' assets')
 
             -- 3. Delete this tag (handles persistence and reloading)
             self:delete(true)
@@ -909,7 +911,7 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
 
             if persistAndReload then
                 self.app.userdata:save()
-            -- Rescan tags into the engine after move
+                -- Rescan tags into the engine after move
                 self.engine:getTags(true)
             end
         end
@@ -1370,7 +1372,8 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                     end
                 }
                 if parentNames then
-                    table.insert(tagAsset.searchText, { text = parentNames, color =  self.app.gui.st.col.search.thirdResult})
+                    table.insert(tagAsset.searchText,
+                        { text = parentNames, color = self.app.gui.st.col.search.tagText })
                 end
                 -- Add execute function directly to the asset
                 tagAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore)
@@ -1499,15 +1502,21 @@ PB_DataEngine.sortAssets = function(self)
     table.sort(self.assets, function(a, b)
         local aPriority = groupPriority[a.group] or 1000
         local bPriority = groupPriority[b.group] or 1000
-        if a.order ~= nil and b.order ~= nil and aPriority == bPriority then
-            return a.order < b.order
-        elseif aPriority == bPriority then
-            -- Special handling for favorites: sort by favoriteOrder instead of alphabetically
+
+        if aPriority == bPriority then
+            
             if a.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES] and b.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES] then
+                -- Special handling for favorites: sort by favoriteOrder instead of alphabetically
                 return (a.favoriteOrder or 0) < (b.favoriteOrder or 0)
                 -- Special handling for recents: sort by recentOrder instead of alphabetically
             elseif a.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] and b.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] then
                 return (a.recentOrder or 0) < (b.recentOrder or 0)
+            elseif a.order ~= nil and b.order ~= nil then
+                return a.order < b.order
+            elseif a.order ~= nil and b.order == nil then
+                return true -- a has order, b doesn't - a comes first
+            elseif a.order == nil and b.order ~= nil then
+                return false -- b has order, a doesn't - b comes first
             else
                 return a.searchText[1].text < b.searchText[1].text
             end
@@ -1536,15 +1545,19 @@ PB_DataEngine.sortAssetsPartial = function(self, assetsToSort)
     table.sort(assetsToSort, function(a, b)
         local aPriority = groupPriority[a.group] or 1000
         local bPriority = groupPriority[b.group] or 1000
-        if a.order ~= nil and b.order ~= nil and aPriority == bPriority then
-            return a.order < b.order
-        elseif aPriority == bPriority then
+        if aPriority == bPriority then
             -- Special handling for favorites: sort by favoriteOrder instead of alphabetically
             if a.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES] and b.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES] then
                 return (a.favoriteOrder or 0) < (b.favoriteOrder or 0)
                 -- Special handling for recents: sort by recentOrder instead of alphabetically
             elseif a.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] and b.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] then
                 return (a.recentOrder or 0) < (b.recentOrder or 0)
+            elseif a.order ~= nil and b.order ~= nil then
+                return a.order < b.order
+            elseif a.order ~= nil and b.order == nil then
+                return true -- a has order, b doesn't - a comes first
+            elseif a.order == nil and b.order ~= nil then
+                return false -- b has order, a doesn't - b comes first
             else
                 return a.searchText[1].text < b.searchText[1].text
             end

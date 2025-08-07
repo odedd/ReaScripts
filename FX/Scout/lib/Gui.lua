@@ -172,7 +172,13 @@ PB_Gui.init = function(self, fonts)
             secondaryResult = {
                 [ImGui.Col_Text] = self.st.basecolors.textDark,
             },
-            thirdResult = {
+            additionalText = {
+                [ImGui.Col_Text] = self.st.basecolors.textDarker,
+            },
+            shortcutText = {
+                [ImGui.Col_Text] = self.st.basecolors.textDarker,
+            },
+            tagText = {
                 [ImGui.Col_Text] = self.st.basecolors.textDarker,
             },
             highlight = {

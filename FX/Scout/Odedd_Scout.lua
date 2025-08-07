@@ -1928,17 +1928,28 @@ RunApp = function()
                                                 end
                                             end
                                             ImGui.PopStyleVar(ctx)
-                                            if (result.shortcuts and #result.shortcuts > 0) then
-                                                app.gui:pushColors(app.gui.st.col.search.thirdResult)
-                                                local text = ' ' .. table.concat(result.shortcuts, ', ')
-                                                ImGui.Text(ctx, text)
-                                                app.gui:popColors(app.gui.st.col.search.thirdResult)
+                                            local sameLine = false
+                                            if result.additionalText then
+                                                app.gui:pushColors(app.gui.st.col.search.additionalText)
+                                                ImGui.Text(ctx, ' ' .. result.additionalText)
+                                                app.gui:popColors(app.gui.st.col.search.additionalText)
+                                                sameLine = true
                                             end
-                                            if (result.tags and #result.tags > 0) then
-                                                if (result.shortcuts and #result.shortcuts > 0) then
+                                            if (result.shortcuts and #result.shortcuts > 0) then
+                                                if sameLine then
                                                     ImGui.SameLine(ctx)
                                                 end
-                                                app.gui:pushColors(app.gui.st.col.search.thirdResult)
+                                                app.gui:pushColors(app.gui.st.col.search.shortcutText)
+                                                local text = ' ' .. table.concat(result.shortcuts, ', ')
+                                                ImGui.Text(ctx, text)
+                                                app.gui:popColors(app.gui.st.col.search.shortcutText)
+                                                sameLine = true
+                                            end
+                                            if (result.tags and #result.tags > 0) then
+                                                if sameLine then
+                                                    ImGui.SameLine(ctx)
+                                                end
+                                                app.gui:pushColors(app.gui.st.col.search.tagText)
                                                 local text = '|'
                                                 for t = 1, #(result.tags or {}) do
                                                     if tagInfo[result.tags[t]] == nil then
@@ -1950,7 +1961,7 @@ RunApp = function()
                                                     end
                                                 end
                                                 ImGui.Text(ctx, text)
-                                                app.gui:popColors(app.gui.st.col.search.thirdResult)
+                                                app.gui:popColors(app.gui.st.col.search.tagText)
                                             end
                                             ImGui.PopID(ctx)
                                         end

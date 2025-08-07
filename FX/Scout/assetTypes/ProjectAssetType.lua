@@ -118,12 +118,13 @@ function ProjectAssetType:assembleAsset(project)
             { text = project.name },
             { text = project.path }
         },
+        
         group = self.group,
     })
 
     if project.recent then
         asset.order = project.order
-        table.insert(asset.searchText, { text = '(Recently opened)' })
+        asset.additionalText = 'Recently opened'
     end
     return asset
 end
