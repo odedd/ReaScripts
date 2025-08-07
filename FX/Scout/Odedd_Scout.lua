@@ -1247,15 +1247,13 @@ RunApp = function()
                 if OD_Tablelength(app.temp.activeFilters) > 0 then
                     ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx))
 
-                    if app.guiHelpers.iconButton(ctx, 'CLOSE', app.gui.st.col.buttons.activeFilterAction) then
+                    if app.guiHelpers.iconButton(ctx, 'CLOSE', app.gui.st.col.buttons.activeFilterAction, T.HINTS.RESET_FILTERS, 'clearFilters') then
                         app.flow.filterResults({ clear = true }, nil, true)
                     end
-                    app:setHoveredHint('main', T.HINTS.RESET_FILTERS)
                     ImGui.SameLine(ctx, 0, 0)
-                    if app.guiHelpers.iconButton(ctx, 'DISK', app.gui.st.col.buttons.activeFilterAction) then
+                    if app.guiHelpers.iconButton(ctx, 'DISK', app.gui.st.col.buttons.activeFilterAction, T.HINTS.SAVE_FILTERS) then
                         ImGui.OpenPopup(ctx, 'Save Filter Set Context Menu')
                     end
-                    app:setHoveredHint('main', T.HINTS.SAVE_FILTERS)
                     ImGui.SameLine(ctx, 0, 0)
                     if ImGui.BeginPopup(ctx, 'Save Filter Set Context Menu') then
                         app:setHint('main', '')
@@ -1737,14 +1735,125 @@ RunApp = function()
                                                         app.selection:selectOnly(row.index)
                                                     end
                                                 end
-                                                -- local group = result.assetType
+                                                -- if (result.tags and #result.tags > 0) then
+                                                local existingTags = {}
+                                                local tagList = {}
+                                                local selectedResults = app.selection:results()
+
+                                                for _, result in ipairs(selectedResults) do
+                                                    if (result.tags and #result.tags > 0) then
+                                                        for t = 1, #(result.tags or {}) do
+                                                            local tagId = result.tags[t]
+                                                            local tag = tagInfo[tagId]
+                                                            if not existingTags[tagId] then
+                                                                table.insert(tagList,
+                                                                    app.engine.tags[tagId])
+                                                            end
+                                                            existingTags[tagId] = existingTags[tagId] and
+                                                                existingTags[tagId] + 1 or 1
+                                                        end
+                                                    end
+                                                end
+                                                ImGui.TextDisabled(ctx, 'Tags')
+                                                if ImGui.BeginMenu(ctx, "Add tags") then
+                                                    local function tagsOfParent(parentId, existingTags)
+                                                        for tagId, tag in OD_PairsByOrder(app.engine.tags) do
+                                                            if tag.parentId == parentId then
+                                                                if tag.hasDescendants then
+                                                                    if ImGui.BeginMenu(ctx, tag.name .. '##resultContextMenuTagsSubmenu' .. tagId) then
+                                                                        tagsOfParent(tagId, existingTags)
+                                                                        ImGui.EndMenu(ctx)
+                                                                    end
+                                                                else
+                                                                    if ImGui.MenuItem(ctx, tag.name .. '##resultContextMenuTagsItem' .. tagId, nil,
+                                                                            existingTags[tagId]) then
+                                                                        for _, result in ipairs(selectedResults) do
+                                                                            if existingTags[tagId] then
+                                                                                result:removeTag(tag, false)
+                                                                            else
+                                                                                result:addTag(tag, false)
+                                                                            end
+                                                                            app.userdata:save()
+                                                                            app.flow.filterResults(nil, true)
+                                                                        end
+                                                                    end
+                                                                end
+                                                            end
+                                                        end
+                                                    end
+                                                    tagsOfParent(TAGS_ROOT_PARENT, existingTags)
+                                                    ImGui.EndMenu(ctx)
+                                                end
+
+                                                if tagList and #tagList > 0 then
+                                                    if ImGui.MenuItem(ctx, 'Clear Tags') then
+                                                        for _, tag in ipairs(tagList) do
+                                                            for _, result in ipairs(selectedResults) do
+                                                                result:removeTag(tag, false)
+                                                            end
+                                                            app.userdata:save()
+                                                            app.flow.filterResults(nil, true, true)
+                                                        end
+                                                    end
+                                                    if ImGui.MenuItem(ctx, 'Copy Tags') then
+                                                        app.temp.copiedTags = tagList
+                                                    end
+                                                end
+                                                if app.temp.copiedTags and #app.temp.copiedTags > 0 then
+                                                    if ImGui.MenuItem(ctx, 'Paste Tags') then
+                                                        for _, tag in ipairs(app.temp.copiedTags) do
+                                                            for _, result in ipairs(selectedResults) do
+                                                                result:addTag(tag, false)
+                                                            end
+                                                        end
+                                                        app.userdata:save()
+                                                        app.flow.filterResults(nil, true, true)
+                                                    end
+                                                end
+                                                ImGui.Separator(ctx)
+
+                                                if #tagList > 0 then
+                                                    ImGui.Text(ctx,
+                                                        (#selectedResults > 1 and (#selectedResults .. " items") or "Item") ..
+                                                        " tagged with:")
+                                                    ImGui.TextDisabled(ctx,
+                                                        "(Click to add, " ..
+                                                        (OS_is.mac and 'Option' or 'Alt') .. "+Click to remove)")
+                                                    for _, tag in ipairs(tagList) do
+                                                        if ImGui.MenuItem(ctx, tag.name .. (#selectedResults > 1 and (" (" .. existingTags[tag.id] .. ")") or "") .. '##activeTag' .. tag.id) then
+                                                            local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
+                                                            for _, result in ipairs(selectedResults) do
+                                                                if remove then
+                                                                    result:removeTag(tag, false)
+                                                                else
+                                                                    result:addTag(tag, false)
+                                                                end
+                                                            end
+                                                            app.userdata:save()
+                                                            app.flow.filterResults(nil, true, true)
+                                                        end
+                                                    end
+                                                    ImGui.Separator(ctx)
+                                                end
+
+                                                ImGui.TextDisabled(ctx, 'Actions')
+
                                                 local rv, keymod = app.guiHelpers.actionContextMenu(ctx, result,
                                                     app.selection:count(), RESULT_CONTEXT.KEYBOARD)
                                                 if rv then
                                                     app.flow.executeSelectedResults(app.selection:results(),
                                                         keymod)
                                                 end
-                                                ImGui.EndPopup(ctx)
+                                                -- local group = result.assetType
+
+                                                -- ImGui.SameLine(ctx)
+                                                -- ImGui.PushStyleColor(ctx, ImGui.Col_Text, app.gui.st.basecolors.textDark)
+                                                -- -- ImGui.PushTextWrapPos(ctx, 200)
+                                                -- -- OD_ImGuiRichTextWrapped(ctx, table.concat(tagNames, ', '))
+                                                -- ImGui.PopStyleColor(ctx)
+                                                -- ImGui.Spacing(ctx)
+                                                -- end
+                                                ImGui.EndPopup(ctx) --- IGNORE ---
                                             end
 
                                             ImGui.SameLine(ctx)
@@ -2006,7 +2115,7 @@ RunApp = function()
                                                     :format(payloadTag.name, tag.name), nil,
                                                     nil, 2)
                                                 local col = mergeMode and app.gui.st.basecolors.highlight or
-                                                app.gui.st.basecolors.mainBright
+                                                    app.gui.st.basecolors.mainBright
                                                 ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX,
                                                     scrY - height - offsetY,
                                                     scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
@@ -2054,12 +2163,12 @@ RunApp = function()
                                                 app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
                                                 nil, 1.5 * app.gui.scale)
                                             ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), scrX,
-                                                    scrY - height - offsetY,
-                                                    scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
-                                                    (app.gui.st.basecolors.mainBright & 0xffffff00) | 0x40,
-                                                    app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
-                                                    nil)
-                                                if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
+                                                scrY - height - offsetY,
+                                                scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
+                                                (app.gui.st.basecolors.mainBright & 0xffffff00) | 0x40,
+                                                app.gui.st.vars.tag[ImGui.StyleVar_FrameRounding][1],
+                                                nil)
+                                            if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
                                                 for i, result in ipairs(app.selection:results()) do
                                                     if remove then
                                                         result:removeTag(tag, false)
@@ -2118,7 +2227,9 @@ RunApp = function()
                                         app.temp.showDeleteTagConfirmation = nil
                                         ImGui.OpenPopup(ctx, 'Tag Context Menu')
                                     end
-                                    app:setHint('main', (ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) and T.HINTS.TAG_DEFAULT_SHIFT or T.HINTS.TAG_DEFAULT):format(tag.name))
+                                    app:setHint('main',
+                                        (ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) and T.HINTS.TAG_DEFAULT_SHIFT or T.HINTS.TAG_DEFAULT)
+                                        :format(tag.name))
                                 end
                                 if ImGui.BeginPopup(ctx, 'Tag Context Menu') then
                                     app:setHint('main', '')

@@ -3,7 +3,7 @@
 if reaper.ImGui_CreateContext then
 
   OD_IMGUI_KEY_NAMES = {
-    [reaper.ImGui_Mod_Alt()] = 'Alt',
+    [reaper.ImGui_Mod_Alt()] = _OD_ISMAC and 'Option' or 'Alt',
     [reaper.ImGui_Mod_Ctrl()] = _OD_ISMAC and 'Cmd' or 'Ctrl',
     [reaper.ImGui_Mod_None()] = 'None',
     [reaper.ImGui_Mod_Shift()] = 'Shift',
