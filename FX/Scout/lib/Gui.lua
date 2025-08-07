@@ -64,6 +64,11 @@ PB_Gui.init = function(self, fonts)
         textBright = 0xd7d7d7ff,
         textDark = 0x7c7c7cff,
         textDarker = 0x444444ff,
+        textDarkest = 0x303030ff,
+    }
+    self.st.searchColor = {
+        results = {self.st.basecolors.textBright, self.st.basecolors.textDark, self.st.basecolors.textDarker},
+        separator = self.st.basecolors.textDarkest
     }
     self.st.colpresets = {
         darkButton = {

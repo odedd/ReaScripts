@@ -1166,6 +1166,22 @@ end
 PB_DataEngine.tagAssets = function(self)
     for _, asset in ipairs(self.assets) do
         asset.tags = OD_DeepCopy(self.app.userdata.current.taggedAssets[asset.id]) or {}
+        if (asset.tags and #asset.tags > 0) then
+            table.insert(asset.searchText,
+                { text = '|', color = self.app.gui.st.searchColor.separator, dontSearch = true })
+            for i = #asset.tags, 1, -1 do
+                local tag = self.tags[asset.tags[i]]
+                table.insert(asset.searchText,
+                    {
+                        text = tag.name,
+                        color = tag.displayColor and
+                            OD_SetAlpha(tag.displayColor, self.app.settings.current.searchTagsAlpha),
+                        dontSearch = true
+                    })
+                table.insert(asset.searchText,
+                    { text = '|', color = self.app.gui.st.searchColor.separator, dontSearch = true })
+            end
+        end
     end
 end
 PB_DataEngine.assetsWithTag = function(self, tag)
@@ -1394,13 +1410,20 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 }
 
                 if (tag.parents and #tag.parents > 0) then
-                    table.insert(tagAsset.searchText, { text = '<', color = self.app.gui.st.basecolors.textDarker, dontSearch = true })
+                    table.insert(tagAsset.searchText,
+                        { text = '<', color = self.app.gui.st.searchColor.separator, dontSearch = true })
                     for i = #tag.parents, 1, -1 do
                         local parent = tag.parents[i]
                         table.insert(tagAsset.searchText,
-                            { text = parent.name, color = parent.displayColor and
-                            OD_SetAlpha(parent.displayColor, self.app.settings.current.searchTagsAlpha) })
-                        if i > 1 then table.insert(tagAsset.searchText, { text = '<',  color = self.app.gui.st.basecolors.textDarker, dontSearch = true }) end
+                            {
+                                text = parent.name,
+                                color = parent.displayColor and
+                                    OD_SetAlpha(parent.displayColor, self.app.settings.current.searchTagsAlpha)
+                            })
+                        if i > 1 then
+                            table.insert(tagAsset.searchText,
+                                { text = '<', color = self.app.gui.st.searchColor.separator, dontSearch = true })
+                        end
                     end
                 end
                 -- Add execute function directly to the asset

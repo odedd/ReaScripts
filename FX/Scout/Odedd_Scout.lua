@@ -1756,6 +1756,8 @@ RunApp = function()
                     end
 
                     if ImGui.BeginChild(ctx, 'resultsArea', w - (app.settings.current.showSideBar and (sideBarW + paddingX * 2) or 0) - (app.settings.current.showQuickChain and (quickChainW + paddingX * 2) or 0)) then
+                        local numResultColor = #app.gui.st.searchColor.results
+
                         if app.pageSwitched then
                             app.flow.filterResults({ text = '' })
                         end
@@ -1912,12 +1914,9 @@ RunApp = function()
                                                         ImGui.Text(ctx, ' ')
                                                         ImGui.SameLine(ctx)
                                                     end
-                                                    if st.color then
-                                                        ImGui.PushStyleColor(ctx, ImGui.Col_Text, st.color)
-                                                    else
-                                                        app.gui:pushColors(j == 1 and app.gui.st.col.search.mainResult or
-                                                            app.gui.st.col.search.secondaryResult)
-                                                    end
+                                                    ImGui.PushStyleColor(ctx, ImGui.Col_Text,
+                                                        st.color or
+                                                        app.gui.st.searchColor.results[math.min(j, numResultColor)])
                                                     local curIndex = 1
                                                     for _, highlight in OD_PairsByOrder(result.foundIndexes[j] or {}) do
                                                         if curIndex <= highlight.from then
@@ -1940,12 +1939,7 @@ RunApp = function()
                                                         ImGui.SameLine(ctx)
                                                     end
 
-                                                    if st.color then
-                                                        ImGui.PopStyleColor(ctx)
-                                                    else
-                                                        app.gui:popColors(j == 1 and app.gui.st.col.search.mainResult or
-                                                            app.gui.st.col.search.secondaryResult)
-                                                    end
+                                                    ImGui.PopStyleColor(ctx)
                                                 end
                                             end
                                             ImGui.PopStyleVar(ctx)
@@ -1965,29 +1959,6 @@ RunApp = function()
                                                 ImGui.Text(ctx, text)
                                                 app.gui:popColors(app.gui.st.col.search.shortcutText)
                                                 sameLine = true
-                                            end
-                                            if (result.tags and #result.tags > 0) then
-                                                if sameLine then
-                                                    ImGui.SameLine(ctx)
-                                                end
-                                                app.gui:pushColors(app.gui.st.col.search.defaultTagColor)
-                                                ImGui.Text(ctx, '|')
-                                                ImGui.SameLine(ctx)
-                                                for t = 1, #(result.tags or {}) do
-                                                    local tag = app.engine.tags[result.tags[t]]
-                                                    if tag.displayColor then
-                                                        ImGui.TextColored(ctx,
-                                                            OD_SetAlpha(tag.displayColor,
-                                                                app.settings.current.searchTagsAlpha),
-                                                            tag.name)
-                                                    else
-                                                        ImGui.Text(ctx, tag.name)
-                                                    end
-                                                    ImGui.SameLine(ctx)
-                                                    ImGui.Text(ctx, '|')
-                                                    ImGui.SameLine(ctx)
-                                                end
-                                                app.gui:popColors(app.gui.st.col.search.defaultTagColor)
                                             end
                                             ImGui.PopID(ctx)
                                         end

@@ -124,7 +124,7 @@ function ProjectAssetType:assembleAsset(project)
 
     if project.recent then
         asset.order = project.order
-        asset.additionalText = 'Recently opened'
+        table.insert(asset.searchText, {text =  'Recently opened', dontSearch = true})
     end
     return asset
 end
