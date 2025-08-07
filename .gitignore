@@ -11,6 +11,7 @@ run_scripts_www.sh
 .VSCodeCounter
 
 **/*.ini
+**/*.log
 
 FX/Visual Plugin Selector/*
 !FX/Visual Plugin Selector/Odedd_Visual Plugin Selector.lua
@@ -21,3 +22,8 @@ Rendering/Stem Manager/*
 !Rendering/Stem Manager/Odedd_Stem Manager.lua
 !Rendering/Stem Manager/lib
 !Rendering/Stem Manager/lib/*
+
+Resources/Fonts/*.glyphs
+
+FX/Scout/internal
+FX/Scout/Odedd_Scout -*.lua 
