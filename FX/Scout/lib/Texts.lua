@@ -272,6 +272,7 @@ T.SETTINGS.LISTS = {
 T.SEARCH_WINDOW = {
     SEARCH_HINT = {
         [SEARCH_MODE.MAIN] = 'Item search | Press Tab to search filters',
+        [SEARCH_MODE.SEND_BUDDY] = 'Send Buddy search | Press Tab to search filters',
         [SEARCH_MODE.FILTERS] = 'Filter search | Press Tab to search items',
     }
 }

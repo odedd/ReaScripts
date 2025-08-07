@@ -1209,7 +1209,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
             end
         end
         if not OD_BfCheck(context, ImGui.Mod_Shift) then
-            asset.app.flow.setSearchMode(SEARCH_MODE.MAIN)
+            asset.app.flow.setSearchMode(self.app.temp.lastSearchMode)
         else
             asset.app.flow.filterResults({ clearText = true })
         end
@@ -1220,7 +1220,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
         -- Normal click: Apply preset
         asset.preset:apply()
         if not OD_BfCheck(context, ImGui.Mod_Shift) then
-            asset.app.flow.setSearchMode(SEARCH_MODE.MAIN)
+            asset.app.flow.setSearchMode(self.app.temp.lastSearchMode)
         else
             asset.app.flow.filterResults({ clearText = true })
         end

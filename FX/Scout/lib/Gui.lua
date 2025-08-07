@@ -194,6 +194,12 @@ PB_Gui.init = function(self, fonts)
                 [ImGui.Col_FrameBg] = self.st.basecolors.darkBG,
                 [ImGui.Col_TextDisabled] = self.st.basecolors.midBG
             }
+            ,
+            [SEARCH_MODE.SEND_BUDDY] = {
+                [ImGui.Col_ChildBg] = 0x19211aff,
+                [ImGui.Col_FrameBg] = 0x19211aff,
+                [ImGui.Col_TextDisabled] = self.st.basecolors.midBG
+            }
         },
         topBarActiveFiltersArea = {
             -- [ImGui.Col_ChildBg] = self.st.basecolors.darkestBG,

@@ -45,7 +45,8 @@ FX_TYPE =
 
 SEARCH_MODE = {
     MAIN = 0,
-    FILTERS = 1
+    FILTERS = 1,
+    SEND_BUDDY = 2
 }
 
 RESULT_CONTEXT = {

@@ -336,7 +336,7 @@ RunApp = function()
             end,
             filterResults = function(query, skipReset, maintainSelection)
                 local reset = (skipReset == nil) and true or (not skipReset)
-                local assets = app.temp.searchMode == SEARCH_MODE.MAIN and app.engine.assets or app.engine.filterAssets
+                local assets = (app.temp.searchMode == SEARCH_MODE.MAIN or app.temp.searchMode == SEARCH_MODE.SEND_BUDDY) and app.engine.assets or app.engine.filterAssets
                 local tagsTable = app.engine.tags
                 local oldResults, oldKeyboardPosResult, validatedFilter, hasIssues, filter, maintainTargets
                 local init = function()
@@ -423,7 +423,7 @@ RunApp = function()
                     local hasTagFilters = next(validatedFilter.tags) ~= nil
 
                     -- If no filters at all, return all assets (or handle based on search mode)
-                    if not hasTextFilter and not hasTypeFilters and not hasTagFilters and app.temp.searchMode == SEARCH_MODE.MAIN then
+                    if not hasTextFilter and not hasTypeFilters and not hasTagFilters and (app.temp.searchMode == SEARCH_MODE.MAIN or app.temp.searchMode == SEARCH_MODE.SEND_BUDDY) then
                         for i = 1, #assets do
                             local asset = assets[i]
                             -- Set empty foundIndexes to prevent nil access errors
@@ -456,7 +456,7 @@ RunApp = function()
                             asset.foundIndexes = {}
                         end
 
-                        if app.temp.searchMode == SEARCH_MODE.MAIN then
+                        if (app.temp.searchMode == SEARCH_MODE.MAIN or app.temp.searchMode == SEARCH_MODE.SEND_BUDDY) then
                             -- Optimization 2: Early exit on first failed type condition
                             if hasTypeFilters then
                                 if (typeFilterChecks.type and asset.type ~= typeFilterChecks.type) then
@@ -923,6 +923,9 @@ RunApp = function()
                     ImGui.ShowMetricsWindow(ctx)
                     ImGui.ShowDebugLogWindow(ctx)
                     ImGui.ShowIDStackToolWindow(ctx)
+                end
+                if app.temp.searchMode == SEARCH_MODE.MAIN or app.temp.searchMode == SEARCH_MODE.SEND_BUDDY then
+                    app.temp.lastSearchMode = app.temp.searchMode
                 end
                 checkProjectChange()
                 app.engine:sync()
@@ -1724,7 +1727,7 @@ RunApp = function()
                                             if app.temp.highlightDropAreaForAllSelectedResults and app.temp.highlightDropAreaForAllSelectedResults < ImGui.GetFrameCount(ctx) or app.temp.highlightDropAreaFor == row.index then
                                                 ImGui.PopStyleColor(ctx)
                                             end
-                                            if app.temp.searchMode == SEARCH_MODE.MAIN then
+                                            if (app.temp.searchMode == SEARCH_MODE.MAIN or app.temp.searchMode == SEARCH_MODE.SEND_BUDDY) then
                                                 handleResultDragDrop(row)
                                             end
                                             if ImGui.BeginPopupContextItem(ctx, nil) then
@@ -2805,10 +2808,10 @@ RunApp = function()
                         app.temp.clearSearchInputText = nil
                         if ImGui.IsItemFocused(ctx) then
                             if ImGui.IsKeyReleased(ctx, ImGui.Key_Tab) then
-                                if app.temp.searchMode == SEARCH_MODE.MAIN then
+                                if (app.temp.searchMode == SEARCH_MODE.MAIN or app.temp.searchMode == SEARCH_MODE.SEND_BUDDY) then
                                     app.flow.setSearchMode(SEARCH_MODE.FILTERS)
                                 else
-                                    app.flow.setSearchMode(SEARCH_MODE.MAIN)
+                                    app.flow.setSearchMode(app.temp.lastSearchMode)
                                 end
                             end
                         end
@@ -2822,12 +2825,12 @@ RunApp = function()
                                     wordActivated = true
                                     app.flow.filterResults(word.filter)
                                     if wordAction == '?' then app.flow.executeRandomResult() end
-                                    app.flow.setSearchMode(SEARCH_MODE.MAIN)
+                                    app.flow.setSearchMode(app.temp.lastSearchMode)
                                     app.flow.clearSearchInputText()
                                 elseif word.type == MAGIC_WORD_TYPE.QUICK_CHAIN then
                                     wordActivated = true
                                     app.flow.loadQuickChain(word.quickChain)
-                                    app.flow.setSearchMode(SEARCH_MODE.MAIN)
+                                    app.flow.setSearchMode(app.temp.lastSearchMode)
                                     app.flow.clearSearchInputText()
                                 end
                             end
@@ -4270,7 +4273,7 @@ RunApp = function()
                             elseif app.guiHelpers.isShortcutPressed('clearQuickChain') then
                                 app.temp.quickChain = {}
                                 pressed = true
-                            elseif app.temp.searchMode == SEARCH_MODE.MAIN and app.guiHelpers.isShortcutPressed('markFavorite') and app.selection.keyboardPos then
+                            elseif (app.temp.searchMode == SEARCH_MODE.MAIN or app.temp.searchMode == SEARCH_MODE.SEND_BUDDY) and app.guiHelpers.isShortcutPressed('markFavorite') and app.selection.keyboardPos then
                                 -- Toggle favorite status for all selected assets
                                 pressed = true
                                 local selectedResults = app.selection:results()
