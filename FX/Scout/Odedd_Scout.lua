@@ -1033,7 +1033,8 @@ RunApp = function()
                 end
                 return table.concat(modKeys, '+')
             end,
-            getHintFor = function(asset, mods, context, count)
+            getHintFor = function(asset, mods, context, count, actionDescription)
+                local actionDescription = (actionDescription == nil and true or actionDescription)
                 local mods = mods or ImGui.GetKeyMods(app.gui.ctx)
 
                 -- Check if selection spans multiple asset types
@@ -1070,7 +1071,7 @@ RunApp = function()
                     local action = assetHint
                     local actionKey = app.guiHelpers.keyModsToText(usedMods)
                     local hint = ("%s%s"):format(
-                        ((OD_BfCheck(context, RESULT_CONTEXT.QUICK_CHAIN) and not OD_BfCheck(context, RESULT_CONTEXT.KEYBOARD)) and '' or (actionKey .. ' to ')),
+                        (actionDescription and (actionKey .. ' to ') or ''),
                         action)
                     return hint
                 end
@@ -1200,7 +1201,7 @@ RunApp = function()
                         app.guiHelpers.keyModsToText(keymod)
 
                     local text = app.guiHelpers.getHintFor(result, keymod,
-                            actionContext, resultCount)
+                            actionContext, resultCount, false)
                         :gsub(
                             "^%l", string.upper):gsub('%.$', ' ') -- Capitalize first letter and remove trailing dot
                     if item.disabled then ImGui.BeginDisabled(ctx) end
@@ -1208,6 +1209,105 @@ RunApp = function()
                         return true, keymod
                     end
                     if item.disabled then ImGui.EndDisabled(ctx) end
+                end
+            end,
+            resultTagContextMenu = function(ctx, tagInfo)
+                local existingTags = {}
+                local tagList = {}
+                local selectedResults = app.selection:results()
+
+                for _, result in ipairs(selectedResults) do
+                    if (result.tags and #result.tags > 0) then
+                        for t = 1, #(result.tags or {}) do
+                            local tagId = result.tags[t]
+                            local tag = tagInfo[tagId]
+                            if not existingTags[tagId] then
+                                table.insert(tagList,
+                                    app.engine.tags[tagId])
+                            end
+                            existingTags[tagId] = existingTags[tagId] and
+                                existingTags[tagId] + 1 or 1
+                        end
+                    end
+                end
+                if #tagList > 0 then
+                    if ImGui.BeginMenu(ctx, #tagList .. ' active tag' .. (#tagList > 1 and 's' or '')) then
+                        ImGui.TextDisabled(ctx,
+                            "Click to add to all selected items")
+                        ImGui.TextDisabled(ctx, (OS_is.mac and 'Option' or 'Alt') .. "+Click to remove")
+                        ImGui.Separator(ctx)
+                        for _, tag in ipairs(tagList) do
+                            if ImGui.MenuItem(ctx, tag.name .. (#selectedResults > 1 and (" (" .. existingTags[tag.id] .. ")") or "") .. '##activeTag' .. tag.id) then
+                                local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
+                                for _, result in ipairs(selectedResults) do
+                                    if remove then
+                                        result:removeTag(tag, false)
+                                    else
+                                        result:addTag(tag, false)
+                                    end
+                                end
+                                app.userdata:save()
+                                app.flow.filterResults(nil, true, true)
+                            end
+                        end
+                        ImGui.EndMenu(ctx)
+                    end
+                end
+
+                if ImGui.BeginMenu(ctx, "Add") then
+                    local function tagsOfParent(parentId, existingTags)
+                        for tagId, tag in OD_PairsByOrder(app.engine.tags) do
+                            if tag.parentId == parentId then
+                                if tag.hasDescendants then
+                                    if ImGui.BeginMenu(ctx, tag.name .. '##resultContextMenuTagsSubmenu' .. tagId) then
+                                        tagsOfParent(tagId, existingTags)
+                                        ImGui.EndMenu(ctx)
+                                    end
+                                else
+                                    if ImGui.MenuItem(ctx, tag.name .. '##resultContextMenuTagsItem' .. tagId, nil,
+                                            existingTags[tagId]) then
+                                        for _, result in ipairs(selectedResults) do
+                                            if existingTags[tagId] then
+                                                result:removeTag(tag, false)
+                                            else
+                                                result:addTag(tag, false)
+                                            end
+                                            app.userdata:save()
+                                            app.flow.filterResults(nil, true)
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    tagsOfParent(TAGS_ROOT_PARENT, existingTags)
+                    ImGui.EndMenu(ctx)
+                end
+
+                if tagList and #tagList > 0 then
+                    if ImGui.MenuItem(ctx, 'Clear') then
+                        for _, tag in ipairs(tagList) do
+                            for _, result in ipairs(selectedResults) do
+                                result:removeTag(tag, false)
+                            end
+                            app.userdata:save()
+                            app.flow.filterResults(nil, true, true)
+                        end
+                    end
+                    if ImGui.MenuItem(ctx, 'Copy') then
+                        app.temp.copiedTags = tagList
+                    end
+                end
+                if app.temp.copiedTags and #app.temp.copiedTags > 0 then
+                    if ImGui.MenuItem(ctx, 'Paste') then
+                        for _, tag in ipairs(app.temp.copiedTags) do
+                            for _, result in ipairs(selectedResults) do
+                                result:addTag(tag, false)
+                            end
+                        end
+                        app.userdata:save()
+                        app.flow.filterResults(nil, true, true)
+                    end
                 end
             end,
             formatRichText = function(text)
@@ -1736,107 +1836,15 @@ RunApp = function()
                                                     end
                                                 end
                                                 -- if (result.tags and #result.tags > 0) then
-                                                local existingTags = {}
-                                                local tagList = {}
-                                                local selectedResults = app.selection:results()
-
-                                                for _, result in ipairs(selectedResults) do
-                                                    if (result.tags and #result.tags > 0) then
-                                                        for t = 1, #(result.tags or {}) do
-                                                            local tagId = result.tags[t]
-                                                            local tag = tagInfo[tagId]
-                                                            if not existingTags[tagId] then
-                                                                table.insert(tagList,
-                                                                    app.engine.tags[tagId])
-                                                            end
-                                                            existingTags[tagId] = existingTags[tagId] and
-                                                                existingTags[tagId] + 1 or 1
-                                                        end
-                                                    end
-                                                end
                                                 ImGui.TextDisabled(ctx, 'Tags')
-                                                if ImGui.BeginMenu(ctx, "Add tags") then
-                                                    local function tagsOfParent(parentId, existingTags)
-                                                        for tagId, tag in OD_PairsByOrder(app.engine.tags) do
-                                                            if tag.parentId == parentId then
-                                                                if tag.hasDescendants then
-                                                                    if ImGui.BeginMenu(ctx, tag.name .. '##resultContextMenuTagsSubmenu' .. tagId) then
-                                                                        tagsOfParent(tagId, existingTags)
-                                                                        ImGui.EndMenu(ctx)
-                                                                    end
-                                                                else
-                                                                    if ImGui.MenuItem(ctx, tag.name .. '##resultContextMenuTagsItem' .. tagId, nil,
-                                                                            existingTags[tagId]) then
-                                                                        for _, result in ipairs(selectedResults) do
-                                                                            if existingTags[tagId] then
-                                                                                result:removeTag(tag, false)
-                                                                            else
-                                                                                result:addTag(tag, false)
-                                                                            end
-                                                                            app.userdata:save()
-                                                                            app.flow.filterResults(nil, true)
-                                                                        end
-                                                                    end
-                                                                end
-                                                            end
-                                                        end
-                                                    end
-                                                    tagsOfParent(TAGS_ROOT_PARENT, existingTags)
-                                                    ImGui.EndMenu(ctx)
-                                                end
-
-                                                if tagList and #tagList > 0 then
-                                                    if ImGui.MenuItem(ctx, 'Clear Tags') then
-                                                        for _, tag in ipairs(tagList) do
-                                                            for _, result in ipairs(selectedResults) do
-                                                                result:removeTag(tag, false)
-                                                            end
-                                                            app.userdata:save()
-                                                            app.flow.filterResults(nil, true, true)
-                                                        end
-                                                    end
-                                                    if ImGui.MenuItem(ctx, 'Copy Tags') then
-                                                        app.temp.copiedTags = tagList
-                                                    end
-                                                end
-                                                if app.temp.copiedTags and #app.temp.copiedTags > 0 then
-                                                    if ImGui.MenuItem(ctx, 'Paste Tags') then
-                                                        for _, tag in ipairs(app.temp.copiedTags) do
-                                                            for _, result in ipairs(selectedResults) do
-                                                                result:addTag(tag, false)
-                                                            end
-                                                        end
-                                                        app.userdata:save()
-                                                        app.flow.filterResults(nil, true, true)
-                                                    end
-                                                end
                                                 ImGui.Separator(ctx)
 
-                                                if #tagList > 0 then
-                                                    ImGui.Text(ctx,
-                                                        (#selectedResults > 1 and (#selectedResults .. " items") or "Item") ..
-                                                        " tagged with:")
-                                                    ImGui.TextDisabled(ctx,
-                                                        "(Click to add, " ..
-                                                        (OS_is.mac and 'Option' or 'Alt') .. "+Click to remove)")
-                                                    for _, tag in ipairs(tagList) do
-                                                        if ImGui.MenuItem(ctx, tag.name .. (#selectedResults > 1 and (" (" .. existingTags[tag.id] .. ")") or "") .. '##activeTag' .. tag.id) then
-                                                            local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
-                                                            for _, result in ipairs(selectedResults) do
-                                                                if remove then
-                                                                    result:removeTag(tag, false)
-                                                                else
-                                                                    result:addTag(tag, false)
-                                                                end
-                                                            end
-                                                            app.userdata:save()
-                                                            app.flow.filterResults(nil, true, true)
-                                                        end
-                                                    end
-                                                    ImGui.Separator(ctx)
-                                                end
+                                                app.guiHelpers.resultTagContextMenu(ctx, tagInfo)
+
+                                                -- ImGui.Separator(ctx)
 
                                                 ImGui.TextDisabled(ctx, 'Actions')
+                                                ImGui.Separator(ctx)
 
                                                 local rv, keymod = app.guiHelpers.actionContextMenu(ctx, result,
                                                     app.selection:count(), RESULT_CONTEXT.KEYBOARD)
@@ -1844,15 +1852,6 @@ RunApp = function()
                                                     app.flow.executeSelectedResults(app.selection:results(),
                                                         keymod)
                                                 end
-                                                -- local group = result.assetType
-
-                                                -- ImGui.SameLine(ctx)
-                                                -- ImGui.PushStyleColor(ctx, ImGui.Col_Text, app.gui.st.basecolors.textDark)
-                                                -- -- ImGui.PushTextWrapPos(ctx, 200)
-                                                -- -- OD_ImGuiRichTextWrapped(ctx, table.concat(tagNames, ', '))
-                                                -- ImGui.PopStyleColor(ctx)
-                                                -- ImGui.Spacing(ctx)
-                                                -- end
                                                 ImGui.EndPopup(ctx) --- IGNORE ---
                                             end
 
@@ -2233,8 +2232,8 @@ RunApp = function()
                                 end
                                 if ImGui.BeginPopup(ctx, 'Tag Context Menu') then
                                     app:setHint('main', '')
-                                    ImGui.Text(ctx, tag.name)
-                                    ImGui.Separator(ctx)
+                                    -- ImGui.TextDisabled(ctx, tag.name)
+                                    -- ImGui.Separator(ctx)
                                     if tag.hasDescendants and tag.open then
                                         if ImGui.MenuItem(ctx, 'Collapse all nested tags') then
                                             tag:toggleAllDescendants(false, true)
