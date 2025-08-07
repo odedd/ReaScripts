@@ -550,12 +550,15 @@ RunApp = function()
                                 local foundIndexes = {}
                                 for _, word in ipairs(filterWords) do
                                     for j = 1, #asset._searchTextLower do
-                                        local assetWordLower = asset._searchTextLower[j]
-                                        local pos = string.find(assetWordLower, word, 1, true)
-                                        if pos then
-                                            foundIndexes[j] = foundIndexes[j] or {}
-                                            table.insert(foundIndexes[j],
-                                                { from = pos, to = pos + #word - 1, order = pos })
+                                        -- Only highlight if this part is searchable
+                                        if not asset.searchText[j].dontSearch then
+                                            local assetWordLower = asset._searchTextLower[j]
+                                            local pos = string.find(assetWordLower, word, 1, true)
+                                            if pos then
+                                                foundIndexes[j] = foundIndexes[j] or {}
+                                                table.insert(foundIndexes[j],
+                                                    { from = pos, to = pos + #word - 1, order = pos })
+                                            end
                                         end
                                     end
                                 end
