@@ -18,6 +18,7 @@ PB_Settings = OD_Settings:new({
         sendVolume = -12,
         showInvisibleTracks = false,
         showInvisibleTakeMarkers = false,
+        searchTagsAlpha = 0.7,
         shortcuts = {
             markFavorite = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_F,
             closeScript = ImGui.Key_Escape,

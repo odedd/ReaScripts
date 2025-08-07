@@ -34,9 +34,9 @@ function OD_HslToRgb(h, s, l)
     local function hueToRgb(p, q, t)
         if t < 0 then t = t + 1 end
         if t > 1 then t = t - 1 end
-        if t < 1/6 then return p + (q - p) * 6 * t end
-        if t < 1/2 then return q end
-        if t < 2/3 then return p + (q - p) * (2/3 - t) * 6 end
+        if t < 1 / 6 then return p + (q - p) * 6 * t end
+        if t < 1 / 2 then return q end
+        if t < 2 / 3 then return p + (q - p) * (2 / 3 - t) * 6 end
         return p
     end
 
@@ -49,14 +49,13 @@ function OD_HslToRgb(h, s, l)
     else
         local q = l < 0.5 and l * (1 + s) or l + s - l * s
         local p = 2 * l - q
-        r = hueToRgb(p, q, h + 1/3)
+        r = hueToRgb(p, q, h + 1 / 3)
         g = hueToRgb(p, q, h)
-        b = hueToRgb(p, q, h - 1/3)
+        b = hueToRgb(p, q, h - 1 / 3)
     end
 
     return math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5)
 end
-
 
 -- Taken from here: https://github.com/norcalli/nvim-colorizer.lua/blob/master/lua/colorizer.lua
 --- Determine whether to use black or white text
@@ -64,13 +63,13 @@ end
 -- https://stackoverflow.com/questions/596216/formula-to-determine-brightness-of-rgb-color
 function OD_ColorIsBright(col)
     local r, g, b = OD_Int2Rgb(col)
-	-- Counting the perceptive luminance - human eye favors green color
-	local luminance = (0.299*r + 0.587*g + 0.114*b)/255
-	if luminance > 0.5 then
-		return true -- Bright colors, black font
-	else
-		return false -- Dark colors, white font
-	end
+    -- Counting the perceptive luminance - human eye favors green color
+    local luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+    if luminance > 0.5 then
+        return true  -- Bright colors, black font
+    else
+        return false -- Dark colors, white font
+    end
 end
 
 -- taken from here: https://gist.github.com/jasonbradley/4357406
@@ -89,14 +88,16 @@ function OD_Int2Rgb(i)
 end
 
 function OD_Int2Rgba(i)
-    if i > 0xffffffff then
-        i = i >> 8 % 0x100000000
+    -- Handle potential negative values from large unsigned integers
+    if i < 0 then
+        i = i + 0x100000000
     end
 
-    local a = math.floor(i / 0x1000000) % 256
-    local r = math.floor(i / 0x10000) % 256
-    local g = math.floor(i / 0x100) % 256
-    local b = i % 256
+    -- RGBA format: 0xRRGGBBAA
+    local r = math.floor(i / 0x1000000) % 256
+    local g = math.floor(i / 0x10000) % 256
+    local b = math.floor(i / 0x100) % 256
+    local a = i % 256
     return r, g, b, a
 end
 
@@ -112,13 +113,43 @@ function OD_Rgba2Int(r, g, b, a)
     g = math.floor(g + 0.5)
     b = math.floor(b + 0.5)
     a = math.floor(a + 0.5)
-    return (a << 24) | (r << 16) | (g << 8) | b
+    -- RGBA format: 0xRRGGBBAA
+    return (r << 24) | (g << 16) | (b << 8) | a
 end
 
-function OD_OffsetRgbaByHSL(col, hOffset,sOffset,lOffset)
-    local r,g, b,a = OD_Int2Rgba(col)
-    local h,s,l = OD_RgbToHsl(r, g, b)
-    r, g, b = OD_HslToRgb(math.max(0,math.min(1,h+hOffset)),math.max(0,math.min(1,s+sOffset)),math.max(0,math.min(1,l+lOffset)))
-    return OD_Rgba2Int(r,g,b,a)
+function OD_OffsetRgbaByHSL(col, hOffset, sOffset, lOffset)
+    local r, g, b, a = OD_Int2Rgba(col)
+    local h, s, l = OD_RgbToHsl(r, g, b)
+    r, g, b = OD_HslToRgb(math.max(0, math.min(1, h + hOffset)), math.max(0, math.min(1, s + sOffset)),
+        math.max(0, math.min(1, l + lOffset)))
+    return OD_Rgba2Int(r, g, b, a)
+end
 
+function OD_SetHSLInRGB(col, setH, setS, setL)
+    local r, g, b, a = OD_Int2Rgba(col)
+    local h, s, l = OD_RgbToHsl(r, g, b)
+    r, g, b = OD_HslToRgb(setH or h, setS or s, setL or l)
+    return OD_Rgba2Int(r, g, b, a)
+end
+
+function OD_SetAlpha(col, alpha)
+    return col & 0xffffff00 + math.ceil(0xff * alpha)
+end
+
+function OD_MultiplyHSLInRGB(col, hMultiplier, sMultiplier, lMultiplier)
+    local r, g, b, a = OD_Int2Rgba(col)
+    local h, s, l = OD_RgbToHsl(r, g, b)
+
+    -- Apply multipliers with proper bounds checking
+    local newH = hMultiplier and (h * hMultiplier) or h
+    local newS = sMultiplier and math.max(0, math.min(1, s * sMultiplier)) or s
+    local newL = lMultiplier and math.max(0, math.min(1, l * lMultiplier)) or l
+
+    -- Handle hue wrapping (hue is circular, 0-1 range)
+    if hMultiplier then
+        newH = newH % 1
+    end
+
+    r, g, b = OD_HslToRgb(newH, newS, newL)
+    return OD_Rgba2Int(r, g, b, a)
 end

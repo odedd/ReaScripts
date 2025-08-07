@@ -516,8 +516,12 @@ RunApp = function()
                             -- Optimization 1: Pre-compute search text concatenation with cache invalidation
                             if not asset._searchTextConcat or asset._searchTextInvalid then
                                 local parts = {}
+                                local i = 0
                                 for j = 1, #asset.searchText do
-                                    parts[j] = asset.searchText[j].text
+                                    if not asset.searchText[j].dontSearch then
+                                        i = i + 1
+                                        parts[i] = asset.searchText[j].text
+                                    end
                                 end
                                 asset._searchTextConcat = table.concat(parts, " "):lower()
                                 asset._searchTextInvalid = false -- Mark as valid
@@ -685,6 +689,8 @@ RunApp = function()
                                 activeFilters[key].value = tagValue
                                 activeFilters[key].item = app.engine.tags[tagKey]
                                 activeFilters[key].itemName = app.engine.tags[tagKey].name
+                                activeFilters[key].displayColor = app.engine.tags[tagKey].displayColor
+                                activeFilters[key].displayBGColor = app.engine.tags[tagKey].displayBGColor
 
                                 if activeFilters[key].order == nil then
                                     activeFilters[key].order = OD_Tablelength(
@@ -1237,6 +1243,7 @@ RunApp = function()
                         ImGui.TextDisabled(ctx, (OS_is.mac and 'Option' or 'Alt') .. "+Click to remove")
                         ImGui.Separator(ctx)
                         for _, tag in ipairs(tagList) do
+                            if tag.displayColor then ImGui.PushStyleColor(ctx, ImGui.Col_Text, tag.displayColor) end
                             if ImGui.MenuItem(ctx, tag.name .. (#selectedResults > 1 and (" (" .. existingTags[tag.id] .. ")") or "") .. '##activeTag' .. tag.id) then
                                 local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
                                 for _, result in ipairs(selectedResults) do
@@ -1249,6 +1256,7 @@ RunApp = function()
                                 app.userdata:save()
                                 app.flow.filterResults(nil, true, true)
                             end
+                            if tag.displayColor then ImGui.PopStyleColor(ctx) end
                         end
                         ImGui.EndMenu(ctx)
                     end
@@ -1259,11 +1267,16 @@ RunApp = function()
                         for tagId, tag in OD_PairsByOrder(app.engine.tags) do
                             if tag.parentId == parentId then
                                 if tag.hasDescendants then
+                                    if tag.displayColor then ImGui.PushStyleColor(ctx, ImGui.Col_Text, tag.displayColor) end
+
                                     if ImGui.BeginMenu(ctx, tag.name .. '##resultContextMenuTagsSubmenu' .. tagId) then
                                         tagsOfParent(tagId, existingTags)
                                         ImGui.EndMenu(ctx)
                                     end
+                                    if tag.displayColor then ImGui.PopStyleColor(ctx) end
                                 else
+                                    if tag.displayColor then ImGui.PushStyleColor(ctx, ImGui.Col_Text, tag.displayColor) end
+
                                     if ImGui.MenuItem(ctx, tag.name .. '##resultContextMenuTagsItem' .. tagId, nil,
                                             existingTags[tagId]) then
                                         for _, result in ipairs(selectedResults) do
@@ -1276,6 +1289,7 @@ RunApp = function()
                                             app.flow.filterResults(nil, true)
                                         end
                                     end
+                                    if tag.displayColor then ImGui.PopStyleColor(ctx) end
                                 end
                             end
                         end
@@ -1418,7 +1432,7 @@ RunApp = function()
                             if ImGui.BeginChild(ctx, 'node', filterW, filterH, nil, ImGui.WindowFlags_NoScrollbar) then
                                 ImGui.AlignTextToFramePadding(ctx)
                                 ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), x1, y1, x2, y2,
-                                    ImGui.GetColor(ctx, ImGui.Col_Button),
+                                    filter.displayBGColor or ImGui.GetColor(ctx, ImGui.Col_Button),
                                     ImGui.GetStyleVar(ctx, ImGui.StyleVar_FrameRounding))
                                 ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + paddingX) --, ImGui.GetCursorPosY(ctx) + paddingY)
                                 app.guiHelpers.tinyIcon(ctx, 'filterType',
@@ -1441,7 +1455,11 @@ RunApp = function()
                                     -- ImGui.TextColored(ctx, app.gui.st.basecolors.textDark, T.FILTER_NAMES[filter.key])
                                 end
                                 ImGui.AlignTextToFramePadding(ctx)
-                                ImGui.Text(ctx, filter.itemName)
+                                if filter.type == FILTER_TYPES.TAG and filter.displayColor then
+                                    ImGui.TextColored(ctx, filter.displayColor, filter.itemName)
+                                else
+                                    ImGui.Text(ctx, filter.itemName)
+                                end
                                 ImGui.SameLine(ctx, 0, spacingX * 2)
                                 if app.guiHelpers.tinyIcon(ctx, 'removeFilter', ICONS.CLOSE, nil, nil, T.HINTS.ACTIVE_FILTER_REMOVE, 2) then
                                     if filter.type == FILTER_TYPES.TAG then
@@ -1893,10 +1911,12 @@ RunApp = function()
                                                     if j > 1 then
                                                         ImGui.Text(ctx, ' ')
                                                         ImGui.SameLine(ctx)
-                                                        app.gui:pushColors(st.color or
-                                                            app.gui.st.col.search.secondaryResult)
+                                                    end
+                                                    if st.color then
+                                                        ImGui.PushStyleColor(ctx, ImGui.Col_Text, st.color)
                                                     else
-                                                        app.gui:pushColors(st.color or app.gui.st.col.search.mainResult)
+                                                        app.gui:pushColors(j == 1 and app.gui.st.col.search.mainResult or
+                                                            app.gui.st.col.search.secondaryResult)
                                                     end
                                                     local curIndex = 1
                                                     for _, highlight in OD_PairsByOrder(result.foundIndexes[j] or {}) do
@@ -1919,11 +1939,12 @@ RunApp = function()
                                                         ImGui.Text(ctx, txt)
                                                         ImGui.SameLine(ctx)
                                                     end
-                                                    if j < 1 then
-                                                        app.gui:popColors(st.color or
-                                                            app.gui.st.col.search.secondaryResult)
+
+                                                    if st.color then
+                                                        ImGui.PopStyleColor(ctx)
                                                     else
-                                                        app.gui:popColors(st.color or app.gui.st.col.search.mainResult)
+                                                        app.gui:popColors(j == 1 and app.gui.st.col.search.mainResult or
+                                                            app.gui.st.col.search.secondaryResult)
                                                     end
                                                 end
                                             end
@@ -1949,14 +1970,16 @@ RunApp = function()
                                                 if sameLine then
                                                     ImGui.SameLine(ctx)
                                                 end
-                                                app.gui:pushColors(app.gui.st.col.search.tagText)
+                                                app.gui:pushColors(app.gui.st.col.search.defaultTagColor)
                                                 ImGui.Text(ctx, '|')
                                                 ImGui.SameLine(ctx)
-                                                local text = '|'
                                                 for t = 1, #(result.tags or {}) do
                                                     local tag = app.engine.tags[result.tags[t]]
                                                     if tag.displayColor then
-                                                        ImGui.TextColored(ctx, tag.displayColor & 0xffffff00 | 0xd0, tag.name)
+                                                        ImGui.TextColored(ctx,
+                                                            OD_SetAlpha(tag.displayColor,
+                                                                app.settings.current.searchTagsAlpha),
+                                                            tag.name)
                                                     else
                                                         ImGui.Text(ctx, tag.name)
                                                     end
@@ -1964,7 +1987,7 @@ RunApp = function()
                                                     ImGui.Text(ctx, '|')
                                                     ImGui.SameLine(ctx)
                                                 end
-                                                app.gui:popColors(app.gui.st.col.search.tagText)
+                                                app.gui:popColors(app.gui.st.col.search.defaultTagColor)
                                             end
                                             ImGui.PopID(ctx)
                                         end
@@ -2323,7 +2346,7 @@ RunApp = function()
 
                                 ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), globalX, globalY,
                                     globalX + tagW,
-                                    globalY + tagH, col, 100)
+                                    globalY + tagH, tag.displayBGColor or col, 100)
                                 if tag.hasDescendants then
                                     local triPad = paddingY * 0.7
                                     local triW = tagH * 0.4
@@ -2337,7 +2360,7 @@ RunApp = function()
                                             cx - triW / 2, cy - triH / 3,
                                             cx + triW / 2, cy - triH / 3,
                                             cx, cy + triH * 2 / 3,
-                                            app.gui.st.col.tag[ImGui.Col_Text]
+                                            tag.displayColor or app.gui.st.col.tag[ImGui.Col_Text]
                                         )
                                     else
                                         -- Right-pointing triangle
@@ -2348,7 +2371,7 @@ RunApp = function()
                                             cx - triH / 3, cy - triW / 2 + .5 * app.gui.scale,
                                             cx - triH / 3, cy + triW / 2 - .5 * app.gui.scale,
                                             cx + triH * 2 / 3 - app.gui.scale, cy,
-                                            app.gui.st.col.tag[ImGui.Col_Text]
+                                            tag.displayColor or app.gui.st.col.tag[ImGui.Col_Text]
                                         )
                                     end
                                     if ImGui.InvisibleButton(ctx, 'showHideDescendants', triangleW + paddingX, tagH) then

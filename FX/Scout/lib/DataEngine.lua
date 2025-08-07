@@ -664,6 +664,8 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
         end
 
         self.tags[id].displayColor = colorToUse and (ImGui.ColorConvertNative(colorToUse) * 0x100 | 0xff)
+        self.tags[id].displayBGColor = self.tags[id].displayColor and
+            OD_SetHSLInRGB(OD_MultiplyHSLInRGB(self.tags[id].displayColor, 1, 1, 1), nil, 0.1, 0.15)
 
 
         self.tags[id].toggleOpen = function(self, state, persist)
@@ -1375,33 +1377,31 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
             flattenTagsOfParent(TAGS_ROOT_PARENT)
 
             for tagId, tag in pairs(flatTags) do
-                local parentNames
-                if (tag.parents and #tag.parents > 0) then
-                    local parents = {}
-                    for i = #tag.parents, 1, -1 do
-                        local parent = tag.parents[i]
-                        table.insert(parents, parent.name)
-                    end
-                    parentNames = '< ' .. (table.concat(parents, ' < '))
-                end
-
                 local tagAsset = {
                     engine = self,
                     app = self.app, -- Add app context for executeFilter
                     type = FILTER_TYPES.TAG,
-                    searchText = { { text = tag.name } },
-                    parents = tag.parents,
+                    searchText = { { text = tag.name, color = tag.displayColor } },
+                    -- parents = tag.parents,
                     order = tag.order,
                     load = tag.id,
+                    -- displayColor = tag.displayColor,
                     group = T.FILTER_NAMES[FILTER_TYPES.TAG],
                     getInteractionHintFor = function(self, mods, context, contextData, count)
                         return interactionHints(FILTER_TYPES.TAG, mods,
                             context, count, tag.name, T.FILTER_NAMES_PLURAL[FILTER_TYPES.TAG])
                     end
                 }
-                if parentNames then
-                    table.insert(tagAsset.searchText,
-                        { text = parentNames, color = self.app.gui.st.col.search.tagText })
+
+                if (tag.parents and #tag.parents > 0) then
+                    table.insert(tagAsset.searchText, { text = '<', color = self.app.gui.st.basecolors.textDarker, dontSearch = true })
+                    for i = #tag.parents, 1, -1 do
+                        local parent = tag.parents[i]
+                        table.insert(tagAsset.searchText,
+                            { text = parent.name, color = parent.displayColor and
+                            OD_SetAlpha(parent.displayColor, self.app.settings.current.searchTagsAlpha) })
+                        if i > 1 then table.insert(tagAsset.searchText, { text = '<',  color = self.app.gui.st.basecolors.textDarker, dontSearch = true }) end
+                    end
                 end
                 -- Add execute function directly to the asset
                 tagAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore)

@@ -178,7 +178,7 @@ PB_Gui.init = function(self, fonts)
             shortcutText = {
                 [ImGui.Col_Text] = self.st.basecolors.textDarker,
             },
-            tagText = {
+            defaultTagColor = {
                 [ImGui.Col_Text] = self.st.basecolors.textDarker,
             },
             highlight = {
