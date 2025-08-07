@@ -44,12 +44,12 @@ r.SetExtState(Scr.ext_name, 'SCRIPT_VERSION', Scr.version, false)
 
 RunApp = function()
     if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' and OD_PrereqsOK({
-            reaimgui_version = '0.9.2',
+            reaimgui_version = '0.10.0',
             js_version = 1.310,    -- required for JS_Window_...
             reaper_version = 7.03, -- required for set_action_options
         }) then
         package.path = r.ImGui_GetBuiltinPath() .. '/?.lua'
-        ImGui = require 'imgui' '0.9.2'
+        ImGui = require 'imgui' '0.10.0.1'
 
         dofile(p .. 'lib/Constants.lua')
         dofile(p .. 'lib/Texts.lua')
@@ -1945,6 +1945,23 @@ RunApp = function()
                                                     ImGui.PopStyleColor(ctx)
                                                 end
                                             end
+                                            if (result.tags and #result.tags > 0) then
+                                                ImGui.SameLine(ctx, 0, 3 * app.gui.scale)
+                                                ImGui.TextColored(ctx, app.gui.st.searchColor.separator, '|')
+                                                for i = #result.tags, 1, -1 do
+                                                    local tag = app.engine.tags[result.tags[i]]
+                                                    ImGui.SameLine(ctx, 0, 3 * app.gui.scale)
+
+                                                    ImGui.TextColored(ctx, tag.displayColor and
+                                                        OD_SetAlpha(tag.displayColor,
+                                                            app.settings.current.searchTagsAlpha) or
+                                                        app.gui.st.searchColor.tagDefault, tag.name)
+                                                    ImGui.SameLine(ctx, 0, 3 * app.gui.scale)
+
+                                                    ImGui.TextColored(ctx, app.gui.st.searchColor.separator, '|')
+                                                end
+                                            end
+
                                             ImGui.PopStyleVar(ctx)
                                             ImGui.PopID(ctx)
                                         end
@@ -2228,6 +2245,33 @@ RunApp = function()
                                     app:setHint('main', '')
                                     -- ImGui.TextDisabled(ctx, tag.name)
                                     -- ImGui.Separator(ctx)
+                                    if ImGui.MenuItem(ctx, 'Create Nested Tag') then
+                                        tag:toggleOpen(true)
+                                        local newTag = app.userdata:createTag('New Tag', tag)
+                                        app.temp.tagRename = newTag.id
+                                        app.temp.tagRenameBuffer = newTag.name
+                                    end
+                                    app:setHoveredHint('main',
+                                        (T.HINTS.TAG_CONTEXT_MENU_CREATE_NESTED_TAG):format(tag.name))
+                                    if ImGui.MenuItem(ctx, 'Rename') then
+                                        app.temp.tagRename = tag.id
+                                        app.temp.tagRenameBuffer = tag.name
+                                    end
+                                    app:setHoveredHint('main', T.HINTS.TAG_CONTEXT_MENU_RENAME)
+
+                                    if ImGui.BeginMenu(ctx, 'Color') then
+                                        local rv, selected = ImGui.Checkbox(ctx, 'Default Color', tag.useDefaultColor)
+                                        if rv then
+                                            tag:setColor(nil, selected)
+                                        end
+                                        local rv, color = ImGui.ColorPicker3(ctx, 'Set Color', tag.color)
+                                        if rv then
+                                            tag:setColor(color, false)
+                                        end
+                                        ImGui.EndMenu(ctx)
+                                    end
+                                    app:setHoveredHint('main', T.HINTS.TAG_CONTEXT_MENU_COLOR)
+
                                     if tag.hasDescendants and tag.open then
                                         if ImGui.MenuItem(ctx, 'Collapse all nested tags') then
                                             tag:toggleAllDescendants(false, true)
@@ -2243,31 +2287,7 @@ RunApp = function()
                                         app:setHoveredHint('main',
                                             'Sort nested tags of "' .. tag.name .. '" alphabetically')
                                     end
-                                    if ImGui.MenuItem(ctx, 'Rename') then
-                                        app.temp.tagRename = tag.id
-                                        app.temp.tagRenameBuffer = tag.name
-                                    end
-                                    if ImGui.BeginMenu(ctx, 'Color') then
-                                        local rv, selected = ImGui.Checkbox(ctx, 'Default Color', tag.useDefaultColor)
-                                        if rv then
-                                            tag:setColor(nil, selected)
-                                        end
-                                        local rv, color = ImGui.ColorPicker3(ctx, 'Set Color', tag.color)
-                                        if rv then
-                                            tag:setColor(color, false)
-                                        end
-                                        ImGui.EndMenu(ctx)
-                                    end
 
-                                    app:setHoveredHint('main', T.HINTS.TAG_CONTEXT_MENU_RENAME)
-                                    if ImGui.MenuItem(ctx, 'Create Nested Tag') then
-                                        tag:toggleOpen(true)
-                                        local newTag = app.userdata:createTag('New Tag', tag)
-                                        app.temp.tagRename = newTag.id
-                                        app.temp.tagRenameBuffer = newTag.name
-                                    end
-                                    app:setHoveredHint('main',
-                                        (T.HINTS.TAG_CONTEXT_MENU_CREATE_NESTED_TAG):format(tag.name))
                                     ImGui.Separator(ctx)
                                     if app.temp.showDeleteTagConfirmation then
                                         if r.time_precise() - app.temp.showDeleteTagConfirmation > 3 then

@@ -18,6 +18,7 @@ PB_Gui.init = function(self, fonts)
         small = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = small },
         large = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = large },
         large_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = large },
+        icons = { file = 'Resources/Fonts/Icons-Regular.otf', size = tiny },
         icons_tiny = { file = 'Resources/Fonts/Icons-Regular.otf', size = tiny },
         icons_small = { file = 'Resources/Fonts/Icons-Regular.otf', size = small },
         icons_large = { file = 'Resources/Fonts/Icons-Regular.otf', size = large }
@@ -62,13 +63,14 @@ PB_Gui.init = function(self, fonts)
         mainBrightest = 0xd75869ff,
         highlight = 0x42f595ff,
         textBright = 0xd7d7d7ff,
-        textDark = 0x7c7c7cff,
+        textDark = 0x686868ff,
         textDarker = 0x444444ff,
         textDarkest = 0x303030ff,
     }
     self.st.searchColor = {
         results = {self.st.basecolors.textBright, self.st.basecolors.textDark, self.st.basecolors.textDarker},
-        separator = self.st.basecolors.textDarkest
+        separator = self.st.basecolors.textDarkest,
+        tagDefault = self.st.basecolors.textDarker
     }
     self.st.colpresets = {
         darkButton = {

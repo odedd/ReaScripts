@@ -378,6 +378,7 @@ T.HINTS = {
     TAG_DEFAULT = 'Tag \'%s\'. Double-Click to rename. Right-Click for more options.',
     TAG_DEFAULT_SHIFT = 'Shift+Drag to another tag to merge with it.',
     TAG_CONTEXT_MENU_RENAME = 'Rename tag',
+    TAG_CONTEXT_MENU_COLOR = 'Set tag\'s color',
     TAG_CONTEXT_MENU_CREATE_NESTED_TAG = 'Created a new tag within %s',
     TAG_CONTEXT_MENU_COLLAPSE_DESCENDANTS = 'Collapse %s and its nested tags',
     TAG_CONTEXT_MENU_DELETE = 'Delete %s and its nested tags. CANNOT BE UNDONE.',

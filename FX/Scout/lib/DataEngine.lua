@@ -1043,7 +1043,9 @@ PB_DataEngine.getPresets = function(self, reassemblePresetFilterAssets)
         self.app.logger:logDebug('Added preset "' .. preset.name .. '" with id ' .. id .. ' (order: ' .. order .. ')')
     end
 
-    if reassemblePresetFilterAssets then self:assembleFilterAssets({ presets = true }) end
+    if reassemblePresetFilterAssets then
+        self:assembleFilterAssets({ presets = true })
+    end
 
     -- Update the filter menu whenever presets change
     self:updatePresetsFilterMenu()
@@ -1166,22 +1168,6 @@ end
 PB_DataEngine.tagAssets = function(self)
     for _, asset in ipairs(self.assets) do
         asset.tags = OD_DeepCopy(self.app.userdata.current.taggedAssets[asset.id]) or {}
-        if (asset.tags and #asset.tags > 0) then
-            table.insert(asset.searchText,
-                { text = '|', color = self.app.gui.st.searchColor.separator, dontSearch = true })
-            for i = #asset.tags, 1, -1 do
-                local tag = self.tags[asset.tags[i]]
-                table.insert(asset.searchText,
-                    {
-                        text = tag.name,
-                        color = tag.displayColor and
-                            OD_SetAlpha(tag.displayColor, self.app.settings.current.searchTagsAlpha),
-                        dontSearch = true
-                    })
-                table.insert(asset.searchText,
-                    { text = '|', color = self.app.gui.st.searchColor.separator, dontSearch = true })
-            end
-        end
     end
 end
 PB_DataEngine.assetsWithTag = function(self, tag)
