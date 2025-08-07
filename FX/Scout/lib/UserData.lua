@@ -104,7 +104,7 @@ function PB_UserData:export(filename)
     for id, tag in pairs(self.current.tagInfo) do
         -- Sanitize tag name and write with proper escaping
         local sanitizedName = OD_EscapeCSV(tag.name)
-        file:write(string.format('%d,%s,%d,%d\n', id, sanitizedName, tag.parentId or 0, tag.order or 0))
+        file:write(string.format('%d,%s,%d,%d,%d,%d\n', id, sanitizedName, tag.parentId or 0, tag.order or 0, tag.color or 0, (tag.useDefaultColor == nil) and 1 or (tag.useDefaultColor and 1 or 0)))
         tagCount = tagCount + 1
     end
     file:write('\n')
@@ -211,7 +211,7 @@ function PB_UserData:import(args)
     local mergeMode = args.mergeMode or false
 
     -- Only perform expensive string concatenation for debug logging if needed
-    if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+    if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
         self.app.logger:logDebug('-- PB_UserData:import() from ' .. filename .. ' mergeMode: ' .. tostring(mergeMode))
     end
 
@@ -352,13 +352,15 @@ function PB_UserData:import(args)
         elseif section == "tagInfo" and line ~= "" then
             -- Use safe CSV parsing for tag info
             local fields = OD_ParseCSVLine(line, ",")
-            if #fields >= 4 then
-                local id, name, parentId, order = fields[1], fields[2], fields[3], fields[4]
+            if #fields >= 6 then
+                local id, name, parentId, order, color, useDefaultColor = fields[1], fields[2], fields[3], fields[4], fields[5], fields[6]
                 if id and name and tonumber(id) then
                     importedTagInfo[tonumber(id)] = {
                         name = name, -- Already unescaped by OD_ParseCSVLine
                         parentId = tonumber(parentId) or 0,
-                        order = tonumber(order) or 0
+                        order = tonumber(order) or 0,
+                        color = tonumber(color),
+                        useDefaultColor = useDefaultColor == '1' and true or false
                     }
                 else
                     self.app.logger:logError('Invalid tagInfo line format', line)
@@ -451,7 +453,7 @@ function PB_UserData:import(args)
                                     replacePatternCache[importedAssetTypeId] = replacePattern
                                 end
                                 remappedAssetId = asset:gsub(replacePattern, tostring(mappedAssetTypeId))
-                                if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                                if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                                     self.app.logger:logDebug('Remapped asset ID', asset .. ' -> ' .. remappedAssetId)
                                 end
                             end
@@ -844,8 +846,10 @@ function PB_UserData:import(args)
                             -- Tag exists, use existing ID
                             idMapping[tagId] = existingId
                             existingTagsCount = existingTagsCount + 1
+                            self.current.tagInfo[existingId].color = importedTag.color
+                            self.current.tagInfo[existingId].useDefaultColor = importedTag.useDefaultColor
                             -- Only perform expensive logging operations if debug logging is enabled
-                            if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                            if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                                 local pathStr = table.concat(getCachedImportedPath(importedTag.parentId, idMapping),
                                     " > ")
                                 self.app.logger:logDebug('Tag "' ..
@@ -859,7 +863,9 @@ function PB_UserData:import(args)
                             self.current.tagInfo[nextNewIdRef[1]] = {
                                 name = importedTag.name,
                                 parentId = mappedParentId,
-                                order = importedTag.order or 0
+                                order = importedTag.order or 0,
+                                color = importedTag.color,
+                                useDefaultColor = importedTag.useDefaultColor
                             }
 
                             -- Update the lookup index with the new tag
@@ -870,7 +876,7 @@ function PB_UserData:import(args)
 
                             newTagsCount = newTagsCount + 1
                             -- Only perform expensive logging operations if debug logging is enabled
-                            if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                            if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                                 local pathStr = table.concat(getTagPath(mappedParentId, self.current.tagInfo, nil, {}),
                                     " > ")
                                 self.app.logger:logDebug(
@@ -1203,7 +1209,7 @@ function PB_UserData:import(args)
     local total = OD_TableLength(importedTaggedAssets)
     for fullAssetId, assetData in pairs(importedTaggedAssets) do
         count = count + 1
-        if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+        if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
             self.app.logger:logDebug('Processing imported asset: fullAssetId="' ..
                 fullAssetId .. '" originalAssetId="' .. assetData.originalAssetId .. '"')
         end
@@ -1232,7 +1238,7 @@ function PB_UserData:import(args)
                 assetTypeCounts[mappedAssetType].mapped = assetTypeCounts[mappedAssetType].mapped + 1
             end
 
-            if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+            if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                 self.app.logger:logDebug('✓ Mapped asset "' ..
                     (assetData.basename or fullAssetId) .. '" to system asset "' .. matchedSystemAssetId .. '"')
             end
@@ -1282,7 +1288,7 @@ function PB_UserData:import(args)
 
                 -- Use the remapped asset ID from the import data
                 local unmappedAssetId = assetData.remappedAssetId or assetData.originalAssetId
-                if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                     self.app.logger:logDebug('✓ Imported unmapped asset "' ..
                         (assetData.basename or fullAssetId) ..
                         '" as "' .. unmappedAssetId .. '" (will apply when asset becomes available)')
@@ -2018,9 +2024,11 @@ function PB_UserData:toggleTagOpen(tagId, state, persist)
     end
 end
 
-function PB_UserData:renameTag(tagId, name, persist)
+function PB_UserData:updateTag(tagId, name, color, useDefaultColor, persist)
     persist = (persist == nil) and true or persist
     self.current.tagInfo[tagId].name = name
+    self.current.tagInfo[tagId].color = color
+    self.current.tagInfo[tagId].useDefaultColor = useDefaultColor
     if persist then
         self:save()
         -- Notify engine to refresh its runtime data
@@ -2220,7 +2228,8 @@ function PB_UserData:createTag(name, parent, putAtStart)
     local newTag = {
         name = name,
         parentId = parentId,
-        order = putAtStart and 1 or levelCount + 1
+        order = putAtStart and 1 or levelCount + 1,
+        useDefaultColor = true
     }
 
     local newId = self.current.tagIdCount + 1
@@ -2686,7 +2695,7 @@ function PB_UserData:convertFoldersToTags()
             goto continue_folder
         end
 
-        if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+        if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
             self.app.logger:logDebug('Processing folder: ' .. folderName)
         end
 
@@ -2707,14 +2716,14 @@ function PB_UserData:convertFoldersToTags()
             -- Update cache for future lookups
             existingFolderTags[folderName:lower()] = targetTagId
             
-            if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+            if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                 self.app.logger:logDebug('Created tag "' ..
                     folderName .. '" with ID ' .. targetTagId .. ' under "From Folders"')
             end
             isNewTag = true
             foldersConverted = foldersConverted + 1
         else
-            if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+            if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                 self.app.logger:logDebug('Using existing tag "' .. folderName .. '" with ID ' .. targetTagId)
             end
         end
@@ -2740,12 +2749,12 @@ function PB_UserData:convertFoldersToTags()
                 if not tagExists then
                     table.insert(assetTags, targetTagId)
                     assetsTagged = assetsTagged + 1
-                    if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                    if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                         self.app.logger:logDebug('Tagged plugin "' ..
                             (asset.name or 'Unknown') .. '" with folder tag "' .. folderName .. '"')
                     end
                 else
-                    if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                    if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                         self.app.logger:logDebug('Plugin "' ..
                             (asset.name or 'Unknown') .. '" already has folder tag "' .. folderName .. '"')
                     end
@@ -2754,7 +2763,7 @@ function PB_UserData:convertFoldersToTags()
             end
         end
 
-        if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+        if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
             self.app.logger:logDebug('Found ' .. itemsInFolder .. ' plugins in folder "' .. folderName .. '"')
         end
 
@@ -2888,13 +2897,13 @@ function PB_UserData:convertCategoriesToTags(args)
             -- Update cache for future lookups
             existingCategoryTags[categoryName:lower()] = targetTagId
             
-            if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+            if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                 self.app.logger:logDebug('Created tag "' ..
                     categoryName .. '" with ID ' .. targetTagId .. ' under "From Categories"')
             end
             categoriesConverted = categoriesConverted + 1
         else
-            if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+            if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                 self.app.logger:logDebug('Using existing tag "' .. categoryName .. '" with ID ' .. targetTagId)
             end
         end
@@ -2920,12 +2929,12 @@ function PB_UserData:convertCategoriesToTags(args)
                 if not tagExists then
                     table.insert(assetTags, targetTagId)
                     assetsTagged = assetsTagged + 1
-                    if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                    if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                         self.app.logger:logDebug('Tagged plugin "' ..
                             (asset.name or 'Unknown') .. '" with category tag "' .. categoryName .. '"')
                     end
                 else
-                    if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+                    if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                         self.app.logger:logDebug('Plugin "' ..
                             (asset.name or 'Unknown') .. '" already has category tag "' .. categoryName .. '"')
                     end
@@ -2934,7 +2943,7 @@ function PB_UserData:convertCategoriesToTags(args)
             end
         end
 
-        if self.app.logger and self.app.logger.logLevel and self.app.logger.logLevel == "debug" then
+        if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
             self.app.logger:logDebug('Found ' .. itemsInCategory .. ' plugins in category "' .. categoryName .. '"')
         end
 

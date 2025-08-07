@@ -1950,17 +1950,20 @@ RunApp = function()
                                                     ImGui.SameLine(ctx)
                                                 end
                                                 app.gui:pushColors(app.gui.st.col.search.tagText)
+                                                ImGui.Text(ctx, '|')
+                                                ImGui.SameLine(ctx)
                                                 local text = '|'
                                                 for t = 1, #(result.tags or {}) do
-                                                    if tagInfo[result.tags[t]] == nil then
-                                                        app.logger:logError('Tag not found in tagInfo: ' ..
-                                                            tostring(result.tags[t]))
+                                                    local tag = app.engine.tags[result.tags[t]]
+                                                    if tag.displayColor then
+                                                        ImGui.TextColored(ctx, tag.displayColor & 0xffffff00 | 0xd0, tag.name)
                                                     else
-                                                        local tag = tagInfo[result.tags[t]]
-                                                        text = text .. tag.name .. '|'
+                                                        ImGui.Text(ctx, tag.name)
                                                     end
+                                                    ImGui.SameLine(ctx)
+                                                    ImGui.Text(ctx, '|')
+                                                    ImGui.SameLine(ctx)
                                                 end
-                                                ImGui.Text(ctx, text)
                                                 app.gui:popColors(app.gui.st.col.search.tagText)
                                             end
                                             ImGui.PopID(ctx)
@@ -2264,6 +2267,18 @@ RunApp = function()
                                         app.temp.tagRename = tag.id
                                         app.temp.tagRenameBuffer = tag.name
                                     end
+                                    if ImGui.BeginMenu(ctx, 'Color') then
+                                        local rv, selected = ImGui.Checkbox(ctx, 'Default Color', tag.useDefaultColor)
+                                        if rv then
+                                            tag:setColor(nil, selected)
+                                        end
+                                        local rv, color = ImGui.ColorPicker3(ctx, 'Set Color', tag.color)
+                                        if rv then
+                                            tag:setColor(color, false)
+                                        end
+                                        ImGui.EndMenu(ctx)
+                                    end
+
                                     app:setHoveredHint('main', T.HINTS.TAG_CONTEXT_MENU_RENAME)
                                     if ImGui.MenuItem(ctx, 'Create Nested Tag') then
                                         tag:toggleOpen(true)
@@ -2360,7 +2375,11 @@ RunApp = function()
                                         -- app.temp.ignoreEscapeKey = nil
                                     end
                                 else
-                                    ImGui.Text(ctx, tag.name)
+                                    if tag.displayColor then
+                                        ImGui.TextColored(ctx, tag.displayColor, tag.name)
+                                    else
+                                        ImGui.Text(ctx, tag.name)
+                                    end
                                 end
                                 if app.temp.tagRename ~= tag.id and (hovering or tagStatus ~= nil) then
                                     ImGui.PushID(ctx, 'tagEditButtons')

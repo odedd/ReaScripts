@@ -642,6 +642,29 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
         self.tags[id].app = self.app
         self.tags[id].allTags = self.tags
         self.tags[id].engine = self
+        self.tags[id].color = tagInfo.color
+        -- Set parentColor if no color is defined, finding the nearest parent's color
+        if not tagInfo.color or tagInfo.useDefaultColor then
+            local current = self.tags[id]
+            while current.parentId and current.parentId ~= TAGS_ROOT_PARENT and self.tags[current.parentId] do
+                local parent = self.tags[current.parentId]
+                if parent.color and not parent.useDefaultColor then
+                    self.tags[id].parentColor = parent.color
+                    break
+                end
+                current = parent
+            end
+        end
+        self.tags[id].useDefaultColor = tagInfo.useDefaultColor
+        local colorToUse
+        if tagInfo.useDefaultColor then
+            colorToUse = self.tags[id].parentColor
+        else
+            colorToUse = self.tags[id].color or self.tags[id].parentColor
+        end
+
+        self.tags[id].displayColor = colorToUse and (ImGui.ColorConvertNative(colorToUse) * 0x100 | 0xff)
+
 
         self.tags[id].toggleOpen = function(self, state, persist)
             self.open = state
@@ -698,7 +721,12 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
         end
         self.tags[id].rename = function(self, name, persist)
             self.name = name
-            self.app.userdata:renameTag(self.id, name, persist)
+            self.app.userdata:updateTag(self.id, name, self.color, self.useDefaultColor, persist)
+        end
+        self.tags[id].setColor = function(self, color, useDefaultColor, persist)
+            self.color = (color == nil) and self.color or color
+            self.useDefaultColor = (useDefaultColor == nil) and self.useDefaultColor or useDefaultColor
+            self.app.userdata:updateTag(self.id, self.name, self.color, self.useDefaultColor, persist)
         end
         self.tags[id].delete = function(self, persistAndReload)
             local assetsToRemoveTag = self.engine:assetsWithTag(self)
@@ -767,7 +795,7 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
                 for _, parent in ipairs(targetTag.parents) do
                     if parent.id == self.id then
                         self.app.logger:logError(
-                        'mergeWith: Cannot merge tag into its own descendant (would create cycle)')
+                            'mergeWith: Cannot merge tag into its own descendant (would create cycle)')
                         return false
                     end
                 end
@@ -794,7 +822,7 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
             end
 
             self.app.logger:logInfo('Moved ' ..
-            childrenMoved .. ' children and transferred ' .. assetsTransferred .. ' assets')
+                childrenMoved .. ' children and transferred ' .. assetsTransferred .. ' assets')
 
             -- 3. Delete this tag (handles persistence and reloading)
             self:delete(true)
@@ -1504,7 +1532,6 @@ PB_DataEngine.sortAssets = function(self)
         local bPriority = groupPriority[b.group] or 1000
 
         if aPriority == bPriority then
-            
             if a.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES] and b.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES] then
                 -- Special handling for favorites: sort by favoriteOrder instead of alphabetically
                 return (a.favoriteOrder or 0) < (b.favoriteOrder or 0)
@@ -1514,7 +1541,7 @@ PB_DataEngine.sortAssets = function(self)
             elseif a.order ~= nil and b.order ~= nil then
                 return a.order < b.order
             elseif a.order ~= nil and b.order == nil then
-                return true -- a has order, b doesn't - a comes first
+                return true  -- a has order, b doesn't - a comes first
             elseif a.order == nil and b.order ~= nil then
                 return false -- b has order, a doesn't - b comes first
             else
@@ -1555,7 +1582,7 @@ PB_DataEngine.sortAssetsPartial = function(self, assetsToSort)
             elseif a.order ~= nil and b.order ~= nil then
                 return a.order < b.order
             elseif a.order ~= nil and b.order == nil then
-                return true -- a has order, b doesn't - a comes first
+                return true  -- a has order, b doesn't - a comes first
             elseif a.order == nil and b.order ~= nil then
                 return false -- b has order, a doesn't - b comes first
             else
