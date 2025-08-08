@@ -663,8 +663,8 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
             colorToUse = self.tags[id].color or self.tags[id].parentColor
         end
 
-        self.tags[id].displayColor = colorToUse 
-        -- self.tags[id].displayColor = colorToUse and (ImGui.ColorConvertNative(colorToUse) * 0x100 | 0xff)
+        -- self.tags[id].displayColor = colorToUse 
+        self.tags[id].displayColor = colorToUse and (ImGui.ColorConvertNative(colorToUse) * 0x100 | 0xff)
         self.tags[id].displayBGColor = self.tags[id].displayColor and
             OD_SetHSLInRGB(OD_MultiplyHSLInRGB(self.tags[id].displayColor, 1, 1, 1), nil, 0.1, 0.15)
 

@@ -1518,16 +1518,11 @@ RunApp = function()
                     select(2, ImGui.GetContentRegionAvail(ctx))
                 local sideBarScreenX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - sideBarW -- X position for tag area
                 -- local quickChainPresetscreenX = sideBarScreenX - quickChainW -- X position for quickchain area
-                local upperRowY = ImGui.GetCursorPosY(ctx)                                     -- Y position for upper row, used for "sticky" first group title
-                local upperRowScreenY = select(2, ImGui.GetCursorScreenPos(ctx))               -- Y position for upper row, used for "sticky" first group title
-                local fontLineFullHeight = ImGui.GetTextLineHeightWithSpacing(ctx) +
-                    select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemInnerSpacing))
 
                 local tagInfo = app.userdata.current.tagInfo
                 local searchResults = app.temp.searchResults or
                     {} -- Current search results -- clear drop target hint on every frame
                 local hintResult, hintContext = nil, nil, nil
-                local flatRows = {}
 
                 local tableFlags = ImGui
                     .TableFlags_ScrollY -- Table flags for vertical scrolling
@@ -1541,6 +1536,13 @@ RunApp = function()
                 end
 
                 local drawResultsTable = function()
+                    app.gui:pushStyles(app.gui.st.vars.searchResultsTable)
+
+                    local upperRowY = ImGui.GetCursorPosY(ctx)                   -- Y position for upper row, used for "sticky" first group title
+                    local upperRowScreenY = select(2, ImGui.GetCursorScreenPos(ctx)) -- Y position for upper row, used for "sticky" first group title
+                    local flatRows = {}
+                    local fontLineFullHeight = ImGui.GetTextLineHeightWithSpacing(ctx) +
+                        select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemInnerSpacing))
                     -- AFTER TESTING: THIS IS UNNECCESSARY - Round fontLineHeight to avoid floating point precision issues with scrolling
                     -- local fontLineHeight = math.floor(fontLineHeight + 0.5) THAT IS DEFINITELY NOT THE ISSUE
 
@@ -2005,6 +2007,7 @@ RunApp = function()
 
                         ImGui.EndChild(ctx)
                     end
+                    app.gui:popStyles(app.gui.st.vars.searchResultsTable)
                 end
                 local drawSideBarSeparator = function()
                     -- Separator Resize Line
@@ -2259,45 +2262,58 @@ RunApp = function()
                                     if ImGui.BeginMenu(ctx, 'Color') then
                                         local w, h = 250 * app.gui.scale
                                         ImGui.SetNextItemWidth(ctx, w)
-                                        local rv, selected = ImGui.Checkbox(ctx, 'Default Color', tag.useDefaultColor)
+                                        local rv, selected = ImGui.Checkbox(ctx, 'Default/Parent Color',
+                                            tag.useDefaultColor)
                                         if rv then
                                             tag:setColor(nil, selected)
                                         end
                                         local function colorPallette(color, id, width)
                                             local color = color
-                                            local steps = 12
+                                            local steps = 16
                                             -- local w = ImGui.GetContentRegionAvail(ctx)
                                             local btnW = (width or ImGui.GetContentRegionAvail(ctx)) / steps
                                             local selColor = nil
-                                            local fromL, toL = 0.1, 0.55
-                                            local fromS, toS, stepS = 0.1, 0.7, 0.2
+                                            local colH = {}
+                                            for i = 1, steps do
+                                                table.insert(colH, (1 / steps) * i)
+                                            end
+                                            local colL = { { 0.15, 0.75 }, { 0.25, 0.25 }, { 0.35, 0.35 }, { 0.45, 0.45 }, { 0.55, 0.55 } }
+                                            local colS = { 0, 0.2, 0.3, 0.4, 0.50 }
                                             local sIndex = 0
                                             local spacing = math.ceil(1 * app.gui.scale)
-                                            local padding = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
-                                            local numCols, numRows = steps, (toS - fromS) / stepS + 1
+                                            local numCols, numRows = steps, #colL
                                             if ImGui.BeginChild(ctx, '##colorSelector' .. tostring(id), btnW * numCols + spacing * (numCols - 1), btnW * numRows + spacing * (numRows - 1)) then
                                                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, spacing, spacing)
-                                                for s = fromS, toS, stepS do
-                                                    for i = 1, steps do
-                                                        local rr, g, b = OD_HslToRgb((1 / steps) * i, s,
-                                                            math.min(toL,
-                                                                fromL +
-                                                                ((toL - fromL) / ((toS - fromS) / stepS) * sIndex * 2 + (((toL - fromL) / steps) * i / 2))))
+                                                for row = 1, #colL do
+                                                    for col = 1, steps do
+                                                        local h = colH[col]
+                                                        local s = colS[row]
+                                                        local lRange = colL[row]
+                                                        local l = lRange[1] + (lRange[2] - lRange[1]) / steps * col
+                                                        local rr, g, b = OD_HslToRgb(h, s, l)
                                                         local btnColor = (rr << 24) | (g << 16) | (b << 8) | 0xff
+                                                        local nativeColor = r.ColorToNative(rr, g, b)
                                                         ImGui.PushStyleColor(ctx, ImGui.Col_Button, btnColor)
 
                                                         local sX, sY = ImGui.GetCursorScreenPos(ctx)
                                                         ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), sX, sY,
                                                             sX + btnW, sY + btnW, btnColor)
-                                                        if color == btnColor then
+                                                        if color == nativeColor then
                                                             ImGui.DrawList_AddRect(
                                                                 ImGui.GetForegroundDrawList(ctx), sX - spacing,
                                                                 sY - spacing,
                                                                 sX + btnW + spacing, sY + btnW + spacing,
                                                                 0xffffffff, nil, nil, spacing)
                                                         end
-                                                        if ImGui.InvisibleButton(ctx, 'colorPick' .. i .. s, btnW, btnW) then
-                                                            selColor = btnColor
+                                                        if ImGui.InvisibleButton(ctx, 'colorPick' .. row .. col, btnW, btnW) then
+                                                            selColor = nativeColor
+                                                        end
+                                                        if ImGui.IsItemHovered(ctx) then
+                                                            ImGui.DrawList_AddRect(
+                                                                ImGui.GetForegroundDrawList(ctx), sX - spacing,
+                                                                sY - spacing,
+                                                                sX + btnW + spacing, sY + btnW + spacing,
+                                                                0xBBBBBBff, nil, nil, spacing)
                                                         end
                                                         ImGui.PopStyleColor(ctx)
                                                         ImGui.SameLine(ctx)
