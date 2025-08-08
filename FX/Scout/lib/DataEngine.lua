@@ -642,19 +642,25 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
         self.tags[id].app = self.app
         self.tags[id].allTags = self.tags
         self.tags[id].engine = self
+        self.tags[id].hide = tagInfo.hide
         self.tags[id].color = tagInfo.color
         -- Set parentColor if no color is defined, finding the nearest parent's color
         if not tagInfo.color or tagInfo.useDefaultColor then
             local current = self.tags[id]
             while current.parentId and current.parentId ~= TAGS_ROOT_PARENT and self.tags[current.parentId] do
                 local parent = self.tags[current.parentId]
-                if parent.color and not parent.useDefaultColor then
+                if parent.color and not parent.useDefaultColor and not self.tags[id].parentColor then
                     self.tags[id].parentColor = parent.color
-                    break
                 end
+                if parent.hide then
+                    self.tags[id].isHidden = true
+                end
+                if self.tags[id].isHidden and self.tags[id].parentColor then break end
                 current = parent
             end
         end
+        self.tags[id].isHidden = self.tags[id].isHidden or self.tags[id].hide
+
         self.tags[id].useDefaultColor = tagInfo.useDefaultColor
         local colorToUse
         if tagInfo.useDefaultColor then
@@ -663,7 +669,7 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
             colorToUse = self.tags[id].color or self.tags[id].parentColor
         end
 
-        -- self.tags[id].displayColor = colorToUse 
+        -- self.tags[id].displayColor = colorToUse
         self.tags[id].displayColor = colorToUse and (ImGui.ColorConvertNative(colorToUse) * 0x100 | 0xff)
         self.tags[id].displayBGColor = self.tags[id].displayColor and
             OD_SetHSLInRGB(OD_MultiplyHSLInRGB(self.tags[id].displayColor, 1, 1, 1), nil, 0.1, 0.15)
@@ -724,12 +730,20 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
         end
         self.tags[id].rename = function(self, name, persist)
             self.name = name
-            self.app.userdata:updateTag(self.id, name, self.color, self.useDefaultColor, persist)
+            self.app.userdata:updateTag(self.id, name, self.color, self.useDefaultColor, self.hide, persist)
         end
         self.tags[id].setColor = function(self, color, useDefaultColor, persist)
             self.color = (color == nil) and self.color or color
             self.useDefaultColor = (useDefaultColor == nil) and self.useDefaultColor or useDefaultColor
-            self.app.userdata:updateTag(self.id, self.name, self.color, self.useDefaultColor, persist)
+            self.app.userdata:updateTag(self.id, self.name, self.color, self.useDefaultColor, self.hide, persist)
+        end
+        self.tags[id].toggleHide = function(self, hide, persist)
+            if hide == nil then
+                self.hide = not self.hide
+            else
+                self.hide = hide
+            end
+            self.app.userdata:updateTag(self.id, self.name, self.color, self.useDefaultColor, self.hide, persist)
         end
         self.tags[id].delete = function(self, persistAndReload)
             local assetsToRemoveTag = self.engine:assetsWithTag(self)

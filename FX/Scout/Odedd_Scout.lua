@@ -1538,7 +1538,7 @@ RunApp = function()
                 local drawResultsTable = function()
                     app.gui:pushStyles(app.gui.st.vars.searchResultsTable)
 
-                    local upperRowY = ImGui.GetCursorPosY(ctx)                   -- Y position for upper row, used for "sticky" first group title
+                    local upperRowY = ImGui.GetCursorPosY(ctx)                       -- Y position for upper row, used for "sticky" first group title
                     local upperRowScreenY = select(2, ImGui.GetCursorScreenPos(ctx)) -- Y position for upper row, used for "sticky" first group title
                     local flatRows = {}
                     local fontLineFullHeight = ImGui.GetTextLineHeightWithSpacing(ctx) +
@@ -1947,18 +1947,27 @@ RunApp = function()
                                                     ImGui.PopStyleColor(ctx)
                                                 end
                                             end
+
                                             if (result.tags and #result.tags > 0) then
-                                                ImGui.SameLine(ctx, 0, 3 * app.gui.scale)
-                                                ImGui.TextColored(ctx, app.gui.st.searchColor.separator, '|')
+                                                local visibleTags = {}
                                                 for i = #result.tags, 1, -1 do
                                                     local tag = app.engine.tags[result.tags[i]]
+                                                    if not tag.isHidden then
+                                                        table.insert(visibleTags, tag)
+                                                    end
+                                                end
+                                                if #visibleTags > 0 then
                                                     ImGui.SameLine(ctx, 0, 3 * app.gui.scale)
-
-                                                    ImGui.TextColored(ctx, tag.displayColor or
-                                                        app.gui.st.searchColor.tagDefault, tag.name)
-                                                    ImGui.SameLine(ctx, 0, 3 * app.gui.scale)
-
                                                     ImGui.TextColored(ctx, app.gui.st.searchColor.separator, '|')
+                                                    for _, tag in ipairs(visibleTags) do
+                                                        ImGui.SameLine(ctx, 0, 3 * app.gui.scale)
+
+                                                        ImGui.TextColored(ctx, tag.displayColor or
+                                                            app.gui.st.searchColor.tagDefault, tag.name)
+                                                        ImGui.SameLine(ctx, 0, 3 * app.gui.scale)
+
+                                                        ImGui.TextColored(ctx, app.gui.st.searchColor.separator, '|')
+                                                    end
                                                 end
                                             end
 
@@ -2073,6 +2082,7 @@ RunApp = function()
                     if ImGui.BeginChild(ctx, 'sideBar', sideBarW - spacingX * 2, sideBarH) then
                         local function drawTagsOfParent(parentId, indent, parentsDragged)
                             local drawTagNode
+                            local triangleW = app.gui.st.vars.tagList[ImGui.StyleVar_IndentSpacing][1]
                             local function drawDropTarget(tag, height, position, offsetY, dragTargetLineOffsetY)
                                 if height > 0 then
                                     local x, y = ImGui.GetCursorPos(ctx)
@@ -2080,10 +2090,9 @@ RunApp = function()
                                     local offsetY = offsetY or 0
                                     local dragTargetLineOffsetY = dragTargetLineOffsetY or 0
                                     local w, h = ImGui.GetContentRegionAvail(ctx) -- * app.gui.scale
-                                    local triangleW = tag.hasDescendants and
-                                        app.gui.st.vars.tagList[ImGui.StyleVar_IndentSpacing]
-                                        [1] or 0
-                                    local tagW = ImGui.CalcTextSize(ctx, tag.name) + paddingX * 4 + triangleW
+                                    local triangleW = tag.hasDescendants and triangleW or 0
+                                    local textW = ImGui.CalcTextSize(ctx, tag.name)
+                                    local tagW = textW + paddingX * 4 + triangleW
                                     ImGui.SetCursorPosY(ctx, y - height - offsetY) --'#dropTargetBefore'+tag.id,w, y-spacing)
                                     if app.logger.level == app.logger.LOG_LEVEL.DEBUG then
                                         ImGui.PushStyleVar(ctx, ImGui.StyleVar_FrameBorderSize, 2)
@@ -2207,9 +2216,7 @@ RunApp = function()
                                 local globalX, globalY = ImGui.GetCursorScreenPos(ctx)
                                 local x, y = ImGui.GetCursorPos(ctx)
                                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
-                                local triangleW = tag.hasDescendants and
-                                    app.gui.st.vars.tagList[ImGui.StyleVar_IndentSpacing]
-                                    [1] or 0
+                                local triangleW = tag.hasDescendants and triangleW or 0
                                 -- local triangleW = tag.hasDescendants and triangleW or 0
                                 local tagName = (app.temp.tagRename == tag.id) and app.temp.tagRenameBuffer or tag.name
                                 local tagNameWidth = ImGui.CalcTextSize(ctx, tagName)
@@ -2378,8 +2385,10 @@ RunApp = function()
                                     local iconsWidth = 0
                                     if hovering and tagStatus == nil then
                                         iconsWidth = iconsWidth + app.guiHelpers.calcTinyIconSize(ctx, ICONS.MINUS) +
-                                            app.guiHelpers.calcTinyIconSize(ctx, ICONS.PLUS)
-                                        tagW = tagW + spacingX * 3
+                                            app.guiHelpers.calcTinyIconSize(ctx, ICONS.PLUS) +
+                                            app.guiHelpers.calcTinyIconSize(ctx,
+                                                tag.hide and ICONS.INVISIBLE or ICONS.VISIBLE)
+                                        tagW = tagW + spacingX * 4
                                     elseif tagStatus ~= nil then
                                         iconsWidth = iconsWidth +
                                             (tagStatus ~= nil and app.guiHelpers.calcTinyIconSize(ctx, ICONS.CLOSE) or 0)
@@ -2391,6 +2400,13 @@ RunApp = function()
                                 ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), globalX, globalY,
                                     globalX + tagW,
                                     globalY + tagH, tag.displayBGColor or col, 100)
+                                if tag.isHidden then
+                                    ImGui.DrawList_AddLine(ImGui.GetForegroundDrawList(ctx),
+                                        globalX + paddingX + triangleW,
+                                        globalY + tagH / 2,
+                                        globalX + paddingX + triangleW + tagNameWidth,
+                                        globalY + tagH / 2, tag.displayColor or app.gui.st.col.tag[ImGui.Col_Text])
+                                end
                                 if tag.hasDescendants then
                                     local triPad = paddingY * 0.7
                                     local triW = tagH * 0.4
@@ -2442,6 +2458,7 @@ RunApp = function()
                                         -- app.temp.ignoreEscapeKey = nil
                                     end
                                 else
+                                    ImGui.AlignTextToFramePadding(ctx)
                                     if tag.displayColor then
                                         ImGui.TextColored(ctx, tag.displayColor, tag.name)
                                     else
@@ -2466,6 +2483,11 @@ RunApp = function()
                                         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
                                         if app.guiHelpers.tinyIcon(ctx, 'addNegative', ICONS.MINUS, nil, nil, (T.HINTS.TAG_NEGATIVE):format(tag.name)) then
                                             app.flow.filterResults({ addTags = { [tag.id] = false } })
+                                        end
+                                        ImGui.SameLine(ctx)
+                                        ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
+                                        if app.guiHelpers.tinyIcon(ctx, 'toggleVisible', tag.hide and ICONS.INVISIBLE or ICONS.VISIBLE, nil, nil, (T.HINTS.TAG_HIDE):format(tag.name)) then
+                                            tag:toggleHide()
                                         end
                                     end
                                     ImGui.PopID(ctx)

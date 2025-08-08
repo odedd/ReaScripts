@@ -104,7 +104,7 @@ function PB_UserData:export(filename)
     for id, tag in pairs(self.current.tagInfo) do
         -- Sanitize tag name and write with proper escaping
         local sanitizedName = OD_EscapeCSV(tag.name)
-        file:write(string.format('%d,%s,%d,%d,%d,%d\n', id, sanitizedName, tag.parentId or 0, tag.order or 0, tag.color or 0, (tag.useDefaultColor == nil) and 1 or (tag.useDefaultColor and 1 or 0)))
+        file:write(string.format('%d,%s,%d,%d,%d,%d,%d\n', id, sanitizedName, tag.parentId or 0, tag.order or 0, tag.color or 0, (tag.useDefaultColor == nil) and 1 or (tag.useDefaultColor and 1 or 0),(tag.hide == nil) and 0 or (tag.hide and 1 or 0)))
         tagCount = tagCount + 1
     end
     file:write('\n')
@@ -353,14 +353,15 @@ function PB_UserData:import(args)
             -- Use safe CSV parsing for tag info
             local fields = OD_ParseCSVLine(line, ",")
             if #fields >= 6 then
-                local id, name, parentId, order, color, useDefaultColor = fields[1], fields[2], fields[3], fields[4], fields[5], fields[6]
+                local id, name, parentId, order, color, useDefaultColor, hide = fields[1], fields[2], fields[3], fields[4], fields[5], fields[6], fields[7]
                 if id and name and tonumber(id) then
                     importedTagInfo[tonumber(id)] = {
                         name = name, -- Already unescaped by OD_ParseCSVLine
                         parentId = tonumber(parentId) or 0,
                         order = tonumber(order) or 0,
                         color = tonumber(color),
-                        useDefaultColor = useDefaultColor == '1' and true or false
+                        useDefaultColor = useDefaultColor == '1' and true or false,
+                        hide = hide == '1' and true or false
                     }
                 else
                     self.app.logger:logError('Invalid tagInfo line format', line)
@@ -848,6 +849,7 @@ function PB_UserData:import(args)
                             existingTagsCount = existingTagsCount + 1
                             self.current.tagInfo[existingId].color = importedTag.color
                             self.current.tagInfo[existingId].useDefaultColor = importedTag.useDefaultColor
+                            self.current.tagInfo[existingId].hide = importedTag.hide
                             -- Only perform expensive logging operations if debug logging is enabled
                             if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                                 local pathStr = table.concat(getCachedImportedPath(importedTag.parentId, idMapping),
@@ -865,6 +867,7 @@ function PB_UserData:import(args)
                                 parentId = mappedParentId,
                                 order = importedTag.order or 0,
                                 color = importedTag.color,
+                                hide = importedTag.hide,
                                 useDefaultColor = importedTag.useDefaultColor
                             }
 
@@ -2024,11 +2027,12 @@ function PB_UserData:toggleTagOpen(tagId, state, persist)
     end
 end
 
-function PB_UserData:updateTag(tagId, name, color, useDefaultColor, persist)
+function PB_UserData:updateTag(tagId, name, color, useDefaultColor, hide, persist)
     persist = (persist == nil) and true or persist
     self.current.tagInfo[tagId].name = name
     self.current.tagInfo[tagId].color = color
     self.current.tagInfo[tagId].useDefaultColor = useDefaultColor
+    self.current.tagInfo[tagId].hide = hide
     if persist then
         self:save()
         -- Notify engine to refresh its runtime data
@@ -2229,7 +2233,8 @@ function PB_UserData:createTag(name, parent, putAtStart)
         name = name,
         parentId = parentId,
         order = putAtStart and 1 or levelCount + 1,
-        useDefaultColor = true
+        useDefaultColor = true,
+        hide = false
     }
 
     local newId = self.current.tagIdCount + 1

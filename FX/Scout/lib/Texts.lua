@@ -384,6 +384,7 @@ T.HINTS = {
     TAG_CONTEXT_MENU_DELETE = 'Delete %s and its nested tags. CANNOT BE UNDONE.',
     TAG_POSITIVE = 'Include: Show items that include tag \'%s\'.',
     TAG_NEGATIVE = 'Exclude: Show items that do not include tag \'%s\'.',
+    TAG_HIDE = 'Show/hide tag \'%s\' in the results table.',
     TAG_REMOVE = 'Remove tag \'%s\' from filter list.',
     DRAG_RESULT_TO_ADD_TAG = 'Add tag \'%s\' to %s. Hold %s to remove tag.',
     DRAG_RESULT_TO_REMOVE_TAG = 'Remove tag \'%s\' from %s.',
