@@ -1957,6 +1957,7 @@ RunApp = function()
                                                 end
                                                 if #visibleTags > 0 then
                                                     -- ImGui.TextColored(ctx, app.gui.st.searchColor.separator, '|')
+                                                    ImGui.SameLine(ctx, 0, 5*app.gui.scale)
                                                     for i, tag in ipairs(visibleTags) do
                                                         app.gui:pushStyles(app.gui.st.vars.tag)
                                                         app.gui:pushFont(app.gui.st.fonts.default, 'small')
