@@ -2256,43 +2256,68 @@ RunApp = function()
                                         app.temp.tagRenameBuffer = tag.name
                                     end
                                     app:setHoveredHint('main', T.HINTS.TAG_CONTEXT_MENU_RENAME)
-
                                     if ImGui.BeginMenu(ctx, 'Color') then
+                                        local w, h = 250 * app.gui.scale
+                                        ImGui.SetNextItemWidth(ctx, w)
                                         local rv, selected = ImGui.Checkbox(ctx, 'Default Color', tag.useDefaultColor)
                                         if rv then
                                             tag:setColor(nil, selected)
                                         end
-                                        local function colorPallette(color)
+                                        local function colorPallette(color, id, width)
                                             local color = color
                                             local steps = 12
-                                            local clicked = false
-                                            local w, h = 270
-                                            local fromL, toL = 0.1,0.55
-                                            local fromS, toS, stepS = 0.1,0.7, 0.2
+                                            -- local w = ImGui.GetContentRegionAvail(ctx)
+                                            local btnW = (width or ImGui.GetContentRegionAvail(ctx)) / steps
+                                            local selColor = nil
+                                            local fromL, toL = 0.1, 0.55
+                                            local fromS, toS, stepS = 0.1, 0.7, 0.2
                                             local sIndex = 0
-                                            for s = fromS, toS, stepS do
-                                                for i = 1, steps do
-                                                    -- local rr, g, b = OD_HslToRgb((1 / steps) * i, s, math.min(toL,fromL+((toL-fromL)/((toS-fromS)/stepS)*sIndex/3+(((toS-fromS)/steps)*i/2))))
-                                                    local rr, g, b = OD_HslToRgb((1 / steps) * i, s, math.min(toL,fromL+((toL-fromL)/((toS-fromS)/stepS)*sIndex*2+(((toL-fromL)/steps)*i/2))))
-                                                    local btnColor = (rr << 24) | (g << 16) | (b << 8) | 0xff
-                                                    local btnW = w / steps
-                                                    ImGui.PushStyleColor(ctx, ImGui.Col_Button, btnColor)
-                                                    clicked = ImGui.Button(ctx, '##col' .. i .. s, btnW, btnW)
-                                                    ImGui.PopStyleColor(ctx)
-                                                    ImGui.SameLine(ctx)
-                                                    if clicked then return true, btnColor end
+                                            local spacing = math.ceil(1 * app.gui.scale)
+                                            local padding = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
+                                            local numCols, numRows = steps, (toS - fromS) / stepS + 1
+                                            if ImGui.BeginChild(ctx, '##colorSelector' .. tostring(id), btnW * numCols + spacing * (numCols - 1), btnW * numRows + spacing * (numRows - 1)) then
+                                                ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, spacing, spacing)
+                                                for s = fromS, toS, stepS do
+                                                    for i = 1, steps do
+                                                        local rr, g, b = OD_HslToRgb((1 / steps) * i, s,
+                                                            math.min(toL,
+                                                                fromL +
+                                                                ((toL - fromL) / ((toS - fromS) / stepS) * sIndex * 2 + (((toL - fromL) / steps) * i / 2))))
+                                                        local btnColor = (rr << 24) | (g << 16) | (b << 8) | 0xff
+                                                        ImGui.PushStyleColor(ctx, ImGui.Col_Button, btnColor)
+
+                                                        local sX, sY = ImGui.GetCursorScreenPos(ctx)
+                                                        ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), sX, sY,
+                                                            sX + btnW, sY + btnW, btnColor)
+                                                        if color == btnColor then
+                                                            ImGui.DrawList_AddRect(
+                                                                ImGui.GetForegroundDrawList(ctx), sX - spacing,
+                                                                sY - spacing,
+                                                                sX + btnW + spacing, sY + btnW + spacing,
+                                                                0xffffffff, nil, nil, spacing)
+                                                        end
+                                                        if ImGui.InvisibleButton(ctx, 'colorPick' .. i .. s, btnW, btnW) then
+                                                            selColor = btnColor
+                                                        end
+                                                        ImGui.PopStyleColor(ctx)
+                                                        ImGui.SameLine(ctx)
+                                                    end
+                                                    sIndex = sIndex + 1
+
+                                                    ImGui.NewLine(ctx)
                                                 end
-                                                sIndex = sIndex + 1
-
-                                                ImGui.NewLine(ctx)
+                                                ImGui.PopStyleVar(ctx)
+                                                ImGui.EndChild(ctx)
                                             end
-
-                                            return clicked, color
+                                            if selColor then return true, selColor end
                                         end
-                                        local rv, color = colorPallette(tag.color)
+                                        local rv, color = colorPallette(tag.color, nil, w)
                                         -- local rv, color = ImGui.ColorPicker3(ctx, 'Set Color', tag.color)
                                         if rv then
                                             tag:setColor(color, false)
+                                        end
+                                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+                                            ImGui.CloseCurrentPopup(ctx)
                                         end
                                         ImGui.EndMenu(ctx)
                                     end
