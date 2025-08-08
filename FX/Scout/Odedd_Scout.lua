@@ -1399,7 +1399,7 @@ RunApp = function()
                     local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
                     local filterH = ImGui.GetTextLineHeight(ctx) + paddingY * 2
                     ImGui.SetCursorPosY(ctx, y + paddingY)
-                    if ImGui.BeginChild(ctx, 'activesideBar', nil, nil, ImGui.ChildFlags_AutoResizeY) then
+                    if ImGui.BeginChild(ctx, 'activeFiltersBar', nil, nil, ImGui.ChildFlags_AutoResizeY) then
                         local i = 0
                         for filterKey, filter in OD_PairsByOrder(app.temp.activeFilters) do
                             i = i + 1
@@ -1407,9 +1407,6 @@ RunApp = function()
                             local textW, textH = ImGui.CalcTextSize(ctx, text)
                             if filter.type == FILTER_TYPES.TAG then
                                 text = filter.itemName
-                                -- textW = app.guiHelpers.calcTinyIconSize(ctx,
-                                --         filter.value and ICONS.PLUS or ICONS.MINUS) +
-
                                 ImGui.CalcTextSize(ctx, text)
                             end
                             local iconWidth = app.guiHelpers.calcTinyIconSize(ctx, FILTER_ICONS[filter.type])
@@ -1537,7 +1534,6 @@ RunApp = function()
 
                 local drawResultsTable = function()
                     app.gui:pushStyles(app.gui.st.vars.searchResultsTable)
-
                     local upperRowY = ImGui.GetCursorPosY(ctx)                       -- Y position for upper row, used for "sticky" first group title
                     local upperRowScreenY = select(2, ImGui.GetCursorScreenPos(ctx)) -- Y position for upper row, used for "sticky" first group title
                     local flatRows = {}
@@ -2561,23 +2557,6 @@ RunApp = function()
                                             app:setHint('main', '')
                                             -- Special handling for Presets menu
                                             if k == FILTER_TYPES.PRESET then
-                                                -- "Save Preset..." - only show when filters are active
-                                                local hasActiveFilters = false
-                                                if app.temp.filter then
-                                                    -- Check if any filters are active
-                                                    for filterKey, filterValue in pairs(app.temp.filter) do
-                                                        if filterKey == 'tags' then
-                                                            if OD_Tablelength(filterValue) > 0 then
-                                                                hasActiveFilters = true
-                                                                break
-                                                            end
-                                                        elseif filterKey ~= 'text' and filterValue ~= nil and filterValue ~= '' then
-                                                            hasActiveFilters = true
-                                                            break
-                                                        end
-                                                    end
-                                                end
-
                                                 -- "Edit Preset >" - show submenu with all presets
                                                 if ImGui.BeginMenu(ctx, 'Edit Preset...##editPreset') then
                                                     for presetId, preset in OD_PairsByOrder(app.engine.presets) do
