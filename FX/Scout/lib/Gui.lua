@@ -5,20 +5,16 @@ PB_Gui = OD_Gui:new({
 })
 
 PB_Gui.init = function(self, fonts)
-
-    self.tinyFontSize = 12
-    self.smallFontSize = 16
-    self.defaultFontSize = 18
-    self.largeFontSize = 22
     self.scaledFonts = {}
     self:createFontsImGui010({
         -- default = { },
         default = { file = 'Resources/Fonts/Cousine-Regular.ttf' },
         bold = { file = 'Resources/Fonts/Cousine-Regular.ttf', flags = ImGui.FontFlags_Bold },
         icons = { file = 'Resources/Fonts/Icons-Regular.otf' },
-    })
+    }, { default = 18, small = 16, tiny = 12, large = 22 })
 
     OD_Gui.init(self, false)
+
     self.searchResultsClipper = ImGui.CreateListClipper(self.ctx)
     ImGui.Attach(self.ctx, self.searchResultsClipper)
 
@@ -62,7 +58,7 @@ PB_Gui.init = function(self, fonts)
         textDarkest = 0x303030ff,
     }
     self.st.searchColor = {
-        results = {self.st.basecolors.textBright, self.st.basecolors.textDark, self.st.basecolors.textDarker},
+        results = { self.st.basecolors.textBright, self.st.basecolors.textDark, self.st.basecolors.textDarker },
         separator = self.st.basecolors.textDarkest,
         tagDefault = self.st.basecolors.textDarker
     }
@@ -216,7 +212,7 @@ PB_Gui.init = function(self, fonts)
             [ImGui.Col_FrameBg] = self.st.basecolors.darkBG
         },
         main = {
-            [ImGui.Col_NavCursor] = 0x00000000, 
+            [ImGui.Col_NavCursor] = 0x00000000,
             [ImGui.Col_Tab] = self.st.basecolors.darkHovered,
             [ImGui.Col_TabHovered] = self.st.basecolors.darkActive,
             -- [ImGui.Col_TabActive] = self.st.basecolors.darkActive,
@@ -268,10 +264,7 @@ PB_Gui.init = function(self, fonts)
 
     self.updateVarsToScale = function(self)
         local scale = self.scale
-        self.scaledFonts.tiny = self.tinyFontSize * scale
-        self.scaledFonts.small = self.smallFontSize * scale
-        self.scaledFonts.default = self.defaultFontSize * scale
-        self.scaledFonts.large = self.largeFontSize * scale
+
         self.st.vars = {
             main = {
                 [ImGui.StyleVar_FrameRounding] = { self.st.rounding * scale, nil },
@@ -343,7 +336,7 @@ PB_Gui.init = function(self, fonts)
     end
 
     self.updateSizesToScale = function(self)
-        ImGui.PushFont(self.ctx, self.st.fonts.default, self.scaledFonts.default) -- hint font! important!
+        self:pushFont(self.st.fonts.default) -- hint font! important!
         self.st.sizes = {
             hintHeight = ImGui.GetTextLineHeightWithSpacing(self.ctx) +
                 select(2, ImGui.GetStyleVar(self.ctx, ImGui.StyleVar_ItemSpacing)) +
@@ -358,8 +351,8 @@ PB_Gui.init = function(self, fonts)
                 (self.scale or scale) -- return change to allow for scaling of other elements (eg. Resize window)
             self.scale = scale
 
-            -- self:reAddFonts()
 
+            self:updateFontsToScale()
             self:updateVarsToScale()
             self:pushStyles(self.st.vars.main)
             -- OD_Gui.recalculateZoom(self, scale)
@@ -399,7 +392,7 @@ PB_Gui.init = function(self, fonts)
             if data.help then
                 ImGui.SameLine(ctx)
                 ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
-                ImGui.PushFont(ctx, self.st.fonts.icons, self.scaledFonts.tiny)
+                self:pushFont(self.st.fonts.icons, 'tiny')
                 ImGui.TextColored(ctx, self.st.basecolors.textDarker, ICONS.QUESTION_CIRCLE)
                 ImGui.PopFont(ctx)
                 if ImGui.IsItemHovered(ctx) then

@@ -29,9 +29,9 @@ function OD_Gui:createFonts(fonts)
     end
 end
 
-function OD_Gui:createFontsImGui010(fonts)
+function OD_Gui:createFontsImGui010(fonts, sizes)
     for k, font in pairs(fonts) do
-        self:addFontImGui010(k, font.file, font.flags)
+        self:addFontImGui010(k, font.file, sizes, font.flags)
     end
 end
 
@@ -45,19 +45,24 @@ function OD_Gui:addFont(key, file, size, recalculation)
     self.st.fonts[key] = r.ImGui_CreateFont(OD_LocalOrCommon(file, self.app.scr.dir), math.floor(size * scale))
 end
 
-function OD_Gui:addFontImGui010(key, file, flags, recalculation)
-    if not recalculation then
-        self.originalFonts = self.originalFonts or {}
-        self.originalFonts[key] = { file = file } -- save for recalculating zoom later
-    end
+function OD_Gui:addFontImGui010(key, file, sizes, flags)
     self.st.fonts = self.st.fonts or {}
     if file then
-        self.st.fonts[key] = r.ImGui_CreateFontFromFile(OD_LocalOrCommon(file, self.app.scr.dir), flags)
+        self.st.fonts[key] = {font = r.ImGui_CreateFontFromFile(OD_LocalOrCommon(file, self.app.scr.dir), 0, flags), sizes = sizes}
     else
-        self.st.fonts[key] = r.ImGui_CreateFont(OD_LocalOrCommon('sans-serif', self.app.scr.dir), flags)
+        self.st.fonts[key] = {font = r.ImGui_CreateFont(OD_LocalOrCommon('sans-serif', self.app.scr.dir), 0, flags), sizes = sizes}
     end
 end
 
+function OD_Gui:updateFontsToScale()
+        local scale = self.scale
+        for fontName, font in pairs(self.st.fonts) do
+            font.scaledSizes = {}
+            for sizeKey, size in pairs(font.sizes) do
+                font.scaledSizes[sizeKey] = size * scale
+            end
+        end
+    end
 -- function OD_Gui:getNormalizedScale(scale, font)
 --     local size = self.originalFonts.default.size
 --     return scale * (math.floor(size * scale) / (size * scale))
@@ -71,32 +76,11 @@ function OD_Gui:reAddFonts()
     end
 end
 
-function OD_Gui:init(addDefaultFonts)
-    local addDefaultFonts = (addDefaultFonts == nil) and (not self.st.fonts) or addDefaultFonts
-    if addDefaultFonts then
-        local small = 16
-        local default = 18
-        local medium = 20
-        local large = 22
-        self:createFonts({
-            default = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = default },
-            small = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = small },
-            medium = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = medium },
-            large = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = large },
-            bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = default },
-            small_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = small },
-            medium_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = medium },
-            large_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = large },
-            icons = { file = 'Resources/Fonts/Icons-Regular.otf', size = default },
-            icons_small = { file = 'Resources/Fonts/Icons-Regular.otf', size = small },
-            icons_medium = { file = 'Resources/Fonts/Icons-Regular.otf', size = medium },
-            icons_large = { file = 'Resources/Fonts/Icons-Regular.otf', size = large }
-        })
-    end
+function OD_Gui:init()
 
     self.ctx = r.ImGui_CreateContext(self.app.scr.context_name) --, reaper.ImGui_ConfigFlags_DockingEnable())
     for k, font in pairs(self.st.fonts) do
-        r.ImGui_Attach(self.ctx, font)
+        r.ImGui_Attach(self.ctx, font.font)
     end
     self.draw_list = r.ImGui_GetWindowDrawList(self.ctx)
     self.keyModCtrlCmd = (OS_is.mac or OS_is.mac_arm) and r.ImGui_Mod_Super() or r.ImGui_Mod_Ctrl()
@@ -186,6 +170,13 @@ function OD_Gui:popStyles(key)
     end
 end
 
+function OD_Gui:pushFont(font, sizeKey)
+    local sizeKey = sizeKey or 'default'
+    r.ImGui_PushFont(self.ctx, font.font, font.scaledSizes[sizeKey])
+end
+function OD_Gui:popFont()
+    r.ImGui_PopFont(self.ctx)
+end
 function OD_Gui:updateModKeys()
     self.modKeys = ('%s%s%s%s'):format(r.ImGui_IsKeyDown(self.ctx, r.ImGui_Mod_Shift()) and 's' or '',
         r.ImGui_IsKeyDown(self.ctx, r.ImGui_Mod_Alt()) and 'a' or '',

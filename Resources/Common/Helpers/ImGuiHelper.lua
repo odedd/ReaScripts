@@ -247,8 +247,9 @@ if reaper.ImGui_CreateContext then
 
   -- by cfillion
   local OD_TEXT_COMMANDS = {
-    f = function(ctx, arg, fonts)
-      reaper.ImGui_PushFont(ctx, fonts[arg])
+    f = function(ctx, arg, fonts, sizeKey)
+      local sizeKey = sizeKey or 'default'
+      reaper.ImGui_PushFont(ctx, fonts[arg].font, fonts[arg].scaledSizes[sizeKey])
     end,
     F = function(ctx)
       reaper.ImGui_PopFont(ctx)

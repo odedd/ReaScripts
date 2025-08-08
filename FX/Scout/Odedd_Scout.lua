@@ -44,9 +44,9 @@ r.SetExtState(Scr.ext_name, 'SCRIPT_VERSION', Scr.version, false)
 
 RunApp = function()
     if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' and OD_PrereqsOK({
-            reaimgui_version = '0.10.0',
+            reaimgui_version = '0.10.0.1',
             js_version = 1.310,    -- required for JS_Window_...
-            reaper_version = 7.03, -- required for set_action_options
+            reaper_version = 7.42, 
         }) then
         package.path = r.ImGui_GetBuiltinPath() .. '/?.lua'
         ImGui = require 'imgui' '0.10.0.1'
@@ -838,7 +838,7 @@ RunApp = function()
                 else
                     -- without this code the context gets invalidated, so it needs to be kept alive
                     local ctx = app.gui.ctx
-                    ImGui.PushFont(ctx, app.gui.st.fonts.default, app.gui.scaledFonts.default)
+                    app.gui:pushFont(app.gui.st.fonts.default)
                     ImGui.PopFont(ctx)
                     PDefer(app.flow.hibernate)
                 end
@@ -1092,7 +1092,7 @@ RunApp = function()
                     return table.unpack(app.temp.iconSizes[icon])
                 else
                     app.temp.iconSizesCacheZoom[icon] = app.gui.scale
-                    ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.tiny)
+                    app.gui:pushFont(app.gui.st.fonts.icons, 'tiny')
                     local iconW, iconH = ImGui.CalcTextSize(ctx, icon)
                     app.temp.iconSizes[icon] = table.pack(iconW, iconH)
                     ImGui.PopFont(ctx)
@@ -1125,14 +1125,14 @@ RunApp = function()
                     end
                 end
                 ImGui.SetCursorPos(ctx, x, y + paddingY + (textH - iconH) / 2)
-                ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.tiny)
+                app.gui:pushFont(app.gui.st.fonts.icons, 'tiny')
                 ImGui.TextColored(ctx, col, icon)
                 ImGui.PopFont(ctx)
                 ImGui.EndGroup(ctx)
                 if not disabled then return clicked end
             end,
             iconButton = function(ctx, icon, colClass, hint, shortcut, id)
-                ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.large)
+                app.gui:pushFont(app.gui.st.fonts.icons, 'large')
                 local x, y = ImGui.GetCursorPos(ctx)
                 local w = select(1, ImGui.CalcTextSize(ctx, ICONS[(icon):upper()])) +
                     ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding) * 2
@@ -1148,7 +1148,7 @@ RunApp = function()
                     if app.temp.fullWindow then
                         app:setHoveredHint('main', hint)
                     elseif ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
-                        ImGui.PushFont(ctx, app.gui.st.fonts.default, app.gui.scaledFonts.default)
+                        app.gui:pushFont(app.gui.st.fonts.default)
                         ImGui.SetTooltip(ctx, hint)
                         ImGui.PopFont(ctx)
                     end
@@ -1358,7 +1358,7 @@ RunApp = function()
                 local lines = 1
                 local height = 0
 
-                ImGui.PushFont(ctx, app.gui.st.fonts.default, app.gui.scaledFonts.small)
+                app.gui:pushFont(app.gui.st.fonts.default, 'small')
                 if OD_Tablelength(app.temp.activeFilters) > 0 then
                     ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx))
 
@@ -1891,7 +1891,7 @@ RunApp = function()
 
                                             if result.favorite then
                                                 -- if result.group == SPECIAL_GROUPS.FAVORITES then
-                                                ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.small)
+                                                app.gui:pushFont(app.gui.st.fonts.icons, 'small')
                                                 app.gui:pushColors(app.gui.st.col.search.favorite)
                                                 ImGui.Text(ctx, ICONS.STAR)
                                                 app.gui:popColors(app.gui.st.col.search.favorite)
@@ -1900,7 +1900,7 @@ RunApp = function()
                                             end
                                             if app.temp.searchMode == SEARCH_MODE.FILTERS then
                                                 -- if result.group == SPECIAL_GROUPS.FAVORITES then
-                                                ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.small)
+                                                app.gui:pushFont(app.gui.st.fonts.icons, 'small')
                                                 app.gui:pushColors(app.gui.st.col.search.favorite)
                                                 ImGui.Text(ctx, FILTER_ICONS[result.type])
                                                 app.gui:popColors(app.gui.st.col.search.favorite)
@@ -2201,7 +2201,7 @@ RunApp = function()
                                 if not dragged then drawDropTarget(tag, spacingY, 'before', 0, 0) end
                                 app.gui:pushColors(app.gui.st.col.tag)
                                 app.gui:pushStyles(app.gui.st.vars.tag)
-                                ImGui.PushFont(ctx, app.gui.st.fonts.default, app.gui.scaledFonts.small)
+                                app.gui:pushFont(app.gui.st.fonts.default, 'small')
                                 local w = select(1, ImGui.GetContentRegionAvail(ctx))
                                 local globalX, globalY = ImGui.GetCursorScreenPos(ctx)
                                 local x, y = ImGui.GetCursorPos(ctx)
@@ -2298,7 +2298,7 @@ RunApp = function()
                                             tag:delete()
                                         end
                                     else
-                                        if ImGui.Selectable(ctx, 'Delete', false, ImGui.SelectableFlags_DontClosePopups) then
+                                        if ImGui.Selectable(ctx, 'Delete', false, ImGui.SelectableFlags_NoAutoClosePopups) then
                                             app.temp.showDeleteTagConfirmation = r.time_precise()
                                         end
                                     end
@@ -2556,7 +2556,7 @@ RunApp = function()
 
                         ImGui.SeparatorText(ctx, "Tags")
                         ImGui.SameLine(ctx)
-                        ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.small)
+                        app.gui:pushFont(app.gui.st.fonts.icons, 'small')
                         ImGui.SetCursorPosX(ctx,
                             ImGui.GetCursorPosX(ctx) + ImGui.GetContentRegionAvail(ctx) - spacingX - paddingX * 2 -
                             ImGui.CalcTextSize(ctx, ICONS.PLUS))
@@ -2590,7 +2590,7 @@ RunApp = function()
                         app.temp.quickChain = app.temp.quickChain or {}
                         ImGui.SeparatorText(ctx, "QuickChain")
                         ImGui.BeginGroup(ctx)
-                        ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.large)
+                        app.gui:pushFont(app.gui.st.fonts.icons, 'large')
                         local btnW = ImGui.CalcTextSize(ctx, ICONS.DISK) + paddingX * 2
                         ImGui.PopFont(ctx)
                         local text = app.temp.currentlyLoadedQuickChain and app.temp.currentlyLoadedQuickChain.name or
@@ -2631,7 +2631,7 @@ RunApp = function()
                                         app.temp.quickChain = {}
                                         numOfPresets = numOfPresets - 1
                                     end
-                                elseif ImGui.Selectable(ctx, 'Delete Preset...', false, ImGui.SelectableFlags_DontClosePopups) then
+                                elseif ImGui.Selectable(ctx, 'Delete Preset...', false, ImGui.SelectableFlags_NoAutoClosePopups) then
                                     app.temp.showDeleteQuickChainConfirmation = r.time_precise()
                                 end
                                 if numOfPresets > 0 then
@@ -2773,7 +2773,7 @@ RunApp = function()
                         else
                             app.gui:pushColors(app.gui.st.col.buttons.default)
                         end
-                        ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.small)
+                        app.gui:pushFont(app.gui.st.fonts.icons, 'small')
                         if ImGui.Button(ctx, ICONS.LIGHTNING .. '##quickChainAdd',
                                 w - spacingX - paddingX * 2 - ImGui.CalcTextSize(ctx, ICONS.ELLIPSIS)) then
                             app.flow.executeSelectedResults(app.temp.quickChain,
@@ -2913,7 +2913,7 @@ RunApp = function()
                     return menu
                 end
                 local calculateDimensions = function()
-                    ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.large)
+                    app.gui:pushFont(app.gui.st.fonts.icons, 'large')
                     local menuW, h = 0, ImGui.GetTextLineHeight(ctx) + paddingY * 2 + winPaddingY * 2
                     for i, btn in ipairs(menu) do
                         menuW = menuW + select(1, ImGui.CalcTextSize(ctx, ICONS[(btn.icon):upper()])) +
@@ -3006,7 +3006,7 @@ RunApp = function()
                     end
                 end
                 local drawIconMenu = function(ctx, buttons)
-                    ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.large)
+                    app.gui:pushFont(app.gui.st.fonts.icons, 'large')
                     local clicked = nil
                     for i, btn in ipairs(buttons) do
                         local col = btn.active and app.gui.st.col.buttons.topBarActiveIcon or
@@ -3028,12 +3028,12 @@ RunApp = function()
                         col = app.gui.st.col.titleUnfocused[ImGui.Col_Text]
                     end
                     ImGui.PushStyleColor(ctx, ImGui.Col_Text, col)
-                    ImGui.PushFont(ctx, app.gui.st.fonts.icons, app.gui.scaledFonts.small)
+                    app.gui:pushFont(app.gui.st.fonts.icons, 'small')
                     ImGui.AlignTextToFramePadding(ctx)
                     ImGui.Text(ctx, ICONS.SEARCH)
                     ImGui.PopFont(ctx)
                     ImGui.SameLine(ctx)
-                    ImGui.PushFont(ctx, app.gui.st.fonts.default, app.gui.scaledFonts.large)
+                    app.gui:pushFont(app.gui.st.fonts.default, 'large')
                     ImGui.AlignTextToFramePadding(ctx)
                     ImGui.Text(ctx, app.scr.name)
                     ImGui.PopStyleColor(ctx)
@@ -3041,7 +3041,7 @@ RunApp = function()
                     if app.temp.fullWindow then
                         app:setHoveredHint('main', app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
                     elseif ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_ForTooltip) then
-                        ImGui.PushFont(ctx, app.gui.st.fonts.default, app.gui.scaledFonts.default)
+                        app.gui:pushFont(app.gui.st.fonts.default)
                         ImGui.SetTooltip(ctx, app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
                         ImGui.PopFont(ctx)
                     end
@@ -3617,8 +3617,7 @@ RunApp = function()
                                                                     (assetType.allowMultiple and (assetType.group):gsub('s$', '(s)'):lower() or (assetType.name):lower()))
                                                                 :gsub(
                                                                     "^%l", string.upper)
-                                                            ImGui.PushFont(ctx, app.gui.st.fonts.bold,
-                                                                app.gui.scaledFonts.default)
+                                                            app.gui:pushFont(ctx, app.gui.st.fonts.bold)
                                                             -- ImGui.TextWrapped(ctx, mod .. ': ')
                                                             ImGui.TextColored(ctx, app.gui.st.basecolors.mainBrightest,
                                                                 mod .. ': ')
@@ -4513,7 +4512,7 @@ RunApp = function()
             if not app.hide then
                 app.gui:pushColors(app.gui.st.col.main)
                 app.gui:pushStyles(app.gui.st.vars.main)
-                ImGui.PushFont(ctx, app.gui.st.fonts.default, app.gui.scaledFonts.default)
+                app.gui:pushFont(app.gui.st.fonts.default)
                 -- if app.logger.profile then profiler.start() end
                 app.draw.mainWindow(ctx)
                 -- if app.logger.profile then profiler.stop() end
