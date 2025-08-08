@@ -1515,6 +1515,8 @@ RunApp = function()
                     select(2, ImGui.GetContentRegionAvail(ctx))
                 local sideBarScreenX = select(1, ImGui.GetCursorScreenPos(ctx)) + w - sideBarW -- X position for tag area
                 -- local quickChainPresetscreenX = sideBarScreenX - quickChainW -- X position for quickchain area
+                local upperRowY = ImGui.GetCursorPosY(ctx)                                     -- Y position for upper row, used for "sticky" first group title
+                local upperRowScreenY = select(2, ImGui.GetCursorScreenPos(ctx))               -- Y position for upper row, used for "sticky" first group title
 
                 local tagInfo = app.userdata.current.tagInfo
                 local searchResults = app.temp.searchResults or
@@ -1534,8 +1536,6 @@ RunApp = function()
 
                 local drawResultsTable = function()
                     app.gui:pushStyles(app.gui.st.vars.searchResultsTable)
-                    local upperRowY = ImGui.GetCursorPosY(ctx)                       -- Y position for upper row, used for "sticky" first group title
-                    local upperRowScreenY = select(2, ImGui.GetCursorScreenPos(ctx)) -- Y position for upper row, used for "sticky" first group title
                     local flatRows = {}
                     local fontLineFullHeight = ImGui.GetTextLineHeightWithSpacing(ctx) +
                         select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemInnerSpacing))
