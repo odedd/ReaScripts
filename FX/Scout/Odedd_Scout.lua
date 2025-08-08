@@ -2267,7 +2267,7 @@ RunApp = function()
                                         if rv then
                                             tag:setColor(nil, selected)
                                         end
-                                        local function colorPallette(color, id, width)
+                                        local function colorPalette(color, id, width)
                                             local color = color
                                             local steps = 16
                                             -- local w = ImGui.GetContentRegionAvail(ctx)
@@ -2277,8 +2277,8 @@ RunApp = function()
                                             for i = 1, steps do
                                                 table.insert(colH, (1 / steps) * i)
                                             end
-                                            local colL = { { 0.15, 0.75 }, { 0.25, 0.25 }, { 0.35, 0.35 }, { 0.45, 0.45 }, { 0.55, 0.55 } }
-                                            local colS = { 0, 0.2, 0.3, 0.4, 0.50 }
+                                            local colL = { { 0.15, 0.75 }, { 0.25, 0.25 }, { 0.375, 0.375 }, { 0.45, 0.45 }, { 0.55, 0.55 } }
+                                            local colS = { 0, 0.35, 0.4, 0.45, 0.50 }
                                             local sIndex = 0
                                             local spacing = math.ceil(1 * app.gui.scale)
                                             local numCols, numRows = steps, #colL
@@ -2327,7 +2327,7 @@ RunApp = function()
                                             end
                                             if selColor then return true, selColor end
                                         end
-                                        local rv, color = colorPallette(tag.color, nil, w)
+                                        local rv, color = colorPalette(tag.color, nil, w)
                                         -- local rv, color = ImGui.ColorPicker3(ctx, 'Set Color', tag.color)
                                         if rv then
                                             tag:setColor(color, false)
