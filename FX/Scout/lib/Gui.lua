@@ -53,6 +53,7 @@ PB_Gui.init = function(self, fonts)
         mainBrightest = 0xd75869ff,
         highlight = 0x42f595ff,
         textBright = 0xd7d7d7ff,
+        textMid = 0xA8A8A8ff,
         textDark = 0x686868ff,
         textDarker = 0x444444ff,
         textDarkest = 0x303030ff,
@@ -60,7 +61,8 @@ PB_Gui.init = function(self, fonts)
     self.st.searchColor = {
         results = { self.st.basecolors.textBright, self.st.basecolors.textDark, self.st.basecolors.textDarker },
         separator = self.st.basecolors.textDarkest,
-        tagDefault = self.st.basecolors.textDarker
+        tagDefault = self.st.basecolors.main,
+        tagDefaultBG = self.st.basecolors.darkerBG
     }
     self.st.colpresets = {
         darkButton = {
@@ -377,6 +379,74 @@ PB_Gui.init = function(self, fonts)
         ImGui.DrawList_AddLine(self.draw_list, x + sz / 2, y + sz / 10, x - sz / 2, y + sz / 2.5, 0x000000ff, sz / 9)
     end
 
+    self.getTagColors = function(col)
+        local col = (ImGui.ColorConvertNative(col) * 0x100 | 0xff)
+        local colBG = OD_SetHSLInRGB(OD_MultiplyHSLInRGB(col, 1, 1, 1), nil, math.min(0.25, select(2, OD_Int2Hsl(col))),
+            math.min(0.2, select(3, OD_Int2Hsl(col)) / 3))
+        return col, colBG
+    end
+    self.colorPalette = function(self, ctx, id, color, width)
+        local width = width or 250 * self.scale
+        local color = color
+        local steps = 16
+        -- local w = ImGui.GetContentRegionAvail(ctx)
+        local btnW = (width or ImGui.GetContentRegionAvail(ctx)) / steps
+        local selColor = nil
+        local colH = {}
+        for i = 1, steps do
+            table.insert(colH, (1 / steps) * i)
+        end
+        local colL = { { 0.15, 0.75 }, { 0.25, 0.25 }, { 0.375, 0.375 }, { 0.45, 0.45 }, { 0.55, 0.55 } }
+        local colS = { 0, 0.35, 0.4, 0.45, 0.50 }
+        local sIndex = 0
+        local spacing = math.ceil(1 * self.scale)
+        local numCols, numRows = steps, #colL
+        if ImGui.BeginChild(ctx, '##colorSelector' .. tostring(id), btnW * numCols + spacing * (numCols - 1), btnW * numRows + spacing * (numRows - 1)) then
+            ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, spacing, spacing)
+            for row = 1, #colL do
+                for col = 1, steps do
+                    local h = colH[col]
+                    local s = colS[row]
+                    local lRange = colL[row]
+                    local l = lRange[1] + (lRange[2] - lRange[1]) / steps * col
+                    local rr, g, b = OD_HslToRgb(h, s, l)
+                    local btnColor = (rr << 24) | (g << 16) | (b << 8) | 0xff
+                    local nativeColor = r.ColorToNative(rr, g, b)
+                    ImGui.PushStyleColor(ctx, ImGui.Col_Button, btnColor)
+
+                    local sX, sY = ImGui.GetCursorScreenPos(ctx)
+                    ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), sX, sY,
+                        sX + btnW, sY + btnW, btnColor)
+                    if color == nativeColor then
+                        ImGui.DrawList_AddRect(
+                            ImGui.GetForegroundDrawList(ctx), sX - spacing,
+                            sY - spacing,
+                            sX + btnW + spacing, sY + btnW + spacing,
+                            0xffffffff, nil, nil, spacing)
+                    end
+                    if ImGui.InvisibleButton(ctx, 'colorPick' .. row .. col, btnW, btnW) then
+                        selColor = nativeColor
+                    end
+                    if ImGui.IsItemHovered(ctx) then
+                        ImGui.DrawList_AddRect(
+                            ImGui.GetForegroundDrawList(ctx), sX - spacing,
+                            sY - spacing,
+                            sX + btnW + spacing, sY + btnW + spacing,
+                            0xBBBBBBff, nil, nil, spacing)
+                    end
+                    ImGui.PopStyleColor(ctx)
+                    ImGui.SameLine(ctx)
+                end
+                sIndex = sIndex + 1
+
+                ImGui.NewLine(ctx)
+            end
+            ImGui.PopStyleVar(ctx)
+            ImGui.EndChild(ctx)
+        end
+        if selColor then return true, selColor end
+    end
+
     self.setting = function(self, stType, text, hint, val, data, sameline)
         local ctx = self.ctx
         local w, h = ImGui.GetWindowSize(ctx)
@@ -463,6 +533,31 @@ PB_Gui.init = function(self, fonts)
             if ImGui.Button(ctx, val or data.label or 'Browse...', widgetWidth) then
                 local rv, folder = r.JS_Dialog_BrowseForFolder(data.title or '', data.initialPath);
                 retval1 = rv == 1 and folder or nil
+            end
+        elseif stType == 'color_palette' then
+            retval1 = val
+            local BGcolorToUse = val
+            local nativeBGColor = data.colorBG or (ImGui.ColorConvertNative(val) * 0x100 | 0xff)
+            ImGui.PushStyleColor(ctx, ImGui.Col_Button, nativeBGColor)
+            ImGui.PushStyleColor(ctx, ImGui.Col_ButtonHovered, OD_MultiplyHSLInRGB(nativeBGColor, 1, 1, 1.2))
+            ImGui.PushStyleColor(ctx, ImGui.Col_ButtonActive, OD_MultiplyHSLInRGB(nativeBGColor, 1, 1, 1.3))
+            local colorIsBright = OD_ColorIsBright(val)
+            if colorIsBright or data.color then
+                ImGui.PushStyleColor(ctx, ImGui.Col_Text, data.color or 0x000000ff)
+            end
+            if ImGui.Button(ctx, data.label or 'Click to select', widgetWidth) then
+                ImGui.OpenPopup(ctx, 'ColorPalettePopup##' .. text)
+            end
+            if ImGui.BeginPopup(ctx, 'ColorPalettePopup##' .. text) then
+                local rv, color = self:colorPalette(ctx, 'ColorPalette##' .. text, val)
+                if rv then
+                    retval1 = color
+                end
+                ImGui.EndPopup(ctx)
+            end
+            ImGui.PopStyleColor(ctx, 3)
+            if data.colorBG or colorIsBright then
+                ImGui.PopStyleColor(ctx)
             end
         elseif stType == 'text' then
             _, retval1 = ImGui.InputText(ctx, '##' .. text, val)

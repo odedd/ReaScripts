@@ -669,11 +669,7 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
             colorToUse = self.tags[id].color or self.tags[id].parentColor
         end
 
-        -- self.tags[id].displayColor = colorToUse
-        self.tags[id].displayColor = colorToUse and (ImGui.ColorConvertNative(colorToUse) * 0x100 | 0xff)
-        self.tags[id].displayBGColor = self.tags[id].displayColor and
-            OD_SetHSLInRGB(OD_MultiplyHSLInRGB(self.tags[id].displayColor, 1, 1, 1), nil, 0.1, 0.15)
-
+        self.tags[id].displayColor, self.tags[id].displayBGColor = self.app.gui.getTagColors(colorToUse or self.app.settings.current.tagDefaultColor or 10895167)
 
         self.tags[id].toggleOpen = function(self, state, persist)
             self.open = state
@@ -1418,8 +1414,8 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                             {
                                 text = parent.name,
                                 dontSearch = true,
-                                color = parent.displayColor and
-                                    OD_SetAlpha(parent.displayColor, self.app.settings.current.searchTagsAlpha)
+                                --     OD_SetAlpha(parent.displayColor, self.app.settings.current.searchTagsAlpha)
+                                color = OD_SetAlpha(parent.displayColor, 0.7)
                             })
                         if i > 1 then
                             table.insert(tagAsset.searchText,

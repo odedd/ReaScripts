@@ -1946,27 +1946,49 @@ RunApp = function()
 
                                             if (result.tags and #result.tags > 0) then
                                                 local visibleTags = {}
+                                                local invisibleTags = {}
                                                 for i = #result.tags, 1, -1 do
                                                     local tag = app.engine.tags[result.tags[i]]
-                                                    if not tag.isHidden then
+                                                    if tag.isHidden then
+                                                        table.insert(invisibleTags, tag)
+                                                    else
                                                         table.insert(visibleTags, tag)
                                                     end
                                                 end
                                                 if #visibleTags > 0 then
-                                                    ImGui.SameLine(ctx, 0, 3 * app.gui.scale)
-                                                    ImGui.TextColored(ctx, app.gui.st.searchColor.separator, '|')
-                                                    for _, tag in ipairs(visibleTags) do
+                                                    -- ImGui.TextColored(ctx, app.gui.st.searchColor.separator, '|')
+                                                    for i, tag in ipairs(visibleTags) do
+                                                        app.gui:pushStyles(app.gui.st.vars.tag)
+                                                        app.gui:pushFont(app.gui.st.fonts.default, 'small')
+                                                        app.gui:pushColors(app.gui.st.col.tag)
+                                                        -- if i == 1 then
+                                                        ImGui.Dummy(ctx, 0, 0)
+                                                        local bottomY = ImGui.GetCursorPosY(ctx)
                                                         ImGui.SameLine(ctx, 0, 3 * app.gui.scale)
-
-                                                        ImGui.TextColored(ctx, tag.displayColor or
-                                                            app.gui.st.searchColor.tagDefault, tag.name)
-                                                        ImGui.SameLine(ctx, 0, 3 * app.gui.scale)
-
-                                                        ImGui.TextColored(ctx, app.gui.st.searchColor.separator, '|')
+                                                        -- ImGui.SetCursorPosY(ctx, bottomY - ImGui.GetTextLineHeight(ctx))
+                                                        ImGui.SetCursorPosY(ctx, bottomY - ImGui.GetTextLineHeight(ctx))
+                                                        -- end
+                                                        local globalX, globalY = ImGui.GetCursorScreenPos(ctx)
+                                                        local x, y = ImGui.GetCursorPos(ctx)
+                                                        local paddingX, paddingY = ImGui.GetStyleVar(ctx,
+                                                            ImGui.StyleVar_FramePadding)
+                                                        local tagNameWidth = ImGui.CalcTextSize(ctx, tag.name)
+                                                        local tagW, tagH = tagNameWidth + paddingX * 2,
+                                                            ImGui.GetTextLineHeight(ctx) + paddingY * 2
+                                                        local col = app.gui.st.col.tag[ImGui.Col_FrameBg]
+                                                        ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),
+                                                            globalX, globalY,
+                                                            globalX + tagW,
+                                                            globalY + tagH, tag.displayBGColor or col, 100)
+                                                        ImGui.SetCursorPos(ctx, x + paddingX, y + paddingY)
+                                                        ImGui.TextColored(ctx, tag.displayColor, tag.name)
+                                                        ImGui.SameLine(ctx, nil, paddingX + spacingX)
+                                                        app.gui:popColors(app.gui.st.col.tag)
+                                                        app.gui:popStyles(app.gui.st.vars.tag)
+                                                        ImGui.PopFont(ctx)
                                                     end
                                                 end
                                             end
-
                                             ImGui.PopStyleVar(ctx)
                                             ImGui.PopID(ctx)
                                         end
@@ -2263,75 +2285,13 @@ RunApp = function()
                                     end
                                     app:setHoveredHint('main', T.HINTS.TAG_CONTEXT_MENU_RENAME)
                                     if ImGui.BeginMenu(ctx, 'Color') then
-                                        local w, h = 250 * app.gui.scale
-                                        ImGui.SetNextItemWidth(ctx, w)
                                         local rv, selected = ImGui.Checkbox(ctx, 'Default/Parent Color',
                                             tag.useDefaultColor)
                                         if rv then
                                             tag:setColor(nil, selected)
                                         end
-                                        local function colorPalette(color, id, width)
-                                            local color = color
-                                            local steps = 16
-                                            -- local w = ImGui.GetContentRegionAvail(ctx)
-                                            local btnW = (width or ImGui.GetContentRegionAvail(ctx)) / steps
-                                            local selColor = nil
-                                            local colH = {}
-                                            for i = 1, steps do
-                                                table.insert(colH, (1 / steps) * i)
-                                            end
-                                            local colL = { { 0.15, 0.75 }, { 0.25, 0.25 }, { 0.375, 0.375 }, { 0.45, 0.45 }, { 0.55, 0.55 } }
-                                            local colS = { 0, 0.35, 0.4, 0.45, 0.50 }
-                                            local sIndex = 0
-                                            local spacing = math.ceil(1 * app.gui.scale)
-                                            local numCols, numRows = steps, #colL
-                                            if ImGui.BeginChild(ctx, '##colorSelector' .. tostring(id), btnW * numCols + spacing * (numCols - 1), btnW * numRows + spacing * (numRows - 1)) then
-                                                ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, spacing, spacing)
-                                                for row = 1, #colL do
-                                                    for col = 1, steps do
-                                                        local h = colH[col]
-                                                        local s = colS[row]
-                                                        local lRange = colL[row]
-                                                        local l = lRange[1] + (lRange[2] - lRange[1]) / steps * col
-                                                        local rr, g, b = OD_HslToRgb(h, s, l)
-                                                        local btnColor = (rr << 24) | (g << 16) | (b << 8) | 0xff
-                                                        local nativeColor = r.ColorToNative(rr, g, b)
-                                                        ImGui.PushStyleColor(ctx, ImGui.Col_Button, btnColor)
 
-                                                        local sX, sY = ImGui.GetCursorScreenPos(ctx)
-                                                        ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), sX, sY,
-                                                            sX + btnW, sY + btnW, btnColor)
-                                                        if color == nativeColor then
-                                                            ImGui.DrawList_AddRect(
-                                                                ImGui.GetForegroundDrawList(ctx), sX - spacing,
-                                                                sY - spacing,
-                                                                sX + btnW + spacing, sY + btnW + spacing,
-                                                                0xffffffff, nil, nil, spacing)
-                                                        end
-                                                        if ImGui.InvisibleButton(ctx, 'colorPick' .. row .. col, btnW, btnW) then
-                                                            selColor = nativeColor
-                                                        end
-                                                        if ImGui.IsItemHovered(ctx) then
-                                                            ImGui.DrawList_AddRect(
-                                                                ImGui.GetForegroundDrawList(ctx), sX - spacing,
-                                                                sY - spacing,
-                                                                sX + btnW + spacing, sY + btnW + spacing,
-                                                                0xBBBBBBff, nil, nil, spacing)
-                                                        end
-                                                        ImGui.PopStyleColor(ctx)
-                                                        ImGui.SameLine(ctx)
-                                                    end
-                                                    sIndex = sIndex + 1
-
-                                                    ImGui.NewLine(ctx)
-                                                end
-                                                ImGui.PopStyleVar(ctx)
-                                                ImGui.EndChild(ctx)
-                                            end
-                                            if selColor then return true, selColor end
-                                        end
-                                        local rv, color = colorPalette(tag.color, nil, w)
-                                        -- local rv, color = ImGui.ColorPicker3(ctx, 'Set Color', tag.color)
+                                        local rv, color = app.gui:colorPalette(ctx, nil, tag.color)
                                         if rv then
                                             tag:setColor(color, false)
                                         end
@@ -2379,12 +2339,17 @@ RunApp = function()
                                 -- end
                                 if app.temp.tagRename ~= tag.id and (hovering or tagStatus ~= nil) then
                                     local iconsWidth = 0
-                                    if hovering and tagStatus == nil then
-                                        iconsWidth = iconsWidth + app.guiHelpers.calcTinyIconSize(ctx, ICONS.MINUS) +
-                                            app.guiHelpers.calcTinyIconSize(ctx, ICONS.PLUS) +
+                                    if hovering then
+                                        iconsWidth = iconsWidth +
                                             app.guiHelpers.calcTinyIconSize(ctx,
                                                 tag.hide and ICONS.INVISIBLE or ICONS.VISIBLE)
-                                        tagW = tagW + spacingX * 4
+                                        tagW = tagW + spacingX * 2
+
+                                    end
+                                    if hovering and tagStatus == nil then
+                                        iconsWidth = iconsWidth + app.guiHelpers.calcTinyIconSize(ctx, ICONS.MINUS) +
+                                            app.guiHelpers.calcTinyIconSize(ctx, ICONS.PLUS)
+                                        tagW = tagW + spacingX * 3
                                     elseif tagStatus ~= nil then
                                         iconsWidth = iconsWidth +
                                             (tagStatus ~= nil and app.guiHelpers.calcTinyIconSize(ctx, ICONS.CLOSE) or 0)
@@ -2397,7 +2362,7 @@ RunApp = function()
                                     globalX + tagW,
                                     globalY + tagH, tag.displayBGColor or col, 100)
                                 if tag.isHidden then
-                                    ImGui.DrawList_AddLine(ImGui.GetForegroundDrawList(ctx),
+                                    ImGui.DrawList_AddLine(ImGui.GetWindowDrawList(ctx),
                                         globalX + paddingX + triangleW,
                                         globalY + tagH / 2,
                                         globalX + paddingX + triangleW + tagNameWidth,
@@ -2480,6 +2445,8 @@ RunApp = function()
                                         if app.guiHelpers.tinyIcon(ctx, 'addNegative', ICONS.MINUS, nil, nil, (T.HINTS.TAG_NEGATIVE):format(tag.name)) then
                                             app.flow.filterResults({ addTags = { [tag.id] = false } })
                                         end
+                                    end
+                                    if hovering then
                                         ImGui.SameLine(ctx)
                                         ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
                                         if app.guiHelpers.tinyIcon(ctx, 'toggleVisible', tag.hide and ICONS.INVISIBLE or ICONS.VISIBLE, nil, nil, (T.HINTS.TAG_HIDE):format(tag.name)) then
@@ -3265,7 +3232,12 @@ RunApp = function()
 
 
                         ImGui.SeparatorText(ctx, 'Tags, Presets and Favorites')
-
+                                local col, colBG = app.gui.getTagColors(app.settings.current.tagDefaultColor)
+                        app.settings.current.tagDefaultColor = app.gui:setting('color_palette',
+                            T.SETTINGS.TAG_DEFAULT_COLOR.LABEL, T.SETTINGS.TAG_DEFAULT_COLOR.HINT,
+                            app.settings.current.tagDefaultColor, {
+                                color = col, colorBG = colBG
+                            })
                         -- Convert Folders to Tags button
                         if app.gui:setting('button', T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.LABEL, T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.HINT, nil, { label = T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.BUTTON_LABEL, divideWidth = 2 }) then
                             app.temp.progressCoroutine = OD_CreateSafeCoroutine(app.userdata.convertFoldersToTags,

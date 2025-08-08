@@ -117,6 +117,22 @@ function OD_Rgba2Int(r, g, b, a)
     return (r << 24) | (g << 16) | (b << 8) | a
 end
 
+-- Convert integer color (0xRRGGBB or 0xRRGGBBAA) to HSL (and alpha if present)
+function OD_Int2Hsl(i)
+    local r, g, b, a = OD_Int2Rgba(i)
+    local h, s, l = OD_RgbToHsl(r, g, b)
+    return h, s, l, a
+end
+
+-- Convert HSL (and optional alpha) to integer color (0xRRGGBBAA)
+function OD_Hsl2Int(h, s, l, a)
+    local r, g, b = OD_HslToRgb(h, s, l)
+    if a == nil then
+        a = 255
+    end
+    return OD_Rgba2Int(r, g, b, a)
+end
+
 function OD_OffsetRgbaByHSL(col, hOffset, sOffset, lOffset)
     local r, g, b, a = OD_Int2Rgba(col)
     local h, s, l = OD_RgbToHsl(r, g, b)

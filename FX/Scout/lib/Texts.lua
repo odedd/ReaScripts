@@ -231,6 +231,10 @@ T.SETTINGS = {
         BUTTON_LABEL_MERGE = 'Import (Merge)',
         HINT = 'Import user data. Shift+click to overwrite existing data.',
     },
+    TAG_DEFAULT_COLOR = {
+        LABEL = 'Default tag color',
+        HINT = 'Default color for all tags.',
+    },
     CONVERT_FOLDERS_TO_TAGS = {
         LABEL = 'Convert',
         BUTTON_LABEL = 'Folders->Tags',
@@ -262,8 +266,10 @@ T.PROGRESS = {
         PARSING = 'Parsing items (%s)...',
         MAPPING_TAGS = 'Mapping tags...',
         MAPPING_ITEMS = 'Mapping items...',
-        SUCCESS_MERGE = 'Import successful (merged).\n\n%d tags imported, %d existing tags preserved\n%d items were tagged, %d were skipped\n%d presets imported, %d skipped\n%d QuickChain presets imported, %d skipped\n%d favorites imported, %d skipped',
-        SUCCESS_OVERWRITE = 'Import successful (overwritten).\n\n%d tags imported, %d existing tags replaced\n%d items were tagged, %d were skipped\n%d presets imported, %d skipped\n%d QuickChain presets imported, %d skipped\n%d favorites imported, %d skipped'
+        SUCCESS_MERGE =
+        'Import successful (merged).\n\n%d tags imported, %d existing tags preserved\n%d items were tagged, %d were skipped\n%d presets imported, %d skipped\n%d QuickChain presets imported, %d skipped\n%d favorites imported, %d skipped',
+        SUCCESS_OVERWRITE =
+        'Import successful (overwritten).\n\n%d tags imported, %d existing tags replaced\n%d items were tagged, %d were skipped\n%d presets imported, %d skipped\n%d QuickChain presets imported, %d skipped\n%d favorites imported, %d skipped'
     }
 }
 
@@ -449,7 +455,7 @@ $script searches for #Plugins#, #Actions#, #Projects#, #Project Templates#, #Tra
 - `Shift+Enter` applies filter without returning to item search
 
 #`QUICKCHAIN`#
-- Click icon or press $shortcut:toggleQuickChain to show/hide the QuickChain sidebar 
+- Click icon or press $shortcut:toggleQuickChain to show/hide the QuickChain sidebar
 - Build chains by combining FX/FX Chains from search results
 - Control order and add items from different searches
 - `Drag/Drop` or press $shortcut:addToQuickChain to add FX/Chains to the QuickChain
