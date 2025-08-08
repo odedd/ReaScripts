@@ -45,8 +45,8 @@ r.SetExtState(Scr.ext_name, 'SCRIPT_VERSION', Scr.version, false)
 RunApp = function()
     if r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE' and OD_PrereqsOK({
             reaimgui_version = '0.10.0.1',
-            js_version = 1.310,    -- required for JS_Window_...
-            reaper_version = 7.42, 
+            js_version = 1.310, -- required for JS_Window_...
+            reaper_version = 7.42,
         }) then
         package.path = r.ImGui_GetBuiltinPath() .. '/?.lua'
         ImGui = require 'imgui' '0.10.0.1'
@@ -1952,9 +1952,7 @@ RunApp = function()
                                                     local tag = app.engine.tags[result.tags[i]]
                                                     ImGui.SameLine(ctx, 0, 3 * app.gui.scale)
 
-                                                    ImGui.TextColored(ctx, tag.displayColor and
-                                                        OD_SetAlpha(tag.displayColor,
-                                                            app.settings.current.searchTagsAlpha) or
+                                                    ImGui.TextColored(ctx, tag.displayColor or
                                                         app.gui.st.searchColor.tagDefault, tag.name)
                                                     ImGui.SameLine(ctx, 0, 3 * app.gui.scale)
 
@@ -2264,7 +2262,35 @@ RunApp = function()
                                         if rv then
                                             tag:setColor(nil, selected)
                                         end
-                                        local rv, color = ImGui.ColorPicker3(ctx, 'Set Color', tag.color)
+                                        local function colorPallette(color)
+                                            local color = color
+                                            local steps = 12
+                                            local clicked = false
+                                            local w, h = 270
+                                            local fromL, toL = 0.1,0.55
+                                            local fromS, toS, stepS = 0.1,0.7, 0.2
+                                            local sIndex = 0
+                                            for s = fromS, toS, stepS do
+                                                for i = 1, steps do
+                                                    -- local rr, g, b = OD_HslToRgb((1 / steps) * i, s, math.min(toL,fromL+((toL-fromL)/((toS-fromS)/stepS)*sIndex/3+(((toS-fromS)/steps)*i/2))))
+                                                    local rr, g, b = OD_HslToRgb((1 / steps) * i, s, math.min(toL,fromL+((toL-fromL)/((toS-fromS)/stepS)*sIndex*2+(((toL-fromL)/steps)*i/2))))
+                                                    local btnColor = (rr << 24) | (g << 16) | (b << 8) | 0xff
+                                                    local btnW = w / steps
+                                                    ImGui.PushStyleColor(ctx, ImGui.Col_Button, btnColor)
+                                                    clicked = ImGui.Button(ctx, '##col' .. i .. s, btnW, btnW)
+                                                    ImGui.PopStyleColor(ctx)
+                                                    ImGui.SameLine(ctx)
+                                                    if clicked then return true, btnColor end
+                                                end
+                                                sIndex = sIndex + 1
+
+                                                ImGui.NewLine(ctx)
+                                            end
+
+                                            return clicked, color
+                                        end
+                                        local rv, color = colorPallette(tag.color)
+                                        -- local rv, color = ImGui.ColorPicker3(ctx, 'Set Color', tag.color)
                                         if rv then
                                             tag:setColor(color, false)
                                         end
