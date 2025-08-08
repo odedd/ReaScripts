@@ -11,7 +11,7 @@ PB_Gui.init = function(self, fonts)
         default = { file = 'Resources/Fonts/Cousine-Regular.ttf' },
         bold = { file = 'Resources/Fonts/Cousine-Regular.ttf', flags = ImGui.FontFlags_Bold },
         icons = { file = 'Resources/Fonts/Icons-Regular.otf' },
-    }, { default = 18, small = 16, tiny = 12, large = 22 })
+    }, { default = 18, small = 16, smaller = 14, tiny = 12, large = 22 })
 
     OD_Gui.init(self, false)
 

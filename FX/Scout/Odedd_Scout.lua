@@ -1957,18 +1957,17 @@ RunApp = function()
                                                 end
                                                 if #visibleTags > 0 then
                                                     -- ImGui.TextColored(ctx, app.gui.st.searchColor.separator, '|')
-                                                    ImGui.SameLine(ctx, 0, 5*app.gui.scale)
+                                                    local oldLineHeight = ImGui.GetTextLineHeight(ctx)
+                                                    ImGui.SameLine(ctx, 0, 5 * app.gui.scale)
+                                                    app.gui:pushStyles(app.gui.st.vars.tag)
+                                                    app.gui:pushColors(app.gui.st.col.tag)
+                                                    app.gui:pushFont(app.gui.st.fonts.default, 'smaller')
+                                                    ImGui.SetCursorPosY(ctx,
+                                                        ImGui.GetCursorPosY(ctx) + oldLineHeight / 2 -
+                                                        ImGui.GetTextLineHeight(ctx) / 2
+                                                    )
+                                                    if ImGui.BeginChild(ctx, 'resultTags'..rowIdx, nil, oldLineHeight) then
                                                     for i, tag in ipairs(visibleTags) do
-                                                        app.gui:pushStyles(app.gui.st.vars.tag)
-                                                        app.gui:pushFont(app.gui.st.fonts.default, 'small')
-                                                        app.gui:pushColors(app.gui.st.col.tag)
-                                                        -- if i == 1 then
-                                                        ImGui.Dummy(ctx, 0, 0)
-                                                        local bottomY = ImGui.GetCursorPosY(ctx)
-                                                        ImGui.SameLine(ctx, 0, 3 * app.gui.scale)
-                                                        -- ImGui.SetCursorPosY(ctx, bottomY - ImGui.GetTextLineHeight(ctx))
-                                                        ImGui.SetCursorPosY(ctx, bottomY - ImGui.GetTextLineHeight(ctx))
-                                                        -- end
                                                         local globalX, globalY = ImGui.GetCursorScreenPos(ctx)
                                                         local x, y = ImGui.GetCursorPos(ctx)
                                                         local paddingX, paddingY = ImGui.GetStyleVar(ctx,
@@ -1984,10 +1983,12 @@ RunApp = function()
                                                         ImGui.SetCursorPos(ctx, x + paddingX, y + paddingY)
                                                         ImGui.TextColored(ctx, tag.displayColor, tag.name)
                                                         ImGui.SameLine(ctx, nil, paddingX + spacingX)
-                                                        app.gui:popColors(app.gui.st.col.tag)
-                                                        app.gui:popStyles(app.gui.st.vars.tag)
-                                                        ImGui.PopFont(ctx)
                                                     end
+                                                    ImGui.EndChild(ctx)
+                                                end
+                                                    app.gui:popColors(app.gui.st.col.tag)
+                                                    app.gui:popStyles(app.gui.st.vars.tag)
+                                                    ImGui.PopFont(ctx)
                                                 end
                                             end
                                             ImGui.PopStyleVar(ctx)
@@ -2345,7 +2346,6 @@ RunApp = function()
                                             app.guiHelpers.calcTinyIconSize(ctx,
                                                 tag.hide and ICONS.INVISIBLE or ICONS.VISIBLE)
                                         tagW = tagW + spacingX * 2
-
                                     end
                                     if hovering and tagStatus == nil then
                                         iconsWidth = iconsWidth + app.guiHelpers.calcTinyIconSize(ctx, ICONS.MINUS) +
@@ -3233,7 +3233,7 @@ RunApp = function()
 
 
                         ImGui.SeparatorText(ctx, 'Tags, Presets and Favorites')
-                                local col, colBG = app.gui.getTagColors(app.settings.current.tagDefaultColor)
+                        local col, colBG = app.gui.getTagColors(app.settings.current.tagDefaultColor)
                         app.settings.current.tagDefaultColor = app.gui:setting('color_palette',
                             T.SETTINGS.TAG_DEFAULT_COLOR.LABEL, T.SETTINGS.TAG_DEFAULT_COLOR.HINT,
                             app.settings.current.tagDefaultColor, {
