@@ -31,6 +31,7 @@ PB_Settings = OD_Settings:new({
             clearQuickChain = ImGui.Mod_Alt | ImGui.Key_K,
             toggleQuickChain = ImGui.Mod_Ctrl | ImGui.Key_K,
             toggleSideBar = ImGui.Mod_Ctrl | ImGui.Key_S,
+            quickTag = ImGui.Mod_Ctrl | ImGui.Key_T,
             showSettings = ImGui.Mod_Ctrl | ImGui.Key_Comma,
             showHelp = ImGui.Mod_Ctrl | ImGui.Key_F1,
             toggleDock = ImGui.Mod_Ctrl | ImGui.Key_D,

@@ -17,6 +17,9 @@ PB_Gui.init = function(self, fonts)
 
     OD_Gui.init(self)
 
+    self.searchTagsFilter = ImGui.CreateTextFilter('')
+    ImGui.Attach(self.ctx, self.searchTagsFilter)
+
     self.searchResultsClipper = ImGui.CreateListClipper(self.ctx)
     ImGui.Attach(self.ctx, self.searchResultsClipper)
 

@@ -390,6 +390,7 @@ T.HINTS = {
     TAG_CONTEXT_MENU_CREATE_NESTED_TAG = 'Created a new tag within %s',
     TAG_CONTEXT_MENU_COLLAPSE_DESCENDANTS = 'Collapse %s and its nested tags',
     TAG_CONTEXT_MENU_DELETE = 'Delete %s and its nested tags. CANNOT BE UNDONE.',
+    HOVER_TAG_ALT_TO_DELETE = '%s+click to remove tag.',
     RESULT_CONTEXT_MENU_COPY_TAGS_TO_ALL_TYPES = 'Copy selected item\'s tags to all identical FX (different formats, mono/stereo variants etc...)',
     RESULT_CONTEXT_MENU_CLEAR_TAGS = 'Remove selected item\'s tags.',
     RESULT_CONTEXT_MENU_COPY_TAGS = 'Copy selected item\'s tags to the clipboard.',

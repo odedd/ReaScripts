@@ -2212,7 +2212,7 @@ function PB_UserData:deleteAllTags()
 end
 
 function PB_UserData:createTag(name, parent, putAtStart)
-    if putAtStart == nil then putAtStart = true end
+    if putAtStart == nil then putAtStart = (parent ~= TAGS_ROOT_PARENT) end
     self.app.logger:logDebug('-- PB_UserData:createTag()')
     self.app.logger:logDebug('Creating tag "' .. name .. '"')
 

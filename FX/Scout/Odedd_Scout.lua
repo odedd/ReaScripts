@@ -1289,8 +1289,8 @@ RunApp = function()
                                             else
                                                 result:addTag(tag, i == #selectedResults)
                                             end
-                                            app.flow.filterResults(nil, true)
                                         end
+                                        app.flow.filterResults(nil, true)
                                     end
                                     if tag.displayColor then ImGui.PopStyleColor(ctx) end
                                 end
@@ -1816,6 +1816,8 @@ RunApp = function()
                             handleScrolling()
 
                             if ImGui.BeginTable(ctx, "##searchResults", 1, tableFlags, 0, searchResultsH) then
+                                app.temp.hoveredTag = app.temp.hoveredTag or {}
+
                                 app.temp.tableScrollY = ImGui.GetScrollY(ctx)
 
                                 ImGui.ListClipper_Begin(app.gui.searchResultsClipper, #flatRows, fontLineFullHeight)
@@ -1861,6 +1863,13 @@ RunApp = function()
                                                         RESULT_CONTEXT.MOUSE_DOUBLE_CLICK)
                                                 end
                                             end
+                                            if app.temp.hoveredTag[rowIdx] then
+                                                if ImGui.IsMouseClicked(ctx, ImGui.MouseButton_Left) and ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
+                                                    result:removeTag(app.temp.hoveredTag[rowIdx])
+                                                else
+                                                    app.temp.hoveredTag[rowIdx] = nil
+                                                end
+                                            end
                                             if app.temp.highlightDropAreaForAllSelectedResults and app.temp.highlightDropAreaForAllSelectedResults < ImGui.GetFrameCount(ctx) or app.temp.highlightDropAreaFor == row.index then
                                                 ImGui.PopStyleColor(ctx)
                                             end
@@ -1874,7 +1883,6 @@ RunApp = function()
                                                         app.selection:selectOnly(row.index)
                                                     end
                                                 end
-                                                -- if (result.tags and #result.tags > 0) then
                                                 if ImGui.BeginMenu(ctx, 'Tags') then
                                                     app.guiHelpers.resultTagContextMenu(ctx, tagInfo)
                                                     ImGui.EndMenu(ctx)
@@ -1988,7 +1996,7 @@ RunApp = function()
                                                     local overflowText = { one = '+1', more = '+%d' }
 
                                                     local overflowX, overflowY, overflowGlobalX, overflowGlobalY, overflowTagH
-                                                    if ImGui.BeginChild(ctx, 'resultTags' .. rowIdx, nil, oldLineHeight - spacingX, nil, ImGui.WindowFlags_NoInputs) then
+                                                    if ImGui.BeginChild(ctx, 'resultTags' .. rowIdx, nil, oldLineHeight - spacingX, nil, ImGui.WindowFlags_NoMouseInputs) then
                                                         local overflow = 0
                                                         local willOverflow = false
 
@@ -2022,6 +2030,14 @@ RunApp = function()
                                                                     globalY + tagH, tag.displayBGColor, 100)
                                                                 ImGui.SetCursorPos(ctx, x + paddingX, y + paddingY)
                                                                 ImGui.TextColored(ctx, tag.displayColor, tag.name)
+                                                                if ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_AllowWhenOverlapped) then
+                                                                    ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                                                                    app:setHint('main',
+                                                                        (T.HINTS.HOVER_TAG_ALT_TO_DELETE):format(
+                                                                            OD_IMGUI_KEY_NAMES[ImGui.Mod_Alt]))
+                                                                    app.temp.hoveredTag[rowIdx] = tag
+                                                                end
+
                                                                 ImGui.SameLine(ctx, nil, paddingX + spacingX)
                                                             end
                                                         end
@@ -2079,6 +2095,7 @@ RunApp = function()
                                                     ImGui.PopFont(ctx)
                                                 end
                                             end
+
                                             ImGui.PopStyleVar(ctx)
                                             ImGui.PopID(ctx)
                                         end
@@ -3839,66 +3856,163 @@ RunApp = function()
                 app:setHint(window, '')
             end,
             popup = function(ctx, id, text)
-                local currentWindowPos = { ImGui.GetWindowPos(ctx) }
-                local currentWindowSize = { ImGui.GetWindowSize(ctx) }
-                local center = { currentWindowPos[1] + currentWindowSize[1] / 2,
-                    currentWindowPos[2] + currentWindowSize[2] / 2 }
-                local okButtonLabel = 'Yes'
-                local cancelButtonLabel = 'No'
-                local okPressed = false
-                local bottom_lines = 1
-                local id = id or 'confirmationPopup'
+                if ImGui.IsPopupOpen(ctx, id) then
+                    local currentWindowPos = { ImGui.GetWindowPos(ctx) }
+                    local currentWindowSize = { ImGui.GetWindowSize(ctx) }
+                    local center = { currentWindowPos[1] + currentWindowSize[1] / 2,
+                        currentWindowPos[2] + currentWindowSize[2] / 2 }
+                    local okButtonLabel = 'Yes'
+                    local cancelButtonLabel = 'No'
+                    local okPressed = false
+                    local bottom_lines = 1
+                    local id = id or 'confirmationPopup'
 
-                local textWidth, textHeight = ImGui.CalcTextSize(ctx, text)
+                    local textWidth, textHeight = ImGui.CalcTextSize(ctx, text)
 
-                ImGui.SetNextWindowSize(ctx,
-                    math.max(220, textWidth) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 4,
-                    textHeight + 90 + ImGui.GetTextLineHeightWithSpacing(ctx))
+                    ImGui.SetNextWindowSize(ctx,
+                        math.max(220, textWidth) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 4,
+                        textHeight + 90 + ImGui.GetTextLineHeightWithSpacing(ctx))
 
-                ImGui.SetNextWindowPos(ctx, center[1], center[2], ImGui.Cond_Appearing, 0.5, 0.5)
-                ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowTitleAlign, 0.5, 0.5)
-                app.gui:pushStyles(app.gui.st.vars.popupsTitle)
+                    ImGui.SetNextWindowPos(ctx, center[1], center[2], ImGui.Cond_Appearing, 0.5, 0.5)
+                    ImGui.PushStyleVar(ctx, ImGui.StyleVar_WindowTitleAlign, 0.5, 0.5)
+                    app.gui:pushStyles(app.gui.st.vars.popupsTitle)
+                    local open, visible = ImGui.BeginPopupModal(ctx, id, nil, ImGui.WindowFlags_NoResize)
+                    app.gui:popStyles(app.gui.st.vars.popupsTitle)
 
-                local open, visible = ImGui.BeginPopupModal(ctx, id, nil, ImGui.WindowFlags_NoResize)
-                app.gui:popStyles(app.gui.st.vars.popupsTitle)
+                    if open then
+                        local width = select(1, ImGui.GetContentRegionAvail(ctx))
+                        ImGui.PushItemWidth(ctx, width)
 
-                if open then
-                    local width = select(1, ImGui.GetContentRegionAvail(ctx))
-                    ImGui.PushItemWidth(ctx, width)
+                        local windowWidth, windowHeight = ImGui.GetWindowSize(ctx);
+                        ImGui.SetCursorPos(ctx, (windowWidth - textWidth) * .5, (windowHeight - textHeight) * .5);
+                        ImGui.TextWrapped(ctx, text)
 
-                    local windowWidth, windowHeight = ImGui.GetWindowSize(ctx);
-                    ImGui.SetCursorPos(ctx, (windowWidth - textWidth) * .5, (windowHeight - textHeight) * .5);
-                    ImGui.TextWrapped(ctx, text)
+                        ImGui.SetCursorPosY(ctx,
+                            ImGui.GetWindowHeight(ctx) - (ImGui.GetFrameHeight(ctx) * bottom_lines) -
+                            ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding))
 
-                    ImGui.SetCursorPosY(ctx, ImGui.GetWindowHeight(ctx) - (ImGui.GetFrameHeight(ctx) * bottom_lines) -
-                        ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding))
+                        local buttonTextWidth = ImGui.CalcTextSize(ctx, okButtonLabel) +
+                            ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
 
-                    local buttonTextWidth = ImGui.CalcTextSize(ctx, okButtonLabel) +
-                        ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
+                        buttonTextWidth = buttonTextWidth + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) +
+                            ImGui.CalcTextSize(ctx, cancelButtonLabel) +
+                            ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
+                        ImGui.SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
-                    buttonTextWidth = buttonTextWidth + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) +
-                        ImGui.CalcTextSize(ctx, cancelButtonLabel) +
-                        ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
-                    ImGui.SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
+                        if ImGui.Button(ctx, okButtonLabel) or ImGui.Shortcut(ctx, ImGui.Key_Enter, ImGui.InputFlags_RouteFocused) then
+                            okPressed = true
+                            open = false
+                            ImGui.CloseCurrentPopup(ctx)
+                        end
 
-                    if ImGui.Button(ctx, okButtonLabel) or ImGui.Shortcut(ctx, ImGui.Key_Enter, ImGui.InputFlags_RouteFocused) then
-                        okPressed = true
-                        open = false
+                        ImGui.SameLine(ctx)
+                        if ImGui.Button(ctx, cancelButtonLabel) or ImGui.Shortcut(ctx, ImGui.Key_Escape, ImGui.InputFlags_RouteFocused) then
+                            app.popup.secondWarningShown = false
+                            open = false
+                            ImGui.CloseCurrentPopup(ctx)
+                        end
+                        ImGui.EndPopup(ctx)
+                    end
+                    ImGui.PopStyleVar(ctx)
+                    return open, okPressed
+                end
+            end,
+            quickAddTags = function(ctx)
+                if ImGui.IsPopupOpen(ctx, 'Quick Add Tags') then
+                    local currentWindowPos = { ImGui.GetWindowPos(ctx) }
+                    local currentWindowSize = { ImGui.GetWindowSize(ctx) }
+                    local center = { currentWindowPos[1] + currentWindowSize[1] / 2,
+                        currentWindowPos[2] + currentWindowSize[2] / 2 }
+
+                    ImGui.SetNextWindowSize(ctx,
+                        550 * app.gui.scale,
+                        0.0)
+
+                    ImGui.SetNextWindowPos(ctx, center[1], center[2], ImGui.Cond_Appearing, 0.5, 0.5)
+                end
+                if ImGui.BeginPopup(ctx, 'Quick Add Tags') then
+                    app.gui:pushColors(app.gui.st.col.searchWindow)
+
+                    local numResultColor = #app.gui.st.searchColor.results
+
+                    app.temp.ignoreEscapeKey = true
+                    ImGui.Text(ctx, 'Start typing to tag selected item(s).')
+                    ImGui.TextDisabled(ctx,
+                        'Enter to add tag, ' .. OD_IMGUI_KEY_NAMES[ImGui.Mod_Alt] .. '+Enter to remove tag')
+                    ImGui.TextDisabled(ctx, 'Hold Shift to keep popup open')
+                    if ImGui.IsWindowAppearing(ctx) then
+                        ImGui.SetKeyboardFocusHere(ctx)
+                        ImGui.TextFilter_Clear(app.gui.searchTagsFilter)
+                    end
+                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
                         ImGui.CloseCurrentPopup(ctx)
                     end
-
-                    ImGui.SameLine(ctx)
-                    if ImGui.Button(ctx, cancelButtonLabel) or ImGui.Shortcut(ctx, ImGui.Key_Escape, ImGui.InputFlags_RouteFocused) then
-                        app.popup.secondWarningShown = false
-                        open = false
-                        ImGui.CloseCurrentPopup(ctx)
+                    ImGui.SetNextItemShortcut(ctx, app.settings.current.shortcuts.quickTag)
+                    ImGui.TextFilter_Draw(app.gui.searchTagsFilter, ctx, '##Filter', -FLT_MIN)
+                    local results = {}
+                    for _, filter in ipairs(app.engine.filterAssets) do
+                        if filter.type == FILTER_TYPES.TAG then
+                            if ImGui.TextFilter_PassFilter(app.gui.searchTagsFilter, filter.searchableText) then
+                                table.insert(results, filter)
+                            end
+                        end
                     end
+                    local searchQuery = ImGui.TextFilter_Get(app.gui.searchTagsFilter)
+                    if searchQuery ~= '' then
+                        ImGui.Separator(ctx)
+                        if ImGui.BeginChild(ctx, '##tagSearchFilterResults', 0, ImGui.GetTextLineHeightWithSpacing(ctx) * (math.min(8, #results) + 1), ImGui.ChildFlags_NavFlattened) then
+                            for i, result in ipairs(results) do
+                                local col = app.gui.getTagColors(result.object.displayColor)
+                                if ImGui.Selectable(ctx, '##tagSearchFilterResult' .. i) or (#results == 1 and ImGui.IsKeyPressed(ctx, ImGui.Key_Enter)) then
+                                    local tag = result.object
+                                    local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
+                                    local close = not ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)
+                                    local selectedResults = app.selection:results()
+                                    for i, result in ipairs(selectedResults) do
+                                        if remove then
+                                            result:removeTag(tag, i == #selectedResults)
+                                        else
+                                            result:addTag(tag, i == #selectedResults)
+                                        end
+                                    end
+                                    app.flow.filterResults(nil, true, true)
+                                    if close then ImGui.CloseCurrentPopup(ctx) end
+                                end
+                                ImGui.SameLine(ctx, 0, 0)
+
+                                for j = 1, #(result.searchText) do
+                                    local st = result.searchText[j]
+                                    if not st.hide then
+                                        ImGui.PushStyleColor(ctx, ImGui.Col_Text,
+                                            st.color or
+                                            app.gui.st.searchColor.results[math.min(j, numResultColor)])
+
+                                        ImGui.Text(ctx, st.text)
+                                        ImGui.SameLine(ctx)
+
+                                        ImGui.PopStyleColor(ctx)
+                                    end
+                                end
+                                ImGui.NewLine(ctx)
+                            end
+                            if ImGui.Selectable(ctx, 'Create new tag named \'' .. searchQuery .. '\'...##QuickAddNewTag', false, nil, 0, 0) then
+                                local newTag = app.userdata:createTag(searchQuery, TAGS_ROOT_PARENT)
+                                local close = not ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)
+                                local selectedResults = app.selection:results()
+                                for i, result in ipairs(selectedResults) do
+                                    result:addTag(newTag, i == #selectedResults)
+                                end
+                                app.flow.filterResults(nil, true, true)
+                                if close then ImGui.CloseCurrentPopup(ctx) end
+                            end
+                            ImGui.EndChild(ctx)
+                        end
+                    end
+                    app.gui:popColors(app.gui.st.col.searchWindow)
+
                     ImGui.EndPopup(ctx)
                 end
-                ImGui.PopStyleVar(ctx)
-                return open, okPressed
             end,
-
             confirmations = function(ctx)
                 if app.temp.confirmMultipleResults then
                     if not ImGui.IsPopupOpen(ctx, 'Multiple search results selected') then
@@ -4556,6 +4670,11 @@ RunApp = function()
                                         RESULT_CONTEXT.KEYBOARD)
                                 end
                                 pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('quickTag') then
+                                if app.temp.searchMode ~= SEARCH_MODE.FILTERS then
+                                    ImGui.OpenPopup(ctx, 'Quick Add Tags')
+                                end
+                                pressed = true
                             elseif app.guiHelpers.isShortcutPressed('selectAllResults') then
                                 app.selection:selectRange(1, #app.temp.searchResults)
                                 pressed = true
@@ -4611,15 +4730,16 @@ RunApp = function()
                         end
                         app.draw.hint(ctx, 'main')
                     end
-                    app.draw.createPresetDialog(ctx)
-                    app.draw.createQuickChainDialog(ctx)
-                    app.draw.exportActionDialog(ctx)
-                    app.draw.exportQuickChainActionDialog(ctx)
                     app.draw.settings(ctx)
                     app.draw.help(ctx)
-                    app.draw.welcomeDialog(ctx)
                     if not app.temp.settingsWindowOpen then
+                        app.draw.createPresetDialog(ctx)
+                        app.draw.createQuickChainDialog(ctx)
+                        app.draw.exportActionDialog(ctx)
+                        app.draw.exportQuickChainActionDialog(ctx)
+                        app.draw.welcomeDialog(ctx)
                         app.draw.confirmations(ctx)
+                        app.draw.quickAddTags(ctx)
                         app:drawMsg()
                     end
                     ImGui.End(ctx)

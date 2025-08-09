@@ -1408,7 +1408,6 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
     if scanAll or whichFilters.tags then
         if scanAll or whichFilters.tags then
             local flatTags = self:getFlatTags()
-
             for tagId, tag in pairs(flatTags) do
                 local tagAsset = {
                     engine = self,
@@ -1416,6 +1415,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                     type = FILTER_TYPES.TAG,
                     searchText = { { text = tag.name, color = tag.displayColor } },
                     order = tag.order,
+                    object = tag,
                     load = tag.id,
                     -- displayColor = tag.displayColor,
                     group = T.FILTER_NAMES[FILTER_TYPES.TAG],
@@ -1443,6 +1443,12 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                         end
                     end
                 end
+                -- populate the tag's searchFilter
+                tagAsset.searchableText = ''
+                for _, text in ipairs(tagAsset.searchText) do
+                    tagAsset.searchableText = tagAsset.searchableText .. ' ' .. text.text
+                end
+
                 -- Add execute function directly to the asset
                 tagAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore)
                     return filterExecuteFunction(asset, mods | context)
