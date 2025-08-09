@@ -15,7 +15,7 @@ PB_Gui.init = function(self, fonts)
         icons = { file = 'Resources/Fonts/Icons-Regular.otf' },
     }, { default = 18, small = 16, smaller = 14, tiny = 12, large = 22 })
 
-    OD_Gui.init(self, false)
+    OD_Gui.init(self)
 
     self.searchResultsClipper = ImGui.CreateListClipper(self.ctx)
     ImGui.Attach(self.ctx, self.searchResultsClipper)

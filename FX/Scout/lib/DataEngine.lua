@@ -669,7 +669,8 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
             colorToUse = self.tags[id].color or self.tags[id].parentColor
         end
 
-        self.tags[id].displayColor, self.tags[id].displayBGColor = self.app.gui.getTagColors(colorToUse or self.app.settings.current.tagDefaultColor or 10895167)
+        self.tags[id].displayColor, self.tags[id].displayBGColor = self.app.gui.getTagColors(colorToUse or
+            self.app.settings.current.tagDefaultColor or 10895167)
 
         self.tags[id].toggleOpen = function(self, state, persist)
             self.open = state
@@ -954,6 +955,7 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
                 self.app.userdata:save()
                 -- Rescan tags into the engine after move
                 self.engine:getTags(true)
+                self.engine:tagAssets() -- get assets ordering again
             end
         end
     end
@@ -1177,8 +1179,52 @@ PB_DataEngine.markSpecialGroups = function(self)
         ' (Favorites visible: ' .. tostring(favoritesVisible) .. ', Recents visible: ' .. tostring(recentsVisible) .. ')')
 end
 PB_DataEngine.tagAssets = function(self)
+    local count = 0
+    local flatTags = {}
+
+    -- Build parent->children index for O(1) lookup
+    local childrenByParent = {}
+    for tagId, tag in pairs(self.tags) do
+        local parentId = tag.parentId
+        if not childrenByParent[parentId] then
+            childrenByParent[parentId] = {}
+        end
+        table.insert(childrenByParent[parentId], { id = tagId, tag = tag })
+    end
+
+    -- Sort children by order within each parent group (only once per parent)
+    for parentId, children in pairs(childrenByParent) do
+        table.sort(children, function(a, b)
+            return a.tag.order < b.tag.order
+        end)
+    end
+
+    -- Efficient recursive flatten using pre-built index
+    local function flattenTagsOfParent(parentId)
+        local children = childrenByParent[parentId]
+        if not children then return end
+
+        for _, child in ipairs(children) do
+            table.insert(flatTags, child.tag)
+            child.tag.order = count
+            count = count + 1
+            flattenTagsOfParent(child.id)
+        end
+    end
+
+    flattenTagsOfParent(TAGS_ROOT_PARENT)
+
     for _, asset in ipairs(self.assets) do
-        asset.tags = OD_DeepCopy(self.app.userdata.current.taggedAssets[asset.id]) or {}
+        local unorderedTags = self.app.userdata.current.taggedAssets[asset.id]
+        asset.tags = {} --OD_DeepCopy(self.app.userdata.current.taggedAssets[asset.id]) or {}
+        if unorderedTags then
+            for _, tagInfo in ipairs(flatTags) do
+                if OD_HasValue(unorderedTags, tagInfo.id) then
+                    table.insert(asset.tags, tagInfo.id)
+                    if #asset.tags == #unorderedTags then break end
+                end
+            end
+        end
     end
 end
 PB_DataEngine.assetsWithTag = function(self, tag)

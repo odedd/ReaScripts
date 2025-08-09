@@ -993,6 +993,7 @@ RunApp = function()
                     if ImGui.IsWindowAppearing(ctx) then
                         ImGui.SetConfigVar(ctx, ImGui.ConfigVar_DockingNoSplit, 1)
                         ImGui.SetConfigVar(ctx, ImGui.ConfigVar_HoverDelayNormal, 0.6)
+                        -- ImGui.SetConfigVar(ctx, ImGui.ConfigVar_NavEscapeClearFocusWindow, 1)
                     end
                 end
             end,
@@ -1851,27 +1852,27 @@ RunApp = function()
                                                 handleResultDragDrop(row)
                                             end
                                             if ImGui.BeginPopupContextItem(ctx, nil) then
+                                                app.temp.ignoreEscapeKey = true
                                                 if ImGui.IsWindowAppearing(ctx) then
                                                     if not app.selection:has(row.index) then
                                                         app.selection:selectOnly(row.index)
                                                     end
                                                 end
                                                 -- if (result.tags and #result.tags > 0) then
-                                                ImGui.TextDisabled(ctx, 'Tags')
-                                                ImGui.Separator(ctx)
-
-                                                app.guiHelpers.resultTagContextMenu(ctx, tagInfo)
-
+                                                if ImGui.BeginMenu(ctx, 'Tags') then
+                                                    app.guiHelpers.resultTagContextMenu(ctx, tagInfo)
+                                                    ImGui.EndMenu(ctx)
+                                                end
                                                 -- ImGui.Separator(ctx)
 
-                                                ImGui.TextDisabled(ctx, 'Actions')
-                                                ImGui.Separator(ctx)
-
-                                                local rv, keymod = app.guiHelpers.actionContextMenu(ctx, result,
-                                                    app.selection:count(), RESULT_CONTEXT.KEYBOARD)
-                                                if rv then
-                                                    app.flow.executeSelectedResults(app.selection:results(),
-                                                        keymod)
+                                                if ImGui.BeginMenu(ctx, 'Actions') then
+                                                    local rv, keymod = app.guiHelpers.actionContextMenu(ctx, result,
+                                                        app.selection:count(), RESULT_CONTEXT.KEYBOARD)
+                                                    if rv then
+                                                        app.flow.executeSelectedResults(app.selection:results(),
+                                                            keymod)
+                                                    end
+                                                    ImGui.EndMenu(ctx)
                                                 end
                                                 ImGui.EndPopup(ctx) --- IGNORE ---
                                             end
@@ -1947,8 +1948,8 @@ RunApp = function()
                                             if (result.tags and #result.tags > 0) then
                                                 local visibleTags = {}
                                                 local invisibleTags = {}
-                                                for i = #result.tags, 1, -1 do
-                                                    local tag = app.engine.tags[result.tags[i]]
+                                                for _, tagId in ipairs(result.tags) do
+                                                    local tag = app.engine.tags[tagId]
                                                     if tag.isHidden then
                                                         table.insert(invisibleTags, tag)
                                                     else
@@ -2015,12 +2016,13 @@ RunApp = function()
                                                                 :format(overflow)
                                                             local overflowTagW = ImGui.CalcTextSize(ctx,
                                                                 text) + paddingX * 2
-                                                            
+
                                                             ImGui.SetCursorPos(ctx, overflowX + paddingX,
                                                                 overflowY + paddingY)
                                                             ImGui.TextColored(ctx, col, text)
                                                             if ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_AllowWhenOverlapped | ImGui.HoveredFlags_ForTooltip) then
-                                                                        ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 0, app.gui.st.vars.main[ImGui.StyleVar_ItemSpacing][2])
+                                                                ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 0,
+                                                                    app.gui.st.vars.main[ImGui.StyleVar_ItemSpacing][2])
                                                                 if ImGui.BeginTooltip(ctx) then
                                                                     for i, tag in ipairs(visibleTags) do
                                                                         if i > #visibleTags - overflow then
@@ -2043,8 +2045,8 @@ RunApp = function()
                                                                                 y + paddingY)
                                                                             ImGui.TextColored(ctx, tag.displayColor,
                                                                                 tag.name)
-                                                                                ImGui.SameLine(ctx, 0, paddingX)
-                                                                                ImGui.NewLine(ctx)
+                                                                            ImGui.SameLine(ctx, 0, paddingX)
+                                                                            ImGui.NewLine(ctx)
                                                                         end
                                                                     end
                                                                     ImGui.EndTooltip(ctx)
@@ -2593,6 +2595,7 @@ RunApp = function()
                                     if k ~= FILTER_TYPES.PRESET or (k == FILTER_TYPES.PRESET and OD_Tablelength(app.engine.presets) > 0) then
                                         if ImGui.BeginMenu(ctx, T.FILTER_NAMES[k] .. '##filterMenu') then
                                             app:setHint('main', '')
+                                            app.temp.ignoreEscapeKey = true
                                             -- Special handling for Presets menu
                                             if k == FILTER_TYPES.PRESET then
                                                 -- "Edit Preset >" - show submenu with all presets
@@ -2909,7 +2912,7 @@ RunApp = function()
                         if #app.temp.quickChain > 0 then app:setHoveredHint('main', T.HINTS.QUICK_CHAIN_MORE_ACTIONS) end
                         ImGui.PopFont(ctx)
                         if ImGui.BeginPopup(ctx, 'QuickChain Actions') then
-                            -- local group = result.assetType
+                            app.temp.ignoreEscapeKey = true
                             app:setHint('main', '')
                             local rv, keymod = app.guiHelpers.actionContextMenu(ctx, app.temp.quickChain[1],
                                 #app.temp.quickChain, RESULT_CONTEXT.QUICK_CHAIN)
@@ -4517,13 +4520,14 @@ RunApp = function()
                         -- FIX: this closes right after a menu has been closed
                         if not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then
                             local pressed = false
-                            if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) then
-                                -- if not app.temp.ignoreEscapeKey then
-                                if app.temp.searchInput == '' then
-                                    if app.temp.activeFilters and OD_TableLength(app.temp.activeFilters) > 0 then
-                                        app.flow.filterResults({ clear = true }, nil, true)
-                                    else
-                                        app.flow.close()
+                            if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_ChildWindows) then
+                                if not app.temp.ignoreEscapeKey then
+                                    if app.temp.searchInput == '' then
+                                        if app.temp.activeFilters and OD_TableLength(app.temp.activeFilters) > 0 then
+                                            app.flow.filterResults({ clear = true }, nil, true)
+                                        else
+                                            app.flow.close()
+                                        end
                                     end
                                 end
                                 pressed = true
@@ -4576,6 +4580,7 @@ RunApp = function()
                                 end
                             end
                             if pressed then app.temp.shortcutPressed = true end
+                            app.temp.ignoreEscapeKey = nil
                         end
                     end
 
