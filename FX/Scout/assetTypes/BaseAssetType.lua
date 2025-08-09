@@ -187,9 +187,9 @@ function BaseAssetType:executeAndAddToRecents()
                     asset:addToRecents(index == total)
                 end
                 assetType.context.logger:logInfo(logMsg)
-                if assetType.context.settings.current.closeAfterExecute then
+                if assetType.context.settings.current.afterAction == AFTER_ACTION.CLOSE then
                     assetType.context.flow.close()
-                else
+                elseif assetType.context.settings.current.afterAction == AFTER_ACTION.RESET_FILTERS then
                     assetType.context.flow.filterResults({ clearText = true })
                 end
                 -- Return the actual result from the execute function

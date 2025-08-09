@@ -172,7 +172,7 @@ end
 
 function OD_Gui:pushFont(font, sizeKey)
     local sizeKey = sizeKey or 'default'
-    r.ImGui_PushFont(self.ctx, font.font, font.scaledSizes[sizeKey])
+    r.ImGui_PushFont(self.ctx, font.font, math.ceil(font.scaledSizes[sizeKey]))
 end
 function OD_Gui:popFont()
     r.ImGui_PopFont(self.ctx)

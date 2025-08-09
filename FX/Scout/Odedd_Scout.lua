@@ -3038,6 +3038,13 @@ RunApp = function()
                         active = app.temp.showHelpWindow,
                         shortcut = 'showHelp'
                     })
+                    
+                    table.insert(menu, {
+                        icon = app.settings.current.afterAction == AFTER_ACTION.CLOSE and 'after_close' or (app.settings.current.afterAction == AFTER_ACTION.RESET_FILTERS and 'after_reset' or 'after_nothing'),
+                        hint = (T.SETTINGS.AFTER_ACTION.TOP_BAR_HINT):format(T.AFTER_ACTION_DESCRIPTIONS[app.settings.current.afterAction]),
+                        active = app.settings.current.afterAction == AFTER_ACTION.CLOSE or app.settings.current.afterAction == AFTER_ACTION.RESET_FILTERS
+                    })
+                    
                     if app.temp.fullWindow then
                         table.insert(menu,
                             {
@@ -3237,6 +3244,16 @@ RunApp = function()
                             end
                         elseif btn == 'gear' then
                             ImGui.OpenPopup(ctx, Scr.name .. ' Settings##settingsWindow')
+
+                        elseif btn == 'after_close' then
+                            app.settings.current.afterAction = AFTER_ACTION.RESET_FILTERS
+                            app.settings:save()
+                        elseif btn == 'after_reset' then
+                            app.settings.current.afterAction = AFTER_ACTION.DO_NOTHING
+                            app.settings:save()
+                        elseif btn == 'after_nothing' then
+                            app.settings.current.afterAction = AFTER_ACTION.CLOSE
+                            app.settings:save()
                         elseif btn == 'lightning' then
                             app.settings.current.showQuickChain = not app.settings.current.showQuickChain
                             app.settings:save()
@@ -3267,21 +3284,21 @@ RunApp = function()
             end,
             settings = function(ctx)
                 app.gui:pushStyles(app.gui.st.vars.popupsTitle)
-                -- local numOfPreferences = 14
-                -- local numOfSeparators = 5
-                -- local numOfAssetTypes = #app.engine.assetTypeManager.assetTypes + 2
-                -- local lineHeightWithSpacing = ImGui.GetTextLineHeightWithSpacing(ctx)
                 local lineHeight = ImGui.GetTextLineHeight(ctx)
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
                 local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
-                local w = 1420 * app.gui.scale
-                local h = 820 * app.gui.scale + #app.settings.current.projectScanFolders * (lineHeight + paddingY)
-                -- local h = select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)) * 2
-                -- h = h + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) + lineHeight
-                -- h = h + (numOfPreferences + numOfSeparators + #app.settings.current.projectScanFolders) *
-                --     (lineHeight+paddingY)
-                -- h = h + numOfAssetTypes * lineHeightWithSpacing + spacingY * 2
-                -- h = h + app.gui.st.sizes.hintHeight
+                local w = 1500 * app.gui.scale
+                -- local h = 820 * app.gui.scale + #app.settings.current.projectScanFolders * (lineHeight + paddingY)
+                local numOfPreferences = 26
+                local numOfSeparators = 0
+                local numOfAssetTypes = 0 -- #app.engine.assetTypeManager.assetTypes + 2
+                local lineHeightWithSpacing = ImGui.GetTextLineHeightWithSpacing(ctx)
+                local h = select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)) * 2
+                h = h + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) + lineHeight
+                h = h + (numOfPreferences + numOfSeparators + #app.settings.current.projectScanFolders) *
+                    (lineHeight+paddingY)
+                h = h + numOfAssetTypes * lineHeightWithSpacing + spacingY * 2
+                h = h + app.gui.st.sizes.hintHeight
                 local maxH = app.gui.screen.size[2] * .9
                 -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger
                 -- closing this window. So we increment a counter which will be reset if the shortcut is
@@ -3327,9 +3344,13 @@ RunApp = function()
                                     flags = (ImGui.SliderFlags_AlwaysClamp)
                                 }) /
                             100
-                        app.settings.current.closeAfterExecute = not app.gui:setting('checkbox',
-                            T.SETTINGS.CLOSE_AFTER_EXECUTE.LABEL,
-                            T.SETTINGS.CLOSE_AFTER_EXECUTE.HINT, not app.settings.current.closeAfterExecute)
+                        app.settings.current.afterAction = app.gui:setting(
+                            'combo',
+                            T.SETTINGS.AFTER_ACTION.LABEL,
+                            T.SETTINGS.AFTER_ACTION.HINT,
+                            app.settings.current.afterAction, {
+                                list = T.AFTER_ACTION_LIST
+                            })
                         app.settings.current.sleepMode = app.gui:setting('checkbox',
                             T.SETTINGS.SLEEP_MODE.LABEL,
                             T.SETTINGS.SLEEP_MODE.HINT, app.settings.current.sleepMode,

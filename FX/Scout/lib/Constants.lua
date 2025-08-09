@@ -83,6 +83,12 @@ SHOW_FX_UI = {
     DONT_OPEN = 2
 }
 
+AFTER_ACTION = {
+    CLOSE = 0,
+    RESET_FILTERS = 1,
+    DO_NOTHING = 2
+}
+
 EXPORT_ACTION_TYPE = {
     APPLY_FILTER = 0,
     RUN_RANDOM = 1,

@@ -139,13 +139,14 @@ T.SETTINGS = {
         LABEL = 'Show high priority FX',
         HINT = 'If FX exist in several formats, only show the highest priority ones.'
     },
-    CLOSE_AFTER_EXECUTE = {
-        LABEL = 'Stay open after action',
-        HINT = 'Should Scout stay open after performing an action (adding FX etc...)'
-    },
     SHOW_FX_UI = {
         LABEL = 'Open FX UI after adding',
         HINT = 'Open and float FX after adding'
+    },
+    AFTER_ACTION = {
+        LABEL = 'After performing action',
+        HINT = 'What to do after action is performed',
+        TOP_BAR_HINT = 'After action is performed: %s'
     },
     SHOW_INVISIBLE_TAKE_MARKERS = {
         LABEL = 'Invisible take markers',
@@ -335,6 +336,16 @@ T.SHOW_FX_UI_DESCRIPTIONS = {
 
 for i = 0, #T.SHOW_FX_UI_DESCRIPTIONS do
     T.SHOW_FX_UI_LIST = (T.SHOW_FX_UI_LIST or '') .. T.SHOW_FX_UI_DESCRIPTIONS[i] .. '\0'
+end
+
+T.AFTER_ACTION_DESCRIPTIONS = {
+    [AFTER_ACTION.DO_NOTHING] = 'Do Nothing',
+    [AFTER_ACTION.CLOSE] = 'Close Script/Enter Sleep Mode',
+    [AFTER_ACTION.RESET_FILTERS] = 'Reset Filters'
+}
+
+for i = 0, #T.AFTER_ACTION_DESCRIPTIONS do
+    T.AFTER_ACTION_LIST = (T.AFTER_ACTION_LIST or '') .. T.AFTER_ACTION_DESCRIPTIONS[i] .. '\0'
 end
 
 
