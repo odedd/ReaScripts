@@ -1,6 +1,7 @@
 -- @noindex
 T = {}
 
+T.IMPORTED_TAGS_GROUP = 'Imported'
 T.EXPORT_ACTION_DIALOG = {
     INFO = 'Create a Reaper action that will either open ' ..
         Scr.name ..

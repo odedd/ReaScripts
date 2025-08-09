@@ -9,7 +9,9 @@ PB_Gui.init = function(self, fonts)
     self:createFontsImGui010({
         -- default = { },
         default = { file = 'Resources/Fonts/Cousine-Regular.ttf' },
-        bold = { file = 'Resources/Fonts/Cousine-Regular.ttf', flags = ImGui.FontFlags_Bold },
+        bold = { file = 'Resources/Fonts/Cousine-Regular.ttf', flags = ImGui.FontFlags_Bold  },
+        -- default = {},
+        -- bold = { flags = ImGui.FontFlags_Bold },
         icons = { file = 'Resources/Fonts/Icons-Regular.otf' },
     }, { default = 18, small = 16, smaller = 14, tiny = 12, large = 22 })
 

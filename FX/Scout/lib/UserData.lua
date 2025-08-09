@@ -2617,7 +2617,7 @@ function PB_UserData:convertFoldersToTags()
     -- Create or find the "Imported Tags" parent tag
     local importedTagsParentId = nil
     for tagId, tagData in pairs(self.current.tagInfo) do
-        if tagData.name == 'Imported Tags' and tagData.parentId == TAGS_ROOT_PARENT then
+        if tagData.name == T.IMPORTED_TAGS_GROUP and tagData.parentId == TAGS_ROOT_PARENT then
             importedTagsParentId = tagId
             break
         end
@@ -2627,7 +2627,7 @@ function PB_UserData:convertFoldersToTags()
         importedTagsParentId = self.current.tagIdCount + 1
         self.current.tagIdCount = importedTagsParentId
         self.current.tagInfo[importedTagsParentId] = {
-            name = 'Imported Tags',
+            name = T.IMPORTED_TAGS_GROUP,
             parentId = TAGS_ROOT_PARENT,
             order = importedTagsParentId
         }
@@ -2807,7 +2807,7 @@ function PB_UserData:convertCategoriesToTags(args)
     -- Create or find the "Imported Tags" parent tag
     local importedTagsParentId = nil
     for tagId, tagData in pairs(self.current.tagInfo) do
-        if tagData.name == 'Imported Tags' and tagData.parentId == TAGS_ROOT_PARENT then
+        if tagData.name == T.IMPORTED_TAGS_GROUP and tagData.parentId == TAGS_ROOT_PARENT then
             importedTagsParentId = tagId
             break
         end
@@ -2817,7 +2817,7 @@ function PB_UserData:convertCategoriesToTags(args)
         importedTagsParentId = self.current.tagIdCount + 1
         self.current.tagIdCount = importedTagsParentId
         self.current.tagInfo[importedTagsParentId] = {
-            name = 'Imported Tags',
+            name = T.IMPORTED_TAGS_GROUP,
             parentId = TAGS_ROOT_PARENT,
             order = importedTagsParentId
         }

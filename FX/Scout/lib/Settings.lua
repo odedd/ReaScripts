@@ -19,6 +19,7 @@ PB_Settings = OD_Settings:new({
         showInvisibleTracks = false,
         showInvisibleTakeMarkers = false,
         tagDefaultColor = 5658198,
+        hideAllTags = false,
         shortcuts = {
             markFavorite = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_F,
             closeScript = ImGui.Key_Escape,

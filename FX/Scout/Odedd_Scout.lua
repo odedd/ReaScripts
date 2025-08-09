@@ -1973,7 +1973,7 @@ RunApp = function()
                                                     local overflowX, overflowY, overflowGlobalX, overflowGlobalY, overflowTagH
                                                     if ImGui.BeginChild(ctx, 'resultTags' .. rowIdx, nil, oldLineHeight - spacingX, nil, ImGui.WindowFlags_NoInputs) then
                                                         local overflow = 0
-                                                            local willOverflow = false
+                                                        local willOverflow = false
 
                                                         for i, tag in ipairs(visibleTags) do
                                                             local globalX, globalY = ImGui.GetCursorScreenPos(ctx)
@@ -2012,17 +2012,45 @@ RunApp = function()
                                                             local col, colBG = app.gui.getTagColors(app.settings.current
                                                                 .tagDefaultColor)
                                                             local text = (overflow == 1 and overflowText.one or overflowText.more)
-                                                            :format(overflow)
+                                                                :format(overflow)
                                                             local overflowTagW = ImGui.CalcTextSize(ctx,
                                                                 text) + paddingX * 2
-                                                            ImGui.DrawList_AddRectFilled(
-                                                                ImGui.GetWindowDrawList(ctx),
-                                                                overflowGlobalX, overflowGlobalY,
-                                                                overflowGlobalX + overflowTagW,
-                                                                overflowGlobalY + overflowTagH, colBG, 100)
+                                                            
                                                             ImGui.SetCursorPos(ctx, overflowX + paddingX,
                                                                 overflowY + paddingY)
                                                             ImGui.TextColored(ctx, col, text)
+                                                            if ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_AllowWhenOverlapped | ImGui.HoveredFlags_ForTooltip) then
+                                                                        ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 0, app.gui.st.vars.main[ImGui.StyleVar_ItemSpacing][2])
+                                                                if ImGui.BeginTooltip(ctx) then
+                                                                    for i, tag in ipairs(visibleTags) do
+                                                                        if i > #visibleTags - overflow then
+                                                                            local globalX, globalY = ImGui
+                                                                                .GetCursorScreenPos(ctx)
+                                                                            local x, y = ImGui.GetCursorPos(ctx)
+                                                                            local tagNameWidth = ImGui.CalcTextSize(ctx,
+                                                                                tag.name)
+                                                                            local tagW, tagH =
+                                                                                tagNameWidth + paddingX * 2,
+                                                                                ImGui.GetTextLineHeight(ctx) +
+                                                                                paddingY * 2
+                                                                            ImGui.DrawList_AddRectFilled(
+                                                                                ImGui.GetWindowDrawList(ctx),
+                                                                                globalX, globalY,
+                                                                                globalX + tagW,
+                                                                                globalY + tagH, tag.displayBGColor,
+                                                                                100)
+                                                                            ImGui.SetCursorPos(ctx, x + paddingX,
+                                                                                y + paddingY)
+                                                                            ImGui.TextColored(ctx, tag.displayColor,
+                                                                                tag.name)
+                                                                                ImGui.SameLine(ctx, 0, paddingX)
+                                                                                ImGui.NewLine(ctx)
+                                                                        end
+                                                                    end
+                                                                    ImGui.EndTooltip(ctx)
+                                                                end
+                                                                ImGui.PopStyleVar(ctx)
+                                                            end
                                                             ImGui.SameLine(ctx, nil, paddingX + spacingX)
                                                         end
 
@@ -2635,10 +2663,22 @@ RunApp = function()
                         ImGui.SeparatorText(ctx, "Tags")
                         ImGui.SameLine(ctx)
                         app.gui:pushFont(app.gui.st.fonts.icons, 'small')
+                        local toggleHideTagsIcon = app.settings.current.hideAllTags and ICONS.INVISIBLE or ICONS.VISIBLE
                         ImGui.SetCursorPosX(ctx,
                             ImGui.GetCursorPosX(ctx) + ImGui.GetContentRegionAvail(ctx) - spacingX - paddingX * 2 -
-                            ImGui.CalcTextSize(ctx, ICONS.PLUS))
+                            ImGui.CalcTextSize(ctx, ICONS.PLUS) - spacingX - paddingX * 2 -
+                            ImGui.CalcTextSize(ctx, toggleHideTagsIcon))
                         -- ImGui.AlignTextToFramePadding(ctx)
+                        if ImGui.Button(ctx, toggleHideTagsIcon .. '##hideAllTags') then
+                            app.settings.current.hideAllTags = not app.settings.current.hideAllTags
+                            app.engine:getTags()
+                        end
+                        if ImGui.IsItemHovered(ctx) then
+                            ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                        end
+                        app:setHoveredHint('main',
+                            app.settings.current.hideAllTags and 'Unhide all tags' or 'Hide all tags')
+                        ImGui.SameLine(ctx)
                         if ImGui.Button(ctx, ICONS.PLUS .. '##CreateTag') then
                             local newTag = app.userdata:createTag('New Tag', TAGS_ROOT_PARENT)
                             app.temp.tagRename = newTag.id
@@ -2647,7 +2687,6 @@ RunApp = function()
                         if ImGui.IsItemHovered(ctx) then
                             ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
                         end
-
                         app:setHoveredHint('main', 'Create new tag')
                         ImGui.PopFont(ctx)
                         ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
@@ -3700,7 +3739,7 @@ RunApp = function()
                                                                     (assetType.allowMultiple and (assetType.group):gsub('s$', '(s)'):lower() or (assetType.name):lower()))
                                                                 :gsub(
                                                                     "^%l", string.upper)
-                                                            app.gui:pushFont(ctx, app.gui.st.fonts.bold)
+                                                            app.gui:pushFont(app.gui.st.fonts.bold)
                                                             -- ImGui.TextWrapped(ctx, mod .. ': ')
                                                             ImGui.TextColored(ctx, app.gui.st.basecolors.mainBrightest,
                                                                 mod .. ': ')

@@ -50,7 +50,7 @@ function OD_Gui:addFontImGui010(key, file, sizes, flags)
     if file then
         self.st.fonts[key] = {font = r.ImGui_CreateFontFromFile(OD_LocalOrCommon(file, self.app.scr.dir), 0, flags), sizes = sizes}
     else
-        self.st.fonts[key] = {font = r.ImGui_CreateFont(OD_LocalOrCommon('sans-serif', self.app.scr.dir), 0, flags), sizes = sizes}
+        self.st.fonts[key] = {font = r.ImGui_CreateFont(OD_LocalOrCommon('sans-serif', self.app.scr.dir), flags), sizes = sizes}
     end
 end
 

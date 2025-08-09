@@ -659,7 +659,7 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
                 current = parent
             end
         end
-        self.tags[id].isHidden = self.tags[id].isHidden or self.tags[id].hide
+        self.tags[id].isHidden = self.app.settings.current.hideAllTags or self.tags[id].isHidden or self.tags[id].hide
 
         self.tags[id].useDefaultColor = tagInfo.useDefaultColor
         local colorToUse
