@@ -1695,12 +1695,12 @@ end
 PB_DataEngine.copyTagsToAllFXTypes = function(self, asset, persist)
     self.app.logger:logDebug('-- PB_DataEngine.copyTagsToAllFXTypes()')
     if not asset.fx_type then return end
-    local searchForId = asset.name .. (asset.vendor or '')
+    local searchForId = (asset.name .. (asset.vendor or '')):gsub(' %(x86_64%)', ''):gsub(' %(x64%)', '')
     local samePlugins = {}
     local pluginTags = {}
     for _, asset in ipairs(self.assets) do
         if asset.fx_type then
-            local id = asset.name .. (asset.vendor or '')
+            local id = (asset.name .. (asset.vendor or '')):gsub(' %(x86_64%)', ''):gsub(' %(x64%)', '')
             if id == searchForId then
                 samePlugins[id] = samePlugins[id] or {}
                 table.insert(samePlugins[id], asset)
