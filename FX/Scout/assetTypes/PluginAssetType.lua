@@ -50,12 +50,13 @@ function PluginAssetType:getData()
                 self.context.fxDevelopers = self.context.fxDevelopers or {}
                 self.context.fxDevelopers[vendor] = true
             end
+
             return true, name, (vendor == '' and nil or vendor)
         end
 
         if full_name == '' then return false end
 
-        local success, name, vendor = extractNameVendor(full_name, fx_type)
+        local success, name, vendor= extractNameVendor(full_name, fx_type)
         if success then
             self.context.logger:logDebug('Parsing successful')
             self.context.logger:logDebug('Name', name)
@@ -71,7 +72,7 @@ function PluginAssetType:getData()
             name = name,
             vendor = vendor,
             instrument = instrument,
-            ident = ident,
+            ident = ident
         }
         table.insert(self.data, plugin)
         self.context.logger:logDebug('Added ' ..

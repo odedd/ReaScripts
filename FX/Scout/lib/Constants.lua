@@ -7,6 +7,23 @@ APP_PAGE = {
     ['SEARCH'] = { width = 260, height = 409, minHeight = 309, windowFlags = ImGui.WindowFlags_None }
 }
 
+PLUGIN = {
+    VARIANT_PATTERNS = {
+        -- patterns in the plugin names that are actually variants of the same plugin.
+        -- this is determined by the plugin developers, and is not always consistent.
+        -- parantheses are there to mark which part of the name should be captured as the variant.
+        '%(?(mono)%)?', '%(?(stereo)%)?', '%(?(mono/stereo)%)?', '%(?(stereo/%d%.%d)%)?', '%(?(mono/%d%.%d)%)?',
+        '%(?(%d%.%d/%d%.%d)%)?',
+        '(upmix %dto%d)', '%(([ms])%)', '%((.-%->.+)%)', '(5%.0)', '(5%.1)',
+        '%((x86_64)%)', '%((x64)%)' },
+    VENDOR_ALIASES = {
+        -- some vendors have different names in different plugin types.
+        ['iZotope'] = { 'iZotope, Inc.', 'iZotope' },
+        ['Universal Audio'] = { 'Universal Audio, Inc.', 'Universal Audio', 'Universal Audio (UADx)' },
+        ['Native Instruments'] = { 'Native Instruments GmbH', 'Native Instruments' },
+    }
+}
+
 YIELD_FREQUENCY = 10
 
 -- Load asset type IDs from manifest (with hardcoded IDs for stability)
@@ -84,10 +101,6 @@ EXPORT_ACTIONS = {
 }
 
 TAGS_ROOT_PARENT = -1
-
-PLUGIN = {
-    INTERNAL = { 'Video Processor', 'Container' },
-}
 
 -- Special group constants
 -- Note: groupOrder in settings uses asset type class names (e.g., "ProjectAssetType")

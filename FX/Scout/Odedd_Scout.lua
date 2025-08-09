@@ -1240,6 +1240,8 @@ RunApp = function()
                 end
                 if #tagList > 0 then
                     if ImGui.BeginMenu(ctx, #tagList .. ' active tag' .. (#tagList > 1 and 's' or '')) then
+                        app:setHint('main', T.HINTS.RESULT_CONTEXT_MENU_ACTIVE_TAGS)
+
                         ImGui.TextDisabled(ctx,
                             "Click to add to all selected items")
                         ImGui.TextDisabled(ctx, (OS_is.mac and 'Option' or 'Alt') .. "+Click to remove")
@@ -1264,6 +1266,7 @@ RunApp = function()
                 end
 
                 if ImGui.BeginMenu(ctx, "Add") then
+                    app:setHint('main', T.HINTS.RESULT_CONTEXT_MENU_ADD_TAGS)
                     local function tagsOfParent(parentId, existingTags)
                         for tagId, tag in OD_PairsByOrder(app.engine.tags) do
                             if tag.parentId == parentId then
@@ -1299,14 +1302,6 @@ RunApp = function()
                 end
 
                 if tagList and #tagList > 0 then
-                    if ImGui.MenuItem(ctx, 'Sync tags across FX formats') then
-                        for _, result in ipairs(selectedResults) do
-                            app.engine:copyTagsToAllFXTypes(result, false)
-                        end
-                        app.userdata:save()
-                        app.engine:tagAssets()
-                        app.flow.filterResults(nil, true, true)
-                    end
                     if ImGui.MenuItem(ctx, 'Clear') then
                         for _, tag in ipairs(tagList) do
                             for _, result in ipairs(selectedResults) do
@@ -1316,9 +1311,11 @@ RunApp = function()
                             app.flow.filterResults(nil, true, true)
                         end
                     end
+                    app:setHoveredHint('main', T.HINTS.RESULT_CONTEXT_MENU_CLEAR_TAGS)
                     if ImGui.MenuItem(ctx, 'Copy') then
                         app.temp.copiedTags = tagList
                     end
+                    app:setHoveredHint('main', T.HINTS.RESULT_CONTEXT_MENU_COPY_TAGS)
                 end
                 if app.temp.copiedTags and #app.temp.copiedTags > 0 then
                     if ImGui.MenuItem(ctx, 'Paste') then
@@ -1327,9 +1324,21 @@ RunApp = function()
                                 result:addTag(tag, i == #selectedResults and j == #app.temp.copiedTags)
                             end
                         end
+                        app:setHoveredHint('main', T.HINTS.RESULT_CONTEXT_MENU_PASTE_TAGS)
                         -- app.userdata:save()
                         app.flow.filterResults(nil, true, true)
                     end
+                end
+                if tagList and #tagList > 0 then
+                    if ImGui.MenuItem(ctx, 'Sync tags across identical FX') then
+                        for _, result in ipairs(selectedResults) do
+                            app.engine:copyTagsToAllFXTypes(result, false)
+                        end
+                        app.userdata:save()
+                        app.engine:tagAssets()
+                        app.flow.filterResults(nil, true, true)
+                    end
+                    app:setHoveredHint('main', T.HINTS.RESULT_CONTEXT_MENU_COPY_TAGS_TO_ALL_TYPES)
                 end
             end,
             formatRichText = function(text)

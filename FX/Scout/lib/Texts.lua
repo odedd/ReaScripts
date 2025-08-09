@@ -365,6 +365,7 @@ instance manually.]]
 
 T.TURN_ON_SLEEP_MODE = 'Do you wish to turn on sleep mode? (Say yes!)'
 
+
 T.HINTS = {
     RESET_FILTERS = 'Clear all filters.',
     SAVE_FILTERS = 'Save filter set.',
@@ -389,6 +390,12 @@ T.HINTS = {
     TAG_CONTEXT_MENU_CREATE_NESTED_TAG = 'Created a new tag within %s',
     TAG_CONTEXT_MENU_COLLAPSE_DESCENDANTS = 'Collapse %s and its nested tags',
     TAG_CONTEXT_MENU_DELETE = 'Delete %s and its nested tags. CANNOT BE UNDONE.',
+    RESULT_CONTEXT_MENU_COPY_TAGS_TO_ALL_TYPES = 'Copy selected item\'s tags to all identical FX (different formats, mono/stereo variants etc...)',
+    RESULT_CONTEXT_MENU_CLEAR_TAGS = 'Remove selected item\'s tags.',
+    RESULT_CONTEXT_MENU_COPY_TAGS = 'Copy selected item\'s tags to the clipboard.',
+    RESULT_CONTEXT_MENU_PASTE_TAGS = 'Paste tags from the clipboard.',
+    RESULT_CONTEXT_MENU_ADD_TAGS = 'And new tags to selected item(s).',
+    RESULT_CONTEXT_MENU_ACTIVE_TAGS = 'See all active tags for selected item(s).',
     TAG_POSITIVE = 'Include: Show items that include tag \'%s\'.',
     TAG_NEGATIVE = 'Exclude: Show items that do not include tag \'%s\'.',
     TAG_HIDE = 'Show/hide tag \'%s\' in the results table.',
