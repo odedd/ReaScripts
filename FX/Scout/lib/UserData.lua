@@ -984,7 +984,7 @@ function PB_UserData:import(args)
         -- This is similar to what deleteAllTags() does to refresh the UI
         if self.app.engine then
             self.app.engine:getTags(true) -- Refresh engine tag data with new tags
-            self.app.engine:tagAssets()   -- Retag assets with new tag structure
+            -- self.app.engine:tagAssets()   -- Retag assets with new tag structure
         end
         if self.app.flow then
             self.app.flow.filterResults({ clear = true }) -- Clear UI filter state
@@ -2183,7 +2183,7 @@ function PB_UserData:deleteTag(tagId, persistAndReload)
         self:save()
         -- Notify engine to refresh its runtime data
         self.app.engine:getTags(true)
-        self.app.engine:tagAssets()
+        -- self.app.engine:tagAssets()
         -- Also refresh presets since we may have modified or deleted some
         self.app.engine:getPresets(true)
     end
@@ -2203,7 +2203,7 @@ function PB_UserData:deleteAllTags()
     self:save()
 
     self.app.engine:getTags(true)
-    self.app.engine:tagAssets()
+    -- self.app.engine:tagAssets()
 
     self.app.flow.filterResults({ clear = true })
 

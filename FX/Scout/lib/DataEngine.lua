@@ -955,7 +955,6 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
                 self.app.userdata:save()
                 -- Rescan tags into the engine after move
                 self.engine:getTags(true)
-                self.engine:tagAssets() -- get assets ordering again
             end
         end
     end
@@ -973,7 +972,10 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
         tag.hasDescendants = tag.descendants ~= nil and next(tag.descendants)
     end
 
-    if reassembleTagFilterAssets then self:assembleFilterAssets({ tags = true }) end
+    if reassembleTagFilterAssets then
+        self:assembleFilterAssets({ tags = true })
+        self:tagAssets()
+    end
 end
 
 PB_DataEngine.getMagicWords = function(self)

@@ -391,6 +391,7 @@ BaseAssetType.assetActions = {
         if not OD_HasValue(self.tags, tag.id) then
             table.insert(self.tags, tag.id)
             self.context.userdata:addTagToAsset(self.id, tag.id, save)
+            self.context.engine:tagAssets() --update asset order
         end
     end,
     removeTag = function(self, tag, saveToDB)
