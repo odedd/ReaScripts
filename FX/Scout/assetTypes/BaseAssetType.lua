@@ -42,13 +42,14 @@ function BaseAssetType:getDataWithLogging(forceRefresh)
         return self._cachedData
     end
 
-    self.context.logger:logDebug('-- ' .. (className or "Unknown") .. ':getData()' .. (forceRefresh and ' (forced refresh)' or ''))
+    self.context.logger:logDebug('-- ' ..
+    (className or "Unknown") .. ':getData()' .. (forceRefresh and ' (forced refresh)' or ''))
     local data = self:getData()
     local count = data and #data or 0
     -- Use group name (plural) for logging instead of singular name
     local itemType = (self.group or self.name or "items"):lower()
     self.context.logger:logInfo('Found ' .. count .. ' ' .. itemType)
-    
+
     -- Cache the data for future use
     self._cachedData = data
     return data
@@ -189,7 +190,7 @@ function BaseAssetType:executeAndAddToRecents()
                 if assetType.context.settings.current.closeAfterExecute then
                     assetType.context.flow.close()
                 else
-                    assetType.context.flow.filterResults({clearText = true})
+                    assetType.context.flow.filterResults({ clearText = true })
                 end
                 -- Return the actual result from the execute function
                 return result
@@ -391,7 +392,9 @@ BaseAssetType.assetActions = {
         if not OD_HasValue(self.tags, tag.id) then
             table.insert(self.tags, tag.id)
             self.context.userdata:addTagToAsset(self.id, tag.id, save)
-            self.context.engine:tagAssets() --update asset order
+            if saveToDB then
+                self.context.engine:tagAssets() --update asset order
+            end
         end
     end,
     removeTag = function(self, tag, saveToDB)
@@ -400,6 +403,9 @@ BaseAssetType.assetActions = {
         if OD_HasValue(self.tags, tag.id) then
             OD_RemoveValue(self.tags, tag.id)
             self.context.userdata:removeTagFromAsset(self.id, tag.id, save)
+            if saveToDB then
+                self.context.engine:tagAssets() --update asset order
+            end
         end
     end
 }

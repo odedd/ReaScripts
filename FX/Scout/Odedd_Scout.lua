@@ -1248,14 +1248,13 @@ RunApp = function()
                             if tag.displayColor then ImGui.PushStyleColor(ctx, ImGui.Col_Text, tag.displayColor) end
                             if ImGui.MenuItem(ctx, tag.name .. (#selectedResults > 1 and (" (" .. existingTags[tag.id] .. ")") or "") .. '##activeTag' .. tag.id) then
                                 local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
-                                for _, result in ipairs(selectedResults) do
+                                for i, result in ipairs(selectedResults) do
                                     if remove then
-                                        result:removeTag(tag, false)
+                                        result:removeTag(tag, i == #selectedResults)
                                     else
-                                        result:addTag(tag, false)
+                                        result:addTag(tag, i == #selectedResults)
                                     end
                                 end
-                                app.userdata:save()
                                 app.flow.filterResults(nil, true, true)
                             end
                             if tag.displayColor then ImGui.PopStyleColor(ctx) end
@@ -1281,13 +1280,12 @@ RunApp = function()
 
                                     if ImGui.MenuItem(ctx, tag.name .. '##resultContextMenuTagsItem' .. tagId, nil,
                                             existingTags[tagId]) then
-                                        for _, result in ipairs(selectedResults) do
+                                        for i, result in ipairs(selectedResults) do
                                             if existingTags[tagId] then
-                                                result:removeTag(tag, false)
+                                                result:removeTag(tag, i == #selectedResults)
                                             else
-                                                result:addTag(tag, false)
+                                                result:addTag(tag, i == #selectedResults)
                                             end
-                                            app.userdata:save()
                                             app.flow.filterResults(nil, true)
                                         end
                                     end
@@ -1301,6 +1299,14 @@ RunApp = function()
                 end
 
                 if tagList and #tagList > 0 then
+                    if ImGui.MenuItem(ctx, 'Sync tags across FX formats') then
+                        for _, result in ipairs(selectedResults) do
+                            app.engine:copyTagsToAllFXTypes(result, false)
+                        end
+                        app.userdata:save()
+                        app.engine:tagAssets()
+                        app.flow.filterResults(nil, true, true)
+                    end
                     if ImGui.MenuItem(ctx, 'Clear') then
                         for _, tag in ipairs(tagList) do
                             for _, result in ipairs(selectedResults) do
@@ -1316,12 +1322,12 @@ RunApp = function()
                 end
                 if app.temp.copiedTags and #app.temp.copiedTags > 0 then
                     if ImGui.MenuItem(ctx, 'Paste') then
-                        for _, tag in ipairs(app.temp.copiedTags) do
-                            for _, result in ipairs(selectedResults) do
-                                result:addTag(tag, false)
+                        for i, tag in ipairs(app.temp.copiedTags) do
+                            for j, result in ipairs(selectedResults) do
+                                result:addTag(tag, i == #selectedResults and j == #app.temp.copiedTags)
                             end
                         end
-                        app.userdata:save()
+                        -- app.userdata:save()
                         app.flow.filterResults(nil, true, true)
                     end
                 end
@@ -1641,6 +1647,7 @@ RunApp = function()
                                         end
                                     end
                                     app.userdata:save()
+                                    app.engine:tagAssets() -- maintiain tags order
                                     app.flow.filterResults(nil, true)
                                     app.temp.highlightDropAreaForAllSelectedResults = nil
                                     app.temp.highlightDropAreaFor = nil
@@ -2283,12 +2290,11 @@ RunApp = function()
                                             if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
                                                 for i, result in ipairs(app.selection:results()) do
                                                     if remove then
-                                                        result:removeTag(tag, false)
+                                                        result:removeTag(tag, i == app.selection.count())
                                                     else
-                                                        result:addTag(tag, false)
+                                                        result:addTag(tag, i == app.selection.count())
                                                     end
                                                 end
-                                                app.userdata:save()
                                                 app.flow.filterResults(nil, true)
                                             end
                                         end

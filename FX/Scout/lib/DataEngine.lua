@@ -840,7 +840,7 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
 
             -- 3. Delete this tag (handles persistence and reloading)
             self:delete(true)
-
+            self.engine:tagAssets() -- handle tag reordering
             return true
         end
         self.tags[id].moveTo = function(self, targetTag, position, persistAndReload)
@@ -1691,6 +1691,39 @@ PB_DataEngine.removeLowPriorityPlugins = function(self)
     end
 
     self.app.logger:logInfo('Removed ' .. #assetsIdxToRemove .. ' duplicate plugins')
+end
+PB_DataEngine.copyTagsToAllFXTypes = function(self, asset, persist)
+    self.app.logger:logDebug('-- PB_DataEngine.copyTagsToAllFXTypes()')
+    if not asset.fx_type then return end
+    local searchForId = asset.name .. (asset.vendor or '')
+    local samePlugins = {}
+    local pluginTags = {}
+    for _, asset in ipairs(self.assets) do
+        if asset.fx_type then
+            local id = asset.name .. (asset.vendor or '')
+            if id == searchForId then
+                samePlugins[id] = samePlugins[id] or {}
+                table.insert(samePlugins[id], asset)
+                pluginTags[id] = pluginTags[id] or {}
+                for _, tagId in ipairs(asset.tags) do
+                    table.insert(pluginTags[id], tagId)
+                end
+            end
+        end
+    end
+    for id, plugins in pairs(samePlugins) do
+        if #plugins > 1 then
+            for _, asset in ipairs(plugins) do
+                for _, tagId in ipairs(pluginTags[id]) do
+                    asset:addTag(self.tags[tagId], false)
+                end
+            end
+        end
+    end
+    if persist then
+        self.app.userdata:save()
+        self.app.flow.filterResults(nil, true, true)
+    end
 end
 PB_DataEngine.sortFilterAssets = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.sortFilterAssets()')
