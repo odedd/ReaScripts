@@ -1966,26 +1966,68 @@ RunApp = function()
                                                         ImGui.GetCursorPosY(ctx) + oldLineHeight / 2 -
                                                         ImGui.GetTextLineHeight(ctx) / 2
                                                     )
-                                                    if ImGui.BeginChild(ctx, 'resultTags'..rowIdx, nil, oldLineHeight) then
-                                                    for i, tag in ipairs(visibleTags) do
-                                                        local globalX, globalY = ImGui.GetCursorScreenPos(ctx)
-                                                        local x, y = ImGui.GetCursorPos(ctx)
-                                                        local paddingX, paddingY = ImGui.GetStyleVar(ctx,
-                                                            ImGui.StyleVar_FramePadding)
-                                                        local tagNameWidth = ImGui.CalcTextSize(ctx, tag.name)
-                                                        local tagW, tagH = tagNameWidth + paddingX * 2,
-                                                            ImGui.GetTextLineHeight(ctx) + paddingY * 2
-                                                        local col = app.gui.st.col.tag[ImGui.Col_FrameBg]
-                                                        ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx),
-                                                            globalX, globalY,
-                                                            globalX + tagW,
-                                                            globalY + tagH, tag.displayBGColor or col, 100)
-                                                        ImGui.SetCursorPos(ctx, x + paddingX, y + paddingY)
-                                                        ImGui.TextColored(ctx, tag.displayColor, tag.name)
-                                                        ImGui.SameLine(ctx, nil, paddingX + spacingX)
+                                                    local paddingX, paddingY = ImGui.GetStyleVar(ctx,
+                                                        ImGui.StyleVar_FramePadding)
+                                                    local overflowText = { one = '+1', more = '+%d' }
+
+                                                    local overflowX, overflowY, overflowGlobalX, overflowGlobalY, overflowTagH
+                                                    if ImGui.BeginChild(ctx, 'resultTags' .. rowIdx, nil, oldLineHeight - spacingX, nil, ImGui.WindowFlags_NoInputs) then
+                                                        local overflow = 0
+                                                            local willOverflow = false
+
+                                                        for i, tag in ipairs(visibleTags) do
+                                                            local globalX, globalY = ImGui.GetCursorScreenPos(ctx)
+                                                            local x, y = ImGui.GetCursorPos(ctx)
+                                                            local tagNameWidth = ImGui.CalcTextSize(ctx, tag.name)
+                                                            local tagW, tagH = tagNameWidth + paddingX * 2,
+                                                                ImGui.GetTextLineHeight(ctx) + paddingY * 2
+                                                            local overflowTagW = ImGui.CalcTextSize(ctx,
+                                                                (overflow == 0 and overflowText.one or overflowText.more)
+                                                                :format(overflow + 1)) + paddingX * 2
+                                                            if i < #visibleTags and not willOverflow then
+                                                                willOverflow = math.max(tagW, overflowTagW) >
+                                                                    ImGui.GetContentRegionAvail(ctx) - overflowTagW
+                                                            elseif not willOverflow then
+                                                                willOverflow = math.max(tagW, overflowTagW) >
+                                                                    ImGui.GetContentRegionAvail(ctx)
+                                                            end
+                                                            if willOverflow then
+                                                                overflow = overflow + 1
+                                                                overflowX, overflowY, overflowGlobalX, overflowGlobalY =
+                                                                    x, y, globalX, globalY
+                                                                overflowTagH = tagH
+                                                            end
+                                                            if overflow == 0 then
+                                                                ImGui.DrawList_AddRectFilled(
+                                                                    ImGui.GetWindowDrawList(ctx),
+                                                                    globalX, globalY,
+                                                                    globalX + tagW,
+                                                                    globalY + tagH, tag.displayBGColor, 100)
+                                                                ImGui.SetCursorPos(ctx, x + paddingX, y + paddingY)
+                                                                ImGui.TextColored(ctx, tag.displayColor, tag.name)
+                                                                ImGui.SameLine(ctx, nil, paddingX + spacingX)
+                                                            end
+                                                        end
+                                                        if overflow > 0 then
+                                                            local col, colBG = app.gui.getTagColors(app.settings.current
+                                                                .tagDefaultColor)
+                                                            local text = (overflow == 1 and overflowText.one or overflowText.more)
+                                                            :format(overflow)
+                                                            local overflowTagW = ImGui.CalcTextSize(ctx,
+                                                                text) + paddingX * 2
+                                                            ImGui.DrawList_AddRectFilled(
+                                                                ImGui.GetWindowDrawList(ctx),
+                                                                overflowGlobalX, overflowGlobalY,
+                                                                overflowGlobalX + overflowTagW,
+                                                                overflowGlobalY + overflowTagH, colBG, 100)
+                                                            ImGui.SetCursorPos(ctx, overflowX + paddingX,
+                                                                overflowY + paddingY)
+                                                            ImGui.TextColored(ctx, col, text)
+                                                            ImGui.SameLine(ctx, nil, paddingX + spacingX)
+                                                        end
+
+                                                        ImGui.EndChild(ctx)
                                                     end
-                                                    ImGui.EndChild(ctx)
-                                                end
                                                     app.gui:popColors(app.gui.st.col.tag)
                                                     app.gui:popStyles(app.gui.st.vars.tag)
                                                     ImGui.PopFont(ctx)
