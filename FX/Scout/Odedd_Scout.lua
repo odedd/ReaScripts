@@ -3558,6 +3558,14 @@ RunApp = function()
                                     function(k, v) return k ~= 'clearQuickChain' end)
                             })
                         if resetCounter then app.temp.captureCounter = 0 end
+                        app.settings.current.shortcuts.quickTag, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.QUICK_TAG.LABEL,
+                            T.SETTINGS.SHORTCUTS.QUICK_TAG.HINT, app.settings.current.shortcuts.quickTag,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'quickTag' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
 
 
                         ImGui.SeparatorText(ctx, 'Item specific settings')

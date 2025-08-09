@@ -180,6 +180,10 @@ T.SETTINGS = {
             LABEL = 'Add to QuickChain',
             HINT = 'Add selected FX/FX Chains to the QuickChain.',
         },
+        QUICK_TAG = {
+            LABEL = 'Quick Tag',
+            HINT = 'Open Quick Tag window.',
+        },
         CLEAR_QUICK_CHAIN = {
             LABEL = 'Clear QuickChain',
             HINT = 'Clear the QuickChain.',
