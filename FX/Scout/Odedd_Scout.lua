@@ -2505,13 +2505,17 @@ RunApp = function()
                                     end
                                     ImGui.SameLine(ctx)
                                 end
-                                ImGui.SetCursorPos(ctx, x + paddingX + triangleW, y + paddingY)
                                 if app.temp.tagRename == tag.id then
+                                    ImGui.SetCursorPos(ctx, x + triangleW, y + paddingY)
+
                                     local rv
-                                    -- app.temp.ignoreEscapeKey = true
+                                    app.temp.ignoreEscapeKey = true
                                     ImGui.SetNextItemWidth(ctx, tagW)
+                                    ImGui.PushStyleColor(ctx, ImGui.Col_FrameBg, 0x00000000)
                                     rv, app.temp.tagRenameBuffer = ImGui.InputText(ctx, '##EditTagName', app.temp
                                         .tagRenameBuffer, ImGui.InputTextFlags_AutoSelectAll)
+                                    ImGui.PopStyleColor(ctx)
+
                                     if ImGui.IsItemActivated then
                                         ImGui.SetKeyboardFocusHere(ctx, -1)
                                     end
@@ -2521,9 +2525,11 @@ RunApp = function()
                                     if ImGui.IsItemDeactivated(ctx) then
                                         app.temp.tagRename = nil
                                         app.temp.tagRenameBuffer = nil
-                                        -- app.temp.ignoreEscapeKey = nil
+                                        app.temp.ignoreEscapeKey = nil
                                     end
                                 else
+                                    ImGui.SetCursorPos(ctx, x + paddingX + triangleW, y + paddingY)
+
                                     ImGui.AlignTextToFramePadding(ctx)
                                     if tag.displayColor then
                                         ImGui.TextColored(ctx, tag.displayColor, tag.name)
