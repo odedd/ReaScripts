@@ -2290,9 +2290,9 @@ RunApp = function()
                                             if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
                                                 for i, result in ipairs(app.selection:results()) do
                                                     if remove then
-                                                        result:removeTag(tag, i == app.selection.count())
+                                                        result:removeTag(tag, i == app.selection:count())
                                                     else
-                                                        result:addTag(tag, i == app.selection.count())
+                                                        result:addTag(tag, i == app.selection:count())
                                                     end
                                                 end
                                                 app.flow.filterResults(nil, true)
