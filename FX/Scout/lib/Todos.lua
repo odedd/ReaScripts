@@ -46,6 +46,7 @@
 -- DONE: Create QuickChainPresetAssetType
 -- DONE: Test QuickChain import/export, as well as magic word conflicts
 -- DONE: Favorites reordering
+-- TODO: Clicking a selected filter •in the filter menu• should clear the filter
 -- TODO: Rethink multiple selection. Maybe should only be calculated on execution?
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Test on windows
