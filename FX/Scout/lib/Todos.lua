@@ -45,9 +45,10 @@
 -- DONE: When importin/Exporting UserData, check for magic word conflicts across both presets and quickchains
 -- DONE: Create QuickChainPresetAssetType
 -- DONE: Test QuickChain import/export, as well as magic word conflicts
+-- DONE: Favorites reordering
+-- TODO: Rethink multiple selection. Maybe should only be calculated on execution?
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Test on windows
--- TODO: Favorites reordering
 -- TODO: Setting to reset on wakeup or not
 -- TODO: DEFAULT PRESET?
 -- BUG: Jumping focus issue keeps coming up every now and then

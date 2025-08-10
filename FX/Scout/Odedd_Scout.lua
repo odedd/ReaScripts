@@ -1667,6 +1667,26 @@ RunApp = function()
 
                     local handleResultDragDrop = function(row)
                         if ImGui.BeginDragDropTarget(ctx) then
+                            local favDropped, favPayload
+                            if row.result.group == SPECIAL_GROUPS.FAVORITES then
+                                favDropped, favPayload = ImGui.AcceptDragDropPayload(ctx, 'ASSET', nil)
+                                if favDropped then
+                                    local added = row.result:batchToggleFavorites(app.selection:results(), true)
+
+                                    local ownPosition = 0 --table.find(app.userdata.current.favorites, row.result.key)
+                                    for i, fav in ipairs(app.userdata.current.favorites) do
+                                        ownPosition = ownPosition + 1
+                                        if fav == row.result.key then
+                                            break
+                                        end
+                                    end
+                                    if added then ownPosition = ownPosition - 1 end
+                                    local results = app.selection:results()
+                                    for i, result in ipairs(results) do
+                                        result:moveFavorite(ownPosition, i == #results)
+                                    end
+                                end
+                            end
                             local tagDropped, tagPayload = ImGui.AcceptDragDropPayload(ctx, 'TAG', nil,
                                 ImGui.DragDropFlags_AcceptBeforeDelivery |
                                 ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
@@ -1937,7 +1957,6 @@ RunApp = function()
                                                 end
                                                 if ImGui.MenuItem(ctx, 'Toggle favorite', app.guiHelpers.shortCutToText(app.settings.current.shortcuts['markFavorite'])) then
                                                     -- Toggle favorite status for all selected assets
-                                                    pressed = true
                                                     local selectedResults = app.selection:results()
                                                     if #selectedResults > 0 then
                                                         -- Use the first selected asset to determine the action (favorite or unfavorite)

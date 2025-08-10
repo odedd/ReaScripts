@@ -340,7 +340,7 @@ BaseAssetType.assetActions = {
 
         return changed
     end,
-    moveFavorite = function(self, targetPosition)
+    moveFavorite = function(self, targetPosition, persist)
         local favorite = self.context.userdata.current.favorites
         local key = self.key
 
@@ -381,12 +381,12 @@ BaseAssetType.assetActions = {
 
         -- Insert at target position
         table.insert(favorite, targetPosition, key)
-
-        self.context.userdata:save()
-        self.engine:markSpecialGroups()
-        self.engine:sortAssets()
-        self.context.flow.filterResults(nil, nil, { self }) -- Use multi-target to maintain selection on this asset
-
+        if persist then
+            self.context.userdata:save()
+            self.engine:markSpecialGroups()
+            self.engine:sortAssets()
+            self.context.flow.filterResults(nil, nil, { self }) -- Use multi-target to maintain selection on this asset
+        end
         self.context.logger:logDebug('Moved favorite "' ..
             key .. '" from position ' .. currentPosition .. ' to position ' .. targetPosition)
         return true
