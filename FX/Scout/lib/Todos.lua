@@ -49,6 +49,7 @@
 -- TODO: Test on windows
 -- TODO: Favorites reordering
 -- TODO: Setting to reset on wakeup or not
+-- TODO: DEFAULT PRESET?
 -- BUG: Jumping focus issue keeps coming up every now and then
 ---------------------------------------
 -- AFTER LAUNCH -----------------------
