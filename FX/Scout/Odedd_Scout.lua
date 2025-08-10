@@ -919,16 +919,6 @@ RunApp = function()
                     app.temp.waitingForDoubleClick = nil
                 end
 
-
-                -- reset keyboard cuttoff time when getting focus,
-                -- to prevent keys that were pressed before coming into focus from being captured
-                -- app.gui.mainWindow.focused = ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_AnyWindow)
-                -- if (not app.temp.prevWindowIsFocused) and app.gui.mainWindow.focused then
-                --     app.temp.prevWindowIsFocused = true
-                -- elseif not app.gui.mainWindow.focused and app.temp.prevWindowIsFocused then
-                --     app.temp.prevWindowIsFocused = false
-                -- end
-
                 if app.logger.showImGuiDebugWindows then
                     ImGui.ShowMetricsWindow(ctx)
                     ImGui.ShowDebugLogWindow(ctx)
@@ -937,6 +927,22 @@ RunApp = function()
                 if app.temp.searchMode == SEARCH_MODE.MAIN or app.temp.searchMode == SEARCH_MODE.SEND_BUDDY then
                     app.temp.lastSearchMode = app.temp.searchMode
                 end
+
+                if app.temp.lastFrameMinimal ~= app.settings.current.minimalMode then
+                    if not app.settings.current.minimalMode then
+                        app.refreshWindowSizeOnNextFrame = true
+                    end
+                    app.temp.lastFrameMinimal = app.settings.current.minimalMode
+                end
+
+                app.flow.getActiveFilters()
+                app.temp.fullWindow = true
+                if app.settings.current.minimalMode then
+                    if app.temp.filter and ((app.temp.filter.text == '' or app.temp.filter.text == nil) and (app.temp.activeFilters == nil or (not next(app.temp.activeFilters)))) then
+                        app.temp.fullWindow = false
+                    end
+                end
+                
                 checkProjectChange()
                 app.engine:sync()
                 handlePageSwitch()
@@ -945,8 +951,10 @@ RunApp = function()
                 app.gui.mainWindow.pos = { ImGui.GetWindowPos(ctx) }
                 app.gui.mainWindow.size = { ImGui.GetWindowSize(ctx) }
                 app.gui.screen = { size = { OD_GetScreenSize() } }
-                app.settings.current.lastWindowWidth, app.settings.current.lastWindowHeight = app.gui.mainWindow.size[1],
-                    app.gui.mainWindow.size[2]
+                app.settings.current.lastWindowWidth = app.gui.mainWindow.size[1]
+                if not app.settings.current.minimalMode then
+                    app.settings.current.lastWindowHeight = app.gui.mainWindow.size[2]
+                end
             end,
             handleDocking = function(ctx, pos)
                 if pos == 1 then -- before window has been created
@@ -3038,13 +3046,16 @@ RunApp = function()
                         active = app.temp.showHelpWindow,
                         shortcut = 'showHelp'
                     })
-                    
+
                     table.insert(menu, {
-                        icon = app.settings.current.afterAction == AFTER_ACTION.CLOSE and 'after_close' or (app.settings.current.afterAction == AFTER_ACTION.RESET_FILTERS and 'after_reset' or 'after_nothing'),
-                        hint = (T.SETTINGS.AFTER_ACTION.TOP_BAR_HINT):format(T.AFTER_ACTION_DESCRIPTIONS[app.settings.current.afterAction]),
-                        active = app.settings.current.afterAction == AFTER_ACTION.CLOSE or app.settings.current.afterAction == AFTER_ACTION.RESET_FILTERS
+                        icon = app.settings.current.afterAction == AFTER_ACTION.CLOSE and 'after_close' or
+                            (app.settings.current.afterAction == AFTER_ACTION.RESET_FILTERS and 'after_reset' or 'after_nothing'),
+                        hint = (T.SETTINGS.AFTER_ACTION.TOP_BAR_HINT):format(T.AFTER_ACTION_DESCRIPTIONS
+                            [app.settings.current.afterAction]),
+                        active = app.settings.current.afterAction == AFTER_ACTION.CLOSE or
+                            app.settings.current.afterAction == AFTER_ACTION.RESET_FILTERS
                     })
-                    
+
                     if app.temp.fullWindow then
                         table.insert(menu,
                             {
@@ -3244,7 +3255,6 @@ RunApp = function()
                             end
                         elseif btn == 'gear' then
                             ImGui.OpenPopup(ctx, Scr.name .. ' Settings##settingsWindow')
-
                         elseif btn == 'after_close' then
                             app.settings.current.afterAction = AFTER_ACTION.RESET_FILTERS
                             app.settings:save()
@@ -3296,7 +3306,7 @@ RunApp = function()
                 local h = select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding)) * 2
                 h = h + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) + lineHeight
                 h = h + (numOfPreferences + numOfSeparators + #app.settings.current.projectScanFolders) *
-                    (lineHeight+paddingY)
+                    (lineHeight + paddingY)
                 h = h + numOfAssetTypes * lineHeightWithSpacing + spacingY * 2
                 h = h + app.gui.st.sizes.hintHeight
                 local maxH = app.gui.screen.size[2] * .9
@@ -4648,14 +4658,6 @@ RunApp = function()
                 ImGui.SetNextWindowPos(ctx, center[1], center[2] / (app.settings.current.minimalMode and 1.5 or 1),
                     (app.settings.current.lastDockedState == false) and ImGui.Cond_Appearing or ImGui.Cond_FirstUseEver,
                     0.5, 0.5)
-                app.flow.getActiveFilters()
-                app.temp.fullWindow = true
-                if app.settings.current.minimalMode then
-                    if app.temp.filter and ((app.temp.filter.text == '' or app.temp.filter.text == nil) and (app.temp.activeFilters == nil or (not next(app.temp.activeFilters)))) then
-                        app.temp.fullWindow = false
-                    end
-                end
-
                 ImGui.SetNextWindowSizeConstraints(app.gui.ctx, app.gui.mainWindow.min_w,
                     app.temp.fullWindow and app.gui.mainWindow.min_h or (app.temp.menuH or 0),
                     app.gui.mainWindow.max_w, app.temp.fullWindow and app.gui.mainWindow.max_h or (app.temp.menuH or 0))
