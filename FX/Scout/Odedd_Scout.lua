@@ -123,24 +123,7 @@ RunApp = function()
                 -- self:setKeyboardPos(nil);
             end,
             add = function(self, itemIdx)
-                -- Check if the result doesn't allow multiple selection
-                local result = app.temp.searchResults[itemIdx]
-                if result and result.allowMultiple == false then
-                    -- If this result doesn't allow multiple, clear all others and select only this one
-                    self.items = {}
-                    self.items[itemIdx] = true
-                else
-                    -- Check if any currently selected result doesn't allow multiple
-                    for selectedIdx, _ in pairs(self.items) do
-                        local selectedResult = app.temp.searchResults[selectedIdx]
-                        if selectedResult and selectedResult.allowMultiple == false then
-                            -- Clear all selections if any selected result doesn't allow multiple
-                            self.items = {}
-                            break
-                        end
-                    end
-                    self.items[itemIdx] = true
-                end
+                self.items[itemIdx] = true
             end,
             remove = function(self, itemIdx)
                 if not (self.keyboardPos == itemIdx and self:count() == 1) then
@@ -175,77 +158,18 @@ RunApp = function()
                     self:remove(itemIdx)
                     return false
                 else
-                    -- Check if the result being added doesn't allow multiple selection
-                    if result and result.allowMultiple == false then
-                        -- If this result doesn't allow multiple, select only this one
-                        self:selectOnly(itemIdx)
-                        return true
-                    else
-                        -- Check if any currently selected result doesn't allow multiple
-                        for selectedIdx, _ in pairs(self.items) do
-                            local selectedResult = app.temp.searchResults[selectedIdx]
-                            if selectedResult and selectedResult.allowMultiple == false then
-                                -- Clear all and select only the new item if any current selection doesn't allow multiple
-                                self:selectOnly(itemIdx)
-                                return true
-                            end
-                        end
-
-                        -- Normal toggle - add to selection
-                        self:add(itemIdx)
-                        return true
-                    end
+                    self:add(itemIdx)
+                    return true
                 end
             end,
             selectAll = function(self)
-                local lastResultWithAllowMultiple
-                for i = #app.temp.searchResults, 1, -1 do
-                    if app.temp.searchResults[i].allowMultiple then
-                        lastResultWithAllowMultiple = i
-                        break
-                    end
-                end
-                if lastResultWithAllowMultiple then
-                    self:selectRange(1, lastResultWithAllowMultiple)
-                end
+                self:selectRange(1, #app.temp.searchResults)
             end,
             selectRange = function(self, fromIdx, toIdx)
                 local from, to = math.min(fromIdx, toIdx), math.max(fromIdx, toIdx)
 
-                -- Check if the target item allows multiple selection
-                local targetResult = app.temp.searchResults[toIdx]
-                if targetResult and targetResult.allowMultiple == false then
-                    -- If target doesn't allow multiple, select only the target
-                    self:selectOnly(toIdx)
-                    return
-                end
-
-                -- Store current selection that's outside the new range
-                local preservedSelection = {}
-                for selectedIdx, _ in pairs(self.items) do
-                    -- Preserve items that are outside the range from keyboard position to target
-                    if (selectedIdx < from or selectedIdx > to) then
-                        local selectedResult = app.temp.searchResults[selectedIdx]
-                        if selectedResult and selectedResult.allowMultiple ~= false then
-                            preservedSelection[selectedIdx] = true
-                        end
-                    end
-                end
-
-                -- Clear existing selection
-                self:empty()
-
-                -- Restore preserved selection
-                for idx, _ in pairs(preservedSelection) do
-                    self.items[idx] = true
-                end
-
-                -- Add the new range, but only items that allow multiple selection
                 for i = from, to do
-                    local result = app.temp.searchResults[i]
-                    if result and result.allowMultiple ~= false then
-                        self.items[i] = true
-                    end
+                    self.items[i] = true
                 end
 
                 self:setKeyboardPos(toIdx)
@@ -271,8 +195,10 @@ RunApp = function()
                         local assetType = result.type
                         if not resultsByType[assetType] then
                             resultsByType[assetType] = {}
+                            table.insert(resultsByType[assetType], result)
+                        elseif result.allowMultiple then -- only allow one of each type which has allowMultpleSet
+                            table.insert(resultsByType[assetType], result)
                         end
-                        table.insert(resultsByType[assetType], result)
                     end
                 end
                 r.Undo_BeginBlock()
@@ -1647,16 +1573,9 @@ RunApp = function()
                                     if ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
                                         app.selection:selectRange(app.selection.keyboardPos, newIdx)
                                     elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl) then
-                                        -- For Cmd/Ctrl navigation, add to selection if item allows multiple
                                         local targetResult = app.temp.searchResults[newIdx]
-                                        if targetResult and targetResult.allowMultiple ~= false then
-                                            -- Only add if it allows multiple selection
-                                            app.selection:add(newIdx)
-                                            app.selection:setKeyboardPos(newIdx)
-                                        else
-                                            -- If target doesn't allow multiple, select only it
-                                            app.selection:selectOnly(newIdx)
-                                        end
+                                        app.selection:add(newIdx)
+                                        app.selection:setKeyboardPos(newIdx)
                                     else
                                         app.selection:selectOnly(newIdx)
                                     end
