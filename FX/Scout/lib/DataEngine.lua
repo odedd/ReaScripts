@@ -1605,7 +1605,7 @@ PB_DataEngine.sortAssets = function(self)
                 -- Special handling for recents: sort by recentOrder instead of alphabetically
             elseif a.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] and b.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] then
                 return (a.recentOrder or 0) < (b.recentOrder or 0)
-            elseif a.variantOrder ~= nil and b.variantOrder ~= nil then
+            elseif a.variantOrder ~= nil and b.variantOrder ~= nil and a.baseName == b.baseName and a.vendorBaseName == b.vendorBaseName then
                 return a.variantOrder < b.variantOrder
             elseif a.order ~= nil and b.order ~= nil then
                 return a.order < b.order
@@ -1648,6 +1648,8 @@ PB_DataEngine.sortAssetsPartial = function(self, assetsToSort)
                 -- Special handling for recents: sort by recentOrder instead of alphabetically
             elseif a.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] and b.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] then
                 return (a.recentOrder or 0) < (b.recentOrder or 0)
+            elseif a.variantOrder ~= nil and b.variantOrder ~= nil and a.baseName == b.baseName and a.vendorBaseName == b.vendorBaseName then
+                return a.variantOrder < b.variantOrder
             elseif a.order ~= nil and b.order ~= nil then
                 return a.order < b.order
             elseif a.order ~= nil and b.order == nil then
