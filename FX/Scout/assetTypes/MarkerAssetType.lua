@@ -13,13 +13,13 @@ function MarkerAssetType.new(class, context)
     instance.allowMultiple = false
 
     instance:addInteraction(0, 'go to %asset',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             reaper.GoToMarker(0, asset.markerIdx, false)
             return true
         end)
 
     instance:addInteraction(ImGui.Mod_Shift, 'select time between %asset and the next marker',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             local mIdx = 0
             local nextMarkerPos = nil
             while true do
@@ -42,7 +42,7 @@ function MarkerAssetType.new(class, context)
 
     instance:addInteraction(ImGui.Mod_Shift  | ImGui.Mod_Alt,
         'go to %asset and select time between it and the next marker',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             local mIdx = 0
             local nextMarkerPos = nil
             while true do
@@ -66,7 +66,7 @@ function MarkerAssetType.new(class, context)
 
     instance:addInteraction(ImGui.Mod_Shift | ImGui.Mod_Ctrl,
         'select time between %asset and the next marker. Set to repeat',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             local mIdx = 0
             local nextMarkerPos = nil
             while true do
@@ -90,7 +90,7 @@ function MarkerAssetType.new(class, context)
 
     instance:addInteraction(ImGui.Mod_Shift | ImGui.Mod_Ctrl | ImGui.Mod_Alt,
         'go to %asset and select time between it and the next marker. Set to repeat',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             local mIdx = 0
             local nextMarkerPos = nil
             while true do

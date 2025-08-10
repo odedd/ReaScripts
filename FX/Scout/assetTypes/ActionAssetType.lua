@@ -13,7 +13,7 @@ function ActionAssetType.new(class, context)
 
     -- Add interaction using the new system
     instance:addInteraction(0, 'run %asset',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             local commandId = asset.load
 
             -- If load is a named command ID (string), convert to numeric

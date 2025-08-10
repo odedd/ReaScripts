@@ -1446,7 +1446,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                         end
                     }
                     -- Add execute function directly to the asset
-                    filterAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore)
+                    filterAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
                         return filterExecuteFunction(asset, mods | context)
                     end
                     table.insert(self.filterAssets, filterAsset)
@@ -1500,7 +1500,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 end
 
                 -- Add execute function directly to the asset
-                tagAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore)
+                tagAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
                     return filterExecuteFunction(asset, mods | context)
                 end
                 table.insert(self.filterAssets, tagAsset)
@@ -1528,7 +1528,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 end
             }
             -- Add execute function directly to the asset
-            presetAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore)
+            presetAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
                 return presetExecuteFunction(asset, mods | context)
             end
             table.insert(self.filterAssets, presetAsset)

@@ -13,7 +13,7 @@ function TrackAssetType.new(class, context)
     instance.updateOnProjectRefresh = true
 
     instance:addInteraction(0, 'select and scroll to %asset',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             -- local targetGuid = asset.load
 
             if index == 1 then
@@ -34,7 +34,7 @@ function TrackAssetType.new(class, context)
             return true, ('selected %d track(s)'):format(total)
         end)
     instance:addInteraction(ImGui.Mod_Ctrl, 'select and scroll to %asset (and %singular(its)%plural(their) children)',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             -- local targetGuid = asset.load
 
             r.SetMediaTrackInfo_Value(asset.object, 'B_SHOWINMIXER', 1)
@@ -65,7 +65,7 @@ function TrackAssetType.new(class, context)
         end)
 
     instance:addInteraction(ImGui.Mod_Alt, 'only make %asset visible',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             if index == 1 then
                 r.PreventUIRefresh(1)
                 local numTracks = r.CountTracks(0)
@@ -93,7 +93,7 @@ function TrackAssetType.new(class, context)
 
     instance:addInteraction(ImGui.Mod_Alt | ImGui.Mod_Ctrl,
         'only make %asset (and %singular(its)%plural(their) children) visible',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             if index == 1 then
                 r.PreventUIRefresh(1)
                 local numTracks = r.CountTracks(0)
@@ -127,9 +127,9 @@ function TrackAssetType.new(class, context)
         end)
 
     instance:addInteraction(ImGui.Mod_Shift, 'send from selected track(s) to %asset',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             local selectedTracks, msg = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
-                contextData, confirm)
+                contextData, confirm, total, index, skipAllConfirmations)
             if selectedTracks and #selectedTracks > 0 then
                 for _, track in ipairs(selectedTracks) do
                     local rv = reaper.CreateTrackSend(track, asset.object)

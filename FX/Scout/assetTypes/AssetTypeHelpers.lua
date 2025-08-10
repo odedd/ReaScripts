@@ -90,9 +90,9 @@ helpers.tracksIfDragged = function(context, contextData, index)
 end
 helpers.addPluginActions = function(instance)
     instance:addInteraction(0, 'add %asset to selected track(s) or create a new track if none is selected',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             local selectedTracks, msg = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context,
-                mods, contextData, confirm, total, index)
+                mods, contextData, confirm, total, index, skipAllConfirmations)
 
             if selectedTracks and #selectedTracks > 0 then
                 local originalUIState = helpers.setPluginUIState(asset.context.settings.current)
@@ -125,7 +125,7 @@ helpers.addPluginActions = function(instance)
             end
         end)
     instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_OBJECT'], 'add %asset to dragged %dragTargetObject',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             local originalUIState = helpers.setPluginUIState(asset.context.settings.current)
             if contextData and r.ValidatePtr(contextData, "MediaItem*") then
                 local take = r.GetActiveTake(contextData)
@@ -142,7 +142,7 @@ helpers.addPluginActions = function(instance)
         end)
     instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_BLANK'],
         'add %asset to a new track%plural( (all on one track))',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             if index == 1 then
                 local numTracks = r.CountTracks(0)
                 r.InsertTrackAtIndex(numTracks, true)
@@ -161,7 +161,7 @@ helpers.addPluginActions = function(instance)
         end)
     instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_BLANK']| ImGui.Mod_Ctrl,
         'add %asset to %singular(a new track)%plural(%count new tracks (each on its own track))',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             local numTracks = r.CountTracks(0)
             r.InsertTrackAtIndex(numTracks, true)
             local newTrack = r.GetTrack(0, numTracks)
@@ -172,10 +172,10 @@ helpers.addPluginActions = function(instance)
             return true, ('Added %d FX to new track (each on its own track)'):format(total)
         end)
     instance:addInteraction(ImGui.Mod_Alt, 'add %asset to selected media item(s)',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             local selectedItems, msg = helpers.getSelectedItemsWithConfirmation(tempStore, asset.context, context, mods,
                 contextData,
-                confirm, total, index)
+                confirm, total, index, skipAllConfirmations)
 
             if selectedItems and #selectedItems > 0 then
                 local originalUIState = helpers.setPluginUIState(asset.context.settings.current)
@@ -198,10 +198,10 @@ helpers.addPluginActions = function(instance)
         end)
     instance:addInteraction(ImGui.Mod_Alt | ImGui.Mod_Ctrl,
         'add %asset to selected track(s) as input FX or create a new track if none is selected',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             local selectedTracks = helpers.tracksIfDragged(context, contextData, index) or
                 helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
-                    contextData, confirm, total, index)
+                    contextData, confirm, total, index, skipAllConfirmations)
 
             if selectedTracks and #selectedTracks > 0 then
                 local originalUIState = helpers.setPluginUIState(asset.context.settings.current)
@@ -229,10 +229,10 @@ helpers.addPluginActions = function(instance)
 
     instance:addInteraction(ImGui.Mod_Shift,
         'send to a new track with %asset%plural( (all on the same track%))',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             local selectedTracks, msg = helpers.tracksIfDragged(context, contextData, index) or
                 helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
-                    contextData, confirm, total, index)
+                    contextData, confirm, total, index, skipAllConfirmations)
 
             if selectedTracks and #selectedTracks > 0 then
                 if index == 1 then tempStore.newSendTrack = helpers.createSendTrack(asset) end
@@ -284,10 +284,10 @@ helpers.addPluginActions = function(instance)
 
     instance:addInteraction(ImGui.Mod_Shift | ImGui.Mod_Ctrl,
         'send to %singular(a new track)%plural(%count new tracks) with %asset%plural( (each FX on a separate track%))',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             local selectedTracks, msg = helpers.tracksIfDragged(context, contextData, index) or
                 helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
-                    contextData, confirm, total, index)
+                    contextData, confirm, total, index, skipAllConfirmations)
             if selectedTracks and #selectedTracks > 0 then
                 local newTrack = helpers.createSendTrack(asset)
                 local originalUIState = helpers.setPluginUIState(asset.context.settings.current)
@@ -335,7 +335,7 @@ helpers.addPluginActions = function(instance)
 end
 
 helpers.getSelectedTracksWithConfirmation = function(tempStorage, assetContext, context, keyMods, contextData, confirm,
-                                                     total, index)
+                                                     total, index, skipAllConfirmations)
     -- Similar logic for items if needed by other asset types
     if not tempStorage.executeFunctionSelectedTracks then
         tempStorage.executeFunctionSelectedTracks = {}
@@ -345,15 +345,18 @@ helpers.getSelectedTracksWithConfirmation = function(tempStorage, assetContext, 
             table.insert(tempStorage.executeFunctionSelectedTracks, track)
         end
     end
-    if #tempStorage.executeFunctionSelectedTracks >= assetContext.settings.current.numberOfMediaItemsThatRequireConfirmation and not (confirm and confirm.multipleTracks) then
-        assetContext.temp.confirmMultipleTracks = {
-            count = #tempStorage.executeFunctionSelectedTracks,
-            keyMods = keyMods,
-            resultContext = context,
-            contextData = contextData,
-            confirm = confirm
-        }
-        return false, ('%s tracks selected, waiting for confirmation'):format(#tempStorage.executeFunctionSelectedTracks)
+    if not skipAllConfirmations then
+        if #tempStorage.executeFunctionSelectedTracks >= assetContext.settings.current.numberOfMediaItemsThatRequireConfirmation and not (confirm and confirm.multipleTracks) then
+            assetContext.temp.confirmMultipleTracks = {
+                count = #tempStorage.executeFunctionSelectedTracks,
+                keyMods = keyMods,
+                resultContext = context,
+                contextData = contextData,
+                confirm = confirm
+            }
+            return false,
+                ('%s tracks selected, waiting for confirmation'):format(#tempStorage.executeFunctionSelectedTracks)
+        end
     end
     if #tempStorage.executeFunctionSelectedTracks == 0 then
         -- if index == total then
@@ -365,7 +368,7 @@ helpers.getSelectedTracksWithConfirmation = function(tempStorage, assetContext, 
 end
 
 helpers.getSelectedItemsWithConfirmation = function(tempStorage, assetContext, context, keyMods, contextData, confirm,
-                                                    total, index)
+                                                    total, index, skipAllConfirmations)
     -- Similar logic for items if needed by other asset types
     local numSelectedItems = r.CountSelectedMediaItems(0)
     local items = {}
@@ -373,16 +376,17 @@ helpers.getSelectedItemsWithConfirmation = function(tempStorage, assetContext, c
         local item = r.GetSelectedMediaItem(0, i)
         table.insert(items, item)
     end
-
-    if #items >= assetContext.settings.current.numberOfMediaItemsThatRequireConfirmation and not (confirm and confirm.multipleMediaItems) then
-        assetContext.temp.confirmMultipleMediaItems = {
-            count = #items,
-            keyMods = keyMods,
-            resultContext = context,
-            contextData = contextData,
-            confirm = confirm
-        }
-        return false, ('%s items selected, waiting for confirmation'):format(#items)
+    if not skipAllConfirmations then
+        if #items >= assetContext.settings.current.numberOfMediaItemsThatRequireConfirmation and not (confirm and confirm.multipleMediaItems) then
+            assetContext.temp.confirmMultipleMediaItems = {
+                count = #items,
+                keyMods = keyMods,
+                resultContext = context,
+                contextData = contextData,
+                confirm = confirm
+            }
+            return false, ('%s items selected, waiting for confirmation'):format(#items)
+        end
     end
     if #items == 0 then
         return {}, 'No items selected'

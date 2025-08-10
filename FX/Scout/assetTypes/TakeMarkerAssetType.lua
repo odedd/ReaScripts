@@ -13,7 +13,7 @@ function TakeMarkerAssetType.new(class, context)
     instance.allowMultiple = false
 
     instance:addInteraction(0, 'go to %asset',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             r.SetEditCurPos(asset.absPos, true, false)
             return true
         end)

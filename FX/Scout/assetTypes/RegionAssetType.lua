@@ -14,19 +14,19 @@ function RegionAssetType.new(class, context)
     instance.updateOnProjectRefresh = true
 
     instance:addInteraction(0, 'go to start of %asset',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             reaper.GoToRegion(0, asset.regionIdx, false)
             return true
         end)
 
     instance:addInteraction(ImGui.Mod_Shift, 'select time surrounded by %asset',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             r.GetSet_LoopTimeRange(true, true, asset.pos, asset.regend, true)
             return true
         end)
 
     instance:addInteraction(ImGui.Mod_Shift | ImGui.Mod_Alt, 'select time surrounded by %asset, set to repeat and go to it',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             r.GetSet_LoopTimeRange(true, true, asset.pos, asset.regend, true)
             reaper.GetSetRepeat(1)
             reaper.GoToRegion(0, asset.regionIdx, false)
@@ -35,7 +35,7 @@ function RegionAssetType.new(class, context)
 
 
     instance:addInteraction(ImGui.Mod_Shift | ImGui.Mod_Ctrl, 'select time surrounded by %asset, set to repeat',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             r.GetSet_LoopTimeRange(true, true, asset.pos, asset.regend, true)
             reaper.GetSetRepeat(1)
             return true
@@ -43,7 +43,7 @@ function RegionAssetType.new(class, context)
 
     instance:addInteraction(ImGui.Mod_Shift | ImGui.Mod_Ctrl | ImGui.Mod_Alt,
     'select time surrounded by %asset, set to repeat and go to it',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             r.GetSet_LoopTimeRange(true, true, asset.pos, asset.regend, true)
             reaper.GetSetRepeat(1)
             reaper.GoToRegion(0, asset.regionIdx, false)

@@ -23,47 +23,47 @@ function QuickChainPresetAssetType.new(class, context)
     -- Add interaction using the new system
 
     instance:addInteraction(ImGui.Mod_Ctrl, 'load %asset to active QuickChain',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             asset.context.flow.loadQuickChain(asset.object)
             return true
         end)
 
     instance:addInteraction(0, 'add %asset items to selected track(s) or create a new track if none is selected',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             return helpers.performQuickChainPresetAction(asset, context, 0)
         end)
 
     instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_OBJECT'], 'add %asset items to dragged %dragTargetObject',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             return helpers.performQuickChainPresetAction(asset, context | RESULT_CONTEXT['DRAGGED_TO_OBJECT'],0,contextData)
         end)
     instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_BLANK'],
         'add %asset items to a new track (all FX on one track)',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             return helpers.performQuickChainPresetAction(asset, context | RESULT_CONTEXT['DRAGGED_TO_BLANK'],0)
         end)
     instance:addInteraction(RESULT_CONTEXT['DRAGGED_TO_BLANK']| ImGui.Mod_Ctrl,
         'add %asset items to new tracks (each FX on its own track)',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             return helpers.performQuickChainPresetAction(asset, context | RESULT_CONTEXT['DRAGGED_TO_BLANK'], ImGui.Mod_Ctrl)
         end)
     instance:addInteraction(ImGui.Mod_Alt, 'add %asset items to selected media item(s)',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             return helpers.performQuickChainPresetAction(asset, context, ImGui.Mod_Alt)
         end)
     instance:addInteraction(ImGui.Mod_Alt | ImGui.Mod_Ctrl,
         'add %asset items to selected track(s) as input FX or create a new track if none is selected',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             return helpers.performQuickChainPresetAction(asset, context, ImGui.Mod_Alt | ImGui.Mod_Ctrl)
         end)
     instance:addInteraction(ImGui.Mod_Shift,
         'send to a new track with %asset items (all FX on the same track)',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             return helpers.performQuickChainPresetAction(asset, context, ImGui.Mod_Shift)
         end)
     instance:addInteraction(ImGui.Mod_Shift | ImGui.Mod_Ctrl,
         'send to new tracks with %asset items (each FX on a separate track)',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             return helpers.performQuickChainPresetAction(asset, context, ImGui.Mod_Shift | ImGui.Mod_Ctrl)
         end)
     return instance

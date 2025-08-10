@@ -11,13 +11,13 @@ function ProjectTemplateAssetType.new(class, context)
     instance.shouldMapBaseFilenames = true
     instance.allowMultiple = false
     
-    instance:addInteraction(0, 'create a new project based on %asset', function(asset, mods, context, contextData, confirm, total, index, tempStore)
+    instance:addInteraction(0, 'create a new project based on %asset', function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
         r.Main_openProject("template:" .. asset.load)
         return true
     end)
 
         instance:addInteraction(ImGui.Mod_Shift, 'create a new project based on %asset in a new tab',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
 
             reaper.Main_OnCommandEx(40859, 0, 0)
             r.Main_openProject("template:" ..asset.load)

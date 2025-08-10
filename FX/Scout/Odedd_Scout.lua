@@ -186,7 +186,7 @@ RunApp = function()
                 end
                 return results
             end,
-            execute = function(self, keyMods, resultContext, contextData, confirm)
+            execute = function(self, keyMods, resultContext, contextData, confirm, skipAllConfirmations)
                 local results = app.temp.resultsForExecution
                 -- Group results by asset type
                 local resultsByType = {}
@@ -207,7 +207,7 @@ RunApp = function()
                     local total = #typeResults
                     for i, result in ipairs(typeResults) do
                         result:execute(keyMods, resultContext or 0, contextData, confirm, total,
-                            i)
+                            i, nil, skipAllConfirmations)
                     end
                 end
                 r.Undo_EndBlock('', -1)
@@ -605,24 +605,26 @@ RunApp = function()
                 app.temp.numResults = #app.temp.searchResults
                 resetOrRestoreSelection()
             end,
-            executeSelectedResults = function(results, resultContext, keyMods, contextData, confirm)
+            executeSelectedResults = function(results, resultContext, keyMods, contextData, confirm, skipAllConfirmations)
                 local keyMods = keyMods or ImGui.GetKeyMods(app.gui.ctx)
                 app.temp.resultsForExecution = results or app.temp.resultsForExecution
                 local resultCount = OD_TableLength(app.temp.resultsForExecution)
-                if resultCount >= app.settings.current.numberOfResultsThatRequireConfirmation and not (confirm and confirm.multipleResults) then
+                if not skipAllConfirmations and resultCount >= app.settings.current.numberOfResultsThatRequireConfirmation and not (confirm and confirm.multipleResults) then
                     app.temp.confirmMultipleResults = {
                         count = resultCount,
                         resultContext = resultContext,
                         contextData = contextData,
                         keyMods = keyMods
                     }
-                elseif confirm or resultCount < app.settings.current.numberOfResultsThatRequireConfirmation then
-                    app.selection:execute(keyMods, resultContext, contextData, confirm)
+                elseif confirm or resultCount < app.settings.current.numberOfResultsThatRequireConfirmation or skipAllConfirmations then
+                    app.selection:execute(keyMods, resultContext, contextData, confirm, skipAllConfirmations)
                 end
             end,
-            executeRandomResult = function()
+            executeRandomResult = function(skipAllConfirmations)
+                app.flow.getActiveFilters()
+                if OD_TableLength(app.temp.activeFilters) == 0 then app.flow.msg('Must have a filter applied to run a random result') return end
                 app.temp.resultsForExecution = { app.temp.searchResults[math.random(#app.temp.searchResults)] }
-                app.selection:execute(0, RESULT_CONTEXT['IGNORE_KEYS'])
+                app.selection:execute(0, RESULT_CONTEXT['IGNORE_KEYS'], nil, nil, skipAllConfirmations)
             end,
             getActiveFilters = function()
                 local activeFilters = app.temp.activeFilters ~= nil and app.temp.activeFilters or {}
@@ -748,12 +750,12 @@ RunApp = function()
                         r.SetExtState(Scr.ext_name, 'EXTERNAL_COMMAND', '', false)
                         if shouldClose then
                             app.flow.filterResults(filter)
-                            app.flow.executeRandomResult()
+                            app.flow.executeRandomResult(true)
                             app.flow.close()
                         else
                             local currentFilter = OD_DeepCopy(app.temp.filter)
                             app.flow.filterResults(filter, true, true)
-                            app.flow.executeRandomResult()
+                            app.flow.executeRandomResult(true)
                             app.temp.filter = currentFilter
                         end
                     end
@@ -767,7 +769,7 @@ RunApp = function()
                         if shouldClose then
                             app.flow.loadQuickChain(qc)
                             app.flow.executeSelectedResults(app.temp.quickChain,
-                                qc.keymods | RESULT_CONTEXT.QUICK_CHAIN)
+                                qc.keymods | RESULT_CONTEXT.QUICK_CHAIN, nil, nil, nil, true)
                             app.temp.quickChain = currentQuickChain -- Restore previous QuickChain
                             app.settings.current.showQuickChain =
                                 currentQuickChainOpen               -- Restore previous QuickChain visibility
@@ -775,7 +777,7 @@ RunApp = function()
                         else
                             app.flow.loadQuickChain(qc)
                             app.flow.executeSelectedResults(app.temp.quickChain,
-                                qc.keymods | RESULT_CONTEXT.QUICK_CHAIN)
+                                qc.keymods | RESULT_CONTEXT.QUICK_CHAIN, nil, nil, nil, true)
                             app.temp.quickChain = currentQuickChain -- Restore previous QuickChain
                             app.settings.current.showQuickChain =
                                 currentQuickChainOpen               -- Restore previous QuickChain visibility
@@ -2897,6 +2899,7 @@ RunApp = function()
                                 app:setHint('main', T.HINTS.QUICK_CHAIN_HOVER)
                             end
                             for i, item in ipairs(app.temp.quickChain) do
+                                ImGui.PushID(ctx, i)
                                 local label = item.searchText[1].text
                                 if ImGui.Selectable(ctx, label, false) then
                                     if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
@@ -2932,11 +2935,11 @@ RunApp = function()
                                 if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragFromChainToObject then
                                     if app.temp.dragFromChainToObject == -1 then
                                         app.flow.executeSelectedResults(app.temp.quickChain,
-                                            RESULT_CONTEXT.DRAGGED_TO_BLANK)
+                                            RESULT_CONTEXT.DRAGGED_TO_BLANK, nil,nil,{ multipleResults = true})
                                     else
                                         app.flow.executeSelectedResults(app.temp.quickChain,
                                             RESULT_CONTEXT.DRAGGED_TO_OBJECT, nil, app.temp
-                                            .dragFromChainToObject)
+                                            .dragFromChainToObject, { multipleResults = true})
                                     end
                                     app.temp.dragFromChainToObject = nil
                                 end
@@ -2955,6 +2958,7 @@ RunApp = function()
                                     end
                                     ImGui.EndDragDropTarget(ctx)
                                 end
+                                ImGui.PopID(ctx)
                             end
 
                             ImGui.EndListBox(ctx)
@@ -2978,7 +2982,7 @@ RunApp = function()
                         if ImGui.Button(ctx, ICONS.LIGHTNING .. '##quickChainAdd',
                                 w - spacingX - paddingX * 2 - ImGui.CalcTextSize(ctx, ICONS.ELLIPSIS)) then
                             app.flow.executeSelectedResults(app.temp.quickChain,
-                                RESULT_CONTEXT.QUICK_CHAIN)
+                                RESULT_CONTEXT.QUICK_CHAIN, nil, nil, { multipleResults = true})
                         end
                         if #app.temp.quickChain > 0 then
                             local hint = (app.guiHelpers.getHintFor(app.temp.quickChain[1], nil, RESULT_CONTEXT.QUICK_CHAIN, 1))
@@ -2999,7 +3003,7 @@ RunApp = function()
                                 #app.temp.quickChain, RESULT_CONTEXT.QUICK_CHAIN)
                             if rv then
                                 app.flow.executeSelectedResults(app.temp.quickChain,
-                                    keymod | RESULT_CONTEXT.QUICK_CHAIN)
+                                    keymod | RESULT_CONTEXT.QUICK_CHAIN, nil, nil, { multipleResults = true})
                             end
                             ImGui.Separator(ctx)
                             if ImGui.MenuItem(ctx, 'Clear QuickChain') then
@@ -4589,7 +4593,7 @@ RunApp = function()
                                 local keymod, hint = item.keymod, item.hint
 
                                 local text = app.guiHelpers.getHintFor(result, keymod,
-                                        RESULT_CONTEXT.QUICK_CHAIN, #app.temp.quickChain)
+                                        RESULT_CONTEXT.QUICK_CHAIN, #app.temp.quickChain, false)
                                     :gsub(
                                         "^%l", string.upper):gsub('%.$', ' ')
 
@@ -4777,7 +4781,7 @@ RunApp = function()
                                         #app.temp.quickChain > 0
                                     app.flow.executeSelectedResults(
                                         goWithQuickChain and app.temp.quickChain or app.selection:results(),
-                                        RESULT_CONTEXT.KEYBOARD)
+                                        RESULT_CONTEXT.KEYBOARD, nil, nil, goWithQuickChain and { multipleResults = true})
                                 end
                                 pressed = true
                             elseif app.guiHelpers.isShortcutPressed('quickTag') then

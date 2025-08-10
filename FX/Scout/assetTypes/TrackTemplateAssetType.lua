@@ -12,20 +12,20 @@ function TrackTemplateAssetType.new(class, context)
     instance.shouldMapBaseFilenames = true
 
     instance:addInteraction(0, 'load %asset as %singular(a )new track%plural(s)',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             r.Main_openProject(asset.load)
             return true, ('loaded track template %s'):format(asset.searchText[1].text)
         end)
     instance:addInteraction(RESULT_CONTEXT.DRAGGED_TO_BLANK, 'load %asset as %singular(a )new track%plural(s)',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             r.Main_openProject(asset.load)
             return true, ('loaded track template %s'):format(asset.searchText[1].text)
         end)
     instance:addInteraction(ImGui.Mod_Shift,
         'send selected track(s) to %singular(a )new track%plural(s) with %singular(template \'%asset\')%plural(%asset)',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             local selectedTracks, msg = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
-                contextData, confirm)
+                contextData, confirm, total, index, skipAllConfirmations)
             if selectedTracks and #selectedTracks > 0 then
                 local tempGuids = {}
                 local dummyTrack, dummyTrackFolderDepth, depthDelta
@@ -90,9 +90,9 @@ function TrackTemplateAssetType.new(class, context)
 
     instance:addInteraction(ImGui.Mod_Shift | RESULT_CONTEXT.DRAGGED_TO_BLANK,
         'send selected track(s) to %singular(a )new track%plural(s) with %singular(template \'%asset\')%plural(%asset)',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             local selectedTracks, msg = helpers.getSelectedTracksWithConfirmation(tempStore, asset.context, context, mods,
-                contextData, confirm)
+                contextData, confirm, total, index, skipAllConfirmations)
             if selectedTracks and #selectedTracks > 0 then
                 local tempGuids = {}
                 local dummyTrack, dummyTrackFolderDepth, depthDelta

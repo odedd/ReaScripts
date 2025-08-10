@@ -157,7 +157,7 @@ function BaseAssetType:getInteractionHintFor(mods, context, contextData, count)
 end
 
 function BaseAssetType:executeAndAddToRecents()
-    return function(asset, mods, context, contextData, confirm, total, index, tempStore)
+    return function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
         local assetType = self -- Capture the asset type instance
 
         local executeFunction = assetType:getExecuteFunction(mods, context)
@@ -171,7 +171,7 @@ function BaseAssetType:executeAndAddToRecents()
             local success, result, logMsg
             if index == 1 or (assetType.allowMultiple and index > 1) then
                 success, result, logMsg = pcall(executeFunction, asset, mods, context, contextData, confirm, total,
-                    index, asset.context.temp.executeFunctionTempStore)
+                    index, asset.context.temp.executeFunctionTempStore, skipAllConfirmations)
             else
                 success = true
                 result = false

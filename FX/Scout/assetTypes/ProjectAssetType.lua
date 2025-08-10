@@ -9,14 +9,14 @@ function ProjectAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Project", "Projects")(class, context)
     instance.allowMultiple = false
     instance:addInteraction(0, 'open %asset',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             r.Main_openProject(asset.load)
             return true
         end)
     -- -- This is dependent on a setting which apparently is not exposed to get_config_var_string - "Create new project tab when opening media from explorer/finder",
     -- -- so I can't guarantee it always works. Better to comment it out until an API exists.
     instance:addInteraction(ImGui.Mod_Shift, 'open %asset in a new tab',
-        function(asset, mods, context, contextData, confirm, total, index, tempStore)
+        function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             reaper.Main_OnCommand(40859, 0)
             r.Main_openProject(asset.load)
             return true
