@@ -1259,10 +1259,11 @@ PB_DataEngine.assembleAssets = function(self, forceRebuildCache)
 
     -- IMPORTANT: Plugin priority filtering must happen BEFORE special group processing
     -- because special groups change the asset groups and break FX type priority sorting
-    if self.app.settings.current.showOnlyHighestPriorityPlugin then
-        self:sortAssetsByFXPriorityOnly() -- Sort by FX priority first
-        self:removeLowPriorityPlugins()   -- Remove duplicates while FX types are intact
-    end
+    -- if self.app.settings.current.showOnlyHighestPriorityPlugin then
+    --     self:sortAssetsByFXPriorityOnly() -- Sort by FX priority first
+    --     -- self:removeLowPriorityPlugins()   -- Remove duplicates while FX types are intact
+    -- end
+    -- self:sortAssetsByVariantPriorityOnly() -- Sort by FX Variant first
 
     self:markSpecialGroups() -- Mark favorites/recents (changes asset groups)
 
@@ -1584,6 +1585,8 @@ PB_DataEngine.sortAssets = function(self)
                 -- Special handling for recents: sort by recentOrder instead of alphabetically
             elseif a.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] and b.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] then
                 return (a.recentOrder or 0) < (b.recentOrder or 0)
+            elseif a.variantOrder ~= nil and b.variantOrder ~= nil then
+                return a.variantOrder < b.variantOrder
             elseif a.order ~= nil and b.order ~= nil then
                 return a.order < b.order
             elseif a.order ~= nil and b.order == nil then
@@ -1642,93 +1645,12 @@ PB_DataEngine.sortAssetsPartial = function(self, assetsToSort)
     self.app.logger:logDebug('Sorted ' .. #assetsToSort .. ' assets partially')
     return assetsToSort
 end
-PB_DataEngine.sortAssetsByFXPriorityOnly = function(self)
-    self.app.logger:logDebug('-- PB_DataEngine.sortAssetsByFXPriorityOnly()')
-
-    -- Create FX type priority lookup
-    local fxTypePriority = {}
-    for i, fxType in ipairs(self.app.settings.current.fxTypeOrder) do
-        fxTypePriority[fxType] = i
-    end
-
-    -- Sort only plugin assets by FX type priority, leave others in original order
-    table.sort(self.assets, function(a, b)
-        -- If both are plugins, sort by FX type priority
-        if a.fx_type and b.fx_type then
-            local aPriority = fxTypePriority[a.fx_type] or 1000
-            local bPriority = fxTypePriority[b.fx_type] or 1000
-            if aPriority == bPriority then
-                return a.searchText[1].text < b.searchText[1].text
-            else
-                return aPriority < bPriority
-            end
-            -- If only one is a plugin, maintain original relative order
-        elseif a.fx_type and not b.fx_type then
-            return false -- keep non-plugin before plugin
-        elseif not a.fx_type and b.fx_type then
-            return true  -- keep non-plugin before plugin
-        else
-            -- Both are non-plugins, maintain original order
-            return false
-        end
-    end)
-
-    self.app.logger:logDebug('Sorted assets by FX priority for duplicate removal')
-end
-PB_DataEngine.removeLowPriorityPlugins = function(self)
-    self.app.logger:logDebug('-- PB_DataEngine.removeLowPriorityPlugins()')
-
-    local assetsIdxToRemove = {}
-    local foundPlugins = {}
-
-    for i, asset in ipairs(self.assets) do
-        if asset.fx_type then
-            local id = asset.name .. (asset.vendor or '')
-            if foundPlugins[id] then
-                table.insert(assetsIdxToRemove, i)
-            else
-                foundPlugins[id] = true
-            end
-        end
-    end
-
-    for i = #assetsIdxToRemove, 1, -1 do
-        table.remove(self.assets, assetsIdxToRemove[i])
-    end
-
-    self.app.logger:logInfo('Removed ' .. #assetsIdxToRemove .. ' duplicate plugins')
-end
-
 
 PB_DataEngine.copyTagsToAllFXTypes = function(self, asset, persist)
     self.app.logger:logDebug('-- PB_DataEngine.copyTagsToAllFXTypes()')
 
-    local function getBaseNames(name, vendor)
-        local baseName = name or ''
-        local vendorBaseName = vendor or ''
-        if vendor then
-            --  some vendors appear differently on different formats, so I try to unify them
-            for k, v in pairs(PLUGIN.VENDOR_ALIASES) do
-                if OD_HasValue(v, vendor) then
-                    vendorBaseName = k
-                    break
-                end
-            end
-        end
-
-        for i, varPat in ipairs(PLUGIN.VARIANT_PATTERNS) do
-            if name:lower():match('%s' .. varPat:lower() .. '$') then
-                local pat = OD_CaseInsensitivePattern(varPat)
-                baseName = name:gsub('%s' .. pat .. '$', '')
-                break
-            end
-        end
-        return baseName, vendorBaseName
-    end
-
     if not asset.fx_type then return end
-    local baseName, vendorBaseName = getBaseNames(asset.name, asset.vendor)
-    local searchForId = (baseName .. vendorBaseName)
+    local searchForId = (asset.baseName .. (asset.vendorBaseName or ''))
     local samePlugins = {}
     local pluginTags = {}
     for _, tagId in ipairs(asset.tags) do
@@ -1737,8 +1659,7 @@ PB_DataEngine.copyTagsToAllFXTypes = function(self, asset, persist)
 
     for _, asset in ipairs(self.assets) do
         if asset.fx_type then
-            local baseName, vendorBaseName = getBaseNames(asset.name, asset.vendor)
-            local id = (baseName .. vendorBaseName)
+            local id = (asset.baseName .. (asset.vendorBaseName or ''))
             if id == searchForId then
                 samePlugins[id] = samePlugins[id] or {}
                 table.insert(samePlugins[id], asset)

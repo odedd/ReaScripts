@@ -94,7 +94,7 @@ RunApp = function()
 
         app:connect('settings', settings)
         app:connect('userdata', userdata)
-        app.settings:load({ 'fxTypeOrder', 'groupOrder' })
+        app.settings:load({ 'fxTypeOrder', 'groupOrder', 'variantOrder' })
         app.userdata:load()
         app.gui:init();
 
@@ -340,6 +340,7 @@ RunApp = function()
                     app.engine.assets or app.engine.filterAssets
                 local tagsTable = app.engine.tags
                 local oldResults, oldKeyboardPosResult, validatedFilter, hasIssues, filter, maintainTargets
+                local fxTypeVisibility = app.settings.current.fxTypeVisibility
                 local init = function()
                     app.temp.filter = app.temp.filter or {}
                     if not reset then
@@ -423,17 +424,6 @@ RunApp = function()
                         validatedFilter.fxCategory or validatedFilter.untagged or validatedFilter.recentlyAdded
                     local hasTagFilters = next(validatedFilter.tags) ~= nil
 
-                    -- If no filters at all, return all assets (or handle based on search mode)
-                    if not hasTextFilter and not hasTypeFilters and not hasTagFilters and (app.temp.searchMode == SEARCH_MODE.MAIN or app.temp.searchMode == SEARCH_MODE.SEND_BUDDY) then
-                        for i = 1, #assets do
-                            local asset = assets[i]
-                            -- Set empty foundIndexes to prevent nil access errors
-                            asset.foundIndexes = {}
-                            app.temp.searchResults[#app.temp.searchResults + 1] = asset
-                        end
-                        return
-                    end
-
                     -- Optimization 3: Batch asset filtering by type (group common type checks)
                     local typeFilterChecks = {}
                     if hasTypeFilters then
@@ -448,6 +438,9 @@ RunApp = function()
 
                     -- Cache filter tags for faster access
                     local filterTags = validatedFilter.tags
+                    -- for filtering high priority fx
+                    local foundPlugins = {}
+                    local foundVariants = {}
 
                     for i = 1, #assets do
                         local asset = assets[i]
@@ -455,6 +448,38 @@ RunApp = function()
                         -- Ensure foundIndexes is always initialized to prevent nil access
                         if not asset.foundIndexes then
                             asset.foundIndexes = {}
+                        end
+
+                        -- special cases for plugins
+                        if asset.type == ASSET_TYPE.PluginAssetType then
+                            -- fx type visibility
+                            if not app.settings.current.fxTypeVisibility[asset.fx_type] then
+                                goto skip
+                            end
+                            -- show only high priority fx type
+                            local showOnlyHighestPriorityPlugin = app.settings.current.showOnlyHighestPriorityPlugin
+                            if showOnlyHighestPriorityPlugin then
+                                local id = asset.name .. (asset.vendor or '')
+                                if foundPlugins[id] then
+                                    goto skip
+                                else
+                                    foundPlugins[id] = true
+                                end
+                            end
+                            if asset.variantPat and not app.settings.current.variantVisibility[asset.variantPat] then
+                                goto skip
+                            end
+                            -- show only high priority variant
+                            local showOnlyHighestPriorityVariant = app.settings.current
+                                .showOnlyHighestPriorityVariant
+                            if showOnlyHighestPriorityVariant then
+                                local id = asset.baseName .. (asset.vendorBaseName or '')
+                                if foundVariants[id] then
+                                    goto skip
+                                else
+                                    foundVariants[id] = true
+                                end
+                            end
                         end
 
                         if (app.temp.searchMode == SEARCH_MODE.MAIN or app.temp.searchMode == SEARCH_MODE.SEND_BUDDY) then
@@ -942,7 +967,7 @@ RunApp = function()
                         app.temp.fullWindow = false
                     end
                 end
-                
+
                 checkProjectChange()
                 app.engine:sync()
                 handlePageSwitch()
@@ -3374,16 +3399,43 @@ RunApp = function()
                         app.settings.current.showOnlyHighestPriorityPlugin = app.gui:setting('checkbox',
                             T.SETTINGS.SHOW_ONLY_HIGHEST_PRIORITY_FX.LABEL, T.SETTINGS.SHOW_ONLY_HIGHEST_PRIORITY_FX
                             .HINT, app.settings.current.showOnlyHighestPriorityPlugin)
+                        app.settings.current.showOnlyHighestPriorityVariant = app.gui:setting('checkbox',
+                            T.SETTINGS.SHOW_ONLY_HIGHEST_VARIANT_FX.LABEL, T.SETTINGS.SHOW_ONLY_HIGHEST_VARIANT_FX
+                            .HINT, app.settings.current.showOnlyHighestPriorityVariant)
+
+                        ImGui.NewLine(ctx)
                         app.temp.groupOrder, app.temp.groupVisibility = app.gui:setting(
                             'orderable_list',
                             T.SETTINGS.GROUP_ORDER.LABEL, T.SETTINGS.GROUP_ORDER.HINT,
-                            { app.temp.groupOrder, app.temp.groupVisibility }, { divideWidth = 2 })
-
+                            { app.temp.groupOrder, app.temp.groupVisibility },
+                            { listTopLabel = 'Item type order', divideWidth = 3 }, true)
                         app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility = app.gui:setting(
                             'orderable_list',
-                            'FXTypeOrder', T.SETTINGS.FX_TYPE_ORDER.HINT,
-                            { app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility }, {}, true)
+                            'fxTypeOrder', T.SETTINGS.FX_TYPE_ORDER.HINT,
+                            { app.settings.current.fxTypeOrder, app.settings.current.fxTypeVisibility },
+                            { listTopLabel = 'FX type order', divideWidth = 2 }, true)
+                        app.settings.current.variantOrder, app.settings.current.variantVisibility = app.gui:setting(
+                            'orderable_list',
+                            'variantOrder', T.SETTINGS.FX_TYPE_ORDER.HINT,
+                            { app.settings.current.variantOrder, app.settings.current.variantVisibility }, {
+                                listTopLabel = 'FX Variant order',
+                                formatter = function(text)
+                                    return text
+                                        :gsub('%%%(%?', '')
+                                        :gsub('%%%)%?', '')
+                                        :gsub('%%%(', '')
+                                        :gsub('%%%)', '')
+                                        :gsub('%.%-', '?')
+                                        :gsub('%.%+', '?')
+                                        :gsub('%%d', '?')
+                                        :gsub('%%', '')
+                                        :gsub('^%(', '')
+                                        :gsub('%)$', '')
+                                end
+                            }, true)
 
+                        ImGui.TextDisabled(ctx,
+                            ('Drag to reorder, %s-Click to disable'):format(OD_IMGUI_KEY_NAMES[ImGui.Mod_Alt]))
 
                         ImGui.SeparatorText(ctx, 'Tags, Presets and Favorites')
                         local col, colBG = app.gui.getTagColors(app.settings.current.tagDefaultColor)

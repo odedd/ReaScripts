@@ -51,12 +51,37 @@ function PluginAssetType:getData()
                 self.context.fxDevelopers[vendor] = true
             end
 
-            return true, name, (vendor == '' and nil or vendor)
+            local baseName = name or ''
+            local vendorBaseName = vendor or ''
+            local variant, variantPat, variantOrder
+            if vendor then
+                --  some vendors appear differently on different formats, so I try to unify them
+                for k, v in pairs(PLUGIN.VENDOR_ALIASES) do
+                    if OD_HasValue(v, vendor) then
+                        vendorBaseName = k
+                        break
+                    end
+                end
+            end
+
+            for i, varPat in ipairs(self.context.settings.current.variantOrder) do
+                if name:lower():match('%s' .. varPat:lower() .. '$') then
+                    local pat = OD_CaseInsensitivePattern(varPat)
+                    baseName, variant = name:match('(.*)%s' .. pat .. '$')
+                    variantOrder = i
+                    variantPat = varPat
+                    break
+                end
+            end
+
+
+            return true, name, (vendor ~= '' and vendor or nil), baseName,
+                (vendorBaseName ~= '' and vendorBaseName or nil), variant, variantPat, variantOrder
         end
 
         if full_name == '' then return false end
 
-        local success, name, vendor= extractNameVendor(full_name, fx_type)
+        local success, name, vendor, baseName, vendorBaseName, variant, variantPat, variantOrder = extractNameVendor(full_name, fx_type)
         if success then
             self.context.logger:logDebug('Parsing successful')
             self.context.logger:logDebug('Name', name)
@@ -70,7 +95,12 @@ function PluginAssetType:getData()
             full_name = full_name,
             fx_type = fx_type,
             name = name,
+            baseName = baseName,
             vendor = vendor,
+            vendorBaseName = vendorBaseName,
+            variant = variant,
+            variantPat = variantPat,
+            variantOrder = variantOrder,
             instrument = instrument,
             ident = ident
         }
@@ -99,21 +129,24 @@ function PluginAssetType:getData()
 end
 
 function PluginAssetType:assembleAsset(plugin)
-    if not self.context.settings.current.fxTypeVisibility[plugin.fx_type] then
-        return nil
-    end
 
     local asset = self:createAssetBase({
         type = self.assetTypeId,
         load = plugin.ident,
-        searchText = { { text = plugin.name }, { text = plugin.vendor or '' } },
+        searchText = { { text = plugin.baseName }, { text = plugin.vendor or '' } },
         group = plugin.group,
     })
 
+    if plugin.variant then table.insert(asset.searchText, { text = plugin.variant }) end
     asset.name = plugin.name
+    asset.baseName = plugin.baseName
+    asset.vendorBaseName = plugin.vendorBaseName
     asset.vendor = plugin.vendor
     asset.instrument = plugin.instrument
     asset.fx_type = plugin.fx_type
+    asset.variant = plugin.variant
+    asset.variantPat = plugin.variantPat
+    asset.variantOrder = plugin.variantOrder
     asset.categories = {}
     asset.folders = {}
 

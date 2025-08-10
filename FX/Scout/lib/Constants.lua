@@ -8,14 +8,6 @@ APP_PAGE = {
 }
 
 PLUGIN = {
-    VARIANT_PATTERNS = {
-        -- patterns in the plugin names that are actually variants of the same plugin.
-        -- this is determined by the plugin developers, and is not always consistent.
-        -- parantheses are there to mark which part of the name should be captured as the variant.
-        '%(?(mono)%)?', '%(?(stereo)%)?', '%(?(mono/stereo)%)?', '%(?(stereo/%d%.%d)%)?', '%(?(mono/%d%.%d)%)?',
-        '%(?(%d%.%d/%d%.%d)%)?',
-        '(upmix %dto%d)', '%(([ms])%)', '%((.-%->.+)%)', '(5%.0)', '(5%.1)',
-        '%((x86_64)%)', '%((x64)%)' },
     VENDOR_ALIASES = {
         -- some vendors have different names in different plugin types.
         ['iZotope'] = { 'iZotope, Inc.', 'iZotope' },

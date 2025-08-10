@@ -9,7 +9,7 @@ PB_Gui.init = function(self, fonts)
     self:createFontsImGui010({
         -- default = { },
         default = { file = 'Resources/Fonts/Cousine-Regular.ttf' },
-        bold = { file = 'Resources/Fonts/Cousine-Regular.ttf', flags = ImGui.FontFlags_Bold  },
+        bold = { file = 'Resources/Fonts/Cousine-Regular.ttf', flags = ImGui.FontFlags_Bold },
         -- default = {},
         -- bold = { flags = ImGui.FontFlags_Bold },
         icons = { file = 'Resources/Fonts/Icons-Regular.otf' },
@@ -455,7 +455,7 @@ PB_Gui.init = function(self, fonts)
     self.setting = function(self, stType, text, hint, val, data, sameline)
         local ctx = self.ctx
         local w, h = ImGui.GetWindowSize(ctx)
-        local thirdWidth = w / 2.5
+        local thirdWidth = w / 2
         local itemWidth = thirdWidth * 1.5 - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
         local data = data or {}
         local retval1, retval2
@@ -502,8 +502,14 @@ PB_Gui.init = function(self, fonts)
 
         if stType == 'combo' then
             _, retval1 = ImGui.Combo(ctx, '##' .. text, val, data.list)
-        elseif stType == 'label' then
-            ImGui.Dummy(ctx, 0, 0)
+            -- elseif stType == 'widget_label' then
+            -- ImGui.Dummy(ctx, 0, 0)
+            -- ImGui.PushTextWrapPos(ctx, widgetWidth)
+            -- local _, h = ImGui.CalcTextSize(ctx, text)
+            -- if ImGui.BeginChild(ctx, '##' .. text .. 'label', widgetWidth, h) then
+            --     ImGui.TextWrapped(ctx, val)
+            --     ImGui.EndChild(ctx)
+            -- end
         elseif stType == 'checkbox' then
             _, retval1 = ImGui.Checkbox(ctx, '##' .. text, val)
         elseif stType == 'dragint' then
@@ -658,11 +664,25 @@ PB_Gui.init = function(self, fonts)
             retval1 = newVal or val or -1
         elseif stType == 'orderable_list' then
             -- ImGui.Dummy(ctx, widgetWidth, 20)
+            ImGui.BeginGroup(ctx)
+            if sameline and data.listTopLabel then
+                ImGui.PushTextWrapPos(ctx, widgetWidth)
+                local _, h = ImGui.CalcTextSize(ctx, data.listTopLabel)
+                if ImGui.BeginChild(ctx, '##' .. text .. 'label', widgetWidth, h) then
+                    ImGui.TextWrapped(ctx, data.listTopLabel)
+                    ImGui.EndChild(ctx)
+                end
+                ImGui.PopTextWrapPos(ctx)
+            end
             local orderList, enabledList = val[1], val[2]
             if ImGui.BeginListBox(ctx, '##' .. text, widgetWidth, #orderList * ImGui.GetTextLineHeightWithSpacing(ctx) + select(1, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))) then
                 for i, v in ipairs(orderList) do
                     self:pushColors(self.st.col.settings.selectable[enabledList[v]])
                     local label = T.SETTINGS.LISTS[text] and T.SETTINGS.LISTS[text][v] or v
+                    if data.formatter then
+                        local success, rv = pcall(data.formatter, label)
+                        if success then label = rv end
+                    end
                     if ImGui.Selectable(ctx, label, false) then
                         if ImGui.IsKeyDown(ctx, ImGui.Mod_Alt) then
                             enabledList[v] = not enabledList[v]
@@ -684,6 +704,7 @@ PB_Gui.init = function(self, fonts)
                 end
                 ImGui.EndListBox(ctx)
             end
+            ImGui.EndGroup(ctx)
             retval1 = orderList
             retval2 = enabledList
             -- _, retval1 = ImGui.InputTextWithHint(ctx, '##' .. text, data.hint, val)

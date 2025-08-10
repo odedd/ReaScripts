@@ -20,7 +20,7 @@ function OD_Settings:init()
     end
 end
 
-function OD_Settings:getDefault(factory)
+function OD_Settings:getDefault(factory, listsToUpdate)
     if factory == nil then factory = false end
     local st = {
         default = OD_DeepCopy(self.default)
@@ -30,47 +30,39 @@ function OD_Settings:getDefault(factory)
     end
     if not factory then
         local loaded_ext_settings = table.load(self.dfsetfile) or {}
+
+        if listsToUpdate then
+            -- local updated = false
+            for _, listName in ipairs(listsToUpdate) do
+                local defaultList = st.default[listName]
+                local currentList = loaded_ext_settings[listName]
+                if type(self.default[listName]) == "table" then
+                    if OD_IsList(defaultList) then
+                        for i, item in ipairs(defaultList) do
+                            if not OD_HasValue(currentList, item) then
+                                table.insert(currentList, item)
+                                -- updated = true
+                            end
+                        end
+                        for i = #currentList, 1, -1 do
+                            local item = currentList[i]
+                            if not OD_HasValue(defaultList, item) then
+                                table.remove(currentList, i)
+                                -- updated = true
+                            end
+                        end
+                    end
+                end
+            end
+        end
         st.default = OD_MergeTables(st.default, loaded_ext_settings)
-        -- for k, v in pairs(loaded_ext_settings or {}) do
-        --     if type(v) == 'table' then
-        --         -- st.default[k] = v
-        --         st.default[k] = OD_MergeTables(st.default[k], v)
-        --     else
-        --         st.default[k] = v
-        --     end
-        -- end
     end
     return st
 end
 
 function OD_Settings:load(listsToUpdate)
-    local st = self:getDefault()
+    local st = self:getDefault(false, listsToUpdate)
     OD_MergeTables(self.current, st.default)
-    if listsToUpdate then
-        local updated = false
-        for _, listName in ipairs(listsToUpdate) do
-            local defaultList = self.default[listName]
-            local currentList = self.current[listName]
-            if type(self.default[listName]) == "table" then
-                if OD_IsList(defaultList) then
-                    for i, item in ipairs(defaultList) do
-                        if not OD_HasValue(currentList, item) then
-                            table.insert(currentList, item)
-                            updated = true
-                        end
-                    end
-                -- else
-                --     for item, value in ipairs(defaultList) do
-                --         if not currentList[item] then
-                --             currentList[item] = value
-                --             updated = true
-                --         end
-                --     end
-                end
-            end
-        end
-        if updated then self:save() end
-    end
 end
 
 function OD_Settings:save()

@@ -67,20 +67,20 @@ PB_Settings = OD_Settings:new({
         },
         showOnlyHighestPriorityPlugin = true,
         groupOrder = {
-            SPECIAL_GROUPS.RECENTS,     -- Recents (special group)
-            SPECIAL_GROUPS.FAVORITES,   -- Favorites (special group)
-            SPECIAL_GROUPS.PLUGINS,     -- Placeholder for all FX types (VST3, AU, etc.)
-            "QuickChainPresetAssetType",      -- QuickChain asset type
-            "FXChainAssetType",         -- FX Chains asset type
-            "TrackTemplateAssetType",   -- Track Templates asset type
-            "ProjectTemplateAssetType", -- Project Templates asset type
-            "TrackAssetType",           -- Tracks asset type
-            "TakeAssetType",            -- Takes asset type
-            "MarkerAssetType",          -- Markers asset type
-            "RegionAssetType",          -- Regions asset type
-            "TakeMarkerAssetType",      -- Take Markers asset type
-            "ProjectAssetType",         -- Projects asset type
-            "ActionAssetType",          -- Actions asset type
+            SPECIAL_GROUPS.RECENTS,      -- Recents (special group)
+            SPECIAL_GROUPS.FAVORITES,    -- Favorites (special group)
+            SPECIAL_GROUPS.PLUGINS,      -- Placeholder for all FX types (VST3, AU, etc.)
+            "QuickChainPresetAssetType", -- QuickChain asset type
+            "FXChainAssetType",          -- FX Chains asset type
+            "TrackTemplateAssetType",    -- Track Templates asset type
+            "ProjectTemplateAssetType",  -- Project Templates asset type
+            "TrackAssetType",            -- Tracks asset type
+            "TakeAssetType",             -- Takes asset type
+            "MarkerAssetType",           -- Markers asset type
+            "RegionAssetType",           -- Regions asset type
+            "TakeMarkerAssetType",       -- Take Markers asset type
+            "ProjectAssetType",          -- Projects asset type
+            "ActionAssetType",           -- Actions asset type
         },
         groupVisibility = {
             [SPECIAL_GROUPS.RECENTS] = true,     -- Recents (special group)
@@ -96,7 +96,39 @@ PB_Settings = OD_Settings:new({
             ["TakeMarkerAssetType"] = true,      -- Take Markers asset type
             ["RegionAssetType"] = true,          -- Markers asset type
             ["ProjectTemplateAssetType"] = true, -- Project Templates asset type
-            ["QuickChainPresetAssetType"] = true       -- Project Templates asset type
+            ["QuickChainPresetAssetType"] = true -- Project Templates asset type
+        },
+        showOnlyHighestPriorityVariant = false,
+        variantOrder = {
+            '%(?(stereo)%)?',
+            '%(?(mono)%)?',
+            '%(?(mono/stereo)%)?',
+            '%(?(stereo/%d%.%d)%)?',
+            '%(?(mono/%d%.%d)%)?',
+            '%(?(%d%.%d/%d%.%d)%)?',
+            '(upmix %dto%d)',
+            '%((m)%)',
+            '%((s)%)',
+            '%((.-%->.+)%)',
+            '(5%.0)',
+            '(5%.1)',
+            '%((x86_64)%)',
+            '%((x64)%)' },
+        variantVisibility = {
+            ['%(?(stereo)%)?'] = true,
+            ['%(?(mono)%)?'] = true,
+            ['%(?(mono/stereo)%)?'] = true,
+            ['%(?(stereo/%d%.%d)%)?'] = true,
+            ['%(?(mono/%d%.%d)%)?'] = true,
+            ['%(?(%d%.%d/%d%.%d)%)?'] = true,
+            ['(upmix %dto%d)'] = true,
+            ['%((m)%)'] = true,
+            ['%((s)%)'] = true,
+            ['%((.-%->.+)%)'] = true,
+            ['(5%.0)'] = true,
+            ['(5%.1)'] = true,
+            ['%((x86_64)%)'] = true,
+            ['%((x64)%)'] = true,
         },
         uiScale = 1,
 

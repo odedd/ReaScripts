@@ -133,11 +133,19 @@ T.SETTINGS = {
     },
     FX_TYPE_ORDER = {
         -- LABEL = 'FX type priority',
-        HINT = 'The order in which FX are displayed in the search window.',
+        HINT = 'The order in which FX are displayed in the search window, based on their type.',
+    },
+    VARIANT_ORDER = {
+        -- LABEL = 'FX type priority',
+        HINT = 'The order in which FX are displayed in the search window, based on their variant.',
     },
     SHOW_ONLY_HIGHEST_PRIORITY_FX = {
-        LABEL = 'Show high priority FX',
-        HINT = 'If FX exist in several formats, only show the highest priority ones.'
+        LABEL = 'highest priority FX type only',
+        HINT = 'If FX exist in several formats, only show the highest priority one.'
+    },
+    SHOW_ONLY_HIGHEST_VARIANT_FX = {
+        LABEL = 'Highest priority variant only',
+        HINT = 'If FX exist in several variants, only show the highest priority one.'
     },
     SHOW_FX_UI = {
         LABEL = 'Open FX UI after adding',
@@ -406,7 +414,7 @@ T.HINTS = {
     TAG_CONTEXT_MENU_COLLAPSE_DESCENDANTS = 'Collapse %s and its nested tags',
     TAG_CONTEXT_MENU_DELETE = 'Delete %s and its nested tags. CANNOT BE UNDONE.',
     HOVER_TAG_ALT_TO_DELETE = '%s+click to remove tag.',
-    RESULT_CONTEXT_MENU_COPY_TAGS_TO_ALL_TYPES = 'Copy selected item\'s tags to all identical FX (different formats, mono/stereo variants etc...)',
+    RESULT_CONTEXT_MENU_COPY_TAGS_TO_ALL_TYPES = 'Copy selected item\'s tags to all the FX\'s other formats and variants',
     RESULT_CONTEXT_MENU_CLEAR_TAGS = 'Remove selected item\'s tags.',
     RESULT_CONTEXT_MENU_COPY_TAGS = 'Copy selected item\'s tags to the clipboard.',
     RESULT_CONTEXT_MENU_PASTE_TAGS = 'Paste tags from the clipboard.',
