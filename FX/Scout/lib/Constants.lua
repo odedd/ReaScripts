@@ -165,18 +165,23 @@ FILTER_MENU = {
     [FILTER_TYPES.OTHER] = {
         order = 7,
         items = {
-            ['Untagged'] = {
+            ['Tagged'] = {
                 order = 1,
+                allQuery = { tagged = 'all' },
+                query = { tagged = true }
+            },
+            ['Untagged'] = {
+                order = 2,
                 allQuery = { untagged = 'all' },
                 query = { untagged = true }
             },
             ['Hidden'] = {
-                order = 2,
+                order = 3,
                 allQuery = { hidden = 'all' },
                 query = { hidden = true }
             },
             ['Recently Added'] = {
-                order = 3,
+                order = 4,
                 allQuery = { recentlyAdded = 'all' },
                 query = { recentlyAdded = true }
             }

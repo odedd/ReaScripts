@@ -360,7 +360,7 @@ RunApp = function()
                     local hasTypeFilters = validatedFilter.type or validatedFilter.fx_type or
                         validatedFilter.fxDeveloper or validatedFilter.fxFolderId or
                         validatedFilter.fxCategory or validatedFilter.untagged or
-                        validatedFilter.hidden or validatedFilter.recentlyAdded
+                        validatedFilter.tagged or validatedFilter.hidden or validatedFilter.recentlyAdded
                     local hasTagFilters = next(validatedFilter.tags) ~= nil
 
                     -- Optimization 3: Batch asset filtering by type (group common type checks)
@@ -372,6 +372,7 @@ RunApp = function()
                         typeFilterChecks.fxFolderId = validatedFilter.fxFolderId
                         typeFilterChecks.fxCategory = validatedFilter.fxCategory
                         typeFilterChecks.untagged = validatedFilter.untagged
+                        typeFilterChecks.tagged = validatedFilter.tagged
                         typeFilterChecks.hidden = validatedFilter.hidden
                         typeFilterChecks.recentlyAdded = validatedFilter.recentlyAdded
                     end
@@ -437,6 +438,9 @@ RunApp = function()
                                     goto skip
                                 end
                                 if (typeFilterChecks.untagged and (#asset.tags > 0)) then
+                                    goto skip
+                                end
+                                if (typeFilterChecks.tagged and (#asset.tags == 0)) then
                                     goto skip
                                 end
                                 if (typeFilterChecks.recentlyAdded and (not asset.addedAt or asset.addedAt < (os.time() - app.settings.current.recentlyAddedDays * 86400))) then
@@ -622,7 +626,10 @@ RunApp = function()
             end,
             executeRandomResult = function(skipAllConfirmations)
                 app.flow.getActiveFilters()
-                if OD_TableLength(app.temp.activeFilters) == 0 then app.flow.msg('Must have a filter applied to run a random result') return end
+                if OD_TableLength(app.temp.activeFilters) == 0 then
+                    app.flow.msg('Must have a filter applied to run a random result')
+                    return
+                end
                 app.temp.resultsForExecution = { app.temp.searchResults[math.random(#app.temp.searchResults)] }
                 app.selection:execute(0, RESULT_CONTEXT['IGNORE_KEYS'], nil, nil, skipAllConfirmations)
             end,
@@ -2935,11 +2942,11 @@ RunApp = function()
                                 if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) and app.temp.dragFromChainToObject then
                                     if app.temp.dragFromChainToObject == -1 then
                                         app.flow.executeSelectedResults(app.temp.quickChain,
-                                            RESULT_CONTEXT.DRAGGED_TO_BLANK, nil,nil,{ multipleResults = true})
+                                            RESULT_CONTEXT.DRAGGED_TO_BLANK, nil, nil, { multipleResults = true })
                                     else
                                         app.flow.executeSelectedResults(app.temp.quickChain,
                                             RESULT_CONTEXT.DRAGGED_TO_OBJECT, nil, app.temp
-                                            .dragFromChainToObject, { multipleResults = true})
+                                            .dragFromChainToObject, { multipleResults = true })
                                     end
                                     app.temp.dragFromChainToObject = nil
                                 end
@@ -2982,7 +2989,7 @@ RunApp = function()
                         if ImGui.Button(ctx, ICONS.LIGHTNING .. '##quickChainAdd',
                                 w - spacingX - paddingX * 2 - ImGui.CalcTextSize(ctx, ICONS.ELLIPSIS)) then
                             app.flow.executeSelectedResults(app.temp.quickChain,
-                                RESULT_CONTEXT.QUICK_CHAIN, nil, nil, { multipleResults = true})
+                                RESULT_CONTEXT.QUICK_CHAIN, nil, nil, { multipleResults = true })
                         end
                         if #app.temp.quickChain > 0 then
                             local hint = (app.guiHelpers.getHintFor(app.temp.quickChain[1], nil, RESULT_CONTEXT.QUICK_CHAIN, 1))
@@ -3003,7 +3010,7 @@ RunApp = function()
                                 #app.temp.quickChain, RESULT_CONTEXT.QUICK_CHAIN)
                             if rv then
                                 app.flow.executeSelectedResults(app.temp.quickChain,
-                                    keymod | RESULT_CONTEXT.QUICK_CHAIN, nil, nil, { multipleResults = true})
+                                    keymod | RESULT_CONTEXT.QUICK_CHAIN, nil, nil, { multipleResults = true })
                             end
                             ImGui.Separator(ctx)
                             if ImGui.MenuItem(ctx, 'Clear QuickChain') then
@@ -4781,7 +4788,7 @@ RunApp = function()
                                         #app.temp.quickChain > 0
                                     app.flow.executeSelectedResults(
                                         goWithQuickChain and app.temp.quickChain or app.selection:results(),
-                                        RESULT_CONTEXT.KEYBOARD, nil, nil, goWithQuickChain and { multipleResults = true})
+                                        RESULT_CONTEXT.KEYBOARD, nil, nil, goWithQuickChain and { multipleResults = true })
                                 end
                                 pressed = true
                             elseif app.guiHelpers.isShortcutPressed('quickTag') then
