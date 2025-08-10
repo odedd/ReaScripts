@@ -22,6 +22,7 @@ PB_Settings = OD_Settings:new({
         hideAllTags = false,
         shortcuts = {
             markFavorite = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_F,
+            markHidden = ImGui.Mod_Ctrl | ImGui.Key_H,
             closeScript = ImGui.Key_Escape,
             hardCloseScript = ImGui.Mod_Ctrl | ImGui.Key_Q,
             selectAllResults = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_A,

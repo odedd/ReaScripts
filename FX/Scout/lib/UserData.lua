@@ -8,6 +8,7 @@ PB_UserData = OD_Settings:new({
         taggedAssets = {},
         recents = {},
         presets = {},
+        hidden = {},
         quickChainPresets = {},
         tagIdCount = 7,
         presetIdCount = 0,
@@ -104,7 +105,9 @@ function PB_UserData:export(filename)
     for id, tag in pairs(self.current.tagInfo) do
         -- Sanitize tag name and write with proper escaping
         local sanitizedName = OD_EscapeCSV(tag.name)
-        file:write(string.format('%d,%s,%d,%d,%d,%d,%d\n', id, sanitizedName, tag.parentId or 0, tag.order or 0, tag.color or 0, (tag.useDefaultColor == nil) and 1 or (tag.useDefaultColor and 1 or 0),(tag.hide == nil) and 0 or (tag.hide and 1 or 0)))
+        file:write(string.format('%d,%s,%d,%d,%d,%d,%d\n', id, sanitizedName, tag.parentId or 0, tag.order or 0,
+            tag.color or 0, (tag.useDefaultColor == nil) and 1 or (tag.useDefaultColor and 1 or 0),
+            (tag.hide == nil) and 0 or (tag.hide and 1 or 0)))
         tagCount = tagCount + 1
     end
     file:write('\n')
@@ -187,10 +190,23 @@ function PB_UserData:export(filename)
         file:write(sanitizedFavorite .. '\n')
         favoritesCount = favoritesCount + 1
     end
+    file:write('\n')
+
+    self.app.logger:logDebug('Exported favorites', favoritesCount)
+
+    -- Export hidden
+    file:write('[hidden]\n')
+    local hiddenCount = 0
+    for _, hiddenAsset in ipairs(self.current.hidden) do
+        -- Sanitize hidden asset ID and write with proper escaping
+        local sanitizedHidden = OD_EscapeCSV(hiddenAsset)
+        file:write(sanitizedHidden .. '\n')
+        hiddenCount = hiddenCount + 1
+    end
 
     file:close()
 
-    self.app.logger:logDebug('Exported favorites', favoritesCount)
+    self.app.logger:logDebug('Exported hidden', hiddenCount)
     self.app.logger:logInfo('Successfully exported ' ..
         tagCount ..
         ' tags, ' ..
@@ -198,7 +214,9 @@ function PB_UserData:export(filename)
         ' tagged assets, ' ..
         presetsCount ..
         ' presets, ' ..
-        quickChainPresetsCount .. ' QuickChain Presets, and ' .. favoritesCount .. ' favorites to ' .. filename)
+        quickChainPresetsCount .. ' QuickChain Presets, ' ..
+        hiddenCount .. ' Hidden items, ' ..
+        'and ' .. favoritesCount .. ' favorites to ' .. filename)
 
     return true
 end
@@ -238,7 +256,8 @@ function PB_UserData:import(args)
         taggedAssets = 0,
         presets = 0,
         quickChainPresets = 0,
-        favorites = 0
+        favorites = 0,
+        hidden = 0
     }
 
     local currentSection = nil
@@ -257,6 +276,8 @@ function PB_UserData:import(args)
             currentSection = "quickChainPresets"
         elseif line:match("^%[favorites%]") then
             currentSection = "favorites"
+        elseif line:match("^%[hidden%]") then
+            currentSection = "hidden"
         elseif currentSection and line ~= "" then
             sectionCounts[currentSection] = sectionCounts[currentSection] + 1
         end
@@ -277,6 +298,7 @@ function PB_UserData:import(args)
         ', taggedAssets: ' .. sectionCounts.taggedAssets ..
         ', presets: ' .. sectionCounts.presets ..
         ', quickChainPresets: ' .. sectionCounts.quickChainPresets ..
+        ', hidden: ' .. sectionCounts.hidden ..
         ', favorites: ' .. sectionCounts.favorites)
 
     local section = nil
@@ -285,6 +307,7 @@ function PB_UserData:import(args)
     local importedPresets = {}           -- Track imported presets
     local importedquickChainPresets = {} -- Track imported QuickChain Presets
     local importedFavorites = {}         -- Track imported favorites
+    local importedHidden = {}            -- Track imported hidden items
     local importedAssetTypes = {}        -- Map of imported asset type ID -> class name
     local assetTypeMapping = {}          -- Map of imported asset type ID -> current system asset type ID
     local unmappedAssetTypes = {}        -- Track asset types that couldn't be mapped
@@ -316,6 +339,8 @@ function PB_UserData:import(args)
             section = "quickChainPresets"
         elseif line:match("^%[favorites%]") then
             section = "favorites"
+        elseif line:match("^%[hidden%]") then
+            section = "hidden"
         elseif section == "version" and line ~= "" then
             local version = line:match("^fileVersion=(.+)$")
             if version then
@@ -353,7 +378,8 @@ function PB_UserData:import(args)
             -- Use safe CSV parsing for tag info
             local fields = OD_ParseCSVLine(line, ",")
             if #fields >= 6 then
-                local id, name, parentId, order, color, useDefaultColor, hide = fields[1], fields[2], fields[3], fields[4], fields[5], fields[6], fields[7]
+                local id, name, parentId, order, color, useDefaultColor, hide = fields[1], fields[2], fields[3],
+                    fields[4], fields[5], fields[6], fields[7]
                 if id and name and tonumber(id) then
                     importedTagInfo[tonumber(id)] = {
                         name = name, -- Already unescaped by OD_ParseCSVLine
@@ -434,7 +460,7 @@ function PB_UserData:import(args)
                         -- Use efficient direct table building instead of table.insert in loop
                         local tag_ids = {}
                         local tag_count = 0
-                        
+
                         -- Use efficient pattern matching for tag extraction
                         for tag_id in tagsStr:gmatch(tagPattern) do
                             local numericId = tonumber(tag_id)
@@ -604,6 +630,14 @@ function PB_UserData:import(args)
             else
                 self.app.logger:logError('Invalid favorites line format', line)
             end
+        elseif section == "hidden" and line ~= "" then
+            -- Parse hidden: one asset ID per line
+            local hiddenAsset = OD_UnescapeCSV(line)
+            if hiddenAsset and hiddenAsset ~= "" then
+                table.insert(importedHidden, hiddenAsset)
+            else
+                self.app.logger:logError('Invalid hidden line format', line)
+            end
         end
         if section then
             count[section] = (count[section] or 0) + 1
@@ -630,13 +664,15 @@ function PB_UserData:import(args)
     local importedquickChainPresetsCount = 0
     for _ in pairs(importedquickChainPresets) do importedquickChainPresetsCount = importedquickChainPresetsCount + 1 end
     local importedFavoritesCount = #importedFavorites
+    local importedHiddenCount = #importedHidden
     self.app.logger:logDebug('Parsed ' ..
         importedTagCount ..
         ' tags, ' ..
         importedAssetCount ..
         ' tagged assets, ' ..
         importedPresetsCount .. ' presets, ' ..
-        importedquickChainPresetsCount .. ' QuickChain Presets, and ' ..
+        importedquickChainPresetsCount .. ' QuickChain Presets, ' ..
+        importedHiddenCount .. ' Hidden Items, and ' ..
         importedFavoritesCount .. ' favorites from file')
     if fileVersion then
         self.app.logger:logDebug('File version', fileVersion)
@@ -764,9 +800,9 @@ function PB_UserData:import(args)
 
         -- Helper function to process tags in hierarchical dependency order (parents before children)
         local function processTagsHierarchically()
-            local processedTags = {}   -- Set of processed tag IDs
+            local processedTags = {}    -- Set of processed tag IDs
             local processedTagCount = 0 -- Counter for processed tags (avoid OD_TableLength calls)
-            local processingQueue = {} -- List of tags ready to process (dependencies resolved)
+            local processingQueue = {}  -- List of tags ready to process (dependencies resolved)
 
             -- Build dependency map: child -> parent
             local childToParent = {}
@@ -1029,7 +1065,7 @@ function PB_UserData:import(args)
     local normalizedPathCache = {}
     local basenameCache = {}
     local systemAssetsCache = {} -- Cache processed system assets per asset type
-    
+
     -- Pre-compiled patterns for asset mapping (shared across all calls)
     local mapAssetTypePattern = "^(%d+)"
     local mapAssetPathPattern = "^%d+%s+(.+)$"
@@ -1494,6 +1530,77 @@ function PB_UserData:import(args)
     self.app.logger:logInfo('Favorites import: ' ..
         mappedFavoritesCount .. ' mapped, ' .. skippedFavoritesCount .. ' skipped, total favorites: ' .. #finalFavorites)
 
+    -- Process imported hidden items
+    local mappedHiddenCount = 0
+    local skippedHiddenCount = 0
+    local finalHidden = {}
+    local hiddenSet = {} -- Use lookup set for O(1) duplicate checking
+
+    if mergeMode then
+        -- In merge mode, preserve existing hidden items
+        for _, hiddenAsset in ipairs(self.current.hidden) do
+            if not hiddenSet[hiddenAsset] then
+                table.insert(finalHidden, hiddenAsset)
+                hiddenSet[hiddenAsset] = true
+            end
+        end
+    end
+
+    -- Map imported hidden items to current system assets
+    for _, importedHiddenItem in ipairs(importedHidden) do
+        local mappedAssetId, mappedAssetType = mapImportedAssetToSystem(importedHiddenItem)
+
+        if mappedAssetId then
+            -- Add to hidden items if not already present
+            if not hiddenSet[mappedAssetId] then
+                table.insert(finalHidden, mappedAssetId)
+                hiddenSet[mappedAssetId] = true
+                mappedHiddenCount = mappedHiddenCount + 1
+                self.app.logger:logDebug('✓ Mapped hidden item "' ..
+                importedHiddenItem .. '" to "' .. mappedAssetId .. '"')
+            else
+                -- Don't count duplicates as mapped
+                self.app.logger:logDebug('✓ Hidden item "' .. mappedAssetId .. '" already exists, skipping duplicate')
+            end
+        else
+            -- Check if we should import unmapped hidden items (e.g., for tracks)
+            local importedAssetTypeId = tonumber(importedHiddenItem:match("^(%d+)"))
+            local mappedAssetTypeId = assetTypeMapping[importedAssetTypeId] or importedAssetTypeId
+            local cachedAssetTypeData = mappedAssetTypeId and getAssetTypeData(mappedAssetTypeId)
+            local shouldImportUnmapped = cachedAssetTypeData and
+                not cachedAssetTypeData.assetType.requiresMappingOnImport
+
+            if shouldImportUnmapped then
+                -- Import unmapped hidden items (will apply when asset becomes available)
+                local remappedAssetId = importedHiddenItem
+                if importedAssetTypeId and mappedAssetTypeId and importedAssetTypeId ~= mappedAssetTypeId then
+                    remappedAssetId = importedHiddenItem:gsub("^" .. importedAssetTypeId, tostring(mappedAssetTypeId))
+                end
+
+                if not hiddenSet[remappedAssetId] then
+                    table.insert(finalHidden, remappedAssetId)
+                    hiddenSet[remappedAssetId] = true
+                    mappedHiddenCount = mappedHiddenCount + 1
+                    self.app.logger:logDebug('✓ Imported unmapped hidden item "' ..
+                        remappedAssetId .. '" (will apply when asset becomes available)')
+                else
+                    -- Don't count duplicates as mapped
+                    self.app.logger:logDebug('✓ Unmapped hidden item "' ..
+                        remappedAssetId .. '" already exists, skipping duplicate')
+                end
+            else
+                skippedHiddenCount = skippedHiddenCount + 1
+                self.app.logger:logDebug('✗ Hidden item "' .. importedHiddenItem .. '" not found in system assets')
+            end
+        end
+    end
+
+    -- Update hidden items
+    self.current.hidden = finalHidden
+
+    self.app.logger:logInfo('Hidden items import: ' ..
+        mappedHiddenCount .. ' mapped, ' .. skippedHiddenCount .. ' skipped, total hidden items: ' .. #finalHidden)
+
     -- Process imported presets
     local mappedPresetsCount = 0
     local skippedPresetsCount = 0
@@ -1935,10 +2042,12 @@ function PB_UserData:import(args)
     local totalPresetsImported = mappedPresetsCount or 0
     local totalQuickChainPresetsImported = mappedquickChainPresetsCount or 0
     local totalFavoritesImported = mappedFavoritesCount or 0
+    local totalHiddenImported = mappedHiddenCount or 0
     local totalAssetsSkipped = skippedAssetsCount or 0
     local totalPresetsSkipped = skippedPresetsCount or 0
     local totalQuickChainPresetsSkipped = skippedquickChainPresetsCount or 0
     local totalFavoritesSkipped = skippedFavoritesCount or 0
+    local totalHiddenSkipped = skippedHiddenCount or 0
 
     if mergeMode then
         -- In merge mode, count new tags created
@@ -1957,12 +2066,24 @@ function PB_UserData:import(args)
         totalAssetsImported, totalAssetsSkipped,                       -- items tagged, items skipped
         totalPresetsImported, totalPresetsSkipped,                     -- presets imported, presets skipped
         totalQuickChainPresetsImported, totalQuickChainPresetsSkipped, -- QuickChain presets imported, skipped
+        totalHiddenImported, totalHiddenSkipped,                       -- hidden items imported, hidden items skipped
         totalFavoritesImported, totalFavoritesSkipped)                 -- favorites imported, favorites skipped
     if self.app.logger.profile then self.app.profiler.stop() end
 
     return { success = true, msg = msg }
 end
 
+function PB_UserData:toggleAssetHidden(assetKey)
+    if OD_HasValue(self.current.hidden, assetKey) then
+        OD_RemoveValue(self.current.hidden, assetKey)
+        self:save()
+        return false
+    else
+        table.insert(self.current.hidden, assetKey)
+        self:save()
+        return true
+    end
+end
 function PB_UserData:toggleAssetFavorite(assetKey)
     if OD_HasValue(self.current.favorites, assetKey) then
         OD_RemoveValue(self.current.favorites, assetKey)
@@ -2223,7 +2344,7 @@ function PB_UserData:createTag(name, parent, putAtStart)
     for id, tagInfo in pairs(self.current.tagInfo) do
         if tagInfo.parentId == parentId then
             if putAtStart then
-            tagInfo.order = tagInfo.order + 1
+                tagInfo.order = tagInfo.order + 1
             end
             levelCount = levelCount + 1
         end
@@ -2657,7 +2778,7 @@ function PB_UserData:convertFoldersToTags()
     local foldersConverted = 0
     local assetsTagged = 0
     local count = 0
-    
+
     -- Cache total folders count to avoid expensive OD_TableLength calls
     local totalFolders = 0
     for _ in pairs(self.app.engine.fxFolders) do
@@ -2681,7 +2802,7 @@ function PB_UserData:convertFoldersToTags()
             table.insert(pluginAssets, asset)
         end
     end
-    
+
     self.app.logger:logDebug('Found ' .. #pluginAssets .. ' plugin assets to process')
 
     -- Iterate through each folder
@@ -2720,7 +2841,7 @@ function PB_UserData:convertFoldersToTags()
             }
             -- Update cache for future lookups
             existingFolderTags[folderName:lower()] = targetTagId
-            
+
             if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                 self.app.logger:logDebug('Created tag "' ..
                     folderName .. '" with ID ' .. targetTagId .. ' under "From Folders"')
@@ -2741,7 +2862,7 @@ function PB_UserData:convertFoldersToTags()
                 -- Direct tag addition without save overhead (each plugin can only be in one folder)
                 self.current.taggedAssets[asset.id] = self.current.taggedAssets[asset.id] or {}
                 local assetTags = self.current.taggedAssets[asset.id]
-                
+
                 -- Check if tag already exists using faster method than OD_HasValue
                 local tagExists = false
                 for _, existingTagId in ipairs(assetTags) do
@@ -2750,7 +2871,7 @@ function PB_UserData:convertFoldersToTags()
                         break
                     end
                 end
-                
+
                 if not tagExists then
                     table.insert(assetTags, targetTagId)
                     assetsTagged = assetsTagged + 1
@@ -2847,7 +2968,7 @@ function PB_UserData:convertCategoriesToTags(args)
     local categoriesConverted = 0
     local assetsTagged = 0
     local count = 0
-    
+
     -- Cache total categories count to avoid expensive OD_TableLength calls
     local totalCategories = 0
     for _ in pairs(self.app.engine.fxCategories) do
@@ -2869,7 +2990,7 @@ function PB_UserData:convertCategoriesToTags(args)
             table.insert(pluginAssets, asset)
         end
     end
-    
+
     self.app.logger:logDebug('Found ' .. #pluginAssets .. ' plugin assets to process')
 
     -- Iterate through each category
@@ -2901,7 +3022,7 @@ function PB_UserData:convertCategoriesToTags(args)
             }
             -- Update cache for future lookups
             existingCategoryTags[categoryName:lower()] = targetTagId
-            
+
             if self.app.logger.level == self.app.logger.LOG_LEVEL.DEBUG then
                 self.app.logger:logDebug('Created tag "' ..
                     categoryName .. '" with ID ' .. targetTagId .. ' under "From Categories"')
@@ -2921,7 +3042,7 @@ function PB_UserData:convertCategoriesToTags(args)
                 -- Direct tag addition without save overhead
                 self.current.taggedAssets[asset.id] = self.current.taggedAssets[asset.id] or {}
                 local assetTags = self.current.taggedAssets[asset.id]
-                
+
                 -- Check if tag already exists using faster method than OD_HasValue
                 local tagExists = false
                 for _, existingTagId in ipairs(assetTags) do
@@ -2930,7 +3051,7 @@ function PB_UserData:convertCategoriesToTags(args)
                         break
                     end
                 end
-                
+
                 if not tagExists then
                     table.insert(assetTags, targetTagId)
                     assetsTagged = assetsTagged + 1

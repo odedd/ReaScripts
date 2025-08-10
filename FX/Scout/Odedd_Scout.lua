@@ -197,6 +197,18 @@ RunApp = function()
                     end
                 end
             end,
+            selectAll = function(self)
+                local lastResultWithAllowMultiple
+                for i = #app.temp.searchResults, 1, -1 do
+                    if app.temp.searchResults[i].allowMultiple then
+                        lastResultWithAllowMultiple = i
+                        break
+                    end
+                end
+                if lastResultWithAllowMultiple then
+                    self:selectRange(1, lastResultWithAllowMultiple)
+                end
+            end,
             selectRange = function(self, fromIdx, toIdx)
                 local from, to = math.min(fromIdx, toIdx), math.max(fromIdx, toIdx)
 
@@ -421,7 +433,8 @@ RunApp = function()
                     local hasTextFilter = #filterWords > 0
                     local hasTypeFilters = validatedFilter.type or validatedFilter.fx_type or
                         validatedFilter.fxDeveloper or validatedFilter.fxFolderId or
-                        validatedFilter.fxCategory or validatedFilter.untagged or validatedFilter.recentlyAdded
+                        validatedFilter.fxCategory or validatedFilter.untagged or
+                        validatedFilter.hidden or validatedFilter.recentlyAdded
                     local hasTagFilters = next(validatedFilter.tags) ~= nil
 
                     -- Optimization 3: Batch asset filtering by type (group common type checks)
@@ -433,6 +446,7 @@ RunApp = function()
                         typeFilterChecks.fxFolderId = validatedFilter.fxFolderId
                         typeFilterChecks.fxCategory = validatedFilter.fxCategory
                         typeFilterChecks.untagged = validatedFilter.untagged
+                        typeFilterChecks.hidden = validatedFilter.hidden
                         typeFilterChecks.recentlyAdded = validatedFilter.recentlyAdded
                     end
 
@@ -449,7 +463,9 @@ RunApp = function()
                         if not asset.foundIndexes then
                             asset.foundIndexes = {}
                         end
-
+                        if asset.hidden and not typeFilterChecks.hidden then
+                            goto skip
+                        end
                         -- special cases for plugins
                         if asset.type == ASSET_TYPE.PluginAssetType then
                             -- fx type visibility
@@ -489,6 +505,9 @@ RunApp = function()
                                     goto skip
                                 end
                                 if (typeFilterChecks.fx_type and asset.fx_type ~= typeFilterChecks.fx_type) then
+                                    goto skip
+                                end
+                                if (typeFilterChecks.hidden and not asset.hidden) then
                                     goto skip
                                 end
                                 if (typeFilterChecks.untagged and (#asset.tags > 0)) then
@@ -1916,6 +1935,46 @@ RunApp = function()
                                                         app.selection:selectOnly(row.index)
                                                     end
                                                 end
+                                                if ImGui.MenuItem(ctx, 'Toggle favorite', app.guiHelpers.shortCutToText(app.settings.current.shortcuts['markFavorite'])) then
+                                                    -- Toggle favorite status for all selected assets
+                                                    pressed = true
+                                                    local selectedResults = app.selection:results()
+                                                    if #selectedResults > 0 then
+                                                        -- Use the first selected asset to determine the action (favorite or unfavorite)
+                                                        local firstResult = selectedResults[1]
+                                                        local willFavorite = not firstResult.favorite
+
+                                                        -- Use the batch operation for efficiency
+                                                        local changed = firstResult:batchToggleFavorites(selectedResults,
+                                                            willFavorite)
+
+                                                        if changed then
+                                                            -- Use filterResults to maintain selection on all affected assets
+                                                            app.flow.filterResults(nil, nil, true)
+                                                        end
+                                                    end
+                                                end
+                                                if ImGui.MenuItem(ctx, 'Toggle hide', app.guiHelpers.shortCutToText(app.settings.current.shortcuts['markHidden'])) then
+                                                    local selectedResults = app.selection:results()
+                                                    if #selectedResults > 0 then
+                                                        -- Use the first selected asset to determine the action (favorite or unfavorite)
+                                                        local firstResult = selectedResults[1]
+                                                        local willHide = not firstResult.hidden
+
+                                                        -- Use the batch operation for efficiency
+                                                        local changed = firstResult:batchToggleHidden(selectedResults,
+                                                            willHide)
+
+                                                        if changed then
+                                                            app.flow.filterResults(nil, true)
+                                                            if willHide then
+                                                                app.selection:selectOnly(math.min(
+                                                                    #app.temp.searchResults,
+                                                                    app.selection.keyboardPos))
+                                                            end
+                                                        end
+                                                    end
+                                                end
                                                 if ImGui.BeginMenu(ctx, 'Tags') then
                                                     app.guiHelpers.resultTagContextMenu(ctx, tagInfo)
                                                     ImGui.EndMenu(ctx)
@@ -1945,6 +2004,15 @@ RunApp = function()
                                                 ImGui.SameLine(ctx)
                                             end
 
+                                            if result.hidden then
+                                                -- if result.group == SPECIAL_GROUPS.FAVORITES then
+                                                app.gui:pushFont(app.gui.st.fonts.icons, 'small')
+                                                app.gui:pushColors(app.gui.st.col.search.favorite)
+                                                ImGui.Text(ctx, ICONS.INVISIBLE)
+                                                app.gui:popColors(app.gui.st.col.search.favorite)
+                                                ImGui.PopFont(ctx)
+                                                ImGui.SameLine(ctx)
+                                            end
                                             if result.favorite then
                                                 -- if result.group == SPECIAL_GROUPS.FAVORITES then
                                                 app.gui:pushFont(app.gui.st.fonts.icons, 'small')
@@ -3553,6 +3621,14 @@ RunApp = function()
                                     function(k, v) return k ~= 'markFavorite' end)
                             })
                         if resetCounter then app.temp.captureCounter = 0 end
+                        app.settings.current.shortcuts.markHidden, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.MARK_HIDDEN.LABEL,
+                            T.SETTINGS.SHORTCUTS.MARK_HIDDEN.HINT, app.settings.current.shortcuts.markHidden,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'markHidden' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
 
                         app.settings.current.shortcuts.clearFilters, resetCounter = app.gui:setting('shortcut',
                             T.SETTINGS.SHORTCUTS.CLEAR_FILTERS.LABEL,
@@ -4769,7 +4845,7 @@ RunApp = function()
                                 end
                                 pressed = true
                             elseif app.guiHelpers.isShortcutPressed('selectAllResults') then
-                                app.selection:selectRange(1, #app.temp.searchResults)
+                                app.selection:selectAll(1, #app.temp.searchResults)
                                 pressed = true
                             elseif app.guiHelpers.isShortcutPressed('hardCloseScript') then
                                 app.hardExit = true
@@ -4803,6 +4879,26 @@ RunApp = function()
                                     if changed then
                                         -- Use filterResults to maintain selection on all affected assets
                                         app.flow.filterResults(nil, nil, true)
+                                    end
+                                end
+                            elseif (app.temp.searchMode == SEARCH_MODE.MAIN or app.temp.searchMode == SEARCH_MODE.SEND_BUDDY) and app.guiHelpers.isShortcutPressed('markHidden') and app.selection.keyboardPos then
+                                -- Toggle favorite status for all selected assets
+                                pressed = true
+                                local selectedResults = app.selection:results()
+                                if #selectedResults > 0 then
+                                    -- Use the first selected asset to determine the action (favorite or unfavorite)
+                                    local firstResult = selectedResults[1]
+                                    local willHide = not firstResult.hidden
+
+                                    -- Use the batch operation for efficiency
+                                    local changed = firstResult:batchToggleHidden(selectedResults, willHide)
+
+                                    if changed then
+                                        app.flow.filterResults(nil, true)
+                                        if willHide then
+                                            app.selection:selectOnly(math.min(#app.temp.searchResults,
+                                                app.selection.keyboardPos))
+                                        end
                                     end
                                 end
                             end

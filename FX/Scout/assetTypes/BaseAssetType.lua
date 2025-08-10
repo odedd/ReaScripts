@@ -288,16 +288,32 @@ BaseAssetType.assetActions = {
     -- key = function(self)
     --     return self.type .. ' ' .. self.load
     -- end,
-    toggleFavorite = function(self)
-        self.favorite = self.context.userdata:toggleAssetFavorite(self.key)
+    batchToggleHidden = function(self, assets, willHide)
+        local hiddenItems = self.context.userdata.current.hidden
+        local changed = false
 
-        -- Use the unified special groups marking function to handle group reassignment
-        self.engine:markSpecialGroups()
-        self.engine:sortAssets()
-        self.context.flow.filterResults(nil, nil, { self }) -- Use multi-target to maintain selection on this asset
-        return self.favorite == true
+        for _, asset in ipairs(assets) do
+            if willHide and not asset.hidden then
+                table.insert(hiddenItems, 1, asset.key)
+                asset.hidden = true
+                changed = true
+            elseif not willHide and asset.hidden then
+                OD_RemoveValue(hiddenItems, asset.key)
+                asset.hidden = false
+                changed = true
+            end
+        end
+
+        if changed then
+            self.context.userdata:save()
+            -- Use the unified special groups marking function to handle group reassignment
+            self.engine:markSpecialGroups()
+            self.engine:sortAssets()
+            -- Don't call filterResults here - let the caller handle it with target assets
+        end
+
+        return changed
     end,
-    -- Batch toggle favorites for multiple assets (more efficient than calling toggleFavorite multiple times)
     batchToggleFavorites = function(self, assets, willFavorite)
         local favorites = self.context.userdata.current.favorites
         local changed = false
@@ -430,8 +446,8 @@ function BaseAssetType:createAssetBase(params)
         addTag = self.assetActions.addTag,
         removeTag = self.assetActions.removeTag,
         execute = self:executeAndAddToRecents(),
-        toggleFavorite = self.assetActions.toggleFavorite,
         batchToggleFavorites = self.assetActions.batchToggleFavorites,
+        batchToggleHidden = self.assetActions.batchToggleHidden,
         moveFavorite = self.assetActions.moveFavorite,
         addToRecents = self.assetActions.addToRecents
     }

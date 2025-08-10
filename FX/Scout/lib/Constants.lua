@@ -170,8 +170,13 @@ FILTER_MENU = {
                 allQuery = { untagged = 'all' },
                 query = { untagged = true }
             },
-            ['Recently Added'] = {
+            ['Hidden'] = {
                 order = 2,
+                allQuery = { hidden = 'all' },
+                query = { hidden = true }
+            },
+            ['Recently Added'] = {
+                order = 3,
                 allQuery = { recentlyAdded = 'all' },
                 query = { recentlyAdded = true }
             }

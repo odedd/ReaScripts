@@ -86,7 +86,8 @@ PB_DataEngine = {
             return
         end
 
-        -- Store current favorites and recents for preservation (shallow copy is sufficient)
+        -- Store current hidden items, favorites and recents for preservation (shallow copy is sufficient)
+        local currentHidden = self.app.userdata.current.hidden or {}
         local currentFavorites = self.app.userdata.current.favorites or {}
         local currentRecents = self.app.userdata.current.recents or {}
 
@@ -147,10 +148,18 @@ PB_DataEngine = {
         -- (unchanged assets already have correct special group markings)
         local allRefreshedAssets = refreshedAssets
         for _, asset in ipairs(allRefreshedAssets) do
+            local hiddenIndex = nil
             local favoriteIndex = nil
             local recentIndex = nil
 
-            -- Find if this asset is in favorites/recents
+            -- Find if this asset is in hidden items
+            for i, hiddenId in ipairs(currentHidden) do
+                if hiddenId == asset.id then
+                    hiddenIndex = i
+                    break
+                end
+            end
+            -- Find if this asset is in favorites
             for i, favoriteId in ipairs(currentFavorites) do
                 if favoriteId == asset.id then
                     favoriteIndex = i
@@ -158,6 +167,7 @@ PB_DataEngine = {
                 end
             end
 
+            -- Find if this asset is in recents
             for i, recentId in ipairs(currentRecents) do
                 if recentId == asset.id then
                     recentIndex = i
@@ -192,6 +202,11 @@ PB_DataEngine = {
             -- Set favorite flag for all favorites, regardless of which group they're in
             if favoriteIndex then
                 asset.favorite = true
+            end
+
+            -- Set hidden flag
+            if hiddenIndex then
+                asset.hidden = true
             end
         end
 
@@ -1096,6 +1111,7 @@ end
 PB_DataEngine.markSpecialGroups = function(self)
     self.app.logger:logDebug('-- PB_DataEngine.markSpecialGroups()')
 
+    local hiddenCount = 0
     local favoriteCount = 0
     local recentCount = 0
 
@@ -1104,6 +1120,7 @@ PB_DataEngine.markSpecialGroups = function(self)
     local recentsVisible = self.app.settings.current.groupVisibility[SPECIAL_GROUPS.RECENTS] ~= false
 
     -- Get current lists
+    local hidden = self.app.userdata.current.hidden or {}
     local favorites = self.app.userdata.current.favorites or {}
     local recents = self.app.userdata.current.recents or {}
 
@@ -1115,6 +1132,11 @@ PB_DataEngine.markSpecialGroups = function(self)
     end
 
     -- Create lookup tables for better performance
+    local hiddenLookup = {}
+    for i, hiddenId in ipairs(hidden) do
+        hiddenLookup[hiddenId] = i
+    end
+
     local favoritesLookup = {}
     for i, favoriteId in ipairs(favorites) do
         favoritesLookup[favoriteId] = i
@@ -1132,6 +1154,7 @@ PB_DataEngine.markSpecialGroups = function(self)
 
     -- Process all assets
     for _, asset in ipairs(self.assets) do
+        local hiddenIndex = hiddenLookup[asset.id]
         local favoriteIndex = favoritesLookup[asset.id]
         local recentIndex = recentsLookup[asset.id]
         local shouldDeleteFromRecents = recentsToDeleteLookup[asset.id]
@@ -1192,9 +1215,15 @@ PB_DataEngine.markSpecialGroups = function(self)
                     asset.id .. ' (appears in ' .. (recentsVisible and 'recents' or 'original group') .. ')')
             end
         end
+        if hiddenIndex then
+            hiddenCount = hiddenCount + 1
+            asset.hidden = true
+        end
     end
 
-    self.app.logger:logDebug('Marked special groups - Favorites: ' ..
+    self.app.logger:logDebug('Marked special groups - Hidden items: ' ..
+        hiddenCount ..
+        ', Favorites: ' ..
         favoriteCount ..
         ', Recents: ' ..
         recentCount ..
@@ -1285,7 +1314,7 @@ PB_DataEngine.assembleAssets = function(self, forceRebuildCache)
     -- end
     -- self:sortAssetsByVariantPriorityOnly() -- Sort by FX Variant first
 
-    self:markSpecialGroups() -- Mark favorites/recents (changes asset groups)
+    self:markSpecialGroups() -- Mark hidden/favorites/recents (changes asset groups)
 
     if forceRebuildCache then
         self:invalidateGroupPriorityCache()
