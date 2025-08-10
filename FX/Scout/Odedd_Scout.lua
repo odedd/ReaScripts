@@ -2283,17 +2283,19 @@ RunApp = function()
                                         end
                                         if tagDropped then
                                             local payloadTag = app.engine.tags[tonumber(tagPayload)]
-                                            local mergeMode = false
+                                            local mergeMode, copyMode = false, false
                                             if position == 'inside' then
-                                                if (ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)) then
+                                                if (ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) and ImGui.IsKeyDown(ctx, ImGui.Mod_Ctrl)) then
                                                     mergeMode = true
+                                                elseif ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
+                                                    copyMode = true
                                                 end
                                                 app:setHint('main',
-                                                    (mergeMode and T.HINTS.DRAG_TAG_INTO_TAG_MERGE or T.HINTS.DRAG_TAG_INTO_TAG)
+                                                    (mergeMode and T.HINTS.DRAG_TAG_INTO_TAG_MERGE or (copyMode and T.HINTS.DRAG_TAG_INTO_TAG_COPY or T.HINTS.DRAG_TAG_INTO_TAG))
                                                     :format(payloadTag.name, tag.name), nil,
                                                     nil, 2)
-                                                local col = mergeMode and app.gui.st.basecolors.highlight or
-                                                    app.gui.st.basecolors.mainBright
+                                                local col = mergeMode and app.gui.st.basecolors.highlightA or
+                                                    (copyMode and app.gui.st.basecolors.highlightB or app.gui.st.basecolors.mainBright)
                                                 ImGui.DrawList_AddRect(ImGui.GetWindowDrawList(ctx), scrX,
                                                     scrY - height - offsetY,
                                                     scrX + tagW, scrY - height - offsetY + ImGui.GetTextLineHeight(ctx),
@@ -2320,6 +2322,8 @@ RunApp = function()
                                             if ImGui.IsMouseReleased(ctx, ImGui.MouseButton_Left) then
                                                 if mergeMode then
                                                     payloadTag:mergeWith(tag, true)
+                                                elseif copyMode then
+                                                    payloadTag:copyAssetsTo(tag, true)
                                                 else
                                                     payloadTag:moveTo(tag, position)
                                                 end

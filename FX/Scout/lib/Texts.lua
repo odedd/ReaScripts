@@ -430,6 +430,7 @@ T.HINTS = {
     DRAG_TAG_DEFAULT = 'Drag to another tag to reorder or to an item to add/remove tag. Hold Shift to merge tags.',
     DRAG_TAG_INTO_TAG = 'Move tag \'%s\' into tag \'%s\'. Hold Shift to merge with tag.',
     DRAG_TAG_INTO_TAG_MERGE = 'Merge tag \'%s\' with tag \'%s\'.',
+    DRAG_TAG_INTO_TAG_COPY = 'Copy assets tagged with \'%s\' to tag \'%s\'.',
     DRAG_TAG_TO_POSITION_RELATIVE_TO_TAG = 'Move tag \'%s\' %s tag \'%s\'.',
     QUICK_CHAIN_MORE_ACTIONS = 'See all possible actions.',
     QUICK_CHAIN_HOVER = 'Drag FX/Chains here to add them to the QuickChain. Alt/Option+Click to remove.',

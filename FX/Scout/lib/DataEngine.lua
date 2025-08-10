@@ -692,7 +692,7 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
             toggleDescendantsRecursive(self)
 
             -- Also close the parent tag itself
-            self.open = state
+            -- self.open = state
             self.app.userdata:toggleTagOpen(self.id, state, false) -- Don't persist individually
 
             -- Persist only once at the end if requested
@@ -796,7 +796,6 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
             end
         end
 
-        -- Move this tag to a new position relative to a target tag
         self.tags[id].mergeWith = function(self, targetTag)
             -- Defensive checks
             if not targetTag or not targetTag.id then
@@ -840,6 +839,27 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
 
             -- 3. Delete this tag (handles persistence and reloading)
             self:delete(true)
+            self.engine:tagAssets() -- handle tag reordering
+            return true
+        end
+        self.tags[id].copyAssetsTo = function(self, targetTag)
+            -- Defensive checks
+            if not targetTag or not targetTag.id then
+                self.app.logger:logError('mergeWith: targetTag or targetTag.id is nil')
+                return false
+            end
+
+            self.app.logger:logInfo('Copying assets of tag "' .. self.name .. '" into "' .. targetTag.name .. '"')
+
+            -- 2. Transfer all assets tagged with this tag to targetTag
+            local assetsTransferred = 0
+            for _, asset in ipairs(self.engine.assets) do
+                if OD_HasValue(asset.tags, self.id) then
+                    asset:addTag(targetTag, false) -- Don't save to DB each time
+                    assetsTransferred = assetsTransferred + 1
+                end
+            end
+
             self.engine:tagAssets() -- handle tag reordering
             return true
         end

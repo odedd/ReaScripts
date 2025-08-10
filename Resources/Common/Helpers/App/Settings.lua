@@ -36,19 +36,21 @@ function OD_Settings:getDefault(factory, listsToUpdate)
             for _, listName in ipairs(listsToUpdate) do
                 local defaultList = st.default[listName]
                 local currentList = loaded_ext_settings[listName]
-                if type(self.default[listName]) == "table" then
-                    if OD_IsList(defaultList) then
-                        for i, item in ipairs(defaultList) do
-                            if not OD_HasValue(currentList, item) then
-                                table.insert(currentList, item)
-                                -- updated = true
+                if currentList then
+                    if type(self.default[listName]) == "table" then
+                        if OD_IsList(defaultList) then
+                            for i, item in ipairs(defaultList) do
+                                if not OD_HasValue(currentList, item) then
+                                    table.insert(currentList, item)
+                                    -- updated = true
+                                end
                             end
-                        end
-                        for i = #currentList, 1, -1 do
-                            local item = currentList[i]
-                            if not OD_HasValue(defaultList, item) then
-                                table.remove(currentList, i)
-                                -- updated = true
+                            for i = #currentList, 1, -1 do
+                                local item = currentList[i]
+                                if not OD_HasValue(defaultList, item) then
+                                    table.remove(currentList, i)
+                                    -- updated = true
+                                end
                             end
                         end
                     end
