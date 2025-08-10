@@ -4107,7 +4107,7 @@ RunApp = function()
 
                     ImGui.SetNextWindowPos(ctx, center[1], center[2], ImGui.Cond_Appearing, 0.5, 0.5)
                 end
-                if ImGui.BeginPopup(ctx, 'Quick Add Tags') then
+                if ImGui.BeginPopupModal(ctx, 'Quick Add Tags', false, ImGui.WindowFlags_NoTitleBar) then
                     app.gui:pushColors(app.gui.st.col.searchWindow)
 
                     local numResultColor = #app.gui.st.searchColor.results
@@ -4121,11 +4121,13 @@ RunApp = function()
                         ImGui.SetKeyboardFocusHere(ctx)
                         ImGui.TextFilter_Clear(app.gui.searchTagsFilter)
                     end
-                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+
+                    if ImGui.IsKeyChordPressed(ctx, ImGui.Key_Escape) then
                         ImGui.CloseCurrentPopup(ctx)
                     end
                     ImGui.SetNextItemShortcut(ctx, app.settings.current.shortcuts.quickTag)
                     ImGui.TextFilter_Draw(app.gui.searchTagsFilter, ctx, '##Filter', -FLT_MIN)
+
                     local results = {}
                     for _, filter in ipairs(app.engine.filterAssets) do
                         if filter.type == FILTER_TYPES.TAG then
@@ -4185,6 +4187,7 @@ RunApp = function()
                             ImGui.EndChild(ctx)
                         end
                     end
+
                     app.gui:popColors(app.gui.st.col.searchWindow)
 
                     ImGui.EndPopup(ctx)

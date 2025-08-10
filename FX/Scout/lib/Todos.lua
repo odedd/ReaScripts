@@ -44,10 +44,12 @@
 -- DONE: Add QuickChains to UserData import/export. Make sure to map assets to existing ones, just like with all other assets on import, and skip those items in the chain that are missing from the receiving system (but still import the chain, unless it will be completly empty)
 -- DONE: When importin/Exporting UserData, check for magic word conflicts across both presets and quickchains
 -- DONE: Create QuickChainPresetAssetType
+-- DONE: Test QuickChain import/export, as well as magic word conflicts
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Test on windows
--- TODO: Text QuickChain import/export, as well as magic word conflicts
--- BUG: Jumping focus issue keeps coming up every now and then after closing QuickChain preset window
+-- TODO: Favorites reordering
+-- TODO: Setting to reset on wakeup or not
+-- BUG: Jumping focus issue keeps coming up every now and then
 ---------------------------------------
 -- AFTER LAUNCH -----------------------
 ---------------------------------------
