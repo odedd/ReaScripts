@@ -142,10 +142,11 @@ function PluginAssetType:assembleAsset(plugin)
     local asset = self:createAssetBase({
         type = self.assetTypeId,
         load = plugin.ident,
-        searchText = { { text = plugin.baseName }, { text = plugin.vendor or '' } },
+        searchText = { { text = plugin.baseName } },
         group = plugin.group,
     })
 
+    if plugin.vendor and plugin.vendor ~= '' then table.insert(asset.searchText, { text = plugin.vendor or '' }) end
     if plugin.variant then table.insert(asset.searchText, { text = plugin.variant }) end
     asset.name = plugin.name
     asset.baseName = plugin.baseName

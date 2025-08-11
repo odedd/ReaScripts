@@ -37,7 +37,7 @@ LOG_LEVEL = OD_Logger.LOG_LEVEL.NONE
 OD_Init()
 
 -- if LOG_LEVEL > OD_Logger.LOG_LEVEL.NONE then
-    r.ClearConsole()
+r.ClearConsole()
 -- end
 
 r.SetExtState(Scr.ext_name, 'SCRIPT_VERSION', Scr.version, false)
@@ -416,7 +416,7 @@ RunApp = function()
                             local showOnlyHighestPriorityVariant = app.settings.current
                                 .showOnlyHighestPriorityVariant
                             if showOnlyHighestPriorityVariant then
-                                local id = asset.fx_type.. asset.baseName .. (asset.vendorBaseName or '')
+                                local id = asset.fx_type .. asset.baseName .. (asset.vendorBaseName or '')
                                 if foundVariants[id] then
                                     goto skip
                                 else
@@ -1527,8 +1527,7 @@ RunApp = function()
                     {} -- Current search results -- clear drop target hint on every frame
                 local hintResult, hintContext = nil, nil, nil
 
-                local tableFlags = ImGui
-                    .TableFlags_ScrollY -- Table flags for vertical scrolling
+                local tableFlags = ImGui.TableFlags_ScrollY -- Table flags for vertical scrolling
                 local selectableFlags = ImGui.SelectableFlags_SpanAllColumns |
                     ImGui
                     .SelectableFlags_AllowDoubleClick -- Selectable flags for ImGui
@@ -2725,7 +2724,7 @@ RunApp = function()
                                                         else
                                                             app.flow.filterResults(value.query)
                                                         end
-                                                        end
+                                                    end
                                                     if ImGui.IsItemHovered(ctx) then
                                                         if k == FILTER_TYPES.PRESET then
                                                             if value.shortcut then
@@ -2840,7 +2839,8 @@ RunApp = function()
                                 if ImGui.MenuItem(ctx, quickChainPreset.name, quickChainPreset.word) then
                                     app.flow.loadQuickChain(quickChainPreset)
                                 end
-                                app:setHoveredHint('main', (T.HINTS.QUICKCHAIN_PRESETS_MENU_LOAD_PRESET):format(quickChainPreset.name))
+                                app:setHoveredHint('main',
+                                    (T.HINTS.QUICKCHAIN_PRESETS_MENU_LOAD_PRESET):format(quickChainPreset.name))
                             end
 
                             ImGui.EndPopup(ctx)
@@ -3460,7 +3460,7 @@ RunApp = function()
                                         :gsub('%%%(', '')
                                         :gsub('%%%)', '')
                                         :gsub('%[%^%%%-%]', '?') --%(([^%-%)]-ch)%)
-                                        :gsub('%[%^%]%-', '?') 
+                                        :gsub('%[%^%]%-', '?')
                                         :gsub('%.%-', '?')
                                         :gsub('%.%+', '?')
                                         :gsub('%%d', '?')
@@ -4071,27 +4071,25 @@ RunApp = function()
 
                     ImGui.SetNextWindowPos(ctx, center[1], center[2], ImGui.Cond_Appearing, 0.5, 0.5)
                 end
-                if ImGui.BeginPopupModal(ctx, 'Quick Add Tags', false, ImGui.WindowFlags_NoTitleBar) then
+                if ImGui.BeginPopupModal(ctx, 'Quick Add Tags', false, ImGui.WindowFlags_NoTitleBar | ImGui.WindowFlags_NoNav) then
                     app.gui:pushColors(app.gui.st.col.searchWindow)
-
-                    local numResultColor = #app.gui.st.searchColor.results
-
                     app.temp.ignoreEscapeKey = true
                     ImGui.Text(ctx, 'Start typing to tag selected item(s).')
                     ImGui.TextDisabled(ctx,
                         'Enter to add tag, ' .. OD_IMGUI_KEY_NAMES[ImGui.Mod_Alt] .. '+Enter to remove tag')
                     ImGui.TextDisabled(ctx, 'Hold Shift to keep popup open')
                     if ImGui.IsWindowAppearing(ctx) then
-                        ImGui.SetKeyboardFocusHere(ctx)
                         ImGui.TextFilter_Clear(app.gui.searchTagsFilter)
                     end
+                    ImGui.SetKeyboardFocusHere(ctx)
 
                     if ImGui.IsKeyChordPressed(ctx, ImGui.Key_Escape) then
                         ImGui.CloseCurrentPopup(ctx)
                     end
                     ImGui.SetNextItemShortcut(ctx, app.settings.current.shortcuts.quickTag)
-                    ImGui.TextFilter_Draw(app.gui.searchTagsFilter, ctx, '##Filter', -FLT_MIN)
+                    local rv = ImGui.TextFilter_Draw(app.gui.searchTagsFilter, ctx, '##Filter', -FLT_MIN)
 
+                    if rv then app.temp.tagKeyboardPos = 1 end
                     local results = {}
                     for _, filter in ipairs(app.engine.filterAssets) do
                         if filter.type == FILTER_TYPES.TAG then
@@ -4100,54 +4098,173 @@ RunApp = function()
                             end
                         end
                     end
+
                     local searchQuery = ImGui.TextFilter_Get(app.gui.searchTagsFilter)
                     if searchQuery ~= '' then
-                        ImGui.Separator(ctx)
-                        if ImGui.BeginChild(ctx, '##tagSearchFilterResults', 0, ImGui.GetTextLineHeightWithSpacing(ctx) * (math.min(8, #results) + 1), ImGui.ChildFlags_NavFlattened) then
-                            for i, result in ipairs(results) do
-                                local col = app.gui.getTagColors(result.object.displayColor)
-                                if ImGui.Selectable(ctx, '##tagSearchFilterResult' .. i) or (#results == 1 and ImGui.IsKeyPressed(ctx, ImGui.Key_Enter)) then
-                                    local tag = result.object
-                                    local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
-                                    local close = not ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)
-                                    local selectedResults = app.selection:results()
-                                    for i, result in ipairs(selectedResults) do
-                                        if remove then
-                                            result:removeTag(tag, i == #selectedResults)
-                                        else
-                                            result:addTag(tag, i == #selectedResults)
-                                        end
-                                    end
-                                    app.flow.filterResults(nil, true, true)
-                                    if close then ImGui.CloseCurrentPopup(ctx) end
-                                end
-                                ImGui.SameLine(ctx, 0, 0)
+                        local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
 
-                                for j = 1, #(result.searchText) do
-                                    local st = result.searchText[j]
-                                    if not st.hide then
-                                        ImGui.PushStyleColor(ctx, ImGui.Col_Text,
-                                            st.color or
-                                            app.gui.st.searchColor.results[math.min(j, numResultColor)])
-
-                                        ImGui.Text(ctx, st.text)
-                                        ImGui.SameLine(ctx)
-
-                                        ImGui.PopStyleColor(ctx)
-                                    end
-                                end
-                                ImGui.NewLine(ctx)
-                            end
-                            if ImGui.Selectable(ctx, 'Create new tag named \'' .. searchQuery .. '\'...##QuickAddNewTag', false, nil, 0, 0) then
+                        table.insert(results, {
+                            newTag = true,
+                            searchText = { { text = 'Create new tag named \'' .. searchQuery .. '\'...' } }
+                        })
+                        local fontLineFullHeight = ImGui.GetTextLineHeightWithSpacing(ctx) +
+                            select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemInnerSpacing))
+                        local searchResultsH = select(2, ImGui.GetContentRegionAvail(ctx))
+                        local maxSearchResults = math.floor(searchResultsH / fontLineFullHeight) -- Max results in available space
+                        local executeTag = function(result)
+                            local close = not ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)
+                            if result.newTag then
                                 local newTag = app.userdata:createTag(searchQuery, TAGS_ROOT_PARENT)
-                                local close = not ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)
                                 local selectedResults = app.selection:results()
                                 for i, result in ipairs(selectedResults) do
                                     result:addTag(newTag, i == #selectedResults)
                                 end
                                 app.flow.filterResults(nil, true, true)
-                                if close then ImGui.CloseCurrentPopup(ctx) end
+                            else
+                                local tag = result.object
+                                local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
+                                local selectedResults = app.selection:results()
+                                for i, result in ipairs(selectedResults) do
+                                    if remove then
+                                        result:removeTag(tag, i == #selectedResults)
+                                    else
+                                        result:addTag(tag, i == #selectedResults)
+                                    end
+                                end
+                                app.flow.filterResults(nil, true, true)
                             end
+
+                            if close then
+                                ImGui.CloseCurrentPopup(ctx)
+                            else
+                                ImGui.TextFilter_Clear(app.gui.searchTagsFilter)
+                            end
+                        end
+                        -- if close then ImGui.CloseCurrentPopup(ctx) end
+                        local handleKeyboardNavigation = function()
+                            -- handle escape
+                            if app.temp.tagKeyboardPos then
+                                local newIdx = nil
+                                if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) and app.temp.tagKeyboardPos < #results then
+                                    newIdx =
+                                        app.temp.tagKeyboardPos + 1
+                                end
+                                if ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) and app.temp.tagKeyboardPos > 1 then
+                                    newIdx = app
+                                        .temp.tagKeyboardPos - 1
+                                end
+                                if ImGui.IsKeyPressed(ctx, ImGui.Key_PageDown) then
+                                    newIdx = math.min(
+                                        app.temp.tagKeyboardPos + maxSearchResults, #results)
+                                end
+                                if ImGui.IsKeyPressed(ctx, ImGui.Key_PageUp) then
+                                    newIdx = math.max(
+                                        app.temp.tagKeyboardPos - maxSearchResults, 1)
+                                end
+                                if ImGui.IsKeyPressed(ctx, ImGui.Key_Home) then
+                                    newIdx = 1
+                                end
+                                if ImGui.IsKeyPressed(ctx, ImGui.Key_End) then
+                                    newIdx = #results
+                                end
+                                if newIdx then
+                                    app.temp.tagKeyboardPos = newIdx
+                                    app.temp.scrollTagResultsIfNeeded = true
+                                end
+                            end
+                        end
+                        local handleScrolling = function()
+                            local selectedRow = nil
+                            if app.temp.scrollTagResultsIfNeeded and app.temp.tagKeyboardPos then
+                                app.temp.scrollTagResultsIfNeeded = false
+                                app.temp.tagTableScrollY = app.temp.tagTableScrollY or 0
+
+                                -- Use the same line height for scrolling as for rendering
+
+                                local rowPosition = (app.temp.tagKeyboardPos - 1) * fontLineFullHeight + 2
+                                local currentScroll = app.temp.tagTableScrollY
+
+                                -- Check if item is fully visible
+                                local itemTop = rowPosition
+                                local itemBottom = rowPosition + fontLineFullHeight
+                                local viewTop = currentScroll
+                                local viewBottom = currentScroll + searchResultsH
+
+                                -- If item extends below the visible area, scroll to show it fully
+                                if itemBottom > viewBottom then
+                                    -- Scroll so the item's bottom aligns with the bottom of searchResultsH
+                                    ImGui.SetNextWindowScroll(ctx, 0, itemBottom - searchResultsH - 2)
+                                    -- If item is above the visible area, scroll to show it at the top
+                                elseif itemTop < viewTop then
+                                    ImGui.SetNextWindowScroll(ctx, 0, math.max(0, itemTop - 2))
+                                end
+                            end
+                        end
+                        ImGui.Separator(ctx)
+                        local upperRowY = ImGui.GetCursorPosY(ctx) -- Y position for upper row, used for "sticky" first group title
+                        local selectableFlags = ImGui.SelectableFlags_SpanAllColumns |
+                            ImGui
+                            .SelectableFlags_AllowDoubleClick -- Selectable flags for ImGui
+
+                        if ImGui.BeginChild(ctx, '##tagSearchFilterResults', 0, fontLineFullHeight * (math.min(8, #results)), nil, ImGui.WindowFlags_NoNav | ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoScrollWithMouse) then
+                            local numResultColor = #app.gui.st.searchColor.results
+
+                            handleKeyboardNavigation()
+
+                            -- Build a flat list of rows: {type="group", group=...} or {type="result", result=...}
+                            handleScrolling()
+
+                            if ImGui.BeginTable(ctx, "##searchResults", 1, ImGui.TableFlags_ScrollY, 0, searchResultsH) then
+                                app.temp.hoveredTag = app.temp.hoveredTag or {}
+
+                                app.temp.tagTableScrollY = ImGui.GetScrollY(ctx)
+
+                                ImGui.ListClipper_Begin(app.gui.tagSearchResultsClipper, #results, fontLineFullHeight)
+                                while ImGui.ListClipper_Step(app.gui.tagSearchResultsClipper) do
+                                    local display_start, display_end = ImGui.ListClipper_GetDisplayRange(app.gui
+                                        .tagSearchResultsClipper)
+                                    local rowIdx = display_start + 1
+                                    while rowIdx <= display_end do
+                                        local result = results[rowIdx]
+                                        ImGui.PushID(ctx, 'tagResult' .. rowIdx)
+                                        ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineFullHeight)
+                                        ImGui.TableSetColumnIndex(ctx, 0)
+                                        if ImGui.Selectable(ctx, '', app.temp.tagKeyboardPos == rowIdx, selectableFlags, 0, 0) then
+                                            app.temp.tagKeyboardPos = rowIdx
+                                            if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
+                                                executeTag(result)
+                                            end
+                                        end
+                                        if app.temp.tagKeyboardPos == rowIdx and ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
+                                            executeTag(result)
+                                        end
+                                        ImGui.SameLine(ctx, 0, 0)
+                                        -- if result.type == ASSET_TYPE.TrackAssetType and result.color then
+
+                                        for j = 1, #(result.searchText) do
+                                            local st = result.searchText[j]
+                                            if not st.hide then
+                                                ImGui.PushStyleColor(ctx, ImGui.Col_Text,
+                                                    st.color or
+                                                    app.gui.st.searchColor.results[math.min(j, numResultColor)])
+                                                ImGui.Text(ctx, st.text)
+                                                ImGui.SameLine(ctx)
+
+                                                ImGui.PopStyleColor(ctx)
+                                            end
+                                        end
+                                        ImGui.NewLine(ctx)
+                                        ImGui.PopID(ctx)
+                                        rowIdx = rowIdx + 1
+                                    end
+                                end
+                                ImGui.ListClipper_End(app.gui.searchResultsClipper)
+                                ImGui.EndTable(ctx)
+                            end
+
+
+
+
                             ImGui.EndChild(ctx)
                         end
                     end
