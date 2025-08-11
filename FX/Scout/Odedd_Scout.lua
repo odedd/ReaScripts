@@ -3831,7 +3831,7 @@ RunApp = function()
                     --     ImGui.Cond_Appearing,
                     --     0.5,
                     --     0.5)
-                    ImGui.SetNextWindowSizeConstraints(ctx, w, 0.0, w, maxH)
+                    ImGui.SetNextWindowSizeConstraints(ctx, 0, 0.0, FLT_MAX, maxH)
                     app.gui:pushStyles(app.gui.st.vars.popupsTitle)
                     local visible, open = ImGui.Begin(ctx, Scr.name .. ' Help##helpWindow', true,
                         ImGui.WindowFlags_NoDocking |
