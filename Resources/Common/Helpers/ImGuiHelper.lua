@@ -296,145 +296,171 @@ if reaper.ImGui_CreateContext then
     end)
   end
 
-  -- Rich text with word-wrapping support, based on cfillion's function
-  OD_ImGuiRichTextWrapped = function(ctx, text, fonts, wrapWidth)
-    local wrapWidth = wrapWidth or reaper.ImGui_GetContentRegionAvail(ctx)
-    text:gsub('[^\n]*', function(line)
-      if line == '' then
-        reaper.ImGui_Text(ctx,'')
-        return
+OD_ImGuiRichTextWrapped = function(ctx, text, fonts, wrapWidth)
+  local wrapWidth = wrapWidth or reaper.ImGui_GetContentRegionAvail(ctx)
+
+  text:gsub('[^\n]*', function(line)
+    if line == '' then
+      reaper.ImGui_Text(ctx,'')
+      return
+    end
+
+    -- Parse chunks (with optional \0X...; prefix commands)
+    local chunks = {}
+    line:gsub('\0?[^\0]+', function(chunk)
+      local cmd, arg
+      if chunk:sub(1, 1) == '\0' then
+        local eoc = chunk:find(';', 3)
+        cmd = chunk:sub(2, 2)
+        arg = chunk:sub(3, eoc - 1)
+        chunk = chunk:sub(eoc + 1)
       end
-
-      local chunks = {}
-      line:gsub('\0?[^\0]+', function(chunk)
-        local cmd, arg
-        if chunk:sub(1, 1) == '\0' then
-          local eoc = chunk:find(';', 3)
-          cmd = chunk:sub(2, 2)
-          arg = chunk:sub(3, eoc - 1)
-          chunk = chunk:sub(eoc + 1)
-        end
-        table.insert(chunks, {
-          cmd = cmd,
-          arg = arg,
-          text = chunk
-        })
-      end)
-
-      local currentLineWidth = 0
-      local currentLineChunks = {}
-      local fontStack = {}
-      local function pushFont(arg, sizeKey)
-        local sizeKey = sizeKey or 'default'
-        local font = fonts[arg].font
-        local size = fonts[arg].scaledSizes[sizeKey]
-        table.insert(fontStack, {font=font, size=size})
-        reaper.ImGui_PushFont(ctx, font, size)
-      end
-      local function popFont()
-        table.remove(fontStack)
-        reaper.ImGui_PopFont(ctx)
-      end
-      local function getCurrentFont()
-        if #fontStack > 0 then
-          return fontStack[#fontStack].font, fontStack[#fontStack].size
-        end
-        return nil, nil
-      end
-
-      for _, chunk in ipairs(chunks) do
-        -- Handle font/color commands for width calculation
-        if chunk.cmd == 'f' then
-          pushFont(chunk.arg)
-          table.insert(currentLineChunks, {type = 'cmd', cmd = chunk.cmd, arg = chunk.arg})
-        elseif chunk.cmd == 'F' then
-          popFont()
-          table.insert(currentLineChunks, {type = 'cmd', cmd = chunk.cmd, arg = chunk.arg})
-        elseif chunk.cmd then
-          table.insert(currentLineChunks, {type = 'cmd', cmd = chunk.cmd, arg = chunk.arg})
-        end
-
-        if chunk.text ~= '' then
-          local words = {}
-          local remainingText = chunk.text
-          while remainingText ~= '' do
-            local wordStart = remainingText:find('%S')
-            if not wordStart then
-              table.insert(words, remainingText)
-              break
-            end
-            if wordStart > 1 then
-              table.insert(words, remainingText:sub(1, wordStart - 1))
-            end
-            local wordEnd = remainingText:find('%s', wordStart) or (#remainingText + 1)
-            local word = remainingText:sub(wordStart, wordEnd - 1)
-            table.insert(words, word)
-            remainingText = remainingText:sub(wordEnd)
-          end
-
-          for _, segment in ipairs(words) do
-            -- Use the current font for width calculation
-            local font, size = getCurrentFont()
-            if font then
-              reaper.ImGui_PushFont(ctx, font, size)
-            end
-            local segmentWidth, _ = reaper.ImGui_CalcTextSize(ctx, segment)
-            if font then
-              reaper.ImGui_PopFont(ctx)
-            end
-
-            if currentLineWidth + segmentWidth > wrapWidth and currentLineWidth > 0 and segment:match('%S') then
-              -- Render current line
-              local concat = false
-              for _, lineChunk in ipairs(currentLineChunks) do
-                if lineChunk.type == 'cmd' then
-                  if OD_TEXT_COMMANDS[lineChunk.cmd] then
-                    OD_TEXT_COMMANDS[lineChunk.cmd](ctx, lineChunk.arg, fonts)
-                  end
-                else
-                  if concat then
-                    reaper.ImGui_SameLine(ctx, nil, 0)
-                  else
-                    concat = true
-                  end
-                  reaper.ImGui_Text(ctx, lineChunk.content)
-                end
-              end
-              currentLineChunks = {}
-              currentLineWidth = 0
-            end
-
-            table.insert(currentLineChunks, {type = 'text', content = segment})
-            currentLineWidth = currentLineWidth + segmentWidth
-          end
-        end
-      end
-
-      -- Render final line
-      if #currentLineChunks > 0 then
-        local concat = false
-        for _, lineChunk in ipairs(currentLineChunks) do
-          if lineChunk.type == 'cmd' then
-            if OD_TEXT_COMMANDS[lineChunk.cmd] then
-              OD_TEXT_COMMANDS[lineChunk.cmd](ctx, lineChunk.arg, fonts)
-            end
-          else
-            if concat then
-              reaper.ImGui_SameLine(ctx, nil, 0)
-            else
-              concat = true
-            end
-            reaper.ImGui_Text(ctx, lineChunk.content)
-          end
-        end
-      end
-      -- Restore font stack if needed
-      while #fontStack > 0 do
-        reaper.ImGui_PopFont(ctx)
-        table.remove(fontStack)
-      end
+      table.insert(chunks, { cmd = cmd, arg = arg, text = chunk })
     end)
-  end
+
+    -- Internal font push/pop tracker (instead of ImGui_GetFontStackSize)
+    local fontPushCount = 0
+    local function pushFont(font, size)
+      -- If your binding doesn't support a 'size' arg, remove it here:
+      reaper.ImGui_PushFont(ctx, font, size)
+      fontPushCount = fontPushCount + 1
+    end
+    local function popFont()
+      if fontPushCount > 0 then
+        reaper.ImGui_PopFont(ctx)
+        fontPushCount = fontPushCount - 1
+      end
+    end
+    local function popAllFonts()
+      while fontPushCount > 0 do popFont() end
+    end
+
+    local currentLineWidth = 0
+    local currentLineChunks = {}
+    local fontStack = {}
+
+    local function pushFontDef(arg, sizeKey)
+      local sizeKey = sizeKey or 'default'
+      local font = fonts[arg].font
+      local size = fonts[arg].scaledSizes[sizeKey]
+      table.insert(fontStack, {font=font, size=size})
+    end
+    local function popFontDef()
+      if #fontStack > 0 then table.remove(fontStack) end
+    end
+    local function getCurrentFont()
+      if #fontStack > 0 then
+        local top = fontStack[#fontStack]
+        return top.font, top.size
+      end
+      return nil, nil
+    end
+
+    for _, chunk in ipairs(chunks) do
+      -- Handle format commands (affect state, not immediate draw)
+      if chunk.cmd == 'f' then
+        pushFontDef(chunk.arg)
+      elseif chunk.cmd == 'F' then
+        popFontDef()
+      elseif chunk.cmd and OD_TEXT_COMMANDS[chunk.cmd] then
+        table.insert(currentLineChunks, {type='cmd', cmd=chunk.cmd, arg=chunk.arg})
+      end
+
+      -- Text part: split into words/whitespace segments for wrapping
+      if chunk.text ~= '' then
+        local words = {}
+        local remainingText = chunk.text
+        while remainingText ~= '' do
+          local wordStart = remainingText:find('%S')
+          if not wordStart then
+            table.insert(words, remainingText)
+            break
+          end
+          if wordStart > 1 then
+            table.insert(words, remainingText:sub(1, wordStart - 1))
+          end
+          local wordEnd = remainingText:find('%s', wordStart) or (#remainingText + 1)
+          local word = remainingText:sub(wordStart, wordEnd - 1)
+          table.insert(words, word)
+          remainingText = remainingText:sub(wordEnd)
+        end
+
+        for _, segment in ipairs(words) do
+          -- Snapshot font stack at this point (for later restore on render)
+          local fontStackCopy = {}
+          for i, v in ipairs(fontStack) do fontStackCopy[i] = v end
+
+          -- Measure with current font (push temporarily for CalcTextSize)
+          local font, size = getCurrentFont()
+          if font then pushFont(font, size) end
+          local segmentWidth = reaper.ImGui_CalcTextSize(ctx, segment)
+          if font then popFont() end
+
+          -- Wrap if needed (don’t break pure whitespace)
+          if currentLineWidth + segmentWidth > wrapWidth
+             and currentLineWidth > 0
+             and segment:match('%S') then
+            -- Render the accumulated line
+            local concat = false
+            for _, lineChunk in ipairs(currentLineChunks) do
+              if lineChunk.type == 'cmd' then
+                if OD_TEXT_COMMANDS[lineChunk.cmd] then
+                  OD_TEXT_COMMANDS[lineChunk.cmd](ctx, lineChunk.arg, fonts)
+                end
+              else
+                -- Restore fonts for this segment
+                popAllFonts()
+                for _, fs in ipairs(lineChunk.fontStackAtWrap or {}) do
+                  pushFont(fs.font, fs.size)
+                end
+                if concat then
+                  reaper.ImGui_SameLine(ctx, nil, 0)
+                else
+                  concat = true
+                end
+                reaper.ImGui_Text(ctx, lineChunk.content)
+                popAllFonts()
+              end
+            end
+            currentLineChunks = {}
+            currentLineWidth = 0
+          end
+
+          table.insert(currentLineChunks, {
+            type='text',
+            content=segment,
+            fontStackAtWrap=fontStackCopy
+          })
+          currentLineWidth = currentLineWidth + segmentWidth
+        end
+      end
+    end
+
+    -- Render the last line
+    if #currentLineChunks > 0 then
+      local concat = false
+      for _, lineChunk in ipairs(currentLineChunks) do
+        if lineChunk.type == 'cmd' then
+          if OD_TEXT_COMMANDS[lineChunk.cmd] then
+            OD_TEXT_COMMANDS[lineChunk.cmd](ctx, lineChunk.arg, fonts)
+          end
+        else
+          popAllFonts()
+          for _, fs in ipairs(lineChunk.fontStackAtWrap or {}) do
+            pushFont(fs.font, fs.size)
+          end
+          if concat then
+            reaper.ImGui_SameLine(ctx, nil, 0)
+          else
+            concat = true
+          end
+          reaper.ImGui_Text(ctx, lineChunk.content)
+          popAllFonts()
+        end
+      end
+    end
+  end)
+end
 
   
   OD_GetImguiKeysPressed = function(ctx)
