@@ -153,7 +153,7 @@ T.SETTINGS = {
         HINT = 'The order in which FX are displayed in the search window, based on their variant.',
     },
     SHOW_ONLY_HIGHEST_PRIORITY_FX = {
-        LABEL = 'highest priority FX type only',
+        LABEL = 'Highest priority FX type only',
         HINT = 'If FX exist in several formats, only show the highest priority one.'
     },
     SHOW_ONLY_HIGHEST_VARIANT_FX = {
@@ -366,7 +366,7 @@ end
 T.AFTER_ACTION_DESCRIPTIONS = {
     [AFTER_ACTION.DO_NOTHING] = 'Do Nothing',
     [AFTER_ACTION.CLOSE] = 'Close Script/Enter Sleep Mode',
-    [AFTER_ACTION.RESET_FILTERS] = 'Reset Filters'
+    [AFTER_ACTION.CLEAR_TEXT] = 'Clear text search'
 }
 
 for i = 0, #T.AFTER_ACTION_DESCRIPTIONS do

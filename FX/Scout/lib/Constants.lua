@@ -77,7 +77,7 @@ SHOW_FX_UI = {
 
 AFTER_ACTION = {
     CLOSE = 0,
-    RESET_FILTERS = 1,
+    CLEAR_TEXT = 1,
     DO_NOTHING = 2
 }
 
