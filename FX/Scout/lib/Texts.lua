@@ -202,6 +202,14 @@ T.SETTINGS = {
             LABEL = 'Add to QuickChain',
             HINT = 'Add selected FX/FX Chains to the QuickChain.',
         },
+        COPY_TAGS = {
+            LABEL = 'Copy Item\'s Tags',
+            HINT = 'Copy selected item\'s tags to the clipboard.',
+        },
+        PASTE_TAGS = {
+            LABEL = 'Paste Item\'s Tags',
+            HINT = 'Paste copied tags to selected item(s).',
+        },
         QUICK_TAG = {
             LABEL = 'Quick Tag',
             HINT = 'Open Quick Tag window.',

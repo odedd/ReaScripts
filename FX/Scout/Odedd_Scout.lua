@@ -851,7 +851,40 @@ RunApp = function()
                 if not app.settings.current.showQuickChain then
                     app.settings.current.showQuickChain = true
                 end
-            end
+            end,
+            copyTags = function()
+                local existingTags = {}
+                local tagList = {}
+                local selectedResults = app.selection:results()
+                local tagInfo = app.userdata.current.tagInfo
+
+                for _, result in ipairs(selectedResults) do
+                    if (result.tags and #result.tags > 0) then
+                        for t = 1, #(result.tags or {}) do
+                            local tagId = result.tags[t]
+                            local tag = tagInfo[tagId]
+                            if not existingTags[tagId] then
+                                table.insert(tagList,
+                                    app.engine.tags[tagId])
+                            end
+                            existingTags[tagId] = existingTags[tagId] and
+                                existingTags[tagId] + 1 or 1
+                        end
+                    end
+                end
+                app.temp.copiedTags = tagList
+            end,
+            pasteTags = function()
+                local selectedResults = app.selection:results()
+                if not selectedResults or #selectedResults == 0 then return false end
+                if not app.temp.copiedTags or #app.temp.copiedTags == 0 then return false end
+                for i, tag in ipairs(app.temp.copiedTags) do
+                    for j, result in ipairs(selectedResults) do
+                        result:addTag(tag, i == #selectedResults and j == #app.temp.copiedTags)
+                    end
+                end
+                app.flow.filterResults(nil, true, true)
+            end,
 
         }
         app.guiHelpers = {
@@ -1299,22 +1332,20 @@ RunApp = function()
                         end
                     end
                     app:setHoveredHint('main', T.HINTS.RESULT_CONTEXT_MENU_CLEAR_TAGS)
-                    if ImGui.MenuItem(ctx, 'Copy') then
-                        app.temp.copiedTags = tagList
+                    if ImGui.MenuItem(ctx, 'Copy', app.guiHelpers.shortCutToText(app.settings.current.shortcuts['copyTags'])) then
+                        app.flow.copyTags()
                     end
                     app:setHoveredHint('main', T.HINTS.RESULT_CONTEXT_MENU_COPY_TAGS)
                 end
-                if app.temp.copiedTags and #app.temp.copiedTags > 0 then
-                    if ImGui.MenuItem(ctx, 'Paste') then
-                        for i, tag in ipairs(app.temp.copiedTags) do
-                            for j, result in ipairs(selectedResults) do
-                                result:addTag(tag, i == #selectedResults and j == #app.temp.copiedTags)
-                            end
-                        end
-                        app:setHoveredHint('main', T.HINTS.RESULT_CONTEXT_MENU_PASTE_TAGS)
-                        -- app.userdata:save()
-                        app.flow.filterResults(nil, true, true)
-                    end
+                if not app.temp.copiedTags or #app.temp.copiedTags == 0 then
+                    ImGui.BeginDisabled(ctx)
+                end
+                if ImGui.MenuItem(ctx, 'Paste', app.guiHelpers.shortCutToText(app.settings.current.shortcuts['pasteTags'])) then
+                    app.flow.pasteTags()
+                end
+                app:setHoveredHint('main', T.HINTS.RESULT_CONTEXT_MENU_PASTE_TAGS)
+                if not app.temp.copiedTags or #app.temp.copiedTags == 0 then
+                    ImGui.EndDisabled(ctx)
                 end
                 if tagList and #tagList > 0 then
                     if ImGui.MenuItem(ctx, 'Sync tags across identical FX') then
@@ -1859,8 +1890,10 @@ RunApp = function()
                                                     app.selection:selectOnly(row.index)
                                                 end
                                                 if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
-                                                    app.flow.executeSelectedResults(app.selection:results(),
-                                                        RESULT_CONTEXT.MOUSE_DOUBLE_CLICK)
+                                                    if not (app.temp.hoveredTag[rowIdx] and ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)) then
+                                                        app.flow.executeSelectedResults(app.selection:results(),
+                                                            RESULT_CONTEXT.MOUSE_DOUBLE_CLICK)
+                                                    end
                                                 end
                                             end
                                             if app.temp.hoveredTag[rowIdx] then
@@ -3358,7 +3391,7 @@ RunApp = function()
                 local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
                 local w = 1500 * app.gui.scale
                 -- local h = 820 * app.gui.scale + #app.settings.current.projectScanFolders * (lineHeight + paddingY)
-                local numOfPreferences = 26
+                local numOfPreferences = 29
                 local numOfSeparators = 0
                 local numOfAssetTypes = 0 -- #app.engine.assetTypeManager.assetTypes + 2
                 local lineHeightWithSpacing = ImGui.GetTextLineHeightWithSpacing(ctx)
@@ -3691,6 +3724,22 @@ RunApp = function()
                             {
                                 existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                                     function(k, v) return k ~= 'quickTag' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+                        app.settings.current.shortcuts.copyTags, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.COPY_TAGS.LABEL,
+                            T.SETTINGS.SHORTCUTS.COPY_TAGS.HINT, app.settings.current.shortcuts.copyTags,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'copyTags' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+                        app.settings.current.shortcuts.pasteTags, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.PASTE_TAGS.LABEL,
+                            T.SETTINGS.SHORTCUTS.PASTE_TAGS.HINT, app.settings.current.shortcuts.pasteTags,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'pasteTags' end)
                             })
                         if resetCounter then app.temp.captureCounter = 0 end
 
@@ -4079,7 +4128,8 @@ RunApp = function()
                         'Enter to add tag, ' .. OD_IMGUI_KEY_NAMES[ImGui.Mod_Alt] .. '+Enter to remove tag')
                     ImGui.TextDisabled(ctx, 'Hold Shift to keep popup open')
                     if app.temp.newTagChild then
-                        ImGui.TextColored(ctx, app.gui.st.basecolors.mainBright ,('Create tag named \'%s\' inside:'):format(app.temp.newTagChild))
+                        ImGui.TextColored(ctx, app.gui.st.basecolors.mainBright,
+                            ('Create tag named \'%s\' inside:'):format(app.temp.newTagChild))
                     end
                     if ImGui.IsWindowAppearing(ctx) then
                         ImGui.TextFilter_Clear(app.gui.searchTagsFilter)
@@ -5005,6 +5055,12 @@ RunApp = function()
                                 pressed = true
                             elseif app.guiHelpers.isShortcutPressed('hardCloseScript') then
                                 app.hardExit = true
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('copyTags') then
+                                app.flow.copyTags()
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('pasteTags') then
+                                app.flow.pasteTags()
                                 pressed = true
                             elseif app.guiHelpers.isShortcutPressed('runRandomResult') then
                                 if #app.temp.searchResults > 0 then

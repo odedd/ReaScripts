@@ -68,7 +68,7 @@ function PluginAssetType:getData()
             local variantPat = nil
             local variantOrder = nil
 
-            for i, varPat in ipairs(self.context.settings.current.variantOrder) do
+            for i, varPat in ipairs(self.context.settings.current.variantMatchingOrder) do
                 if (full_name:lower()):match('%s' .. varPat:lower()) then
                     local baseNameCandidate = name:match('(.*)%s' .. OD_CaseInsensitivePattern(varPat))
                     if baseNameCandidate then baseName = baseNameCandidate end
