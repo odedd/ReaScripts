@@ -1375,9 +1375,10 @@ RunApp = function()
                     ImGui.SameLine(ctx, 0, 0)
                     if ImGui.BeginPopup(ctx, 'Save Filter Set Context Menu') then
                         app:setHint('main', '')
-                        if ImGui.MenuItem(ctx, 'Save preset...') then
+                        if ImGui.MenuItem(ctx, 'Create preset...') then
                             app.temp.showCreatePresetDialog = true
                             app.temp.editingPresetId = nil
+                            app.temp.updatePresetWithCurrentFilters = nil
                             app.temp.presetName = ""
                             app.temp.presetWord = ""
                         end
@@ -2689,7 +2690,7 @@ RunApp = function()
                                             -- Special handling for Presets menu
                                             if k == FILTER_TYPES.PRESET then
                                                 -- "Edit Preset >" - show submenu with all presets
-                                                if ImGui.BeginMenu(ctx, 'Edit Preset...##editPreset') then
+                                                if ImGui.BeginMenu(ctx, 'Edit/Delete Preset...##editPreset') then
                                                     for presetId, preset in OD_PairsByOrder(app.engine.presets) do
                                                         if ImGui.MenuItem(ctx, preset.name .. '##editPreset_' .. presetId) then
                                                             app.temp.showCreatePresetDialog = true
@@ -2806,9 +2807,12 @@ RunApp = function()
                         local text = app.temp.currentlyLoadedQuickChain and app.temp.currentlyLoadedQuickChain.name or
                             'Presets'
                         if app.temp.currentlyLoadedQuickChain then
-                            local altered = false
-                            for i, item in ipairs(app.temp.quickChain) do
-                                if item.key ~= app.temp.currentlyLoadedQuickChain.items[i] then
+                            local altered = #app.temp.quickChain == 0
+                            for i, item in ipairs(app.temp.currentlyLoadedQuickChain.items) do
+                                if not app.temp.quickChain[i] then
+                                    altered = true
+                                    break
+                                elseif item ~= app.temp.quickChain[i].key then
                                     altered = true
                                     break
                                 end
@@ -2820,42 +2824,19 @@ RunApp = function()
                         if ImGui.Button(ctx, text .. '##quickChainOpenPresetMenu', ImGui.GetContentRegionAvail(ctx) - spacingX - btnW) then
                             ImGui.OpenPopup(ctx, 'QuickChain Preset Menu')
                         end
+                        app:setHoveredHint('main', T.HINTS.QUICKCHAIN_PRESETS_MENU)
                         if ImGui.BeginPopup(ctx, 'QuickChain Preset Menu') then
                             app:setHint('main', '')
                             local numOfPresets = OD_TableLength(app.userdata.current.quickChainPresets)
-                            if app.temp.currentlyLoadedQuickChain then
-                                if ImGui.MenuItem(ctx, 'Update preset...') then
-                                    app.temp.showCreateQuickChainDialog = true
-                                    app.temp.editingQuickChainId = app.temp.currentlyLoadedQuickChain.id
-                                    app.temp.quickChainName = app.temp.currentlyLoadedQuickChain.name
-                                    app.temp.quickChainWord = app.temp.currentlyLoadedQuickChain.word
-                                end
-                                if app.temp.showDeleteQuickChainConfirmation then
-                                    if r.time_precise() - app.temp.showDeleteQuickChainConfirmation > 3 then
-                                        app.temp.showDeleteQuickChainConfirmation = nil
-                                    end
-                                    if ImGui.MenuItem(ctx, 'Click to confirm') then
-                                        app.temp.showDeleteQuickChainConfirmation = nil
-                                        app.userdata:deleteQuickChainPreset(app.temp.currentlyLoadedQuickChain.id)
-                                        app.temp.currentlyLoadedQuickChain = nil
-                                        app.temp.quickChain = {}
-                                        numOfPresets = numOfPresets - 1
-                                    end
-                                elseif ImGui.Selectable(ctx, 'Delete Preset...', false, ImGui.SelectableFlags_NoAutoClosePopups) then
-                                    app.temp.showDeleteQuickChainConfirmation = r.time_precise()
-                                end
-                                if numOfPresets > 0 then
-                                    ImGui.Separator(ctx)
-                                end
-                            end
                             if numOfPresets == 0 then
                                 ImGui.Text(ctx, 'No QuickChain presets available')
                             end
                             -- Show saved QuickChain presets
-                            for quickChainId, quickChain in pairs(app.userdata.current.quickChainPresets or {}) do
-                                if ImGui.MenuItem(ctx, quickChain.name, quickChain.word) then
-                                    app.flow.loadQuickChain(quickChain)
+                            for quickChainId, quickChainPreset in pairs(app.userdata.current.quickChainPresets or {}) do
+                                if ImGui.MenuItem(ctx, quickChainPreset.name, quickChainPreset.word) then
+                                    app.flow.loadQuickChain(quickChainPreset)
                                 end
+                                app:setHoveredHint('main', (T.HINTS.QUICKCHAIN_PRESETS_MENU_LOAD_PRESET):format(quickChainPreset.name))
                             end
 
                             ImGui.EndPopup(ctx)
@@ -2868,21 +2849,49 @@ RunApp = function()
                         if app.guiHelpers.iconButton(ctx, 'DISK', app.gui.st.col.buttons.activeFilterAction, nil, nil, 'saveQCPreset') then
                             ImGui.OpenPopup(ctx, 'Save QuickChain Context Menu')
                         end
-                        app:setHoveredHint('main', T.HINTS.SAVE_FILTERS)
+                        app:setHoveredHint('main', T.HINTS.SAVE_QUICKCHAIN_MENU)
                         if ImGui.BeginPopup(ctx, 'Save QuickChain Context Menu') then
                             app:setHint('main', '')
-                            if ImGui.MenuItem(ctx, 'Save preset...') then
+                            if ImGui.MenuItem(ctx, 'Create QuickChain preset...') then
                                 app.temp.showCreateQuickChainDialog = true
                                 app.temp.editingQuickChainId = nil
+                                app.temp.updateQuickChainPresetWithCurrentChain = nil
                                 app.temp.quickChainName = ""
                                 app.temp.quickChainWord = ""
+                            end
+                            app:setHoveredHint('main', T.HINTS.SAVE_QUICKCHAIN_PRESET)
+                            if app.temp.currentlyLoadedQuickChain then
+                                if ImGui.MenuItem(ctx, 'Edit QuickChain preset...') then
+                                    app.temp.showCreateQuickChainDialog = true
+                                    app.temp.updateQuickChainPresetWithCurrentChain = false
+                                    app.temp.editingQuickChainId = app.temp.currentlyLoadedQuickChain.id
+                                    app.temp.quickChainName = app.temp.currentlyLoadedQuickChain.name
+                                    app.temp.quickChainWord = app.temp.currentlyLoadedQuickChain.word
+                                end
+                                app:setHoveredHint('main', T.HINTS.EDIT_QUICKCHAIN_PRESET)
+                                if app.temp.showDeleteQuickChainConfirmation then
+                                    if r.time_precise() - app.temp.showDeleteQuickChainConfirmation > 3 then
+                                        app.temp.showDeleteQuickChainConfirmation = nil
+                                    end
+                                    if ImGui.MenuItem(ctx, 'Click to confirm') then
+                                        app.temp.showDeleteQuickChainConfirmation = nil
+                                        app.userdata:deleteQuickChainPreset(app.temp.currentlyLoadedQuickChain.id)
+                                        app.temp.currentlyLoadedQuickChain = nil
+                                        app.temp.quickChain = {}
+                                    end
+                                elseif ImGui.Selectable(ctx, 'Delete QuickChain Preset...', false, ImGui.SelectableFlags_NoAutoClosePopups) then
+                                    app.temp.showDeleteQuickChainConfirmation = r.time_precise()
+                                end
+                                app:setHoveredHint('main', T.HINTS.DELETE_QUICKCHAIN_PRESET)
+
+                                ImGui.Separator(ctx)
                             end
                             -- app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_PRESET)
                             if ImGui.MenuItem(ctx, 'Create Reaper action...') then
                                 app.temp.showExportQuickChainActionDialog = true
                                 app.temp.actionName = ""
                             end
-                            -- app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_ACTION)
+                            app:setHoveredHint('main', T.HINTS.SAVE_QUICKCHAIN_ACTION)
                             ImGui.EndPopup(ctx)
                         end
 
@@ -3040,9 +3049,9 @@ RunApp = function()
                             app.temp.clearQuickChain = false
                             app.temp.quickChain = {}
                         end
-                        if #app.temp.quickChain == 0 then
-                            app.temp.currentlyLoadedQuickChain = nil
-                        end
+                        -- if #app.temp.quickChain == 0 then
+                        --     app.temp.currentlyLoadedQuickChain = nil
+                        -- end
                     end
                 end
 
@@ -4244,14 +4253,14 @@ RunApp = function()
                         end
                         app.temp.presetName = app.gui:setting('text', T.EDIT_PRESET_DIALOG.PRESET_NAME.LABEL,
                             T.EDIT_PRESET_DIALOG.PRESET_NAME.HINT, app.temp.presetName,
-                            { hintWindow = 'editFilterWindow' })
+                            { hintWindow = 'editFilterWindow', widgetWidthDivision = 3.5 })
                         local trimmedName = OD_Trim(app.temp.presetName)
                         local canSavePreset = trimmedName ~= ""
                         local errorMessage = ""
 
                         app.temp.presetWord = app.gui:setting('text', T.EDIT_PRESET_DIALOG.PRESET_WORD.LABEL,
                             T.EDIT_PRESET_DIALOG.PRESET_WORD.HINT, app.temp.presetWord,
-                            { hintWindow = 'editFilterWindow' })
+                            { hintWindow = 'editFilterWindow', widgetWidthDivision = 3.5 })
 
                         local trimmedMagicWord = OD_Trim(app.temp.presetWord)
 
@@ -4264,7 +4273,7 @@ RunApp = function()
                                 T.EDIT_PRESET_DIALOG.UPDATE_PRESET_WITH_CURRENT_FILTERS.LABEL,
                                 T.EDIT_PRESET_DIALOG.UPDATE_PRESET_WITH_CURRENT_FILTERS.HINT,
                                 app.temp.updatePresetWithCurrentFilters,
-                                { hintWindow = 'editFilterWindow' })
+                                { hintWindow = 'editFilterWindow', widgetWidthDivision = 3.5 })
                         end
 
                         if canSavePreset then
@@ -4286,6 +4295,13 @@ RunApp = function()
                                     errorMessage = "Magic word already exists"
                                 end
                             end
+
+                            if canSavePreset and app.temp.updatePresetWithCurrentFilters then
+                                if OD_TableLength(app.temp.activeFilters) == 0 then
+                                    canSavePreset = false
+                                    errorMessage = "No active filters"
+                                end
+                            end
                         end
                         -- Show error message if any
                         if errorMessage ~= "" then
@@ -4299,7 +4315,8 @@ RunApp = function()
 
                         if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSavePreset) or app.gui:setting('button', T.EDIT_PRESET_DIALOG.SAVE_PRESET.LABEL,
                                 T.EDIT_PRESET_DIALOG.SAVE_PRESET.HINT, nil,
-                                { label = isEditing and T.EDIT_PRESET_DIALOG.SAVE_PRESET.BUTTON_EDIT or T.EDIT_PRESET_DIALOG.SAVE_PRESET.BUTTON_CREATE, hintWindow = 'editFilterWindow' }) then
+                                { label = isEditing and T.EDIT_PRESET_DIALOG.SAVE_PRESET.BUTTON_EDIT or T.EDIT_PRESET_DIALOG.SAVE_PRESET.BUTTON_CREATE, hintWindow = 'editFilterWindow'
+                                , widgetWidthDivision = 3.5, divideWidth = isEditing and 3 or 2 }) then
                             -- Create new preset - use current active filters
                             if not isEditing then
                                 local preset = app.userdata:createPreset(trimmedName, app.temp.filter, trimmedMagicWord)
@@ -4316,43 +4333,47 @@ RunApp = function()
                                     app.logger:logInfo('Updated preset "' .. preset.name .. '"')
                                 end
                             end
-                            app.temp.showCreatePresetDialog = false
+                            open = false
+
                             ImGui.CloseCurrentPopup(ctx)
                         end
 
                         if not canSavePreset then
                             ImGui.EndDisabled(ctx)
                         end
+                        app.gui:pushColors(app.gui.st.col.buttons.secondary)
 
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EDIT_PRESET_DIALOG.CLOSE.LABEL,
                                 T.EDIT_PRESET_DIALOG.CLOSE.HINT, nil,
-                                { label = T.EDIT_PRESET_DIALOG.CLOSE.BUTTON, hintWindow = 'editFilterWindow' }) then
-                            app.temp.showCreatePresetDialog = false
+                                { label = T.EDIT_PRESET_DIALOG.CLOSE.BUTTON, hintWindow = 'editFilterWindow'
+                                , widgetWidthDivision = 3.5, divideWidth = isEditing and 2 }, isEditing) then
+                            open = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
+                        app.gui:popColors(app.gui.st.col.buttons.secondary)
 
                         -- Delete button (only when editing)
                         if isEditing then
                             app.gui:pushColors(app.gui.st.col.buttons.delete)
                             if app.gui:setting('button', T.EDIT_PRESET_DIALOG.DELETE.LABEL,
                                     T.EDIT_PRESET_DIALOG.DELETE.HINT, nil,
-                                    { label = T.EDIT_PRESET_DIALOG.DELETE.BUTTON, hintWindow = 'editFilterWindow' }) then
+                                    { label = T.EDIT_PRESET_DIALOG.DELETE.BUTTON, hintWindow = 'editFilterWindow'
+                                    , widgetWidthDivision = 3.5 }, true) then
                                 local preset = app.engine.presets[app.temp.editingPresetId]
                                 if preset then
                                     app.userdata:deletePreset(app.temp.editingPresetId)
                                     app.logger:logInfo('Deleted preset "' .. preset.name .. '"')
                                 end
-                                app.temp.showCreatePresetDialog = false
+                                open = false
+
                                 ImGui.CloseCurrentPopup(ctx)
                             end
                             app.gui:popColors(app.gui.st.col.buttons.delete)
                         end
 
                         app.draw.hint(ctx, 'editFilterWindow')
-                        -- hintWindow = 'editFilterWindow'
                         ImGui.EndPopup(ctx)
                     end
-
                     if not open then
                         app.temp.showCreatePresetDialog = false
                         app.temp.editingPresetId = nil
@@ -4367,7 +4388,7 @@ RunApp = function()
             createQuickChainDialog = function(ctx)
                 if app.temp.showCreateQuickChainDialog then
                     local isEditing = app.temp.editingQuickChainId ~= nil
-                    local title = isEditing and 'Edit QuickChain' or 'Create QuickChain'
+                    local title = isEditing and 'Edit QuickChain Preset' or 'Create QuickChain Preset'
                     if not ImGui.IsPopupOpen(ctx, title) then
                         ImGui.OpenPopup(ctx, title)
                         if not app.temp.quickChainName then
@@ -4391,18 +4412,34 @@ RunApp = function()
                         if ImGui.IsWindowAppearing(ctx) then
                             ImGui.SetKeyboardFocusHere(ctx, 0)
                         end
-                        app.temp.quickChainName = app.gui:setting('text', 'Name',
-                            'QuickChain name', app.temp.quickChainName,
-                            { hintWindow = 'editQuickChainWindow' })
+                        app.temp.quickChainName = app.gui:setting('text',
+                            T.EDIT_QUICKCHAIN_PRESET_DIALOG.PRESET_NAME.LABEL,
+                            T.EDIT_QUICKCHAIN_PRESET_DIALOG.PRESET_NAME.HINT,
+                            app.temp.quickChainName,
+                            { hintWindow = 'editQuickChainWindow', widgetWidthDivision = 3.5 })
                         local trimmedName = OD_Trim(app.temp.quickChainName)
                         local canSaveQuickChain = trimmedName ~= ""
                         local errorMessage = ""
 
-                        app.temp.quickChainWord = app.gui:setting('text', 'Magic Word',
-                            'Magic Word (Optional)', app.temp.quickChainWord,
-                            { hintWindow = 'editQuickChainWindow' })
+                        app.temp.quickChainWord = app.gui:setting('text',
+                            T.EDIT_QUICKCHAIN_PRESET_DIALOG.PRESET_WORD.LABEL,
+                            T.EDIT_QUICKCHAIN_PRESET_DIALOG.PRESET_WORD.HINT,
+                            app.temp.quickChainWord,
+                            { hintWindow = 'editQuickChainWindow', widgetWidthDivision = 3.5 })
 
                         local trimmedWord = OD_Trim(app.temp.quickChainWord)
+
+                        -- Update with current chain checkbox (only when editing)
+                        if isEditing then
+                            if not app.temp.updateQuickChainPresetWithCurrentChain then
+                                app.temp.updateQuickChainPresetWithCurrentChain = false
+                            end
+                            app.temp.updateQuickChainPresetWithCurrentChain = app.gui:setting('checkbox',
+                                T.EDIT_QUICKCHAIN_PRESET_DIALOG.UPDATE_PRESET_WITH_CURRENT_CHAIN.LABEL,
+                                T.EDIT_QUICKCHAIN_PRESET_DIALOG.UPDATE_PRESET_WITH_CURRENT_CHAIN.HINT,
+                                app.temp.updateQuickChainPresetWithCurrentChain,
+                                { hintWindow = 'editQuickChainWindow', widgetWidthDivision = 3.5 })
+                        end
 
                         if canSaveQuickChain then
                             -- Check for duplicate name (excluding self when editing)
@@ -4425,6 +4462,12 @@ RunApp = function()
                             end
                         end
 
+                        if canSaveQuickChain and app.temp.updateQuickChainPresetWithCurrentChain then
+                            if #app.temp.quickChain == 0 then
+                                canSaveQuickChain = false
+                                errorMessage = "Current chain is empty"
+                            end
+                        end
                         -- Show error message if any
                         if errorMessage ~= "" then
                             app:setHint('editQuickChainWindow', errorMessage, 'hintError')
@@ -4437,7 +4480,7 @@ RunApp = function()
 
                         if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSaveQuickChain) or app.gui:setting('button', '',
                                 'Save QuickChain', nil,
-                                { label = isEditing and 'Update' or 'Create', hintWindow = 'editQuickChainWindow' }) then
+                                { label = isEditing and 'Update' or 'Create', hintWindow = 'editQuickChainWindow', widgetWidthDivision = 3.5, divideWidth = 2 }) then
                             -- Convert assembled assets to keys for storage
                             local itemKeys = {}
                             local sourceItems = app.temp.quickChain or {}
@@ -4456,25 +4499,28 @@ RunApp = function()
                                 end
                             else
                                 local quickChain = app.userdata:updateQuickChainPreset(app.temp.editingQuickChainId,
-                                    trimmedName, itemKeys, trimmedWord)
+                                    trimmedName, app.temp.updateQuickChainPresetWithCurrentChain and itemKeys or nil,
+                                    trimmedWord)
                                 if quickChain then
                                     app.logger:logInfo('Updated QuickChain "' .. quickChain.name .. '"')
                                 end
                             end
-                            app.temp.showCreateQuickChainDialog = false
+                            open = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
 
                         if not canSaveQuickChain then
                             ImGui.EndDisabled(ctx)
                         end
+                        app.gui:pushColors(app.gui.st.col.buttons.secondary)
 
                         if (ImGui.IsKeyPressed(ctx, ImGui.Key_Escape)) or app.gui:setting('button', '',
                                 'Close dialog', nil,
-                                { label = 'Cancel', hintWindow = 'editQuickChainWindow' }) then
-                            app.temp.showCreateQuickChainDialog = false
+                                { label = 'Cancel', hintWindow = 'editQuickChainWindow', widgetWidthDivision = 3.5 }, true) then
+                            open = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
+                        app.gui:popColors(app.gui.st.col.buttons.secondary)
 
                         app.draw.hint(ctx, 'editQuickChainWindow')
                         ImGui.EndPopup(ctx)
@@ -4482,6 +4528,7 @@ RunApp = function()
 
                     if not open then
                         app.temp.showCreateQuickChainDialog = false
+                        app.temp.updateQuickChainPresetWithCurrentChain = false
                         app.temp.editingQuickChainId = nil
                         app.temp.quickChainName = nil
                         app.temp.quickChainWord = nil
@@ -4520,12 +4567,13 @@ RunApp = function()
                             T.EXPORT_ACTION_DIALOG.ACTION_TYPE.HINT,
                             app.temp.exportActionType, {
                                 list = T.EXPORT_ACTION_TYPE_LIST,
-                                hintWindow = 'editFilterWindow'
+                                hintWindow = 'editFilterWindow',
+                                widgetWidthDivision = 3.5
                             })
 
                         app.temp.actionName = app.gui:setting('text', T.EXPORT_ACTION_DIALOG.NAME.LABEL,
                             T.EXPORT_ACTION_DIALOG.NAME.HINT, app.temp.actionName,
-                            { hintWindow = 'editFilterWindow' })
+                            { hintWindow = 'editFilterWindow', widgetWidthDivision = 3.5 })
 
 
                         local trimmedActionName = OD_Trim(app.temp.actionName)
@@ -4534,23 +4582,26 @@ RunApp = function()
                         if not canExportAction then ImGui.BeginDisabled(ctx) end
                         if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canExportAction) or app.gui:setting('button', T.EXPORT_ACTION_DIALOG.EXPORT.LABEL,
                                 T.EXPORT_ACTION_DIALOG.EXPORT.HINT, nil,
-                                { label = T.EXPORT_ACTION_DIALOG.EXPORT.BUTTON, hintWindow = 'editFilterWindow' }) then
+                                { label = T.EXPORT_ACTION_DIALOG.EXPORT.BUTTON, hintWindow = 'editFilterWindow', widgetWidthDivision = 3.5, divideWidth = 2 }) then
                             local createdActionName = app.flow.createReaperAction(trimmedActionName,
                                 app.temp.exportActionType, app.temp.filter)
                             if createdActionName then
                                 app.flow.msg((T.EXPORT_ACTION_DIALOG.EXPORT.SUCCESS):format(createdActionName))
                             end
-                            app.temp.showExportActionDialog = false
+                            open = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
                         if not canExportAction then ImGui.EndDisabled(ctx) end
+                        app.gui:pushColors(app.gui.st.col.buttons.secondary)
 
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EXPORT_ACTION_DIALOG.CLOSE.LABEL,
                                 T.EXPORT_ACTION_DIALOG.CLOSE.HINT, nil,
-                                { label = T.EXPORT_ACTION_DIALOG.CLOSE.BUTTON, hintWindow = 'editFilterWindow' }) then
-                            app.temp.showExportActionDialog = false
+                                { label = T.EXPORT_ACTION_DIALOG.CLOSE.BUTTON, hintWindow = 'editFilterWindow', widgetWidthDivision = 3.5 }, true) then
+                            open = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
+                        app.gui:popColors(app.gui.st.col.buttons.secondary)
+
                         app.draw.hint(ctx, 'editFilterWindow')
                         ImGui.EndPopup(ctx)
                     end
@@ -4624,13 +4675,16 @@ RunApp = function()
                             T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.ACTION_TYPE.HINT,
                             app.temp.exportActionType, {
                                 list = app.temp.actionTypesList,
-                                hintWindow = 'exportQuickChainActionDialog'
+                                hintWindow = 'exportQuickChainActionDialog',
+                                widgetWidthDivision = 3.5
                             })
                         -- local exportActionType = app.temp.actionTypesToKeyModMapp[app.temp.exportActionType]
                         app.temp.actionName = app.gui:setting('text', T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.NAME.LABEL,
                             T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.NAME.HINT, app.temp.actionName,
-                            { hintWindow = 'exportQuickChainActionDialog' })
-
+                            {
+                                hintWindow = 'exportQuickChainActionDialog',
+                                widgetWidthDivision = 3.5
+                            })
 
                         local trimmedActionName = OD_Trim(app.temp.actionName)
                         local canExportAction = trimmedActionName ~= ""
@@ -4638,7 +4692,8 @@ RunApp = function()
                         if not canExportAction then ImGui.BeginDisabled(ctx) end
                         if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canExportAction) or app.gui:setting('button', T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.LABEL,
                                 T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.HINT, nil,
-                                { label = T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.BUTTON, hintWindow = 'exportQuickChainActionDialog' }) then
+                                { label = T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.BUTTON, hintWindow = 'exportQuickChainActionDialog',
+                                    widgetWidthDivision = 3.5, divideWidth = 2 }) then
                             local keymods = app.temp.actionTypesToKeyModMapp[app.temp.exportActionType + 1]
                             local items = {}
                             for _, asset in ipairs(app.temp.quickChain or {}) do
@@ -4653,17 +4708,19 @@ RunApp = function()
                                 app.flow.msg((T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.SUCCESS):format(
                                     createdActionName))
                             end
-                            app.temp.showExportQuickChainActionDialog = false
+                            open = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
                         if not canExportAction then ImGui.EndDisabled(ctx) end
-
+                        app.gui:pushColors(app.gui.st.col.buttons.secondary)
                         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.CLOSE.LABEL,
                                 T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.CLOSE.HINT, nil,
-                                { label = T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.CLOSE.BUTTON, hintWindow = 'exportQuickChainActionDialog' }) then
-                            app.temp.showExportQuickChainActionDialog = false
+                                { label = T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.CLOSE.BUTTON, hintWindow = 'exportQuickChainActionDialog',
+                                    widgetWidthDivision = 3.5 }, true) then
+                            open = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
+                        app.gui:popColors(app.gui.st.col.buttons.secondary)
                         app.draw.hint(ctx, 'exportQuickChainActionDialog')
                         ImGui.EndPopup(ctx)
                     end
@@ -4788,7 +4845,8 @@ RunApp = function()
                                         #app.temp.quickChain > 0
                                     app.flow.executeSelectedResults(
                                         goWithQuickChain and app.temp.quickChain or app.selection:results(),
-                                        RESULT_CONTEXT.KEYBOARD, nil, nil, goWithQuickChain and { multipleResults = true })
+                                        RESULT_CONTEXT.KEYBOARD, nil, nil,
+                                        goWithQuickChain and { multipleResults = true })
                                 end
                                 pressed = true
                             elseif app.guiHelpers.isShortcutPressed('quickTag') then

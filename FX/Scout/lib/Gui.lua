@@ -121,6 +121,11 @@ PB_Gui.init = function(self, fonts)
                 [ImGui.Col_ButtonHovered] = 0xa3273aff,
                 [ImGui.Col_ButtonActive] = 0xba364aff,
             },
+            secondary = {
+                [ImGui.Col_Button] = self.st.basecolors.mainDark,
+                [ImGui.Col_ButtonHovered] = self.st.basecolors.main,
+                [ImGui.Col_ButtonActive] = self.st.basecolors.mainBright
+            },
             default = {
                 [ImGui.Col_Button] = self.st.basecolors.main,
                 [ImGui.Col_ButtonHovered] = self.st.basecolors.mainBright,
@@ -456,9 +461,9 @@ PB_Gui.init = function(self, fonts)
     self.setting = function(self, stType, text, hint, val, data, sameline)
         local ctx = self.ctx
         local w, h = ImGui.GetWindowSize(ctx)
-        local thirdWidth = w / 2
-        local itemWidth = thirdWidth * 1.5 - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
         local data = data or {}
+        local thirdWidth = w / (data.widgetWidthDivision or 2)
+        local itemWidth = thirdWidth * 1.5 - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
         local retval1, retval2
         local widgetWidth
         if not sameline then

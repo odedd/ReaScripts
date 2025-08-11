@@ -1557,7 +1557,7 @@ function PB_UserData:import(args)
                 hiddenSet[mappedAssetId] = true
                 mappedHiddenCount = mappedHiddenCount + 1
                 self.app.logger:logDebug('✓ Mapped hidden item "' ..
-                importedHiddenItem .. '" to "' .. mappedAssetId .. '"')
+                    importedHiddenItem .. '" to "' .. mappedAssetId .. '"')
             else
                 -- Don't count duplicates as mapped
                 self.app.logger:logDebug('✓ Hidden item "' .. mappedAssetId .. '" already exists, skipping duplicate')
@@ -2084,6 +2084,7 @@ function PB_UserData:toggleAssetHidden(assetKey)
         return true
     end
 end
+
 function PB_UserData:toggleAssetFavorite(assetKey)
     if OD_HasValue(self.current.favorites, assetKey) then
         OD_RemoveValue(self.current.favorites, assetKey)
@@ -2610,11 +2611,6 @@ function PB_UserData:updateQuickChainPreset(quickChainPresetId, name, items, wor
         return nil
     end
 
-    if not items or type(items) ~= 'table' then
-        self.app.logger:logError('Cannot update quickchain preset: items array is required')
-        return nil
-    end
-
     -- Check if magic word is already used by another quickchain preset
     if word and word ~= '' then
         if OD_TableLength(OD_TableFilter(self.current.quickChainPresets, function(k, v)
@@ -2628,12 +2624,13 @@ function PB_UserData:updateQuickChainPreset(quickChainPresetId, name, items, wor
     end
 
     -- Create a deep copy of the items array to store
-    local quickChainPresetItems = OD_DeepCopy(items)
 
     self.current.quickChainPresets[quickChainPresetId].name = name
     self.current.quickChainPresets[quickChainPresetId].word = word
-    self.current.quickChainPresets[quickChainPresetId].items = quickChainPresetItems
-
+    if items then
+        local quickChainPresetItems = OD_DeepCopy(items)
+        self.current.quickChainPresets[quickChainPresetId].items = quickChainPresetItems
+    end
     self.app.logger:logInfo('Updated quickchain preset "' .. name .. '" with id ' .. quickChainPresetId)
 
     self:save()

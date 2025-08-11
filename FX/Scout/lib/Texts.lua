@@ -28,12 +28,10 @@ T.EXPORT_ACTION_DIALOG = {
     }
 }
 T.EXPORT_QUICKACTION_AS_ACTION_DIALOG = {
-    INFO = 'Create a Reaper action that will either open ' ..
-        Scr.name ..
-        ' with the saved filter, or randomly select one of the filter\'s results and run it.'
+    INFO = 'Create a Reaper action that will run one of the quickchain\'s actions.'
     ,
     ACTION_TYPE = {
-        LABEL = 'Action',
+        LABEL = 'Action Type',
         HINT = 'Select what the action should do.',
     },
     NAME = {
@@ -53,9 +51,24 @@ T.EXPORT_QUICKACTION_AS_ACTION_DIALOG = {
     }
 }
 
+T.EDIT_QUICKCHAIN_PRESET_DIALOG = {
+    PRESET_NAME = {
+        LABEL = 'Name',
+        HINT = 'A name for the new QuickChain preset',
+    },
+    PRESET_WORD = {
+        LABEL = 'Magic Word',
+        HINT = 'Typing word + space loads/runs QuickChain preset',
+    },
+    UPDATE_PRESET_WITH_CURRENT_CHAIN = {
+        LABEL = 'Update with loaded chain',
+        HINT = 'Update QuickChain preset with loaded chain',
+    },
+}
+
 T.EDIT_PRESET_DIALOG = {
     PRESET_NAME = {
-        LABEL = 'Preset Name',
+        LABEL = 'Name',
         HINT = 'A name for the new preset',
     },
     PRESET_WORD = {
@@ -399,6 +412,13 @@ T.HINTS = {
     RANDOM_ACTION = 'Randomly select one of the results and run it.',
     SAVE_FILTERS_PRESET = 'Save filter set as a preset.',
     SAVE_FILTERS_ACTION = 'Export filter set as a Reaper action.',
+    SAVE_QUICKCHAIN_MENU = 'Save/Edit/Delete QuickChain presets, and create a Reaper action from QuickChain.',
+    QUICKCHAIN_PRESETS_MENU = 'Load QuickChain presets.',
+    QUICKCHAIN_PRESETS_MENU_LOAD_PRESET = 'Load QuickChain preset \'%s\' into current QuickChain.',
+    SAVE_QUICKCHAIN_PRESET = 'Save QuickChain preset.',
+    DELETE_QUICKCHAIN_PRESET = 'Delete QuickChain preset.',
+    EDIT_QUICKCHAIN_PRESET = 'Edit currently loaded QuickChain preset.',
+    SAVE_QUICKCHAIN_ACTION = 'Export QuickChain as a Reaper action.',
     MULTI_TYPE_SELECTION = '%s to execute %d items.',
     -- ACTIVE_FILTER_DEFAULT = '%s: %s',
     ACTIVE_FILTER_REMOVE = 'Remove filter.',
