@@ -3841,7 +3841,7 @@ RunApp = function()
                     app.gui:popStyles(app.gui.st.vars.popupsTitle)
 
                     if visible then
-                        if ImGui.Shortcut(ctx, ImGui.Key_Escape, ImGui.InputFlags_RouteGlobal | ImGui.InputFlags_RouteOverFocused) then
+                        if ImGui.Shortcut(ctx, ImGui.Key_Escape, ImGui.InputFlags_RouteGlobal | ImGui.InputFlags_RouteOverFocused) and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_ChildWindows) then
                             app.temp.showHelpWindow = nil
                         end
                         if ImGui.BeginChild(ctx, '##help', 0.0, -app.gui.st.sizes.hintHeight, nil) then
@@ -3851,7 +3851,7 @@ RunApp = function()
                                     tabFlags = tabFlags | ImGui.TabItemFlags_SetSelected
                                 end
                                 if ImGui.BeginTabItem(ctx, 'About Scout', false, tabFlags) then
-                                    if ImGui.BeginChild(ctx, 'AboutContent', nil, nil, nil, ImGui.WindowFlags_NoNavFocus) then
+                                    if ImGui.BeginChild(ctx, 'AboutContent', nil, nil, nil, ImGui.WindowFlags_NoNavFocus | ImGui.WindowFlags_AlwaysVerticalScrollbar) then
                                         ImGui.Spacing(ctx)
                                         -- ImGui.PushTextWrapPos(ctx, 0.0)
                                         local text = T.MAIN_HELP

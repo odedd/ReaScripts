@@ -299,77 +299,90 @@ if reaper.ImGui_CreateContext then
   -- Rich text with word-wrapping support, based on cfillion's function
   OD_ImGuiRichTextWrapped = function(ctx, text, fonts, wrapWidth)
     local wrapWidth = wrapWidth or reaper.ImGui_GetContentRegionAvail(ctx)
-    -- Add a small buffer to account for ImGui padding/margins
-    wrapWidth = wrapWidth - reaper.ImGui_GetStyleVar(ctx, reaper.ImGui_StyleVar_FramePadding())
     text:gsub('[^\n]*', function(line)
       if line == '' then
-        -- Handle empty lines by adding spacing
         reaper.ImGui_Text(ctx,'')
         return
       end
-      
-      -- Collect all chunks first, maintaining original structure
+
       local chunks = {}
       line:gsub('\0?[^\0]+', function(chunk)
-        local originalChunk = chunk
         local cmd, arg
-        
         if chunk:sub(1, 1) == '\0' then
           local eoc = chunk:find(';', 3)
           cmd = chunk:sub(2, 2)
           arg = chunk:sub(3, eoc - 1)
           chunk = chunk:sub(eoc + 1)
         end
-        
         table.insert(chunks, {
           cmd = cmd,
           arg = arg,
           text = chunk
         })
       end)
-      
-      -- Now process chunks with wrapping
+
       local currentLineWidth = 0
       local currentLineChunks = {}
-      
+      local fontStack = {}
+      local function pushFont(arg, sizeKey)
+        local sizeKey = sizeKey or 'default'
+        local font = fonts[arg].font
+        local size = fonts[arg].scaledSizes[sizeKey]
+        table.insert(fontStack, {font=font, size=size})
+        reaper.ImGui_PushFont(ctx, font, size)
+      end
+      local function popFont()
+        table.remove(fontStack)
+        reaper.ImGui_PopFont(ctx)
+      end
+      local function getCurrentFont()
+        if #fontStack > 0 then
+          return fontStack[#fontStack].font, fontStack[#fontStack].size
+        end
+        return nil, nil
+      end
+
       for _, chunk in ipairs(chunks) do
-        -- Add command to current line
-        if chunk.cmd then
+        -- Handle font/color commands for width calculation
+        if chunk.cmd == 'f' then
+          pushFont(chunk.arg)
+          table.insert(currentLineChunks, {type = 'cmd', cmd = chunk.cmd, arg = chunk.arg})
+        elseif chunk.cmd == 'F' then
+          popFont()
+          table.insert(currentLineChunks, {type = 'cmd', cmd = chunk.cmd, arg = chunk.arg})
+        elseif chunk.cmd then
           table.insert(currentLineChunks, {type = 'cmd', cmd = chunk.cmd, arg = chunk.arg})
         end
-        
-        -- Process text if it exists
+
         if chunk.text ~= '' then
-          -- Split text into words but keep track of original spacing
           local words = {}
           local remainingText = chunk.text
-          
           while remainingText ~= '' do
             local wordStart = remainingText:find('%S')
             if not wordStart then
-              -- Only spaces left
               table.insert(words, remainingText)
               break
             end
-            
-            -- Add leading spaces if any
             if wordStart > 1 then
               table.insert(words, remainingText:sub(1, wordStart - 1))
             end
-            
-            -- Find word end
             local wordEnd = remainingText:find('%s', wordStart) or (#remainingText + 1)
             local word = remainingText:sub(wordStart, wordEnd - 1)
             table.insert(words, word)
-            
             remainingText = remainingText:sub(wordEnd)
           end
-          
-          -- Process each word/space segment
+
           for _, segment in ipairs(words) do
+            -- Use the current font for width calculation
+            local font, size = getCurrentFont()
+            if font then
+              reaper.ImGui_PushFont(ctx, font, size)
+            end
             local segmentWidth, _ = reaper.ImGui_CalcTextSize(ctx, segment)
-            
-            -- Check if we need to wrap (but not if it's just spaces or first item on line)
+            if font then
+              reaper.ImGui_PopFont(ctx)
+            end
+
             if currentLineWidth + segmentWidth > wrapWidth and currentLineWidth > 0 and segment:match('%S') then
               -- Render current line
               local concat = false
@@ -387,19 +400,16 @@ if reaper.ImGui_CreateContext then
                   reaper.ImGui_Text(ctx, lineChunk.content)
                 end
               end
-              
-              -- Start new line
               currentLineChunks = {}
               currentLineWidth = 0
             end
-            
-            -- Add segment to current line
+
             table.insert(currentLineChunks, {type = 'text', content = segment})
             currentLineWidth = currentLineWidth + segmentWidth
           end
         end
       end
-      
+
       -- Render final line
       if #currentLineChunks > 0 then
         local concat = false
@@ -418,9 +428,15 @@ if reaper.ImGui_CreateContext then
           end
         end
       end
+      -- Restore font stack if needed
+      while #fontStack > 0 do
+        reaper.ImGui_PopFont(ctx)
+        table.remove(fontStack)
+      end
     end)
   end
 
+  
   OD_GetImguiKeysPressed = function(ctx)
     for _, key in ipairs(OD_CAPTURABLE_KEYS) do
       if reaper.ImGui_IsKeyDown(ctx, key) then
