@@ -2720,8 +2720,12 @@ RunApp = function()
                                                         end
                                                     end
                                                     if ImGui.MenuItem(ctx, item, value.shortcut, selected) then
-                                                        app.flow.filterResults(value.query)
-                                                    end
+                                                        if selected then
+                                                            app.flow.filterResults(value.allQuery or menuInfo.allQuery)
+                                                        else
+                                                            app.flow.filterResults(value.query)
+                                                        end
+                                                        end
                                                     if ImGui.IsItemHovered(ctx) then
                                                         if k == FILTER_TYPES.PRESET then
                                                             if value.shortcut then

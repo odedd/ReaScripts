@@ -47,8 +47,8 @@
 -- DONE: Test QuickChain import/export, as well as magic word conflicts
 -- DONE: Favorites reordering
 -- DONE: Rethink multiple selection. Maybe should only be calculated on execution?
--- TODO: Random result should not work when no filter is applied
--- TODO: Clicking a selected filter •in the filter menu• should clear the filter
+-- DONE: Random result should not work when no filter is applied
+-- DONE: Clicking a selected filter •in the filter menu• should clear the filter
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Test on windows
 -- TODO: Setting to reset on wakeup or not
