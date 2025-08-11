@@ -51,7 +51,6 @@ function PluginAssetType:getData()
                 self.context.fxDevelopers[vendor] = true
             end
 
-            local baseName = name or ''
             local vendorBaseName = vendor or ''
             local variant, variantPat, variantOrder
             if vendor then
