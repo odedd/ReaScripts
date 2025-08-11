@@ -36,9 +36,9 @@ LOG_LEVEL = OD_Logger.LOG_LEVEL.NONE
 
 OD_Init()
 
-if LOG_LEVEL > OD_Logger.LOG_LEVEL.NONE then
+-- if LOG_LEVEL > OD_Logger.LOG_LEVEL.NONE then
     r.ClearConsole()
-end
+-- end
 
 r.SetExtState(Scr.ext_name, 'SCRIPT_VERSION', Scr.version, false)
 
@@ -416,7 +416,7 @@ RunApp = function()
                             local showOnlyHighestPriorityVariant = app.settings.current
                                 .showOnlyHighestPriorityVariant
                             if showOnlyHighestPriorityVariant then
-                                local id = asset.baseName .. (asset.vendorBaseName or '')
+                                local id = asset.fx_type.. asset.baseName .. (asset.vendorBaseName or '')
                                 if foundVariants[id] then
                                     goto skip
                                 else

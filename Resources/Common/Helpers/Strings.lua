@@ -58,11 +58,5 @@ function OD_FormatNumberWithCommas(number)
     end
 
     return formInteger .. fracPart
-end
 
-
--- function magicFix(str)
---     return str:gsub("[%(%)%.%+%-%*%?%[%]%^%$%%]", "%%%1")
---   end
-  
-
+  end

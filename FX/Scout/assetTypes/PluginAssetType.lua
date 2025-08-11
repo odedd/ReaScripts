@@ -64,16 +64,26 @@ function PluginAssetType:getData()
                 end
             end
 
+            local baseName = nil
+            local variants = {}
+            local variantPat = nil
+            local variantOrder = nil
+
             for i, varPat in ipairs(self.context.settings.current.variantOrder) do
-                if name:lower():match('%s' .. varPat:lower() .. '$') then
-                    local pat = OD_CaseInsensitivePattern(varPat)
-                    baseName, variant = name:match('(.*)%s' .. pat .. '$')
-                    variantOrder = i
-                    variantPat = varPat
-                    break
+                if (full_name:lower()):match('%s' .. varPat:lower()) then
+                    local baseNameCandidate = name:match('(.*)%s' .. OD_CaseInsensitivePattern(varPat))
+                    if baseNameCandidate then baseName = baseNameCandidate end
+                    for var in full_name:gmatch('%s' .. OD_CaseInsensitivePattern(varPat)) do
+                        if variantPat == nil then
+                            variantPat = varPat
+                            variantOrder = i
+                        end
+                        table.insert(variants, var)
+                    end
                 end
             end
-
+            baseName = baseName or name
+            variant = table.concat(variants, '|')
 
             return true, name, (vendor ~= '' and vendor or nil), baseName,
                 (vendorBaseName ~= '' and vendorBaseName or nil), variant, variantPat, variantOrder
@@ -81,7 +91,8 @@ function PluginAssetType:getData()
 
         if full_name == '' then return false end
 
-        local success, name, vendor, baseName, vendorBaseName, variant, variantPat, variantOrder = extractNameVendor(full_name, fx_type)
+        local success, name, vendor, baseName, vendorBaseName, variant, variantPat, variantOrder = extractNameVendor(
+            full_name, fx_type)
         if success then
             self.context.logger:logDebug('Parsing successful')
             self.context.logger:logDebug('Name', name)
@@ -129,7 +140,6 @@ function PluginAssetType:getData()
 end
 
 function PluginAssetType:assembleAsset(plugin)
-
     local asset = self:createAssetBase({
         type = self.assetTypeId,
         load = plugin.ident,
