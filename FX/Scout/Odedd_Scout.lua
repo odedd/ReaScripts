@@ -402,7 +402,7 @@ RunApp = function()
                             -- show only high priority fx type
                             local showOnlyHighestPriorityPlugin = app.settings.current.showOnlyHighestPriorityPlugin
                             if showOnlyHighestPriorityPlugin then
-                                local id = asset.name .. (asset.vendor or '')
+                                local id = asset.name .. (asset.vendorBaseName or '')
                                 if foundPlugins[id] then
                                     goto skip
                                 else
