@@ -2118,6 +2118,41 @@ RunApp = function()
                                                                             OD_IMGUI_KEY_NAMES[ImGui.Mod_Alt]))
                                                                     app.temp.hoveredTag[rowIdx] = tag
                                                                 end
+                                                                if ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_AllowWhenOverlapped | ImGui.HoveredFlags_ForTooltip) then
+                                                                    ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 0,
+                                                                        app.gui.st.vars.main[ImGui.StyleVar_ItemSpacing]
+                                                                        [2])
+                                                                    if ImGui.BeginTooltip(ctx) then
+                                                                        local currentTag = tag.parent
+                                                                        while currentTag and currentTag ~= TAGS_ROOT_PARENT do
+                                                                            local globalX, globalY = ImGui
+                                                                                .GetCursorScreenPos(ctx)
+                                                                            local x, y = ImGui.GetCursorPos(ctx)
+                                                                            local tagNameWidth = ImGui.CalcTextSize(ctx,
+                                                                                currentTag.name)
+                                                                            local tagW, tagH =
+                                                                                tagNameWidth + paddingX * 2,
+                                                                                ImGui.GetTextLineHeight(ctx) +
+                                                                                paddingY * 2
+                                                                            ImGui.DrawList_AddRectFilled(
+                                                                                ImGui.GetWindowDrawList(ctx),
+                                                                                globalX, globalY,
+                                                                                globalX + tagW,
+                                                                                globalY + tagH, tag.displayBGColor,
+                                                                                100)
+                                                                            ImGui.SetCursorPos(ctx, x + paddingX,
+                                                                                y + paddingY)
+                                                                            ImGui.TextColored(ctx,
+                                                                                currentTag.displayColor,
+                                                                                currentTag.name)
+                                                                            ImGui.SameLine(ctx, 0, paddingX)
+                                                                            ImGui.NewLine(ctx)
+                                                                            currentTag = currentTag.parent
+                                                                        end
+                                                                        ImGui.EndTooltip(ctx)
+                                                                    end
+                                                                    ImGui.PopStyleVar(ctx)
+                                                                end
 
                                                                 ImGui.SameLine(ctx, nil, paddingX + spacingX)
                                                             end
