@@ -23,6 +23,9 @@ PB_Gui.init = function(self, fonts)
     self.searchResultsClipper = ImGui.CreateListClipper(self.ctx)
     ImGui.Attach(self.ctx, self.searchResultsClipper)
 
+    self.tagSearchResultsClipper = ImGui.CreateListClipper(self.ctx)
+    ImGui.Attach(self.ctx, self.tagSearchResultsClipper)
+
     self.clearInputIfNeeded = ImGui.CreateFunctionFromEEL([[
     buflen = strlen(#Buf);
     InputTextCallback_DeleteChars(0, buflen);
