@@ -4078,17 +4078,25 @@ RunApp = function()
                     ImGui.TextDisabled(ctx,
                         'Enter to add tag, ' .. OD_IMGUI_KEY_NAMES[ImGui.Mod_Alt] .. '+Enter to remove tag')
                     ImGui.TextDisabled(ctx, 'Hold Shift to keep popup open')
+                    if app.temp.newTagChild then
+                        ImGui.TextColored(ctx, app.gui.st.basecolors.mainBright ,('Create tag named \'%s\' inside:'):format(app.temp.newTagChild))
+                    end
                     if ImGui.IsWindowAppearing(ctx) then
                         ImGui.TextFilter_Clear(app.gui.searchTagsFilter)
+                        app.temp.newTagChild = nil
                     end
                     ImGui.SetKeyboardFocusHere(ctx)
-
                     if ImGui.IsKeyChordPressed(ctx, ImGui.Key_Escape) then
-                        ImGui.CloseCurrentPopup(ctx)
+                        if ImGui.TextFilter_Get(app.gui.searchTagsFilter) ~= '' then
+                            ImGui.TextFilter_Set(app.gui.searchTagsFilter, ' ')
+                        elseif app.temp.newTagChild then
+                            app.temp.newTagChild = nil
+                        else
+                            ImGui.CloseCurrentPopup(ctx)
+                        end
                     end
                     ImGui.SetNextItemShortcut(ctx, app.settings.current.shortcuts.quickTag)
                     local rv = ImGui.TextFilter_Draw(app.gui.searchTagsFilter, ctx, '##Filter', -FLT_MIN)
-
                     if rv then app.temp.tagKeyboardPos = 1 end
                     local results = {}
                     for _, filter in ipairs(app.engine.filterAssets) do
@@ -4098,20 +4106,30 @@ RunApp = function()
                             end
                         end
                     end
-
                     local searchQuery = ImGui.TextFilter_Get(app.gui.searchTagsFilter)
                     if searchQuery ~= '' then
                         local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
 
-                        table.insert(results, {
-                            newTag = true,
-                            searchText = { { text = 'Create new tag named \'' .. searchQuery .. '\'...' } }
-                        })
+                        if not app.temp.newTagChild then
+                            table.insert(results, {
+                                newTag = true,
+                                searchText = { { text = 'Create new tag named \'' .. searchQuery .. '\'' } }
+                            })
+                            table.insert(results, {
+                                newTagChild = true,
+                                searchText = { { text = 'Create new tag named \'' .. searchQuery .. '\' inside...' } }
+                            })
+                        end
                         local fontLineFullHeight = ImGui.GetTextLineHeightWithSpacing(ctx) +
                             select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemInnerSpacing))
                         local searchResultsH = select(2, ImGui.GetContentRegionAvail(ctx))
                         local maxSearchResults = math.floor(searchResultsH / fontLineFullHeight) -- Max results in available space
                         local executeTag = function(result)
+                            if result.newTagChild then
+                                app.temp.newTagChild = searchQuery
+                                ImGui.TextFilter_Clear(app.gui.searchTagsFilter)
+                                return
+                            end
                             local close = not ImGui.IsKeyDown(ctx, ImGui.Mod_Shift)
                             if result.newTag then
                                 local newTag = app.userdata:createTag(searchQuery, TAGS_ROOT_PARENT)
@@ -4123,6 +4141,11 @@ RunApp = function()
                             else
                                 local tag = result.object
                                 local remove = ImGui.IsKeyDown(ctx, ImGui.Mod_Alt)
+                                if app.temp.newTagChild then
+                                    tag = app.userdata:createTag(app.temp.newTagChild, tag)
+                                    app.temp.newTagChild = nil
+                                    remove = false
+                                end
                                 local selectedResults = app.selection:results()
                                 for i, result in ipairs(selectedResults) do
                                     if remove then
