@@ -527,10 +527,8 @@ $script searches for #FX#, #Actions#, #Projects#, #Project Templates#, #Track Te
 - Use `Shift/$ctrl` to select multiple results
 - `Drag` results to tracks to add them directly
 - `Drag` results to an empty area to create a new track
-- Determine fx type and variant `order` and `priority`
-- Only see the `highest priority` fx type and variant
-- Create #QuickChains# to `batch process` FX and chains
-- Randomly execute a results with $shortcut:runRandomResult
+- Create `QuickChains` to batch process FX and chains
+- Randomly execute a result with $shortcut:runRandomResult
 - Use $script in `minimal mode` for a more compact interface
 
 #`TAGGING SYSTEM`#
@@ -540,13 +538,15 @@ $script searches for #FX#, #Actions#, #Projects#, #Project Templates#, #Track Te
 - Exclusive tags show items that `do not` have the tag
 - Tags can be `combined` with other tags/filters
 - Create `nested tags` for hierarchical organization
-- Applied tags include their children in the results
-- Set `custom colors` to tags. Nested tags inherit parents' colors
-- `Hide` tags and their children from the results area
-- Hover over a tag in the results area to see its parents
-- `Drag` items to tags to add/remove (`$alt-Click` to remove)
+- Applied tags `include their children` in the results
+- Drag `tags to other tags` organize them
+- `Right-Click` tags to delete, sort and create nested tags
 - `Double-Click` tags to rename them
-- `Right-Click` tags for more options (delete, create nested tag)
+- Set `custom colors` to tags for easy visual distinction
+- `Hide` tags from the results area to avoid clutter
+- Nested tags `inherit` their parents' color and hidden status
+- Hover over a tag in the results area to see its parents
+- Drag `items to tags` to tag them (`$alt-Click` to untag)
 - `Right-Click` search results to copy, paste and clear tags
 - `Auto-add` tag to the selected FX's various `formats` and `variants`
 
@@ -555,13 +555,14 @@ $script searches for #FX#, #Actions#, #Projects#, #Project Templates#, #Track Te
 - In filter search mode, type to search filters, tags and presets
 - `Enter` applies filter and returns to item search
 - `Shift+Enter` applies filter without returning to item search
+- `$ctrl+(Shift)+Enter` applies tag `exclusively` (items without tag)
 
 #`QUICKCHAIN`#
 - Click icon or press $shortcut:toggleQuickChain to show/hide the QuickChain sidebar
 - Build chains by combining FX/FX Chains from search results
 - Control order and add items from different searches
 - `Drag/Drop` or press $shortcut:addToQuickChain to add FX/Chains to the QuickChain
-- `$alt/+Click` to removes items from the QuickChain
+- `$alt+Click` to removes items from the QuickChain
 - $shortcut:clearQuickChain to clear the QuickChain
 - Execute chain by pressing `Enter` or by clicking the Lightning button
 - Click the `...` menu for more actions and keyboard shortcuts
@@ -569,17 +570,17 @@ $script searches for #FX#, #Actions#, #Projects#, #Project Templates#, #Track Te
 #`PRESETS`#
 - Save filter combinations as `filter presets`
 - Save QuickChains as `QuickChain presets` for quick recall
-- Set a #default preset# to load when $script starts or wakes up
+- Set a `default preset` to load when $script starts or wakes up
 
 #`MAGIC WORDS`#
 - Assign `Magic Words` to filter/QuickChain presets for instant loading
 - `Result type filters` (FX, Markers etc...) have magic words built-in
-- Type `Magic Word + space` to load preset/QuickChain/result type
-- Type `Magic Word + ?` to randomly execute one of the preset's results
+- Type `Magic Word + space` to load filter preset/QuickChain/result type
+- Type `Magic Word + ?` to randomly execute one of the filter's results
 
 #`QUICK TAG WINDOW`#
 - Press $shortcut:quickTag to `quickly tag items`
-- Create `new tags` at root or nested under others
+- Create `new tags` either at root or nested under others
 - Press `Enter` to tag or `$alt+Click` to remove tags
 - Press `Shift+Enter` to keep adding/removing tags
 
@@ -589,10 +590,10 @@ $script searches for #FX#, #Actions#, #Projects#, #Project Templates#, #Track Te
 - Recently used items are automatically shown at the top of the list
 - Use filter `Other->Hidden` to see hidden items
 - Use filter `Other->Recently Added` to see Recently added FX/Actions
-- Scout can only track items added after it was first run
+- $script can only track items added after it was first run
 
 #`CUSTOM ACTIONS`#
-- Filters and QuickChain presets can be exported as `custom Reaper actions`
+- Export filters and QuickChain presets as `custom Reaper actions`
 - Filter actions can either `load a filter` or `randomly run a result`
 - QuickChains actions can instantly perform each of $script's actions 
 
@@ -606,6 +607,9 @@ $script searches for #FX#, #Actions#, #Projects#, #Project Templates#, #Track Te
 #`TIPS`#
 - Enable `Sleep Mode` for fastest loading
 - Start quickly by `converting FX folders and categories` to tags
+- Spend some time `tagging your items` in a smart, methodical way
+- Modify FX type and FX variant `order` and `priority`
+- Only show one available FX type and variant to `avoid redundant results`
 - Create `filter presets` for commonly used filter combinations
 - Use `Magic Words` and `Reaper actions` to quickly load filter presets
 - Boost your creativity by letting $script run `random results`
