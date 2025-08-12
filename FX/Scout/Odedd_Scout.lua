@@ -4033,7 +4033,7 @@ RunApp = function()
                                     tabFlags = tabFlags | ImGui.TabItemFlags_SetSelected
                                 end
                                 if ImGui.BeginTabItem(ctx, 'About Scout', false, tabFlags) then
-                                    if ImGui.BeginChild(ctx, 'AboutContent', nil, nil, nil, ImGui.WindowFlags_NoNavFocus | ImGui.WindowFlags_AlwaysVerticalScrollbar) then
+                                    if ImGui.BeginChild(ctx, 'AboutContent', nil, nil, nil, ImGui.WindowFlags_NoNavFocus) then
                                         ImGui.Spacing(ctx)
                                         -- ImGui.PushTextWrapPos(ctx, 0.0)
                                         local text = T.MAIN_HELP
@@ -4116,7 +4116,7 @@ RunApp = function()
                                     ImGui.EndTabItem(ctx)
                                 end
                                 if ImGui.BeginTabItem(ctx, 'Acknowledgements', false) then
-                                    if ImGui.BeginChild(ctx, 'AcknowledgementsContent', nil, nil, nil, ImGui.WindowFlags_NoNavFocus | ImGui.WindowFlags_AlwaysVerticalScrollbar) then
+                                    if ImGui.BeginChild(ctx, 'AcknowledgementsContent', nil, nil, nil, ImGui.WindowFlags_NoNavFocus) then
                                         ImGui.Spacing(ctx)
                                         -- ImGui.PushTextWrapPos(ctx, 0.0)
                                         local text = T.HELP_ACKNOWLEDGEMENTS
