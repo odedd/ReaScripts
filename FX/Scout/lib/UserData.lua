@@ -31,7 +31,7 @@ PB_UserData = OD_Settings:new({
             [ASSET_TYPE.PluginAssetType .. " /Library/Audio/Plug-Ins/VST3/FabFilter Pro-G.vst3"] = { 5 }
         }
     },
-    dfsetfile = Scr.dir .. Scr.no_ext .. ' tags.ini'
+    dfsetfile = Scr.dir .. Scr.no_ext .. ' userdata.ini'
 })
 
 function PB_UserData:new(o)

@@ -189,6 +189,14 @@ T.SETTINGS = {
         LABEL = 'Reset filters on wakeup',
         HINT = 'Reset filters and clear QuickChain when waking up from sleep mode.',
     },
+    LOAD_DEFAULT_PRESET = {
+        LABEL = 'Use default preset',
+        HINT = 'Open Scout with a default preset on launch, and on wakeup (if resetting filters).',
+    },
+    DEFAULT_PRESET = {
+        LABEL = 'Default preset',
+        HINT = 'Select preset to open when Scout launches or wakes up (if resetting filters).',
+    },
     OVERRIDE_DEFAULT_SEND_VOLUME = {
         LABEL = 'Override send volume',
         HINT = 'Override the default send volume for new sends.',

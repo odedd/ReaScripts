@@ -10,6 +10,8 @@ PB_Settings = OD_Settings:new({
         afterAction = AFTER_ACTION.CLOSE,
         sleepMode = false,
         resetFiltersOnWakeup = true,
+        loadDefaultPreset = false,
+        defaultPreset = nil,
         
         -- Ordering
         showOnlyHighestPriorityPlugin = true,

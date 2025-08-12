@@ -264,6 +264,7 @@ RunApp = function()
             setPage = function(page)
                 if page ~= app.page then
                     app.page = page
+                    app.flow.loadDefaultPreset()
                     app.pageSwitched = true
                 end
             end,
@@ -717,6 +718,11 @@ RunApp = function()
                 app.temp.searchInput = ''
                 app.temp.clearSearchInputText = true
             end,
+            loadDefaultPreset = function()
+                if app.settings.current.loadDefaultPreset and app.engine.presets[app.settings.current.defaultPreset] then
+                    app.flow.filterResults(app.engine.presets[app.settings.current.defaultPreset].filter)
+                end
+            end,
             createAction = function(actionName, cmd)
                 local snActionName = OD_SanitizeFilename(actionName)
                 local filename = ('%s - %s'):format(Scr.no_ext, snActionName)
@@ -818,7 +824,9 @@ RunApp = function()
                     if app.settings.current.resetFiltersOnWakeup then
                         app.temp.quickChain = {}
                         app.flow.clearSearchInputText()
+                        app.flow.filterResults({ clear = true })
                         app.flow.setSearchMode(SEARCH_MODE.MAIN)
+                        app.flow.loadDefaultPreset()
                     end
                     PDefer(app.loop)
                 else
@@ -3308,7 +3316,7 @@ RunApp = function()
                             local word = app.engine.magicWords[wordKey]
                             local wordActivated = false
                             if word then
-                                if word.type == MAGIC_WORD_TYPE.PRESET then
+                                if word.type == MAGIC_WORD_TYPE.PRESET or word.type == MAGIC_WORD_TYPE.FILTER then
                                     wordActivated = true
                                     app.flow.filterResults(word.filter)
                                     if wordAction == '?' then app.flow.executeRandomResult() end
@@ -3317,12 +3325,6 @@ RunApp = function()
                                 elseif word.type == MAGIC_WORD_TYPE.QUICK_CHAIN then
                                     wordActivated = true
                                     app.flow.loadQuickChain(word.quickChain)
-                                    app.flow.setSearchMode(app.temp.lastSearchMode)
-                                    app.flow.clearSearchInputText()
-                                elseif word.type == MAGIC_WORD_TYPE.FILTER then
-                                    wordActivated = true
-                                    app.flow.filterResults(word.filter)
-                                    -- app.flow.loadQuickChain(word.quickChain)
                                     app.flow.setSearchMode(app.temp.lastSearchMode)
                                     app.flow.clearSearchInputText()
                                 end
@@ -3496,6 +3498,16 @@ RunApp = function()
                                 app.temp.groupVisibility[app.engine.assetGroupNameCache[group]] = app.settings
                                     .current.groupVisibility[group]
                             end
+                            app.temp.presetList = ''
+                            app.temp.presetListToIdMap = {}
+                            app.temp.defaultPresetIdx = -1
+                            local i = 0
+                            for presetId, preset in pairs(app.engine.presets) do
+                                app.temp.presetList = app.temp.presetList .. preset.name .. '\0'
+                                table.insert(app.temp.presetListToIdMap, presetId)
+                                if presetId == app.settings.current.defaultPreset then app.temp.defaultPresetIdx = i end
+                                i = i + 1
+                            end
                         end
                         app.temp.settingsWindowOpen = true
                         ImGui.SeparatorText(ctx, 'General')
@@ -3533,6 +3545,24 @@ RunApp = function()
                             T.SETTINGS.RESET_FILTERS_ON_WAKEUP.LABEL,
                             T.SETTINGS.RESET_FILTERS_ON_WAKEUP.HINT,
                             app.settings.current.resetFiltersOnWakeup)
+                        app.settings.current.loadDefaultPreset = app.gui:setting('checkbox',
+                            T.SETTINGS.LOAD_DEFAULT_PRESET.LABEL,
+                            T.SETTINGS.LOAD_DEFAULT_PRESET.HINT, app.settings.current.loadDefaultPreset)
+                        if app.settings.current.loadDefaultPreset then
+                            app.temp.defaultPresetIdx = app.gui:setting(
+                                'combo',
+                                T.SETTINGS.DEFAULT_PRESET.LABEL,
+                                T.SETTINGS.DEFAULT_PRESET.HINT,
+                                app.temp.defaultPresetIdx, {
+                                    list = app.temp.presetList
+                                }, true)
+                                if app.temp.defaultPresetIdx then
+                                    app.settings.current.defaultPreset = app.temp.presetListToIdMap[app.temp.defaultPresetIdx+1]
+                                else
+                                    app.settings.current.defaultPreset = nil
+                                end
+                        end
+
                         ImGui.SeparatorText(ctx, 'Ordering')
 
                         app.settings.current.showOnlyHighestPriorityPlugin = app.gui:setting('checkbox',
@@ -4914,7 +4944,7 @@ RunApp = function()
                         ImGui.WindowFlags_AlwaysAutoResize)
 
                     if ImGui.IsWindowAppearing(ctx) then
-                        app.temp.actionTypesToKeyModMapp = {}
+                        app.temp.actionTypesToKeyModMap = {}
                         app.temp.actionTypesList = ''
 
                         local result = app.temp.quickChain and app.temp.quickChain[1] or nil
@@ -4938,7 +4968,7 @@ RunApp = function()
                                         "^%l", string.upper):gsub('%.$', ' ')
 
                                 app.temp.actionTypesList = app.temp.actionTypesList .. text .. '\0'
-                                table.insert(app.temp.actionTypesToKeyModMapp, keymod)
+                                table.insert(app.temp.actionTypesToKeyModMap, keymod)
                             end
                         end
                     end
@@ -4960,7 +4990,7 @@ RunApp = function()
                                 hintWindow = 'exportQuickChainActionDialog',
                                 widgetWidthDivision = 3.5
                             })
-                        -- local exportActionType = app.temp.actionTypesToKeyModMapp[app.temp.exportActionType]
+                        -- local exportActionType = app.temp.actionTypesToKeyModMap[app.temp.exportActionType]
                         app.temp.actionName = app.gui:setting('text', T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.NAME.LABEL,
                             T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.NAME.HINT, app.temp.actionName,
                             {
@@ -4976,7 +5006,7 @@ RunApp = function()
                                 T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.HINT, nil,
                                 { label = T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.BUTTON, hintWindow = 'exportQuickChainActionDialog',
                                     widgetWidthDivision = 3.5, divideWidth = 2 }) then
-                            local keymods = app.temp.actionTypesToKeyModMapp[app.temp.exportActionType + 1]
+                            local keymods = app.temp.actionTypesToKeyModMap[app.temp.exportActionType + 1]
                             local items = {}
                             for _, asset in ipairs(app.temp.quickChain or {}) do
                                 if asset.key then
@@ -5112,11 +5142,11 @@ RunApp = function()
                             if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_ChildWindows) then
                                 if not app.temp.ignoreEscapeKey then
                                     if app.temp.searchInput == '' then
-                                        if app.temp.activeFilters and OD_TableLength(app.temp.activeFilters) > 0 then
-                                            app.flow.filterResults({ clear = true }, nil, true)
-                                        else
-                                            app.flow.close()
-                                        end
+                                        -- if app.temp.activeFilters and OD_TableLength(app.temp.activeFilters) > 0 then
+                                        --     app.flow.filterResults({ clear = true }, nil, true)
+                                        -- else
+                                        app.flow.close()
+                                        -- end
                                     end
                                 end
                                 pressed = true
