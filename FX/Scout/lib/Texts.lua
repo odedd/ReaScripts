@@ -502,6 +502,16 @@ Keyboard modifiers can be used to perform various actions on the search results.
 `Right-Clicking` a result will show you the available actions and their keyboard shortcuts.
 ]]
 
+T.HELP_ACKNOWLEDGEMENTS = [[
+While $script is a result of countless hours of work, it could not have been done without the prior work of many incredible and talented programmers and contributors to the Reaper scripting community.
+
+I'd like to personally thank those who knowingly or unknowingly contributed:
+- #`cfillion`# for creating `ReaImGui`, `ReaPack` and so much more
+- #`nvk`# for creating `nvk_SEARCH` which was a huge inspiration for $script
+- #`Neutronic`# for `Quick Adder` which, for me, started this whole thing
+- #`X-Raym`# for the ReaScript documentation - an invalueable resource
+]]
+
 T.MAIN_HELP = [[
 #`WHAT IS $SCRIPT?`#
 $script is a powerful search and organization tool that helps you quickly find and use all your Reaper assets in one unified interface, prioritizing speed and efficiency, allowing you to search for and manage your assets without leaving the keyboard.

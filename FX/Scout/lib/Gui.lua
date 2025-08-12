@@ -119,6 +119,12 @@ PB_Gui.init = function(self, fonts)
                 hovered = { [ImGui.Col_Text] = self.st.basecolors.mainBright },
                 active = { [ImGui.Col_Text] = self.st.basecolors.mainBrighter },
             },
+            donations = {
+                [ImGui.Col_Text] = self.st.basecolors.highlightA,
+                [ImGui.Col_Button] = 0x00000000,
+                [ImGui.Col_ButtonHovered] = 0x00000000,
+                [ImGui.Col_ButtonActive] = 0x00000000,
+            },
             delete = {
                 [ImGui.Col_Button] = 0x991d30ff,
                 [ImGui.Col_ButtonHovered] = 0xa3273aff,

@@ -3556,11 +3556,12 @@ RunApp = function()
                                 app.temp.defaultPresetIdx, {
                                     list = app.temp.presetList
                                 }, true)
-                                if app.temp.defaultPresetIdx then
-                                    app.settings.current.defaultPreset = app.temp.presetListToIdMap[app.temp.defaultPresetIdx+1]
-                                else
-                                    app.settings.current.defaultPreset = nil
-                                end
+                            if app.temp.defaultPresetIdx then
+                                app.settings.current.defaultPreset = app.temp.presetListToIdMap
+                                    [app.temp.defaultPresetIdx + 1]
+                            else
+                                app.settings.current.defaultPreset = nil
+                            end
                         end
 
                         ImGui.SeparatorText(ctx, 'Ordering')
@@ -3698,7 +3699,8 @@ RunApp = function()
                             })
                         app.settings.current.shortcuts.toggleSearchMode, resetCounter = app.gui:setting('shortcut',
                             T.SETTINGS.SHORTCUTS.TOGGLE_SEARCH_MODE.LABEL,
-                            T.SETTINGS.SHORTCUTS.TOGGLE_SEARCH_MODE.HINT, app.settings.current.shortcuts.toggleSearchMode,
+                            T.SETTINGS.SHORTCUTS.TOGGLE_SEARCH_MODE.HINT, app.settings.current.shortcuts
+                            .toggleSearchMode,
                             {
                                 existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                                     function(k, v) return k ~= 'toggleSearchMode' end)
@@ -4019,6 +4021,9 @@ RunApp = function()
                             app.temp.showHelpWindow = nil
                         end
                         if ImGui.BeginChild(ctx, '##help', 0.0, -app.gui.st.sizes.hintHeight, nil) then
+                            if ImGui.IsWindowAppearing(ctx) then
+                                ImGui.SetKeyboardFocusHere(ctx)
+                            end
                             if ImGui.BeginTabBar(ctx, 'Help Bar') then
                                 local tabFlags = ImGui.TabItemFlags_None
                                 if ImGui.IsWindowAppearing(ctx) then
@@ -4107,6 +4112,38 @@ RunApp = function()
                                     end
                                     ImGui.EndTabItem(ctx)
                                 end
+                                if ImGui.BeginTabItem(ctx, 'Acknowledgements', false) then
+                                    if ImGui.BeginChild(ctx, 'AcknowledgementsContent', nil, nil, nil, ImGui.WindowFlags_NoNavFocus | ImGui.WindowFlags_AlwaysVerticalScrollbar) then
+                                        ImGui.Spacing(ctx)
+                                        -- ImGui.PushTextWrapPos(ctx, 0.0)
+                                        local text = T.HELP_ACKNOWLEDGEMENTS
+                                        local firstPipePos = text:find('|')
+                                        if not firstPipePos then
+                                            -- No | sections found, render entire text as prefix
+                                            OD_ImGuiRichTextWrapped(ctx, app.guiHelpers.formatRichText(text),
+                                                app.gui.st.fonts)
+                                        elseif firstPipePos > 1 then
+                                            -- | sections found, render text before first | as prefix
+                                            local prefixText = text:sub(1, firstPipePos - 1)
+                                            if prefixText and prefixText ~= '' then
+                                                OD_ImGuiRichTextWrapped(ctx, app.guiHelpers.formatRichText(prefixText),
+                                                    app.gui.st.fonts)
+                                            end
+                                        end
+
+                                        for title, section in text:gmatch('|([^\r\n]+)([^|]+)') do
+                                            if ImGui.CollapsingHeader(ctx, title, false, ImGui.TreeNodeFlags_DefaultOpen) then
+                                                -- ImGui.TextWrapped(ctx, app.guiHelpers.formatRichText(section))
+                                                OD_ImGuiRichTextWrapped(ctx, app.guiHelpers.formatRichText(section),
+                                                    app.gui.st.fonts)
+                                            end
+                                        end
+                                        -- ImGui.PopTextWrapPos(ctx)
+                                        ImGui.EndChild(ctx)
+                                    end
+                                    ImGui.EndTabItem(ctx)
+                                end
+
                                 ImGui.EndTabBar(ctx)
                             end
                             ImGui.EndChild(ctx)
@@ -4117,7 +4154,8 @@ RunApp = function()
 
                             ImGui.Text(ctx, 'While this script is free,')
                             ImGui.SameLine(ctx)
-                            -- ImGui.PushStyleColor(ctx, ImGui.Col_Text, app.gui.st.basecolors.mainBright)
+                            app.gui:pushColors(app.gui.st.col.buttons.donations)
+
                             if ImGui.SmallButton(ctx, 'donations') then
                                 if r.APIExists('CF_ShellExecute') then
                                     r.CF_ShellExecute(Scr.donation)
@@ -4135,8 +4173,11 @@ RunApp = function()
                                     end
                                 end
                             end
-                            -- app.gui:popColors(app.gui.st.basecolors.mainBright)
-                            ImGui.SameLine(ctx)
+                            if ImGui.IsItemHovered(ctx) then
+                                ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                            end
+                            app.gui:popColors(app.gui.st.col.buttons.donations)
+                            ImGui.SameLine(ctx, nil, 8 * app.gui.scale)
                             ImGui.SetCursorPosX(ctx,
                                 ImGui.GetCursorPosX(ctx) + ImGui.GetStyleColor(ctx, ImGui.StyleVar_ItemSpacing))
                             ImGui.Text(ctx, 'will be very much appreciated ;-)')
@@ -5152,10 +5193,10 @@ RunApp = function()
                                         if app.temp.searchMode == SEARCH_MODE.FILTERS then
                                             app.flow.setSearchMode(SEARCH_MODE.MAIN)
                                         else
-                                        -- if app.temp.activeFilters and OD_TableLength(app.temp.activeFilters) > 0 then
-                                        --     app.flow.filterResults({ clear = true }, nil, true)
-                                        -- else
-                                        app.flow.close()
+                                            -- if app.temp.activeFilters and OD_TableLength(app.temp.activeFilters) > 0 then
+                                            --     app.flow.filterResults({ clear = true }, nil, true)
+                                            -- else
+                                            app.flow.close()
                                         end
                                     end
                                 end
