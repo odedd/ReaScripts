@@ -3275,6 +3275,42 @@ RunApp = function()
 
                         ImGui.SetNextItemWidth(ctx, w)
                         local rv
+                        -- r.ShowConsoleMsg(
+                        --     '---------------------------------------------------------------------------------------------------------------\n')
+                        --     r.ShowConsoleMsg('app.temp.focusTextInput: ' ..
+                        --     tostring(app.temp.focusTextInput) .. ' (true)\n')
+                        -- if not app.temp.focusTextInput then
+                        --     r.ShowConsoleMsg('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n')
+                        -- end
+                        -- r.ShowConsoleMsg('ImGui.IsAnyItemActive(...): ' ..
+                        -- tostring(ImGui.IsAnyItemActive(ctx)) .. ' (false)\n')
+                        -- if ImGui.IsAnyItemActive(ctx) then
+                        --     r.ShowConsoleMsg('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n')
+                        -- end
+                        -- r.ShowConsoleMsg('app.temp.waitingForDoubleClick: ' ..
+                        -- tostring(app.temp.waitingForDoubleClick) .. ' (false)\n')
+                        -- if app.temp.waitingForDoubleClick then
+                        --     r.ShowConsoleMsg('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n')
+                        -- end
+                        -- r.ShowConsoleMsg('ImGui.IsPopupOpen(...): ' ..
+                        -- tostring(ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup)) .. ' (false)\n')
+                        -- if ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) then
+                        --     r.ShowConsoleMsg('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n')
+                        -- end
+                        -- r.ShowConsoleMsg('app.temp.tagRename: ' .. tostring(app.temp.tagRename) .. ' (false)\n')
+                        -- if app.temp.tagRename then
+                        --     r.ShowConsoleMsg('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n')
+                        -- end
+                        -- r.ShowConsoleMsg('ImGui.IsWindowFocused(...): ' ..
+                        -- tostring(ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows)) ..
+                        -- ' (true)\n')
+                        -- if not ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows) then
+                        --     r.ShowConsoleMsg('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n')
+                        -- end
+                        -- r.ShowConsoleMsg(
+                        --     '---------------------------------------------------------------------------------------------------------------\n')
+                        -- The root of the jumping focus problem is ImGui.IsAnyItemActive(ctx). It sometimes says no item is active, when in fact the text input is active
+                        -- Changing to ImGui.IsAnyItemFocused causes popups (like context menus) not to open
                         if app.temp.focusTextInput or (not ImGui.IsAnyItemActive(ctx) and not app.temp.waitingForDoubleClick and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.tagRename and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_RootAndChildWindows)) then
                             app.temp.focusTextInput = nil
                             ImGui.SetKeyboardFocusHere(ctx, 0)
