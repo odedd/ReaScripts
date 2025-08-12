@@ -12,6 +12,7 @@ function RegionAssetType.new(class, context)
     -- Regions should be imported even if they can't be mapped to existing regions
     instance.requiresMappingOnImport = false
     instance.updateOnProjectRefresh = true
+    instance.magicWord = 'R'
 
     instance:addInteraction(0, 'go to start of %asset',
         function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)

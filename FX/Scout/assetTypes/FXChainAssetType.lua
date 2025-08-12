@@ -12,6 +12,7 @@ function FXChainAssetType.new(class, context)
     instance.shouldMapBaseFilenames = true
     instance.allowInQuickChain = true
     instance = helpers.addPluginActions(instance)
+    instance.magicWord = 'C'
     return instance
 end
 

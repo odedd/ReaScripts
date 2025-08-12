@@ -458,10 +458,15 @@ function BaseAssetType:getFilterMenuEntry()
         return {} -- Return empty table instead of erroring for now
     end
 
-    return {
+    local filterMenuEntry = {
         [self.name] = {
             order = self.filterOrder,
             query = { type = self.assetTypeId }
-        }
-    }
+        }}
+        if self.magicWord then
+            filterMenuEntry[self.name].shortcut = self.magicWord
+        end
+
+        return filterMenuEntry
+    
 end

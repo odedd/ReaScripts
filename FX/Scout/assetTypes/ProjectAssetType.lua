@@ -8,6 +8,7 @@ setmetatable(ProjectAssetType, BaseAssetType)
 function ProjectAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Project", "Projects")(class, context)
     instance.allowMultiple = false
+    instance.magicWord = 'P'
     instance:addInteraction(0, 'open %asset',
         function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
             r.Main_openProject(asset.load)

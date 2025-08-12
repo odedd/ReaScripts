@@ -10,6 +10,7 @@ function ActionAssetType.new(class, context)
     -- Plugins are file-based assets (have file paths)
     instance.shouldMapBaseFilenames = true
     instance.trackAddDate = true
+    instance.magicWord = 'A'
 
     -- Add interaction using the new system
     instance:addInteraction(0, 'run %asset',

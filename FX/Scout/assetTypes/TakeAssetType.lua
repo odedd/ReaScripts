@@ -10,6 +10,7 @@ function TakeAssetType.new(class, context)
     -- Takess should be imported even if they can't be mapped to existing takes
     instance.requiresMappingOnImport = false
     instance.updateOnProjectRefresh = true
+    instance.magicWord = 'K'
 
     instance:addInteraction(0, 'select %asset', function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
         local targetGuid = asset.load

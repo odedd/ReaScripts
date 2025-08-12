@@ -13,6 +13,7 @@ function PluginAssetType.new(class, context)
     instance.trackAddDate = true
     instance.allowInQuickChain = true
     instance = helpers.addPluginActions(instance)
+    instance.magicWord = 'F'
     return instance
 end
 

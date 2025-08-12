@@ -3319,6 +3319,12 @@ RunApp = function()
                                     app.flow.loadQuickChain(word.quickChain)
                                     app.flow.setSearchMode(app.temp.lastSearchMode)
                                     app.flow.clearSearchInputText()
+                                elseif word.type == MAGIC_WORD_TYPE.FILTER then
+                                    wordActivated = true
+                                    app.flow.filterResults(word.filter)
+                                    -- app.flow.loadQuickChain(word.quickChain)
+                                    app.flow.setSearchMode(app.temp.lastSearchMode)
+                                    app.flow.clearSearchInputText()
                                 end
                             end
                             if not wordActivated then

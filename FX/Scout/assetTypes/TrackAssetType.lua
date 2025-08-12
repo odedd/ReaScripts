@@ -11,6 +11,7 @@ function TrackAssetType.new(class, context)
     -- Tracks should be imported even if they can't be mapped to existing tracks
     instance.requiresMappingOnImport = false
     instance.updateOnProjectRefresh = true
+    instance.magicWord = 'T'
 
     instance:addInteraction(0, 'select and scroll to %asset',
         function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)

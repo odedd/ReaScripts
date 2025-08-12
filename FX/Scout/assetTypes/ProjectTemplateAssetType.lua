@@ -10,6 +10,7 @@ function ProjectTemplateAssetType.new(class, context)
     -- Project Templates are file-based assets (.rpp files)
     instance.shouldMapBaseFilenames = true
     instance.allowMultiple = false
+    instance.magicWord = 'S'
     
     instance:addInteraction(0, 'create a new project based on %asset', function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
         r.Main_openProject("template:" .. asset.load)

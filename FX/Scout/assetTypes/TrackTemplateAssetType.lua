@@ -10,6 +10,7 @@ function TrackTemplateAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("Track Template", "Track Templates")(class, context)
     -- Track Templates are file-based assets (.RTrackTemplate files)
     instance.shouldMapBaseFilenames = true
+    instance.magicWord = 'L'
 
     instance:addInteraction(0, 'load %asset as %singular(a )new track%plural(s)',
         function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)

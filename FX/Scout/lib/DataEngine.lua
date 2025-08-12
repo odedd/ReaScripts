@@ -1032,6 +1032,12 @@ PB_DataEngine.getMagicWords = function(self)
         end
     end
 
+    for assetTypeId, assetType in ipairs(self.assetTypeManager.assetTypes) do
+        if assetType.magicWord then
+            self.magicWords[assetType.magicWord:upper()] = { type = MAGIC_WORD_TYPE.FILTER, filter = { type = assetTypeId } }
+        end
+    end
+
     local count = 0
     for _ in pairs(self.magicWords) do
         count = count + 1
@@ -1445,8 +1451,10 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                                 context, count, itemName, T.FILTER_NAMES_PLURAL[filterType])
                         end
                     }
+                    if item.shortcut then table.insert(filterAsset.searchText, { text = item.shortcut}) end
                     -- Add execute function directly to the asset
-                    filterAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
+                    filterAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore,
+                                                   skipAllConfirmations)
                         return filterExecuteFunction(asset, mods | context)
                     end
                     table.insert(self.filterAssets, filterAsset)
@@ -1500,7 +1508,8 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 end
 
                 -- Add execute function directly to the asset
-                tagAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
+                tagAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore,
+                                            skipAllConfirmations)
                     return filterExecuteFunction(asset, mods | context)
                 end
                 table.insert(self.filterAssets, tagAsset)
@@ -1528,7 +1537,8 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 end
             }
             -- Add execute function directly to the asset
-            presetAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore, skipAllConfirmations)
+            presetAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore,
+                                           skipAllConfirmations)
                 return presetExecuteFunction(asset, mods | context)
             end
             table.insert(self.filterAssets, presetAsset)
@@ -1894,7 +1904,7 @@ PB_DataEngine.getAssetsByKeys = function(self, assetKeys)
     return foundAssets
 end
 
--- Check if a magic word is already in use by presets or QuickChain presets
+-- Check if a magic word is already in use
 -- Returns: isUsed (boolean), conflictType (string), conflictName (string)
 PB_DataEngine.isMagicWordUsed = function(self, word, excludeType, excludeId)
     if not word or word == '' then
@@ -1939,6 +1949,11 @@ PB_DataEngine.isMagicWordUsed = function(self, word, excludeType, excludeId)
         end
     end
 
+    for assetTypeId, assetType in ipairs(self.assetTypeManager.assetTypes) do
+        if assetType.magicWord and assetType.magicWord ~= '' and assetType.magicWord:lower() == wordLower then
+            return true, 'filter', assetTypeId
+        end
+    end
     return false, nil, nil
 end
 

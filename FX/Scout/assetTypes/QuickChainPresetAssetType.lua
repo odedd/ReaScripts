@@ -15,6 +15,7 @@ helpers.performQuickChainPresetAction = function(asset, resultContext, mods, con
 end
 function QuickChainPresetAssetType.new(class, context)
     local instance = BaseAssetType:createStandardConstructor("QuickChain Preset", "QuickChain Presets")(class, context)
+    instance.magicWord = 'Q'
 
     -- QuickChains do not require mapping on import (they are user-created)
     instance.requiresMappingOnImport = false
