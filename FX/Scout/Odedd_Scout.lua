@@ -952,8 +952,11 @@ RunApp = function()
                 if app.settings.current.minimalMode then
                     if app.temp.filter and ((app.temp.filter.text == '' or app.temp.filter.text == nil) and (app.temp.activeFilters == nil or (not next(app.temp.activeFilters)))) then
                         app.temp.fullWindow = false
+                    elseif app.temp.lastFullWindow ~= app.temp.fullWindow then
+                        ImGui.SetNextWindowSize(ctx, app.settings.current.lastWindowWidth, app.settings.current.lastWindowHeight)
                     end
                 end
+                app.temp.lastFullWindow = app.temp.fullWindow
 
                 checkProjectChange()
                 app.engine:sync()
@@ -964,7 +967,7 @@ RunApp = function()
                 app.gui.mainWindow.size = { ImGui.GetWindowSize(ctx) }
                 app.gui.screen = { size = { OD_GetScreenSize() } }
                 app.settings.current.lastWindowWidth = app.gui.mainWindow.size[1]
-                if not app.settings.current.minimalMode then
+                if not app.settings.current.minimalMode or app.temp.fullWindow then
                     app.settings.current.lastWindowHeight = app.gui.mainWindow.size[2]
                 end
             end,
