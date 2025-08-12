@@ -513,27 +513,28 @@ $script searches for #Plugins#, #Actions#, #Projects#, #Project Templates#, #Tra
 - Use `Shift/$ctrl` to select multiple results
 - `Drag` results to tracks to add them directly
 - `Drag` results to an empty area to create a new track
-- Create #QuickChains# to batch process FX and chains
+- Determine fx type and variant `order` and `priority`
+- Only see the `highest priority` fx type and variant
+- Create #QuickChains# to `batch process` FX and chains
 - Randomly execute a results with $shortcut:runRandomResult
 - Use $script in `minimal mode` for a more compact interface
 
 #`TAGGING SYSTEM`#
 - Assign tags to items for easy organization
-- Tags can be `combined` with other tags/filters
-- Tags can be `inclusive` or `exclusive`
+- Filter using tags, either `inclusively` or `exclusively`
 - Inclusive tags show items that `have` the tag
 - Exclusive tags show items that `do not` have the tag
+- Tags can be `combined` with other tags/filters
 - Create `nested tags` for hierarchical organization
 - Applied tags include their children in the results
+- Set `custom colors` to tags. Nested tags inherit parents' colors
+- `Hide` tags and their children from the results area
+- Hover over a tag in the results area to see its parents
 - `Drag` items to tags to add/remove (`$alt-Click` to remove)
 - `Double-Click` tags to rename them
 - `Right-Click` tags for more options (delete, create nested tag)
-
-#`PRESETS`#
-- Save filter combinations as presets
-- Assign `Magic Words` to presets for instant loading
-- Type `Magic Word + space` to load preset
-- Type `Magic Word + ?` to randomly execute one of the preset's results
+- `Right-Click` search results to copy, paste and clear tags
+- `Auto-add` tag to the selected FX's various `formats` and `variants`
 
 #`FILTER SEARCH MODE`#
 - Press `Tab` to switch between item search and filter search
@@ -551,18 +552,39 @@ $script searches for #Plugins#, #Actions#, #Projects#, #Project Templates#, #Tra
 - Execute chain by pressing `Enter` or by clicking the Lightning button
 - Click the `...` menu for more actions and keyboard shortcuts
 
-#`FAVORITES, RECENTS AND RECENTLY ADDED ITEMS`#
+#`PRESETS`#
+- Save filter combinations as `filter presets`
+- Save QuickChains as `QuickChain presets` for quick recall
+- Set a #default preset# to load when $script starts or wakes up
+
+#`MAGIC WORDS`#
+- Assign `Magic Words` to filter/QuickChain presets for instant loading
+- `Result type filters` (FX, Markers etc...) have magic words built-in
+- Type `Magic Word + space` to load preset/QuickChain/result type
+- Type `Magic Word + ?` to randomly execute one of the preset's results
+
+#`QUICK TAG WINDOW`#
+- Press $shortcut:quickTag to `quickly tag items`
+- Create `new tags` at root or nested under others
+- Press `Enter` to tag or `$alt+Click` to remove tags
+- Press `Shift+Enter` to keep adding/removing tags
+
+#`FAVORITES, RECENTS, HIDDEN AND RECENTLY ADDED ITEMS`#
 - Press $shortcut:markFavorite to mark frequently used items
+- Press $shortcut:markHidden to `hide`/`unhide` unneeded items
 - Recently used items are automatically shown at the top of the list
+- Use filter `Other->Hidden` to see hidden items
 - Use filter `Other->Recently Added` to see Recently added FX/Actions
 - Scout can only track items added after it was first run
 
 #`CUSTOM ACTIONS`#
-- Filter combinations can be saved as `custom Reaper actions`
-- Actions can either `load a filter` or `randomly and run a result`
+- Filters and QuickChain presets can be exported as `custom Reaper actions`
+- Filter actions can either `load a filter` or `randomly run a result`
+- QuickChains actions can instantly perform each of $script's actions 
 
 #`EXPORT/IMPORT`#
-- Export your `tags`, `presets` and `favorites` to share between systems
+- Export your data to share between systems
+- Data includes `tags`, `presets`, `favorites`, `hidden items` and `QuickChains`
 - Importing can either `overwrite` or `merge` with existing data
 - When imported, $script will try its best to match existing items
 - If an item is not found on the receiving system, it will be ignored
@@ -570,9 +592,11 @@ $script searches for #Plugins#, #Actions#, #Projects#, #Project Templates#, #Tra
 #`TIPS`#
 - Enable `Sleep Mode` for fastest loading
 - Start quickly by `converting FX folders and categories` to tags
-- Create presets for commonly used filter combinations
-- Use Magic Words and Reaper actions to quickly load presets
+- Create `filter presets` for commonly used filter combinations
+- Use `Magic Words` and `Reaper actions` to quickly load filter presets
 - Boost your creativity by letting $script run `random results`
-- Use `filter search mode` to work quicker using the keyboard
+- Use `filter search mode` to quickly filter using the keyboard
+- Use `Quick Tag` window to quickly tag items using the keyboard
 - Use `QuickChain` to batch process FX and chains efficiently
+- Use `Magic Words` and `Reaper actions` to quickly run QuickChain presets
 - Use the settings to `customize` $script to your workflow]]
