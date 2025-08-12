@@ -516,7 +516,7 @@ T.MAIN_HELP = [[
 #`WHAT IS $SCRIPT?`#
 $script is a powerful search and organization tool that helps you quickly find and use all your Reaper assets in one unified interface, prioritizing speed and efficiency, allowing you to search for and manage your assets without leaving the keyboard.
 
-$script searches for #FX#, #Actions#, #Projects#, #Project Templates#, #Track Templates#, #FX Chains#, #Tracks#, #Takes#, #Markers#, #Regions# and #Take Markers#.
+$script searches for #FX#, #Actions#, #Projects#, #Project Templates#, #Track Templates#, #FX Chains#, #Tracks#, #Takes#, #Markers#, #Regions#, #Take Markers# and #QuickChain Presets#.
 
 #`USAGE`#
 - Type to search across all asset types
