@@ -416,7 +416,7 @@ RunApp = function()
                             local showOnlyHighestPriorityVariant = app.settings.current
                                 .showOnlyHighestPriorityVariant
                             if showOnlyHighestPriorityVariant then
-                                local id = asset.fx_type .. asset.baseName .. (asset.vendorBaseName or '')
+                                local id = (showOnlyHighestPriorityPlugin and '' or asset.fx_type) .. asset.baseName .. (asset.vendorBaseName or '')
                                 if foundVariants[id] then
                                     goto skip
                                 else

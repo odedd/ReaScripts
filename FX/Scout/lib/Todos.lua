@@ -53,6 +53,7 @@
 -- TODO: Test on windows
 -- TODO: Setting to reset on wakeup or not
 -- TODO: DEFAULT PRESET?
+-- BUG: Minimal mode restores to small size when fullWindow = true
 -- BUG: Jumping focus issue keeps coming up every now and then
 ---------------------------------------
 -- AFTER LAUNCH -----------------------
