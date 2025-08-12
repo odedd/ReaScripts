@@ -49,11 +49,11 @@
 -- DONE: Rethink multiple selection. Maybe should only be calculated on execution?
 -- DONE: Random result should not work when no filter is applied
 -- DONE: Clicking a selected filter •in the filter menu• should clear the filter
+-- FIXED: Minimal mode restores to small size when fullWindow = true
 -- TODO: Create Default Presets with Magic Words for types
 -- TODO: Test on windows
 -- TODO: Setting to reset on wakeup or not
 -- TODO: DEFAULT PRESET?
--- BUG: Minimal mode restores to small size when fullWindow = true
 -- BUG: Jumping focus issue keeps coming up every now and then
 ---------------------------------------
 -- AFTER LAUNCH -----------------------
