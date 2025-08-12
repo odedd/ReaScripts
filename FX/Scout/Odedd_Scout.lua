@@ -1012,7 +1012,6 @@ RunApp = function()
                     end
                     if ImGui.IsWindowAppearing(ctx) then
                         ImGui.SetConfigVar(ctx, ImGui.ConfigVar_DockingNoSplit, 1)
-                        ImGui.SetConfigVar(ctx, ImGui.ConfigVar_HoverDelayNormal, 0.6)
                         -- ImGui.SetConfigVar(ctx, ImGui.ConfigVar_NavEscapeClearFocusWindow, 1)
                     end
                 end
@@ -1321,21 +1320,25 @@ RunApp = function()
                     ImGui.EndMenu(ctx)
                 end
 
-                if tagList and #tagList > 0 then
-                    if ImGui.MenuItem(ctx, 'Clear') then
-                        for _, tag in ipairs(tagList) do
-                            for _, result in ipairs(selectedResults) do
-                                result:removeTag(tag, false)
-                            end
-                            app.userdata:save()
-                            app.flow.filterResults(nil, true, true)
+                if not tagList or #tagList == 0 then
+                    ImGui.BeginDisabled(ctx)
+                end
+                if ImGui.MenuItem(ctx, 'Clear') then
+                    for _, tag in ipairs(tagList) do
+                        for _, result in ipairs(selectedResults) do
+                            result:removeTag(tag, false)
                         end
+                        app.userdata:save()
+                        app.flow.filterResults(nil, true, true)
                     end
-                    app:setHoveredHint('main', T.HINTS.RESULT_CONTEXT_MENU_CLEAR_TAGS)
-                    if ImGui.MenuItem(ctx, 'Copy', app.guiHelpers.shortCutToText(app.settings.current.shortcuts['copyTags'])) then
-                        app.flow.copyTags()
-                    end
-                    app:setHoveredHint('main', T.HINTS.RESULT_CONTEXT_MENU_COPY_TAGS)
+                end
+                app:setHoveredHint('main', T.HINTS.RESULT_CONTEXT_MENU_CLEAR_TAGS)
+                if ImGui.MenuItem(ctx, 'Copy', app.guiHelpers.shortCutToText(app.settings.current.shortcuts['copyTags'])) then
+                    app.flow.copyTags()
+                end
+                app:setHoveredHint('main', T.HINTS.RESULT_CONTEXT_MENU_COPY_TAGS)
+                if not tagList or #tagList == 0 then
+                    ImGui.EndDisabled(ctx)
                 end
                 if not app.temp.copiedTags or #app.temp.copiedTags == 0 then
                     ImGui.BeginDisabled(ctx)
@@ -2118,7 +2121,9 @@ RunApp = function()
                                                                             OD_IMGUI_KEY_NAMES[ImGui.Mod_Alt]))
                                                                     app.temp.hoveredTag[rowIdx] = tag
                                                                 end
-                                                                if ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_AllowWhenOverlapped | ImGui.HoveredFlags_ForTooltip) then
+                                                                ImGui.SetConfigVar(ctx, ImGui.ConfigVar_HoverDelayNormal,
+                                                                    1.1)
+                                                                if ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_AllowWhenOverlapped | ImGui.HoveredFlags_DelayNormal | ImGui.HoveredFlags_NoSharedDelay) then
                                                                     ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 0,
                                                                         app.gui.st.vars.main[ImGui.StyleVar_ItemSpacing]
                                                                         [2])
@@ -2361,6 +2366,7 @@ RunApp = function()
                                                 ImGui.DragDropFlags_AcceptBeforeDelivery |
                                                 ImGui.DragDropFlags_AcceptNoDrawDefaultRect)
                                         end
+                                        ImGui.SetConfigVar(ctx, ImGui.ConfigVar_HoverDelayNormal, 0.6)
                                         if (tagDropped or assetDropped) and ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_AllowWhenBlockedByActiveItem | ImGui.HoveredFlags_DelayNormal | ImGui.HoveredFlags_NoSharedDelay) then
                                             tag:toggleOpen(true)
                                         end
