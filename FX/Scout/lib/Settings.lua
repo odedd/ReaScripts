@@ -3,16 +3,16 @@
 PB_Settings = OD_Settings:new({
     default = {
         -- * SETTINGS WINDOW 
-        
+
         -- General Settings
         uiScale = 1,
         centerOnOpen = true,
-        afterAction = AFTER_ACTION.RESET_FILTERS,
+        afterAction = AFTER_ACTION.CLOSE,
         sleepMode = false,
         resetFiltersOnWakeup = true,
-        showOnlyHighestPriorityPlugin = true,
-
+        
         -- Ordering
+        showOnlyHighestPriorityPlugin = true,
         fxTypeVisibility = {
             ['Internal'] = true,
             ['VST3'] = true,
@@ -73,7 +73,7 @@ PB_Settings = OD_Settings:new({
             ["ProjectTemplateAssetType"] = true, -- Project Templates asset type
             ["QuickChainPresetAssetType"] = true
         },                                       -- Project Templates asset type
-        showOnlyHighestPriorityVariant = false,
+        showOnlyHighestPriorityVariant = true,
         variantMatchingOrder = {
             '%(?(stereo/%d%.%d)%)?',
             '%(?(mono/stereo)%)?',
@@ -133,26 +133,26 @@ PB_Settings = OD_Settings:new({
 
         -- Shortcuts
         shortcuts = {
-            markFavorite = ImGui.Mod_Ctrl | ImGui.Key_F,
-            markHidden = ImGui.Mod_Ctrl | ImGui.Key_H,
-            toggleAfterAction = ImGui.Mod_Ctrl | ImGui.Key_B,
             closeScript = ImGui.Key_Escape,
             performAction = ImGui.Key_Enter,
             hardCloseScript = ImGui.Mod_Ctrl | ImGui.Key_Q,
             selectAllResults = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_A,
             clearFilters = ImGui.Mod_Ctrl | ImGui.Key_L,
+            markFavorite = ImGui.Mod_Ctrl | ImGui.Key_F,
+            markHidden = ImGui.Mod_Ctrl | ImGui.Key_H,
             runRandomResult = ImGui.Mod_Ctrl | ImGui.Key_R,
-            addToQuickChain = ImGui.Mod_Ctrl | ImGui.Key_K,
-            clearQuickChain = ImGui.Mod_Alt | ImGui.Key_K,
-            toggleQuickChain = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_K,
-            toggleSideBar = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_S,
-            quickTag = ImGui.Mod_Ctrl | ImGui.Key_T,
-            copyTags = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_C,
-            pasteTags = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_V,
+            toggleAfterAction = ImGui.Mod_Ctrl | ImGui.Key_B,
             showSettings = ImGui.Mod_Ctrl | ImGui.Key_Comma,
             showHelp = ImGui.Mod_Ctrl | ImGui.Key_F1,
             toggleDock = ImGui.Mod_Ctrl | ImGui.Key_D,
             toggleMinimalMode = ImGui.Mod_Ctrl | ImGui.Key_M,
+            toggleSideBar = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_S,
+            toggleQuickChain = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_K,
+            addToQuickChain = ImGui.Mod_Ctrl | ImGui.Key_K,
+            clearQuickChain = ImGui.Mod_Alt | ImGui.Key_K,
+            quickTag = ImGui.Mod_Ctrl | ImGui.Key_T,
+            copyTags = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_C,
+            pasteTags = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_V,
         },
         
         -- Items Specific Settings
@@ -163,7 +163,7 @@ PB_Settings = OD_Settings:new({
         sendFolderName = 'FX Return Tracks',
         overrideDefaultSendVolume = false,
         sendVolume = -12,
-        showInvisibleTracks = false,
+        showInvisibleTracks = true,
         showInvisibleTakeMarkers = false,
         projectScanFolders = {},
         scanRecentProjects = true,
