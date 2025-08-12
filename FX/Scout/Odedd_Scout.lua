@@ -5,7 +5,10 @@
 -- @license GNU GPL v3
 -- @about
 --   # Scout
---   Plugin selector with advanced tagging capabilities.
+--   A powerful search and organization tool that helps you quickly find and use all your Reaper assets in one unified interface.
+--   It prioritizes speed and efficiency, allowing you to search for and manage your assets without leaving the keyboard.
+--
+--   Scout searches for FX, Actions, Projects, Project Templates, Track Templates, FX Chains, Tracks, Takes, Markers, Regions and Take Markers.
 --
 --   This script is free, but as always, donations are most welcome at https://paypal.me/odedda :)
 -- @provides
