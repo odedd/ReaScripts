@@ -617,4 +617,8 @@ $script searches for #FX#, #Actions#, #Projects#, #Project Templates#, #Track Te
 - Use `Quick Tag` window to quickly tag items using the keyboard
 - Use `QuickChain` to batch process FX and chains efficiently
 - Use `Magic Words` and `Reaper actions` to quickly run QuickChain presets
-- Use the settings to `customize` $script to your workflow]]
+- Use the settings to `customize` $script to your workflow
+
+`#NOT SURE WHAT SOMETHING DOES?`#
+- Hover it and see a helpful `hint` at the bottom of the window!
+]]
