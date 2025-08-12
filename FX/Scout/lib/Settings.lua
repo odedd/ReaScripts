@@ -2,47 +2,17 @@
 
 PB_Settings = OD_Settings:new({
     default = {
-        -- Settings window
-        createSendsInsideFolder = false,
+        -- * SETTINGS WINDOW 
+        
+        -- General Settings
+        uiScale = 1,
         centerOnOpen = true,
-        sendFolderName = 'FX Return Tracks',
-        sleepMode = false,
-        projectScanFolders = {},
-        scanRecentProjects = true,
-        showFxUI = SHOW_FX_UI.FOLLOW_PREFERENCE,
         afterAction = AFTER_ACTION.RESET_FILTERS,
-        recentlyAddedDays = 30,
-        addInstrumentsAsInstrumentTracks = true,
-        minimalMode = false,
-        overrideDefaultSendVolume = false,
-        sendVolume = -12,
-        showInvisibleTracks = false,
-        showInvisibleTakeMarkers = false,
-        tagDefaultColor = 5658198,
-        hideAllTags = false,
+        sleepMode = false,
         resetFiltersOnWakeup = true,
-        shortcuts = {
-            markFavorite = ImGui.Mod_Ctrl | ImGui.Key_F,
-            markHidden = ImGui.Mod_Ctrl | ImGui.Key_H,
-            toggleAfterAction = ImGui.Mod_Ctrl | ImGui.Key_B,
-            closeScript = ImGui.Key_Escape,
-            performAction = ImGui.Key_Enter,
-            hardCloseScript = ImGui.Mod_Ctrl | ImGui.Key_Q,
-            selectAllResults = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_A,
-            clearFilters = ImGui.Mod_Ctrl | ImGui.Key_L,
-            runRandomResult = ImGui.Mod_Ctrl | ImGui.Key_R,
-            addToQuickChain = ImGui.Mod_Ctrl | ImGui.Key_K,
-            clearQuickChain = ImGui.Mod_Alt | ImGui.Key_K,
-            toggleQuickChain = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_K,
-            toggleSideBar = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_S,
-            quickTag = ImGui.Mod_Ctrl | ImGui.Key_T,
-            copyTags = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_C,
-            pasteTags = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_V,
-            showSettings = ImGui.Mod_Ctrl | ImGui.Key_Comma,
-            showHelp = ImGui.Mod_Ctrl | ImGui.Key_F1,
-            toggleDock = ImGui.Mod_Ctrl | ImGui.Key_D,
-            toggleMinimalMode = ImGui.Mod_Ctrl | ImGui.Key_M,
-        },
+        showOnlyHighestPriorityPlugin = true,
+
+        -- Ordering
         fxTypeVisibility = {
             ['Internal'] = true,
             ['VST3'] = true,
@@ -71,7 +41,6 @@ PB_Settings = OD_Settings:new({
             "LV2",
             "LV2i"
         },
-        showOnlyHighestPriorityPlugin = true,
         groupOrder = {
             SPECIAL_GROUPS.RECENTS,      -- Recents (special group)
             SPECIAL_GROUPS.FAVORITES,    -- Favorites (special group)
@@ -102,8 +71,8 @@ PB_Settings = OD_Settings:new({
             ["TakeMarkerAssetType"] = true,      -- Take Markers asset type
             ["RegionAssetType"] = true,          -- Markers asset type
             ["ProjectTemplateAssetType"] = true, -- Project Templates asset type
-            ["QuickChainPresetAssetType"] = true -- Project Templates asset type
-        },
+            ["QuickChainPresetAssetType"] = true
+        },                                       -- Project Templates asset type
         showOnlyHighestPriorityVariant = false,
         variantMatchingOrder = {
             '%(?(stereo/%d%.%d)%)?',
@@ -121,7 +90,8 @@ PB_Settings = OD_Settings:new({
             '(5%.0)',
             '(5%.1)',
             '%((x86_64)%)',
-            '%((x64)%)' },
+            '%((x64)%)'
+        },
         variantOrder = {
             '%(?(stereo)%)?',
             '%(?(mono)%)?',
@@ -138,7 +108,8 @@ PB_Settings = OD_Settings:new({
             '(5%.1)',
             '%(([^%-%)]-ch)%)',
             '%((x86_64)%)',
-            '%((x64)%)' },
+            '%((x64)%)'
+        },
         variantVisibility = {
             ['%(?(stereo)%)?'] = true,
             ['%(?(mono)%)?'] = true,
@@ -157,14 +128,55 @@ PB_Settings = OD_Settings:new({
             ['%((x86_64)%)'] = true,
             ['%((x64)%)'] = true,
         },
-        uiScale = 1,
+        -- Tags, Presets and Favorites
+        tagDefaultColor = 5658198,
 
-        -- set In the UI
-        sideBarWidth = 200,
+        -- Shortcuts
+        shortcuts = {
+            markFavorite = ImGui.Mod_Ctrl | ImGui.Key_F,
+            markHidden = ImGui.Mod_Ctrl | ImGui.Key_H,
+            toggleAfterAction = ImGui.Mod_Ctrl | ImGui.Key_B,
+            closeScript = ImGui.Key_Escape,
+            performAction = ImGui.Key_Enter,
+            hardCloseScript = ImGui.Mod_Ctrl | ImGui.Key_Q,
+            selectAllResults = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_A,
+            clearFilters = ImGui.Mod_Ctrl | ImGui.Key_L,
+            runRandomResult = ImGui.Mod_Ctrl | ImGui.Key_R,
+            addToQuickChain = ImGui.Mod_Ctrl | ImGui.Key_K,
+            clearQuickChain = ImGui.Mod_Alt | ImGui.Key_K,
+            toggleQuickChain = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_K,
+            toggleSideBar = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_S,
+            quickTag = ImGui.Mod_Ctrl | ImGui.Key_T,
+            copyTags = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_C,
+            pasteTags = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_V,
+            showSettings = ImGui.Mod_Ctrl | ImGui.Key_Comma,
+            showHelp = ImGui.Mod_Ctrl | ImGui.Key_F1,
+            toggleDock = ImGui.Mod_Ctrl | ImGui.Key_D,
+            toggleMinimalMode = ImGui.Mod_Ctrl | ImGui.Key_M,
+        },
+        
+        -- Items Specific Settings
+        recentlyAddedDays = 30,
+        showFxUI = SHOW_FX_UI.FOLLOW_PREFERENCE,
+        addInstrumentsAsInstrumentTracks = true,
+        createSendsInsideFolder = false,
+        sendFolderName = 'FX Return Tracks',
+        overrideDefaultSendVolume = false,
+        sendVolume = -12,
+        showInvisibleTracks = false,
+        showInvisibleTakeMarkers = false,
+        projectScanFolders = {},
+        scanRecentProjects = true,
+        
+        -- * SET IN THE UI
+        minimalMode = false,
         showSideBar = true,
-        quickChainWidth = 160,
+        sideBarWidth = 200,
         showQuickChain = false,
-        -- Internal
+        quickChainWidth = 160,
+        hideAllTags = false,
+        
+        -- * INTERNAL
         minSideBarWidth = 140,
         minQuickChainWidth = 140,
         lastDockId = nil,
