@@ -760,7 +760,7 @@ PB_DataEngine.getTags = function(self, reassembleTagFilterAssets)
         self.tags[id].delete = function(self, persistAndReload)
             local assetsToRemoveTag = self.engine:assetsWithTag(self)
             if self.app.temp.filter.tags then
-                self.app.flow.filterResults({ removeTags = { self.id } })
+                self.app.flow.filterResults({ removeTags = { self.id } }, nil, true)
             end
             for _, asset in pairs(assetsToRemoveTag) do
                 asset:removeTag(self, false)
