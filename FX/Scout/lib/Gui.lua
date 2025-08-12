@@ -639,6 +639,7 @@ PB_Gui.init = function(self, fonts)
                         if shortcut == testVal then
                             testVal = nil
                             self.app.flow.msg('Shortcut already in use')
+                        self.app.temp._capturing = nil
                             break
                         end
                     end

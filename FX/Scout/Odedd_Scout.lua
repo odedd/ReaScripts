@@ -3454,9 +3454,9 @@ RunApp = function()
                 local lineHeight = ImGui.GetTextLineHeight(ctx)
                 local paddingX, paddingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)
                 local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
-                local w = 1500 * app.gui.scale
+                local w = 1420 * app.gui.scale
                 -- local h = 820 * app.gui.scale + #app.settings.current.projectScanFolders * (lineHeight + paddingY)
-                local numOfPreferences = 31
+                local numOfPreferences = 32
                 local numOfSeparators = 0
                 local numOfAssetTypes = 0 -- #app.engine.assetTypeManager.assetTypes + 2
                 local lineHeightWithSpacing = ImGui.GetTextLineHeightWithSpacing(ctx)
@@ -3695,6 +3695,13 @@ RunApp = function()
                             {
                                 existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                                     function(k, v) return k ~= 'performAction' end)
+                            })
+                        app.settings.current.shortcuts.toggleSearchMode, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.TOGGLE_SEARCH_MODE.LABEL,
+                            T.SETTINGS.SHORTCUTS.TOGGLE_SEARCH_MODE.HINT, app.settings.current.shortcuts.toggleSearchMode,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'toggleSearchMode' end)
                             })
                         ImGui.EndDisabled(ctx)
                         if resetCounter then app.temp.captureCounter = 0 end
@@ -5142,11 +5149,14 @@ RunApp = function()
                             if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape, false) and ImGui.IsWindowFocused(ctx, ImGui.FocusedFlags_ChildWindows) then
                                 if not app.temp.ignoreEscapeKey then
                                     if app.temp.searchInput == '' then
+                                        if app.temp.searchMode == SEARCH_MODE.FILTERS then
+                                            app.flow.setSearchMode(SEARCH_MODE.MAIN)
+                                        else
                                         -- if app.temp.activeFilters and OD_TableLength(app.temp.activeFilters) > 0 then
                                         --     app.flow.filterResults({ clear = true }, nil, true)
                                         -- else
                                         app.flow.close()
-                                        -- end
+                                        end
                                     end
                                 end
                                 pressed = true

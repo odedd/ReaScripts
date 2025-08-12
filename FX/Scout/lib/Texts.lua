@@ -289,6 +289,10 @@ T.SETTINGS = {
             LABEL = 'Perform selected item',
             HINT = 'Perform selected item or QuickChain.',
         },
+        TOGGLE_SEARCH_MODE = {
+            LABEL = 'Toggle search mode',
+            HINT = 'Toggle between item and filter search mode.',
+        },
         HARD_CLOSE_SCRIPT = {
             LABEL = 'Close script (no sleep)',
             HINT = 'Close script without entering sleep mode.',

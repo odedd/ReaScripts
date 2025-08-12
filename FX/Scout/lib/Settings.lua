@@ -137,6 +137,7 @@ PB_Settings = OD_Settings:new({
         shortcuts = {
             closeScript = ImGui.Key_Escape,
             performAction = ImGui.Key_Enter,
+            toggleSearchMode = ImGui.Key_Tab,
             hardCloseScript = ImGui.Mod_Ctrl | ImGui.Key_Q,
             selectAllResults = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_A,
             clearFilters = ImGui.Mod_Ctrl | ImGui.Key_L,
