@@ -97,10 +97,97 @@ T.EDIT_PRESET_DIALOG = {
     }
 }
 
+T.SEARCH_WINDOW = {
+    SEARCH_HINT = {
+        [SEARCH_MODE.MAIN] = 'Item search | Press Tab to search filters',
+        [SEARCH_MODE.SEND_BUDDY] = 'Send Buddy search | Press Tab to search filters',
+        [SEARCH_MODE.FILTERS] = 'Filter search | Press Tab to search items',
+    }
+}
+T.FILTER_NAMES = {
+    [FILTER_TYPES.PRESET] = 'Preset',
+    [FILTER_TYPES.TYPE] = 'Result Type',
+    [FILTER_TYPES.FX_TYPE] = 'FX Type',
+    [FILTER_TYPES.FOLDER] = 'Folder',
+    [FILTER_TYPES.CATEGORY] = 'Category',
+    [FILTER_TYPES.DEVELOPER] = 'Developer',
+    [FILTER_TYPES.TAG] = 'Tag',
+    [FILTER_TYPES.OTHER] = 'Other'
+}
+T.FILTER_NAMES_PLURAL = {
+    [FILTER_TYPES.PRESET] = 'Presets',
+    [FILTER_TYPES.TYPE] = 'Result Types',
+    [FILTER_TYPES.FX_TYPE] = 'FX Types',
+    [FILTER_TYPES.FOLDER] = 'Folders',
+    [FILTER_TYPES.CATEGORY] = 'Categories',
+    [FILTER_TYPES.DEVELOPER] = 'Developers',
+    [FILTER_TYPES.TAG] = 'Tags',
+    [FILTER_TYPES.OTHER] = 'Others'
+}
+T.ERROR = {
+    NO_DOCK = ([[
+No previous dock found.
+
+Please dock manually by dragging
+the window to the dock of your choice.
+
+After that, %s will remember
+the dock position.]]):format(Scr.name)
+}
+
+T.EXPORT_ACTION_TYPE_DESCRIPTIONS = {
+    [EXPORT_ACTION_TYPE.APPLY_FILTER] = 'Load current filter',
+    [EXPORT_ACTION_TYPE.RUN_RANDOM] = 'Load filter + run random result'
+}
+
+for i = 0, #T.EXPORT_ACTION_TYPE_DESCRIPTIONS do
+    T.EXPORT_ACTION_TYPE_LIST = (T.EXPORT_ACTION_TYPE_LIST or '') .. T.EXPORT_ACTION_TYPE_DESCRIPTIONS[i] .. '\0'
+end
+
+T.SHOW_FX_UI_DESCRIPTIONS = {
+    [SHOW_FX_UI.FOLLOW_PREFERENCE] = 'Follow Reaper\'s preferences',
+    [SHOW_FX_UI.OPEN] = 'Always open',
+    [SHOW_FX_UI.DONT_OPEN] = 'Never open'
+}
+
+for i = 0, #T.SHOW_FX_UI_DESCRIPTIONS do
+    T.SHOW_FX_UI_LIST = (T.SHOW_FX_UI_LIST or '') .. T.SHOW_FX_UI_DESCRIPTIONS[i] .. '\0'
+end
+
+T.AFTER_ACTION_DESCRIPTIONS = {
+    [AFTER_ACTION.DO_NOTHING] = 'Do Nothing',
+    [AFTER_ACTION.CLOSE] = 'Close Script/Enter Sleep Mode',
+    [AFTER_ACTION.CLEAR_TEXT] = 'Clear text search'
+}
+
+for i = 0, #T.AFTER_ACTION_DESCRIPTIONS do
+    T.AFTER_ACTION_LIST = (T.AFTER_ACTION_LIST or '') .. T.AFTER_ACTION_DESCRIPTIONS[i] .. '\0'
+end
+
+
+T.IMPORT_SKIP_REASON = {
+    [IMPORT_SKIP_REASON.ASSET_NOT_FOUND] = "Filter not found in current system",
+    [IMPORT_SKIP_REASON.INCOMPATIBLE_VERSION] = "Incompatible file version",
+    [IMPORT_SKIP_REASON.INVALID_FORMAT] = "Invalid filter format"
+}
+
+T.SPECIAL_GROUPS = {
+    [SPECIAL_GROUPS.FAVORITES] = 'Favorites',
+    [SPECIAL_GROUPS.RECENTS] = 'Recents',
+    [SPECIAL_GROUPS.PLUGINS] = 'FX'
+}
+
+
 T.SETTINGS = {
+    LISTS = {},
+
     CREATE_INSIDE_FODLER = {
         LABEL = 'Create sends in folder',
         HINT = 'New send tracks can be created inside a folder track.',
+    },
+    RESET_FILTERS_ON_WAKEUP = {
+        LABEL = 'Reset filters on wakeup',
+        HINT = 'Reset filters and clear QuickChain when waking up from sleep mode.',
     },
     OVERRIDE_DEFAULT_SEND_VOLUME = {
         LABEL = 'Override send volume',
@@ -165,7 +252,7 @@ T.SETTINGS = {
         HINT = 'Open and float FX after adding'
     },
     AFTER_ACTION = {
-        LABEL = 'After performing action',
+        LABEL = 'Post-perform bahavior',
         HINT = 'What to do after action is performed',
         TOP_BAR_HINT = 'After action is performed: %s'
     },
@@ -185,6 +272,14 @@ T.SETTINGS = {
         CLOSE_SCRIPT = {
             LABEL = 'Close script',
             HINT = 'Close script without entering sleep mode.',
+        },
+        TOGGLE_AFTER_ACTION = {
+            LABEL = 'Toggle post-perform behavior',
+            HINT = ('Toggle between %s, %s and %s.'):format(T.AFTER_ACTION_DESCRIPTIONS[AFTER_ACTION.CLOSE],T.AFTER_ACTION_DESCRIPTIONS[AFTER_ACTION.CLEAR_TEXT], T.AFTER_ACTION_DESCRIPTIONS[AFTER_ACTION.DO_NOTHING]),
+        },
+        PERFORM_ACTION = {
+            LABEL = 'Perform selected item',
+            HINT = 'Perform selected item or QuickChain.',
         },
         HARD_CLOSE_SCRIPT = {
             LABEL = 'Close script (no sleep)',
@@ -312,88 +407,6 @@ T.PROGRESS = {
     }
 }
 
-T.SETTINGS.LISTS = {
-}
-T.SEARCH_WINDOW = {
-    SEARCH_HINT = {
-        [SEARCH_MODE.MAIN] = 'Item search | Press Tab to search filters',
-        [SEARCH_MODE.SEND_BUDDY] = 'Send Buddy search | Press Tab to search filters',
-        [SEARCH_MODE.FILTERS] = 'Filter search | Press Tab to search items',
-    }
-}
-T.FILTER_NAMES = {
-    [FILTER_TYPES.PRESET] = 'Preset',
-    [FILTER_TYPES.TYPE] = 'Result Type',
-    [FILTER_TYPES.FX_TYPE] = 'FX Type',
-    [FILTER_TYPES.FOLDER] = 'Folder',
-    [FILTER_TYPES.CATEGORY] = 'Category',
-    [FILTER_TYPES.DEVELOPER] = 'Developer',
-    [FILTER_TYPES.TAG] = 'Tag',
-    [FILTER_TYPES.OTHER] = 'Other'
-}
-T.FILTER_NAMES_PLURAL = {
-    [FILTER_TYPES.PRESET] = 'Presets',
-    [FILTER_TYPES.TYPE] = 'Result Types',
-    [FILTER_TYPES.FX_TYPE] = 'FX Types',
-    [FILTER_TYPES.FOLDER] = 'Folders',
-    [FILTER_TYPES.CATEGORY] = 'Categories',
-    [FILTER_TYPES.DEVELOPER] = 'Developers',
-    [FILTER_TYPES.TAG] = 'Tags',
-    [FILTER_TYPES.OTHER] = 'Others'
-}
-T.ERROR = {
-    NO_DOCK = ([[
-No previous dock found.
-
-Please dock manually by dragging
-the window to the dock of your choice.
-
-After that, %s will remember
-the dock position.]]):format(Scr.name)
-}
-
-T.EXPORT_ACTION_TYPE_DESCRIPTIONS = {
-    [EXPORT_ACTION_TYPE.APPLY_FILTER] = 'Load current filter',
-    [EXPORT_ACTION_TYPE.RUN_RANDOM] = 'Load filter + run random result'
-}
-
-for i = 0, #T.EXPORT_ACTION_TYPE_DESCRIPTIONS do
-    T.EXPORT_ACTION_TYPE_LIST = (T.EXPORT_ACTION_TYPE_LIST or '') .. T.EXPORT_ACTION_TYPE_DESCRIPTIONS[i] .. '\0'
-end
-
-T.SHOW_FX_UI_DESCRIPTIONS = {
-    [SHOW_FX_UI.FOLLOW_PREFERENCE] = 'Follow Reaper\'s preferences',
-    [SHOW_FX_UI.OPEN] = 'Always open',
-    [SHOW_FX_UI.DONT_OPEN] = 'Never open'
-}
-
-for i = 0, #T.SHOW_FX_UI_DESCRIPTIONS do
-    T.SHOW_FX_UI_LIST = (T.SHOW_FX_UI_LIST or '') .. T.SHOW_FX_UI_DESCRIPTIONS[i] .. '\0'
-end
-
-T.AFTER_ACTION_DESCRIPTIONS = {
-    [AFTER_ACTION.DO_NOTHING] = 'Do Nothing',
-    [AFTER_ACTION.CLOSE] = 'Close Script/Enter Sleep Mode',
-    [AFTER_ACTION.CLEAR_TEXT] = 'Clear text search'
-}
-
-for i = 0, #T.AFTER_ACTION_DESCRIPTIONS do
-    T.AFTER_ACTION_LIST = (T.AFTER_ACTION_LIST or '') .. T.AFTER_ACTION_DESCRIPTIONS[i] .. '\0'
-end
-
-
-T.IMPORT_SKIP_REASON = {
-    [IMPORT_SKIP_REASON.ASSET_NOT_FOUND] = "Filter not found in current system",
-    [IMPORT_SKIP_REASON.INCOMPATIBLE_VERSION] = "Incompatible file version",
-    [IMPORT_SKIP_REASON.INVALID_FORMAT] = "Invalid filter format"
-}
-
-T.SPECIAL_GROUPS = {
-    [SPECIAL_GROUPS.FAVORITES] = 'Favorites',
-    [SPECIAL_GROUPS.RECENTS] = 'Recents',
-    [SPECIAL_GROUPS.PLUGINS] = 'FX'
-}
-
 T.RECENTLY_ADDED_EXPLANATION =
 [[The script can only track FX and actions added after it was first
 run. Anything added before that - even if within the selected time
@@ -401,14 +414,15 @@ range - will not appear as recently added.]]
 
 T.SLEEP_MODE_EXPLANATION =
 [[TL;DR - The script loads fastest when 'sleep mode' is turned on.
-For it to work, the next time the script runs, select 'new instance'.
+For it to work, the next time the script runs, select 'new instance',
+and check 'Remember my answer for this script'.
 If you accidentally selected something else, please delete the script
 and add it again.
 
 Sleep mode reduces loading times considerably by keeping the script
 runningin the background (with minimal resource use) and makes the
 experience much faster and smoother. However, since there's currently
-no way forscripts to set it on their own, you have to select new
+no way for scripts to set it on their own, you have to select new
 instance manually.]]
 
 T.TURN_ON_SLEEP_MODE = 'Do you wish to turn on sleep mode? (Say yes!)'

@@ -416,7 +416,8 @@ RunApp = function()
                             local showOnlyHighestPriorityVariant = app.settings.current
                                 .showOnlyHighestPriorityVariant
                             if showOnlyHighestPriorityVariant then
-                                local id = (showOnlyHighestPriorityPlugin and '' or asset.fx_type) .. asset.baseName .. (asset.vendorBaseName or '')
+                                local id = (showOnlyHighestPriorityPlugin and '' or asset.fx_type) ..
+                                    asset.baseName .. (asset.vendorBaseName or '')
                                 if foundVariants[id] then
                                     goto skip
                                 else
@@ -626,7 +627,7 @@ RunApp = function()
             end,
             executeRandomResult = function(skipAllConfirmations)
                 app.flow.getActiveFilters()
-                if OD_TableLength(app.temp.activeFilters) == 0 then
+                if (not app.temp.filter.text or app.temp.filter.text == '') and OD_TableLength(app.temp.activeFilters) == 0 then
                     app.flow.msg('Must have a filter applied to run a random result')
                     return
                 end
@@ -752,18 +753,21 @@ RunApp = function()
                         r.SetExtState(Scr.ext_name, 'EXTERNAL_COMMAND', '', false)
                     end
                     if cmd == "RUN_RANDOM" then
+                        local currentFilter = OD_DeepCopy(app.temp.filter)
                         local filter = unpickle(arg)
                         local shouldClose = (r.GetExtState(Scr.ext_name, 'RUNNING') ~= 'TRUE')
                         r.SetExtState(Scr.ext_name, 'EXTERNAL_COMMAND', '', false)
                         if shouldClose then
                             app.flow.filterResults(filter)
                             app.flow.executeRandomResult(true)
-                            app.flow.close()
+                            app.temp.filter = currentFilter
                         else
-                            local currentFilter = OD_DeepCopy(app.temp.filter)
+                            local currentAfterAction = app.settings.current.afterAction
+                            app.settings.current.afterAction = AFTER_ACTION.DO_NOTHING
                             app.flow.filterResults(filter, true, true)
                             app.flow.executeRandomResult(true)
                             app.temp.filter = currentFilter
+                            app.settings.current.afterAction = currentAfterAction
                         end
                     end
                     if cmd == "QUICK_CHAIN" then
@@ -811,8 +815,11 @@ RunApp = function()
                     r.SetExtState(Scr.ext_name, 'RUNNING', 'WAKING UP', false)    -- This is needed for the wakeup check in checkExternalCommand's RUN_RANDOM, even though it's not referenced directly
                     r.SetExtState(Scr.ext_name, 'WAKEUP', '', false)
                     r.SetExtState(Scr.ext_name, 'HIBERNATING_VERSION', '', false) -- Clear hibernating version
-                    app.temp.quickChain = {}
-                    app.flow.setSearchMode(SEARCH_MODE.MAIN, { clear = true })
+                    if app.settings.current.resetFiltersOnWakeup then
+                        app.temp.quickChain = {}
+                        app.flow.clearSearchInputText()
+                        app.flow.setSearchMode(SEARCH_MODE.MAIN)
+                    end
                     PDefer(app.loop)
                 else
                     -- without this code the context gets invalidated, so it needs to be kept alive
@@ -953,7 +960,8 @@ RunApp = function()
                     if app.temp.filter and ((app.temp.filter.text == '' or app.temp.filter.text == nil) and (app.temp.activeFilters == nil or (not next(app.temp.activeFilters)))) then
                         app.temp.fullWindow = false
                     elseif app.temp.lastFullWindow ~= app.temp.fullWindow then
-                        ImGui.SetNextWindowSize(ctx, app.settings.current.lastWindowWidth, app.settings.current.lastWindowHeight)
+                        ImGui.SetNextWindowSize(ctx, app.settings.current.lastWindowWidth,
+                            app.settings.current.lastWindowHeight)
                     end
                 end
                 app.temp.lastFullWindow = app.temp.fullWindow
@@ -1426,9 +1434,6 @@ RunApp = function()
                         end
                         app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_ACTION)
                         ImGui.EndPopup(ctx)
-                    end
-                    if app.guiHelpers.iconButton(ctx, 'DICE', app.gui.st.col.buttons.activeFilterAction, T.HINTS.RANDOM_ACTION, 'runRandomResult') then
-                        app.flow.executeRandomResult()
                     end
                     ImGui.SameLine(ctx, 0, 0)
                     ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + spacingX)
@@ -3189,7 +3194,8 @@ RunApp = function()
                         hint = (T.SETTINGS.AFTER_ACTION.TOP_BAR_HINT):format(T.AFTER_ACTION_DESCRIPTIONS
                             [app.settings.current.afterAction]),
                         active = app.settings.current.afterAction == AFTER_ACTION.CLOSE or
-                            app.settings.current.afterAction == AFTER_ACTION.RESET_FILTERS
+                            app.settings.current.afterAction == AFTER_ACTION.RESET_FILTERS,
+                        shortcut = 'toggleAfterAction'
                     })
 
                     if app.temp.fullWindow then
@@ -3210,6 +3216,11 @@ RunApp = function()
                                 shortcut = 'toggleSideBar'
                             })
                     end
+                    table.insert(menu, {
+                        icon = 'dice',
+                        hint = T.HINTS.RANDOM_ACTION,
+                        shortcut = 'runRandomResult'
+                    })
                     table.insert(menu, {
                         icon = 'gear',
                         hint = 'Settings',
@@ -3391,6 +3402,8 @@ RunApp = function()
                             end
                         elseif btn == 'gear' then
                             ImGui.OpenPopup(ctx, Scr.name .. ' Settings##settingsWindow')
+                        elseif btn == 'dice' then
+                            app.flow.executeRandomResult()
                         elseif btn == 'after_close' then
                             app.settings.current.afterAction = AFTER_ACTION.RESET_FILTERS
                             app.settings:save()
@@ -3435,7 +3448,7 @@ RunApp = function()
                 local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
                 local w = 1500 * app.gui.scale
                 -- local h = 820 * app.gui.scale + #app.settings.current.projectScanFolders * (lineHeight + paddingY)
-                local numOfPreferences = 29
+                local numOfPreferences = 31
                 local numOfSeparators = 0
                 local numOfAssetTypes = 0 -- #app.engine.assetTypeManager.assetTypes + 2
                 local lineHeightWithSpacing = ImGui.GetTextLineHeightWithSpacing(ctx)
@@ -3451,6 +3464,10 @@ RunApp = function()
                 -- being captured, so that we can know to ignore the captured key unless some frames have passed.
                 app.temp.captureCounter = app.temp.captureCounter and app.temp.captureCounter + 1 or 0
                 ImGui.SetNextWindowSize(ctx, w, h)
+                ImGui.SetNextWindowPos(ctx, app.gui.screen.size[1] / 2, app.gui.screen.size[2] / 2,
+                    ImGui.Cond_Appearing,
+                    0.5,
+                    0.5)
                 ImGui.SetNextWindowSizeConstraints(ctx, w, 0.0, w, maxH)
                 local shouldScroll = true
                 if maxH > h then shouldScroll = false end
@@ -3490,6 +3507,10 @@ RunApp = function()
                                     flags = (ImGui.SliderFlags_AlwaysClamp)
                                 }) /
                             100
+                        app.settings.current.centerOnOpen = app.gui:setting('checkbox',
+                            T.SETTINGS.CENTER_ON_OPEN.LABEL,
+                            T.SETTINGS.CENTER_ON_OPEN.HINT, app.settings.current.centerOnOpen)
+
                         app.settings.current.afterAction = app.gui:setting(
                             'combo',
                             T.SETTINGS.AFTER_ACTION.LABEL,
@@ -3501,10 +3522,11 @@ RunApp = function()
                             T.SETTINGS.SLEEP_MODE.LABEL,
                             T.SETTINGS.SLEEP_MODE.HINT, app.settings.current.sleepMode,
                             { help = T.SLEEP_MODE_EXPLANATION })
-                        app.settings.current.centerOnOpen = app.gui:setting('checkbox',
-                            T.SETTINGS.CENTER_ON_OPEN.LABEL,
-                            T.SETTINGS.CENTER_ON_OPEN.HINT, app.settings.current.centerOnOpen)
-
+                        app.settings.current.resetFiltersOnWakeup = app.gui:setting(
+                            'checkbox',
+                            T.SETTINGS.RESET_FILTERS_ON_WAKEUP.LABEL,
+                            T.SETTINGS.RESET_FILTERS_ON_WAKEUP.HINT,
+                            app.settings.current.resetFiltersOnWakeup)
                         ImGui.SeparatorText(ctx, 'Ordering')
 
                         app.settings.current.showOnlyHighestPriorityPlugin = app.gui:setting('checkbox',
@@ -3631,19 +3653,24 @@ RunApp = function()
                                 existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                                     function(k, v) return k ~= 'closeScript' end)
                             })
+                        app.settings.current.shortcuts.performAction, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.PERFORM_ACTION.LABEL,
+                            T.SETTINGS.SHORTCUTS.PERFORM_ACTION.HINT, app.settings.current.shortcuts.performAction,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'performAction' end)
+                            })
                         ImGui.EndDisabled(ctx)
                         if resetCounter then app.temp.captureCounter = 0 end
-                        if app.settings.current.sleepMode then
-                            app.settings.current.shortcuts.hardCloseScript, resetCounter = app.gui:setting('shortcut',
-                                T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.LABEL,
-                                T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.HINT,
-                                app.settings.current.shortcuts.hardCloseScript,
-                                {
-                                    existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                        function(k, v) return k ~= 'hardCloseScript' end)
-                                })
-                            if resetCounter then app.temp.captureCounter = 0 end
-                        end
+                        app.settings.current.shortcuts.hardCloseScript, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.LABEL,
+                            T.SETTINGS.SHORTCUTS.HARD_CLOSE_SCRIPT.HINT,
+                            app.settings.current.shortcuts.hardCloseScript,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'hardCloseScript' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
                         app.settings.current.shortcuts.selectAllResults, resetCounter = app.gui:setting('shortcut',
                             T.SETTINGS.SHORTCUTS.SELECT_ALL_RESULTS.LABEL,
                             T.SETTINGS.SHORTCUTS.SELECT_ALL_RESULTS.HINT,
@@ -3653,7 +3680,14 @@ RunApp = function()
                                     function(k, v) return k ~= 'selectAllResults' end)
                             })
                         if resetCounter then app.temp.captureCounter = 0 end
-
+                        app.settings.current.shortcuts.clearFilters, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.CLEAR_FILTERS.LABEL,
+                            T.SETTINGS.SHORTCUTS.CLEAR_FILTERS.HINT, app.settings.current.shortcuts.clearFilters,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'clearFilters' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
                         app.settings.current.shortcuts.markFavorite, resetCounter = app.gui:setting('shortcut',
                             T.SETTINGS.SHORTCUTS.MARK_FAVORITE.LABEL,
                             T.SETTINGS.SHORTCUTS.MARK_FAVORITE.HINT, app.settings.current.shortcuts.markFavorite,
@@ -3671,14 +3705,7 @@ RunApp = function()
                             })
                         if resetCounter then app.temp.captureCounter = 0 end
 
-                        app.settings.current.shortcuts.clearFilters, resetCounter = app.gui:setting('shortcut',
-                            T.SETTINGS.SHORTCUTS.CLEAR_FILTERS.LABEL,
-                            T.SETTINGS.SHORTCUTS.CLEAR_FILTERS.HINT, app.settings.current.shortcuts.clearFilters,
-                            {
-                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
-                                    function(k, v) return k ~= 'clearFilters' end)
-                            })
-                        if resetCounter then app.temp.captureCounter = 0 end
+
 
                         app.settings.current.shortcuts.runRandomResult, resetCounter = app.gui:setting('shortcut',
                             T.SETTINGS.SHORTCUTS.RANDOM_RESULT.LABEL,
@@ -3686,6 +3713,15 @@ RunApp = function()
                             {
                                 existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                                     function(k, v) return k ~= 'runRandomResult' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+                        app.settings.current.shortcuts.toggleAfterAction, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.TOGGLE_AFTER_ACTION.LABEL,
+                            T.SETTINGS.SHORTCUTS.TOGGLE_AFTER_ACTION.HINT,
+                            app.settings.current.shortcuts.toggleAfterAction,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'toggleAfterAction' end)
                             })
                         if resetCounter then app.temp.captureCounter = 0 end
 
@@ -3922,10 +3958,10 @@ RunApp = function()
                     -- closing this window. So we increment a counter which will be reset if the shortcut is
                     -- being captured, so that we can know to ignore the captured key unless some frames have passed.
                     ImGui.SetNextWindowSize(ctx, w, h, ImGui.Cond_Appearing)
-                    -- ImGui.SetNextWindowPos(ctx, app.gui.screen.size[1] / 2, app.gui.screen.size[2] / 2,
-                    --     ImGui.Cond_Appearing,
-                    --     0.5,
-                    --     0.5)
+                    ImGui.SetNextWindowPos(ctx, app.gui.screen.size[1] / 2, app.gui.screen.size[2] / 2,
+                        ImGui.Cond_Appearing,
+                        0.5,
+                        0.5)
                     ImGui.SetNextWindowSizeConstraints(ctx, 0, 0.0, FLT_MAX, maxH)
                     app.gui:pushStyles(app.gui.st.vars.popupsTitle)
                     local visible, open = ImGui.Begin(ctx, Scr.name .. ' Help##helpWindow', true,
