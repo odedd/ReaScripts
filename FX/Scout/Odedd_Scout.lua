@@ -2053,11 +2053,11 @@ RunApp = function()
                                                             ImGui.SameLine(ctx)
                                                         end
                                                         if curIndex <= highlight.to + 1 then
-                                                            app.gui:pushColors(app.gui.st.col.search.highlight)
+                                                            ImGui.PushStyleColor(ctx, ImGui.Col_Text, st.color and OD_SetAlpha(OD_MultiplyHSLInRGB(st.color, 1, 1.5, 1.3),1) or app.gui.st.col.search.highlight[ImGui.Col_Text])
                                                             local txt = (st.text):sub(math.max(curIndex, highlight.from),
                                                                 highlight.to)
                                                             ImGui.Text(ctx, txt)
-                                                            app.gui:popColors(app.gui.st.col.search.highlight)
+                                                            ImGui.PopStyleColor(ctx)
                                                             ImGui.SameLine(ctx)
                                                             curIndex = highlight.to + 1
                                                         end
