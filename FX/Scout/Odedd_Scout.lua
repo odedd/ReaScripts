@@ -2573,7 +2573,7 @@ RunApp = function()
                                         if rv then
                                             tag:setColor(color, false)
                                         end
-                                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+                                        if ImGui.IsKeyReleased(ctx, ImGui.Key_Escape) then
                                             ImGui.CloseCurrentPopup(ctx)
                                         end
                                         ImGui.EndMenu(ctx)
@@ -4043,7 +4043,7 @@ RunApp = function()
                         ImGui.EndChild(ctx)
                     end
                     app.draw.hint(ctx, 'settings')
-                    if app.temp.captureCounter > 3 and ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopupId) then
+                    if app.temp.captureCounter > 3 and ImGui.IsKeyReleased(ctx, ImGui.Key_Escape) and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopupId) then
                         ImGui.CloseCurrentPopup(ctx)
                     end
                     app.draw.progressBarWindow(ctx)
@@ -4339,7 +4339,7 @@ RunApp = function()
                             ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2
                         ImGui.SetCursorPosX(ctx, (windowWidth - buttonTextWidth) * .5);
 
-                        if ImGui.Button(ctx, okButtonLabel) or ImGui.Shortcut(ctx, ImGui.Key_Enter, ImGui.InputFlags_RouteFocused) then
+                        if ImGui.Button(ctx, okButtonLabel) then -- or ImGui.Shortcut(ctx, ImGui.Key_Enter, ImGui.InputFlags_RouteFocused) then
                             okPressed = true
                             open = false
                             ImGui.CloseCurrentPopup(ctx)
@@ -4386,7 +4386,7 @@ RunApp = function()
                         app.temp.newTagChild = nil
                     end
                     ImGui.SetKeyboardFocusHere(ctx)
-                    if ImGui.IsKeyChordPressed(ctx, ImGui.Key_Escape) then
+                    if ImGui.IsKeyReleased(ctx, ImGui.Key_Escape) then
                         if ImGui.TextFilter_Get(app.gui.searchTagsFilter) ~= '' then
                             ImGui.TextFilter_Set(app.gui.searchTagsFilter, ' ')
                         elseif app.temp.newTagChild then
@@ -4559,7 +4559,7 @@ RunApp = function()
                                                     executeTag(result)
                                                 end
                                             end
-                                            if app.temp.tagKeyboardPos == rowIdx and ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
+                                            if app.temp.tagKeyboardPos == rowIdx and ImGui.IsKeyReleased(ctx, ImGui.Key_Enter) then
                                                 executeTag(result)
                                             end
                                             ImGui.SameLine(ctx, 0, 0)
@@ -4761,7 +4761,7 @@ RunApp = function()
                             ImGui.BeginDisabled(ctx)
                         end
 
-                        if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSavePreset) or app.gui:setting('button', T.EDIT_PRESET_DIALOG.SAVE_PRESET.LABEL,
+                        if (ImGui.IsKeyReleased(ctx, ImGui.Key_Enter) and canSavePreset) or app.gui:setting('button', T.EDIT_PRESET_DIALOG.SAVE_PRESET.LABEL,
                                 T.EDIT_PRESET_DIALOG.SAVE_PRESET.HINT, nil,
                                 { label = isEditing and T.EDIT_PRESET_DIALOG.SAVE_PRESET.BUTTON_EDIT or T.EDIT_PRESET_DIALOG.SAVE_PRESET.BUTTON_CREATE, hintWindow = 'editFilterWindow'
                                 , widgetWidthDivision = 3.5, divideWidth = isEditing and 3 or 2 }) then
@@ -4791,7 +4791,7 @@ RunApp = function()
                         end
                         app.gui:pushColors(app.gui.st.col.buttons.secondary)
 
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EDIT_PRESET_DIALOG.CLOSE.LABEL,
+                        if ImGui.IsKeyReleased(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EDIT_PRESET_DIALOG.CLOSE.LABEL,
                                 T.EDIT_PRESET_DIALOG.CLOSE.HINT, nil,
                                 { label = T.EDIT_PRESET_DIALOG.CLOSE.BUTTON, hintWindow = 'editFilterWindow'
                                 , widgetWidthDivision = 3.5, divideWidth = isEditing and 2 }, isEditing) then
@@ -4926,7 +4926,7 @@ RunApp = function()
                             ImGui.BeginDisabled(ctx)
                         end
 
-                        if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canSaveQuickChain) or app.gui:setting('button', '',
+                        if (ImGui.IsKeyReleased(ctx, ImGui.Key_Enter) and canSaveQuickChain) or app.gui:setting('button', '',
                                 'Save QuickChain', nil,
                                 { label = isEditing and 'Update' or 'Create', hintWindow = 'editQuickChainWindow', widgetWidthDivision = 3.5, divideWidth = 2 }) then
                             -- Convert assembled assets to keys for storage
@@ -4962,7 +4962,7 @@ RunApp = function()
                         end
                         app.gui:pushColors(app.gui.st.col.buttons.secondary)
 
-                        if (ImGui.IsKeyPressed(ctx, ImGui.Key_Escape)) or app.gui:setting('button', '',
+                        if (ImGui.IsKeyReleased(ctx, ImGui.Key_Escape)) or app.gui:setting('button', '',
                                 'Close dialog', nil,
                                 { label = 'Cancel', hintWindow = 'editQuickChainWindow', widgetWidthDivision = 3.5 }, true) then
                             open = false
@@ -5028,7 +5028,7 @@ RunApp = function()
                         local canExportAction = trimmedActionName ~= ""
 
                         if not canExportAction then ImGui.BeginDisabled(ctx) end
-                        if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canExportAction) or app.gui:setting('button', T.EXPORT_ACTION_DIALOG.EXPORT.LABEL,
+                        if (ImGui.IsKeyReleased(ctx, ImGui.Key_Enter) and canExportAction) or app.gui:setting('button', T.EXPORT_ACTION_DIALOG.EXPORT.LABEL,
                                 T.EXPORT_ACTION_DIALOG.EXPORT.HINT, nil,
                                 { label = T.EXPORT_ACTION_DIALOG.EXPORT.BUTTON, hintWindow = 'editFilterWindow', widgetWidthDivision = 3.5, divideWidth = 2 }) then
                             local createdActionName = app.flow.createReaperAction(trimmedActionName,
@@ -5042,7 +5042,7 @@ RunApp = function()
                         if not canExportAction then ImGui.EndDisabled(ctx) end
                         app.gui:pushColors(app.gui.st.col.buttons.secondary)
 
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EXPORT_ACTION_DIALOG.CLOSE.LABEL,
+                        if ImGui.IsKeyReleased(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EXPORT_ACTION_DIALOG.CLOSE.LABEL,
                                 T.EXPORT_ACTION_DIALOG.CLOSE.HINT, nil,
                                 { label = T.EXPORT_ACTION_DIALOG.CLOSE.BUTTON, hintWindow = 'editFilterWindow', widgetWidthDivision = 3.5 }, true) then
                             open = false
@@ -5138,7 +5138,7 @@ RunApp = function()
                         local canExportAction = trimmedActionName ~= ""
 
                         if not canExportAction then ImGui.BeginDisabled(ctx) end
-                        if (ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) and canExportAction) or app.gui:setting('button', T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.LABEL,
+                        if (ImGui.IsKeyReleased(ctx, ImGui.Key_Enter) and canExportAction) or app.gui:setting('button', T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.LABEL,
                                 T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.HINT, nil,
                                 { label = T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.BUTTON, hintWindow = 'exportQuickChainActionDialog',
                                     widgetWidthDivision = 3.5, divideWidth = 2 }) then
@@ -5161,7 +5161,7 @@ RunApp = function()
                         end
                         if not canExportAction then ImGui.EndDisabled(ctx) end
                         app.gui:pushColors(app.gui.st.col.buttons.secondary)
-                        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.CLOSE.LABEL,
+                        if ImGui.IsKeyReleased(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.CLOSE.LABEL,
                                 T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.CLOSE.HINT, nil,
                                 { label = T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.CLOSE.BUTTON, hintWindow = 'exportQuickChainActionDialog',
                                     widgetWidthDivision = 3.5 }, true) then
