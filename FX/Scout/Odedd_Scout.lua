@@ -273,8 +273,7 @@ RunApp = function()
             end,
             setSearchMode = function(mode, filter)
                 app.temp.searchMode = mode
-                app.temp.searchInput = ''
-                app.flow.filterResults(filter or { text = '' })
+                app.flow.filterResults(filter or { clearText = true }, true)
             end,
             filterResults = function(query, skipReset, maintainSelection)
                 local reset = (skipReset == nil) and true or (not skipReset)
@@ -3346,7 +3345,7 @@ RunApp = function()
                         end
                         app.temp.clearSearchInputText = nil
                         if ImGui.IsItemFocused(ctx) then
-                            if ImGui.IsKeyReleased(ctx, ImGui.Key_Tab) then
+                            if ImGui.IsKeyPressed(ctx, ImGui.Key_Tab) then
                                 if (app.temp.searchMode == SEARCH_MODE.MAIN or app.temp.searchMode == SEARCH_MODE.SEND_BUDDY) then
                                     app.flow.setSearchMode(SEARCH_MODE.FILTERS)
                                 else
