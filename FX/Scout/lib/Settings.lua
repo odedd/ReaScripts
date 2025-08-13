@@ -156,6 +156,8 @@ PB_Settings = OD_Settings:new({
             quickTag = ImGui.Mod_Ctrl | ImGui.Key_T,
             copyTags = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_C,
             pasteTags = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_V,
+            syncTags = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_Y,
+            clearTags = ImGui.Mod_Ctrl | ImGui.Mod_Alt | ImGui.Mod_Shift | ImGui.Key_X,
         },
         
         -- Items Specific Settings

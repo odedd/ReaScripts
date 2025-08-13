@@ -317,6 +317,14 @@ T.SETTINGS = {
             LABEL = 'Paste Item\'s Tags',
             HINT = 'Paste copied tags to selected item(s).',
         },
+        SYNC_TAGS = {
+            LABEL = 'Sync Item\'s Tags',
+            HINT = 'Copy selected item\'s tags to all the FX\'s other formats and variants.',
+        },
+        CLEAR_TAGS = {
+            LABEL = 'Clear Item\'s Tags',
+            HINT = 'Remove selected item\'s tags.',
+        },
         QUICK_TAG = {
             LABEL = 'Quick Tag',
             HINT = 'Open Quick Tag window.',

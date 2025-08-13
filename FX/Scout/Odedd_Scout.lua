@@ -869,6 +869,34 @@ RunApp = function()
                     app.settings.current.showQuickChain = true
                 end
             end,
+            clearTags = function()
+                local existingTags = {}
+                local selectedResults = app.selection:results()
+                local tagList = {}
+                local tagInfo = app.userdata.current.tagInfo
+
+                for _, result in ipairs(selectedResults) do
+                    if (result.tags and #result.tags > 0) then
+                        for t = 1, #(result.tags or {}) do
+                            local tagId = result.tags[t]
+                            local tag = tagInfo[tagId]
+                            if not existingTags[tagId] then
+                                table.insert(tagList,
+                                    app.engine.tags[tagId])
+                            end
+                            existingTags[tagId] = existingTags[tagId] and
+                                existingTags[tagId] + 1 or 1
+                        end
+                    end
+                end
+                for _, tag in ipairs(tagList) do
+                    for _, result in ipairs(selectedResults) do
+                        result:removeTag(tag, false)
+                    end
+                    app.userdata:save()
+                    app.flow.filterResults(nil, true, true)
+                end
+            end,
             copyTags = function()
                 local existingTags = {}
                 local tagList = {}
@@ -902,7 +930,15 @@ RunApp = function()
                 end
                 app.flow.filterResults(nil, true, true)
             end,
-
+            syncTags = function()
+                local selectedResults = app.selection:results()
+                for _, result in ipairs(selectedResults) do
+                    app.engine:copyTagsToAllFXTypes(result, false)
+                end
+                app.userdata:save()
+                app.engine:tagAssets()
+                app.flow.filterResults(nil, true, true)
+            end
         }
         app.guiHelpers = {
             initFrame = function(ctx)
@@ -1344,14 +1380,8 @@ RunApp = function()
                 if not tagList or #tagList == 0 then
                     ImGui.BeginDisabled(ctx)
                 end
-                if ImGui.MenuItem(ctx, 'Clear') then
-                    for _, tag in ipairs(tagList) do
-                        for _, result in ipairs(selectedResults) do
-                            result:removeTag(tag, false)
-                        end
-                        app.userdata:save()
-                        app.flow.filterResults(nil, true, true)
-                    end
+                if ImGui.MenuItem(ctx, 'Clear', app.guiHelpers.shortCutToText(app.settings.current.shortcuts['clearTags'])) then
+                    app.flow.clearTags()
                 end
                 app:setHoveredHint('main', T.HINTS.RESULT_CONTEXT_MENU_CLEAR_TAGS)
                 if ImGui.MenuItem(ctx, 'Copy', app.guiHelpers.shortCutToText(app.settings.current.shortcuts['copyTags'])) then
@@ -1372,13 +1402,8 @@ RunApp = function()
                     ImGui.EndDisabled(ctx)
                 end
                 if tagList and #tagList > 0 then
-                    if ImGui.MenuItem(ctx, 'Sync tags across identical FX') then
-                        for _, result in ipairs(selectedResults) do
-                            app.engine:copyTagsToAllFXTypes(result, false)
-                        end
-                        app.userdata:save()
-                        app.engine:tagAssets()
-                        app.flow.filterResults(nil, true, true)
+                    if ImGui.MenuItem(ctx, 'Sync tags across identical FX', app.guiHelpers.shortCutToText(app.settings.current.shortcuts['syncTags'])) then
+                        app.flow.syncTags()
                     end
                     app:setHoveredHint('main', T.HINTS.RESULT_CONTEXT_MENU_COPY_TAGS_TO_ALL_TYPES)
                 end
@@ -3502,7 +3527,7 @@ RunApp = function()
                 local spacingX, spacingY = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
                 local w = 1420 * app.gui.scale
                 -- local h = 820 * app.gui.scale + #app.settings.current.projectScanFolders * (lineHeight + paddingY)
-                local numOfPreferences = 32
+                local numOfPreferences = 33
                 local numOfSeparators = 0
                 local numOfAssetTypes = 0 -- #app.engine.assetTypeManager.assetTypes + 2
                 local lineHeightWithSpacing = ImGui.GetTextLineHeightWithSpacing(ctx)
@@ -3911,6 +3936,21 @@ RunApp = function()
                             {
                                 existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
                                     function(k, v) return k ~= 'pasteTags' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+                        app.settings.current.shortcuts.clearTags, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.CLEAR_TAGS.LABEL,
+                            T.SETTINGS.SHORTCUTS.CLEAR_TAGS.HINT, app.settings.current.shortcuts.clearTags,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'clearTags' end)
+                            })
+                        app.settings.current.shortcuts.syncTags, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.SYNC_TAGS.LABEL,
+                            T.SETTINGS.SHORTCUTS.SYNC_TAGS.HINT, app.settings.current.shortcuts.syncTags,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'syncTags' end)
                             })
                         if resetCounter then app.temp.captureCounter = 0 end
 
@@ -5276,6 +5316,12 @@ RunApp = function()
                                 pressed = true
                             elseif app.guiHelpers.isShortcutPressed('pasteTags') then
                                 app.flow.pasteTags()
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('clearTags') then
+                                app.flow.clearTags()
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('syncTags') then
+                                app.flow.syncTags()
                                 pressed = true
                             elseif app.guiHelpers.isShortcutPressed('runRandomResult') then
                                 if #app.temp.searchResults > 0 then
