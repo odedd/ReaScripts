@@ -2277,7 +2277,8 @@ RunApp = function()
                                 app.temp.highlightDropAreaFor = nil
                             end
                             ImGui.SetCursorPosY(ctx, upperRowY)
-                            local text = OD_FormatNumberWithCommas(app.temp.numResults) .. ' results'
+                            local text = OD_FormatNumberWithCommas(app.temp.numResults) ..
+                                ' result' .. (app.temp.numResults > 1 and 's' or '')
                             local width = ImGui.GetContentRegionAvail(ctx)
                             local textWidth = ImGui.CalcTextSize(ctx, text)
                             local textPos = width - textWidth
@@ -3002,7 +3003,7 @@ RunApp = function()
                                     if ImGui.MenuItem(ctx, 'Click to confirm') then
                                         app.temp.showDeleteQuickChainConfirmation = nil
                                         app.userdata:deleteQuickChainPreset(app.temp.currentlyLoadedQuickChain.id)
-                                        app.temp.currentlyLoadedQuickChain = nil
+                                        app.temp.quichChainDeleted = true
                                         app.temp.quickChain = {}
                                     end
                                 elseif ImGui.Selectable(ctx, 'Delete QuickChain Preset...', false, ImGui.SelectableFlags_NoAutoClosePopups) then
@@ -3027,6 +3028,10 @@ RunApp = function()
                         if #app.temp.quickChain == 0 and not app.temp.currentlyLoadedQuickChain then
                             ImGui.EndDisabled(ctx)
                         end
+                        if app.temp.quichChainDeleted then
+                            app.temp.currentlyLoadedQuickChain = nil
+                        end
+                        app.temp.quichChainDeleted = nil
                         ImGui.EndGroup(ctx)
                         ImGui.SetCursorPosY(ctx, y)
 
@@ -4346,8 +4351,8 @@ RunApp = function()
                         end
 
                         ImGui.SameLine(ctx)
+
                         if ImGui.Button(ctx, cancelButtonLabel) or ImGui.Shortcut(ctx, ImGui.Key_Escape, ImGui.InputFlags_RouteFocused) then
-                            app.popup.secondWarningShown = false
                             open = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
@@ -4387,12 +4392,20 @@ RunApp = function()
                     end
                     ImGui.SetKeyboardFocusHere(ctx)
                     if ImGui.IsKeyReleased(ctx, ImGui.Key_Escape) then
+                        if ImGui.TextFilter_Get(app.gui.searchTagsFilter) == '' and not app.temp.newTagChild then
+                            if app.temp.justClearedTagSearch then
+                                app.temp.justClearedTagSearch = nil
+                            else
+                                ImGui.CloseCurrentPopup(ctx)
+                            end
+                        end
+                    end
+                    if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
                         if ImGui.TextFilter_Get(app.gui.searchTagsFilter) ~= '' then
                             ImGui.TextFilter_Set(app.gui.searchTagsFilter, ' ')
+                            app.temp.justClearedTagSearch = true
                         elseif app.temp.newTagChild then
                             app.temp.newTagChild = nil
-                        else
-                            ImGui.CloseCurrentPopup(ctx)
                         end
                     end
                     ImGui.SetNextItemShortcut(ctx, app.settings.current.shortcuts.quickTag)
@@ -4559,7 +4572,7 @@ RunApp = function()
                                                     executeTag(result)
                                                 end
                                             end
-                                            if app.temp.tagKeyboardPos == rowIdx and ImGui.IsKeyReleased(ctx, ImGui.Key_Enter) then
+                                            if app.temp.tagKeyboardPos == rowIdx and (result.newTagChild and ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) or ImGui.IsKeyReleased(ctx, ImGui.Key_Enter)) then
                                                 executeTag(result)
                                             end
                                             ImGui.SameLine(ctx, 0, 0)
@@ -4585,17 +4598,12 @@ RunApp = function()
                                     ImGui.ListClipper_End(app.gui.searchResultsClipper)
                                     ImGui.EndTable(ctx)
                                 end
-
-
-
-
                                 ImGui.EndChild(ctx)
                             end
                         end
                     end
 
                     app.gui:popColors(app.gui.st.col.searchWindow)
-
                     ImGui.EndPopup(ctx)
                 end
             end,
@@ -4782,7 +4790,6 @@ RunApp = function()
                                 end
                             end
                             open = false
-
                             ImGui.CloseCurrentPopup(ctx)
                         end
 
@@ -4794,7 +4801,7 @@ RunApp = function()
                         if ImGui.IsKeyReleased(ctx, ImGui.Key_Escape) or app.gui:setting('button', T.EDIT_PRESET_DIALOG.CLOSE.LABEL,
                                 T.EDIT_PRESET_DIALOG.CLOSE.HINT, nil,
                                 { label = T.EDIT_PRESET_DIALOG.CLOSE.BUTTON, hintWindow = 'editFilterWindow'
-                                , widgetWidthDivision = 3.5, divideWidth = isEditing and 2 }, isEditing) then
+                                , widgetWidthDivision = 3.5, divideWidth = isEditing and 2 }, true) then
                             open = false
                             ImGui.CloseCurrentPopup(ctx)
                         end
@@ -4813,7 +4820,6 @@ RunApp = function()
                                     app.logger:logInfo('Deleted preset "' .. preset.name .. '"')
                                 end
                                 open = false
-
                                 ImGui.CloseCurrentPopup(ctx)
                             end
                             app.gui:popColors(app.gui.st.col.buttons.delete)
@@ -5152,6 +5158,7 @@ RunApp = function()
                             -- Create the action with the given name, type and items
                             local createdActionName = app.flow.createReaperAction(trimmedActionName,
                                 EXPORT_ACTION_TYPE.QUICK_CHAIN, { keymods = keymods, items = items })
+
                             if createdActionName then
                                 app.flow.msg((T.EXPORT_QUICKACTION_AS_ACTION_DIALOG.EXPORT.SUCCESS):format(
                                     createdActionName))
