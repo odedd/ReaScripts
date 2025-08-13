@@ -47,11 +47,7 @@ function PluginAssetType:getData()
                     name = vendor and name:gsub(' %(' .. OD_EscapePattern(vendor) .. '%).-$', '') or name
                 end
             end
-            if vendor ~= '' and vendor ~= nil then
-                self.context.fxDevelopers = self.context.fxDevelopers or {}
-                self.context.fxDevelopers[vendor] = true
-            end
-
+            
             local vendorBaseName = vendor or ''
             local variant, variantPat, variantOrder
             if vendor then
@@ -62,6 +58,11 @@ function PluginAssetType:getData()
                         break
                     end
                 end
+            end
+
+            if vendor ~= '' and vendor ~= nil then
+                self.context.fxDevelopers = self.context.fxDevelopers or {}
+                self.context.fxDevelopers[vendorBaseName] = true
             end
 
             local baseName = nil
@@ -147,7 +148,7 @@ function PluginAssetType:assembleAsset(plugin)
         group = plugin.group,
     })
 
-    if plugin.vendor and plugin.vendor ~= '' then table.insert(asset.searchText, { text = plugin.vendor or '' }) end
+    if plugin.vendor and plugin.vendor ~= '' then table.insert(asset.searchText, { text = plugin.vendorBaseName or '' }) end
     if plugin.variant then table.insert(asset.searchText, { text = plugin.variant }) end
     asset.name = plugin.name
     asset.baseName = plugin.baseName

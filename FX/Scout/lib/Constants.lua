@@ -9,12 +9,24 @@ APP_PAGE = {
 
 PLUGIN = {
     VENDOR_ALIASES = {
-        -- some vendors have different names in different plugin types.
+        -- some vendors have different names in different plugin types / old plugins but are actually the same developer
+        -- [''] = { '', '' },
+        ['Steinberg'] = { 'Steinberg', 'Steinberg Media Technologies' },
         ['iZotope'] = { 'iZotope, Inc.', 'iZotope' },
+        ['Plogue Art et Technologie'] = { 'Plogue Art et Technologie', 'Plogue Art et Technologie, Inc' },
+        ['Denise Audio'] = { 'Denise', 'Denise Audio' },
         ['Universal Audio'] = { 'Universal Audio, Inc.', 'Universal Audio', 'Universal Audio (UADx)' },
         ['Native Instruments'] = { 'Native Instruments GmbH', 'Native Instruments' },
     }
 }
+
+-- build reverse lookup table
+PLUGIN.ALIASES_TO_VENDORS = {}
+for mainAlias, vendors in pairs(PLUGIN.VENDOR_ALIASES) do
+    for _, vendor in ipairs(vendors) do
+        PLUGIN.ALIASES_TO_VENDORS[vendor] = mainAlias
+    end
+end
 
 YIELD_FREQUENCY = 10
 

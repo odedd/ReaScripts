@@ -450,7 +450,7 @@ RunApp = function()
                                 if (typeFilterChecks.recentlyAdded and (not asset.addedAt or asset.addedAt < (os.time() - app.settings.current.recentlyAddedDays * 86400))) then
                                     goto skip
                                 end
-                                if (typeFilterChecks.fxDeveloper and (not asset.vendor or asset.vendor ~= typeFilterChecks.fxDeveloper)) then
+                                if (typeFilterChecks.fxDeveloper and (not asset.vendor or asset.vendorBaseName ~= (PLUGIN.ALIASES_TO_VENDORS[typeFilterChecks.fxDeveloper] or typeFilterChecks.fxDeveloper))) then
                                     goto skip
                                 end
                                 if (typeFilterChecks.fxFolderId and (asset.type ~= ASSET_TYPE.PluginAssetType or not asset:isInFolder(typeFilterChecks.fxFolderId))) then
