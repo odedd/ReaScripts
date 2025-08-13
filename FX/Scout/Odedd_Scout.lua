@@ -2052,7 +2052,10 @@ RunApp = function()
                                                             ImGui.SameLine(ctx)
                                                         end
                                                         if curIndex <= highlight.to + 1 then
-                                                            ImGui.PushStyleColor(ctx, ImGui.Col_Text, st.color and OD_SetAlpha(OD_MultiplyHSLInRGB(st.color, 1, 1.5, 1.3),1) or app.gui.st.col.search.highlight[ImGui.Col_Text])
+                                                            ImGui.PushStyleColor(ctx, ImGui.Col_Text,
+                                                                st.color and
+                                                                OD_SetAlpha(OD_MultiplyHSLInRGB(st.color, 1, 1.5, 1.3), 1) or
+                                                                app.gui.st.col.search.highlight[ImGui.Col_Text])
                                                             local txt = (st.text):sub(math.max(curIndex, highlight.from),
                                                                 highlight.to)
                                                             ImGui.Text(ctx, txt)
@@ -4480,72 +4483,74 @@ RunApp = function()
                                 end
                             end
                         end
-                        ImGui.Separator(ctx)
-                        local upperRowY = ImGui.GetCursorPosY(ctx) -- Y position for upper row, used for "sticky" first group title
-                        local selectableFlags = ImGui.SelectableFlags_SpanAllColumns |
-                            ImGui
-                            .SelectableFlags_AllowDoubleClick -- Selectable flags for ImGui
+                        if #results > 0 then
+                            ImGui.Separator(ctx)
+                            local upperRowY = ImGui.GetCursorPosY(ctx) -- Y position for upper row, used for "sticky" first group title
+                            local selectableFlags = ImGui.SelectableFlags_SpanAllColumns |
+                                ImGui
+                                .SelectableFlags_AllowDoubleClick -- Selectable flags for ImGui
 
-                        if ImGui.BeginChild(ctx, '##tagSearchFilterResults', 0, fontLineFullHeight * (math.min(8, #results)), nil, ImGui.WindowFlags_NoNav | ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoScrollWithMouse) then
-                            local numResultColor = #app.gui.st.searchColor.results
+                            if ImGui.BeginChild(ctx, '##tagSearchFilterResults', 0, fontLineFullHeight * (math.min(8, #results)), nil, ImGui.WindowFlags_NoNav | ImGui.WindowFlags_NoScrollbar | ImGui.WindowFlags_NoScrollWithMouse) then
+                                local numResultColor = #app.gui.st.searchColor.results
 
-                            handleKeyboardNavigation()
+                                handleKeyboardNavigation()
 
-                            -- Build a flat list of rows: {type="group", group=...} or {type="result", result=...}
-                            handleScrolling()
+                                -- Build a flat list of rows: {type="group", group=...} or {type="result", result=...}
+                                handleScrolling()
 
-                            if ImGui.BeginTable(ctx, "##searchResults", 1, ImGui.TableFlags_ScrollY, 0, searchResultsH) then
-                                app.temp.hoveredTag = app.temp.hoveredTag or {}
+                                if ImGui.BeginTable(ctx, "##searchResults", 1, ImGui.TableFlags_ScrollY, 0, searchResultsH) then
+                                    app.temp.hoveredTag = app.temp.hoveredTag or {}
 
-                                app.temp.tagTableScrollY = ImGui.GetScrollY(ctx)
+                                    app.temp.tagTableScrollY = ImGui.GetScrollY(ctx)
 
-                                ImGui.ListClipper_Begin(app.gui.tagSearchResultsClipper, #results, fontLineFullHeight)
-                                while ImGui.ListClipper_Step(app.gui.tagSearchResultsClipper) do
-                                    local display_start, display_end = ImGui.ListClipper_GetDisplayRange(app.gui
-                                        .tagSearchResultsClipper)
-                                    local rowIdx = display_start + 1
-                                    while rowIdx <= display_end do
-                                        local result = results[rowIdx]
-                                        ImGui.PushID(ctx, 'tagResult' .. rowIdx)
-                                        ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineFullHeight)
-                                        ImGui.TableSetColumnIndex(ctx, 0)
-                                        if ImGui.Selectable(ctx, '', app.temp.tagKeyboardPos == rowIdx, selectableFlags, 0, 0) then
-                                            app.temp.tagKeyboardPos = rowIdx
-                                            if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
+                                    ImGui.ListClipper_Begin(app.gui.tagSearchResultsClipper, #results, fontLineFullHeight)
+                                    while ImGui.ListClipper_Step(app.gui.tagSearchResultsClipper) do
+                                        local display_start, display_end = ImGui.ListClipper_GetDisplayRange(app.gui
+                                            .tagSearchResultsClipper)
+                                        local rowIdx = display_start + 1
+                                        while rowIdx <= display_end do
+                                            local result = results[rowIdx]
+                                            ImGui.PushID(ctx, 'tagResult' .. rowIdx)
+                                            ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineFullHeight)
+                                            ImGui.TableSetColumnIndex(ctx, 0)
+                                            if ImGui.Selectable(ctx, '', app.temp.tagKeyboardPos == rowIdx, selectableFlags, 0, 0) then
+                                                app.temp.tagKeyboardPos = rowIdx
+                                                if ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
+                                                    executeTag(result)
+                                                end
+                                            end
+                                            if app.temp.tagKeyboardPos == rowIdx and ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
                                                 executeTag(result)
                                             end
-                                        end
-                                        if app.temp.tagKeyboardPos == rowIdx and ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
-                                            executeTag(result)
-                                        end
-                                        ImGui.SameLine(ctx, 0, 0)
-                                        -- if result.type == ASSET_TYPE.TrackAssetType and result.color then
+                                            ImGui.SameLine(ctx, 0, 0)
+                                            -- if result.type == ASSET_TYPE.TrackAssetType and result.color then
 
-                                        for j = 1, #(result.searchText) do
-                                            local st = result.searchText[j]
-                                            if not st.hide then
-                                                ImGui.PushStyleColor(ctx, ImGui.Col_Text,
-                                                    st.color or
-                                                    app.gui.st.searchColor.results[math.min(j, numResultColor)])
-                                                ImGui.Text(ctx, st.text)
-                                                ImGui.SameLine(ctx)
+                                            for j = 1, #(result.searchText) do
+                                                local st = result.searchText[j]
+                                                if not st.hide then
+                                                    ImGui.PushStyleColor(ctx, ImGui.Col_Text,
+                                                        st.color or
+                                                        app.gui.st.searchColor.results[math.min(j, numResultColor)])
+                                                    ImGui.Text(ctx, st.text)
+                                                    ImGui.SameLine(ctx)
 
-                                                ImGui.PopStyleColor(ctx)
+                                                    ImGui.PopStyleColor(ctx)
+                                                end
                                             end
+                                            ImGui.NewLine(ctx)
+                                            ImGui.PopID(ctx)
+                                            rowIdx = rowIdx + 1
                                         end
-                                        ImGui.NewLine(ctx)
-                                        ImGui.PopID(ctx)
-                                        rowIdx = rowIdx + 1
                                     end
+                                    ImGui.ListClipper_End(app.gui.searchResultsClipper)
+                                    ImGui.EndTable(ctx)
                                 end
-                                ImGui.ListClipper_End(app.gui.searchResultsClipper)
-                                ImGui.EndTable(ctx)
+
+
+
+
+                                ImGui.EndChild(ctx)
                             end
-
-
-
-
-                            ImGui.EndChild(ctx)
                         end
                     end
 
