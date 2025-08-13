@@ -2940,7 +2940,7 @@ RunApp = function()
                         end
                         local y = ImGui.GetCursorPosY(ctx)
                         ImGui.SameLine(ctx)
-                        if #app.temp.quickChain == 0 then
+                        if #app.temp.quickChain == 0 and not app.temp.currentlyLoadedQuickChain then
                             ImGui.BeginDisabled(ctx)
                         end
                         if app.guiHelpers.iconButton(ctx, 'DISK', app.gui.st.col.buttons.activeFilterAction, nil, nil, 'saveQCPreset') then
@@ -2949,14 +2949,16 @@ RunApp = function()
                         app:setHoveredHint('main', T.HINTS.SAVE_QUICKCHAIN_MENU)
                         if ImGui.BeginPopup(ctx, 'Save QuickChain Context Menu') then
                             app:setHint('main', '')
-                            if ImGui.MenuItem(ctx, 'Create QuickChain preset...') then
-                                app.temp.showCreateQuickChainDialog = true
-                                app.temp.editingQuickChainId = nil
-                                app.temp.updateQuickChainPresetWithCurrentChain = nil
-                                app.temp.quickChainName = ""
-                                app.temp.quickChainWord = ""
+                            if #app.temp.quickChain > 0 then
+                                if ImGui.MenuItem(ctx, 'Create QuickChain preset...') then
+                                    app.temp.showCreateQuickChainDialog = true
+                                    app.temp.editingQuickChainId = nil
+                                    app.temp.updateQuickChainPresetWithCurrentChain = nil
+                                    app.temp.quickChainName = ""
+                                    app.temp.quickChainWord = ""
+                                end
+                                app:setHoveredHint('main', T.HINTS.SAVE_QUICKCHAIN_PRESET)
                             end
-                            app:setHoveredHint('main', T.HINTS.SAVE_QUICKCHAIN_PRESET)
                             if app.temp.currentlyLoadedQuickChain then
                                 if ImGui.MenuItem(ctx, 'Edit QuickChain preset...') then
                                     app.temp.showCreateQuickChainDialog = true
@@ -2980,19 +2982,22 @@ RunApp = function()
                                     app.temp.showDeleteQuickChainConfirmation = r.time_precise()
                                 end
                                 app:setHoveredHint('main', T.HINTS.DELETE_QUICKCHAIN_PRESET)
-
-                                ImGui.Separator(ctx)
+                                if #app.temp.quickChain > 0 then
+                                    ImGui.Separator(ctx)
+                                end
                             end
-                            -- app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_PRESET)
-                            if ImGui.MenuItem(ctx, 'Create Reaper action...') then
-                                app.temp.showExportQuickChainActionDialog = true
-                                app.temp.actionName = ""
+                            if #app.temp.quickChain > 0 then
+                                -- app:setHoveredHint('main', T.HINTS.SAVE_FILTERS_PRESET)
+                                if ImGui.MenuItem(ctx, 'Create Reaper action...') then
+                                    app.temp.showExportQuickChainActionDialog = true
+                                    app.temp.actionName = ""
+                                end
+                                app:setHoveredHint('main', T.HINTS.SAVE_QUICKCHAIN_ACTION)
                             end
-                            app:setHoveredHint('main', T.HINTS.SAVE_QUICKCHAIN_ACTION)
                             ImGui.EndPopup(ctx)
                         end
 
-                        if #app.temp.quickChain == 0 then
+                        if #app.temp.quickChain == 0 and not app.temp.currentlyLoadedQuickChain then
                             ImGui.EndDisabled(ctx)
                         end
                         ImGui.EndGroup(ctx)
