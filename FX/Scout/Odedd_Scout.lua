@@ -2100,19 +2100,25 @@ RunApp = function()
                                             end
 
                                             if result.rating > 0 then
+                                                local oldLineHeight = ImGui.GetTextLineHeight(ctx)
                                                 app.gui:pushFont(app.gui.st.fonts.icons, 'tiny')
                                                 app.gui:pushColors(app.gui.st.col.assetRating)
+                                                local newLineHeight = ImGui.GetTextLineHeight(ctx)
+                                                local newPosY = ImGui.GetCursorPosY(ctx) + oldLineHeight / 2 -
+                                                    newLineHeight / 1.7
                                                 for i = 1, result.rating do
-                                                    ImGui.SameLine(ctx, nil, i==1 and spacingX*2 or 0)
+                                                    ImGui.SameLine(ctx, nil, i == 1 and spacingX * 2 or 0)
+                                                    ImGui.SetCursorPosY(ctx, newPosY)
                                                     ImGui.Text(ctx, ICONS.STAR)
                                                 end
+                                                ImGui.SameLine(ctx)
                                                 app.gui:popColors(app.gui.st.col.assetRating)
                                                 ImGui.PopFont(ctx)
                                             end
 
                                             if (result.tags and #result.tags > 0) then
                                                 ImGui.SameLine(ctx, 0, spacingX)
-                                                ImGui.Dummy(ctx, 0,0)
+                                                ImGui.Dummy(ctx, 0, 0)
                                                 local visibleTags = {}
                                                 local invisibleTags = {}
                                                 for _, tagId in ipairs(result.tags) do
