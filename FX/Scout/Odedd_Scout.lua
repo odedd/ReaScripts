@@ -2105,7 +2105,7 @@ RunApp = function()
                                                 app.gui:pushColors(app.gui.st.col.assetRating)
                                                 local newLineHeight = ImGui.GetTextLineHeight(ctx)
                                                 local newPosY = ImGui.GetCursorPosY(ctx) + oldLineHeight / 2 -
-                                                    newLineHeight / 1.7
+                                                    newLineHeight / 1.75
                                                 for i = 1, result.rating do
                                                     ImGui.SameLine(ctx, nil, i == 1 and spacingX * 2 or 0)
                                                     ImGui.SetCursorPosY(ctx, newPosY)
