@@ -78,9 +78,10 @@ function ActionAssetType:assembleAsset(action)
     local asset = self:createAssetBase({
         type = self.assetTypeId,
         load = actionId,
-        searchText = { { text = action.name }, { text = action.prefix or '' } },
+        searchText = { { text = action.name }},
         group = self.group,
     })
+    if action.prefix and action.prefix ~= '' then table.insert(asset.searchText, { text = action.prefix or '' } ) end
     if action.shortcuts and #action.shortcuts > 0 then
         table.insert(asset.searchText, { text = table.concat(action.shortcuts, ', '), dontSearch = true })
     end

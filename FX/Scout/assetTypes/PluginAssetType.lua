@@ -149,7 +149,7 @@ function PluginAssetType:assembleAsset(plugin)
     })
 
     if plugin.vendor and plugin.vendor ~= '' then table.insert(asset.searchText, { text = plugin.vendorBaseName or '' }) end
-    if plugin.variant then table.insert(asset.searchText, { text = plugin.variant }) end
+    if plugin.variant and plugin.variant ~= '' then table.insert(asset.searchText, { text = plugin.variant }) end
     asset.name = plugin.name
     asset.baseName = plugin.baseName
     asset.vendorBaseName = plugin.vendorBaseName

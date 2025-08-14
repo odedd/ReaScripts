@@ -10,6 +10,7 @@ PB_UserData = OD_Settings:new({
         presets = {},
         hidden = {},
         quickChainPresets = {},
+        ratings = {},
         tagIdCount = 7,
         presetIdCount = 0,
         quickChainPresetIdCount = 0,
@@ -2095,6 +2096,10 @@ function PB_UserData:toggleAssetFavorite(assetKey)
         self:save()
         return true
     end
+end
+
+function PB_UserData:rateAsset(assetKey, rating)
+    self.current.ratings[assetKey] = (rating ~= 0) and rating or nil
 end
 
 function PB_UserData:addAssetToRecents(assetKey)

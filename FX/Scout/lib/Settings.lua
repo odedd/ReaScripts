@@ -2,7 +2,7 @@
 
 PB_Settings = OD_Settings:new({
     default = {
-        -- * SETTINGS WINDOW 
+        -- * SETTINGS WINDOW
 
         -- General Settings
         uiScale = 1,
@@ -12,7 +12,7 @@ PB_Settings = OD_Settings:new({
         resetFiltersOnWakeup = true,
         loadDefaultPreset = false,
         defaultPreset = nil,
-        
+
         -- Ordering
         showOnlyHighestPriorityPlugin = true,
         fxTypeVisibility = {
@@ -135,31 +135,37 @@ PB_Settings = OD_Settings:new({
 
         -- Shortcuts
         shortcuts = {
-            closeScript = ImGui.Key_Escape,
-            performAction = ImGui.Key_Enter,
-            toggleSearchMode = ImGui.Key_Tab,
-            hardCloseScript = ImGui.Mod_Ctrl | ImGui.Key_Q,
-            selectAllResults = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_A,
-            clearFilters = ImGui.Mod_Ctrl | ImGui.Key_L,
-            markFavorite = ImGui.Mod_Ctrl | ImGui.Key_F,
-            markHidden = ImGui.Mod_Ctrl | ImGui.Key_H,
-            runRandomResult = ImGui.Mod_Ctrl | ImGui.Key_R,
+            closeScript       = ImGui.Key_Escape,
+            performAction     = ImGui.Key_Enter,
+            toggleSearchMode  = ImGui.Key_Tab,
+            hardCloseScript   = ImGui.Mod_Ctrl | ImGui.Key_Q,
+            selectAllResults  = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_A,
+            clearFilters      = ImGui.Mod_Ctrl | ImGui.Key_L,
+            markFavorite      = ImGui.Mod_Ctrl | ImGui.Key_F,
+            markHidden        = ImGui.Mod_Ctrl | ImGui.Key_H,
+            runRandomResult   = ImGui.Mod_Ctrl | ImGui.Key_R,
             toggleAfterAction = ImGui.Mod_Ctrl | ImGui.Key_B,
-            showSettings = ImGui.Mod_Ctrl | ImGui.Key_Comma,
-            showHelp = ImGui.Mod_Ctrl | ImGui.Key_F1,
-            toggleDock = ImGui.Mod_Ctrl | ImGui.Key_D,
+            showSettings      = ImGui.Mod_Ctrl | ImGui.Key_Comma,
+            showHelp          = ImGui.Mod_Ctrl | ImGui.Key_F1,
+            toggleDock        = ImGui.Mod_Ctrl | ImGui.Key_D,
             toggleMinimalMode = ImGui.Mod_Ctrl | ImGui.Key_M,
-            toggleSideBar = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_S,
-            toggleQuickChain = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_K,
-            addToQuickChain = ImGui.Mod_Ctrl | ImGui.Key_K,
-            clearQuickChain = ImGui.Mod_Alt | ImGui.Key_K,
-            quickTag = ImGui.Mod_Ctrl | ImGui.Key_T,
-            copyTags = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_C,
-            pasteTags = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_V,
-            syncTags = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_Y,
-            clearTags = ImGui.Mod_Ctrl | ImGui.Mod_Alt | ImGui.Mod_Shift | ImGui.Key_X,
+            toggleSideBar     = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_S,
+            toggleQuickChain  = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_K,
+            addToQuickChain   = ImGui.Mod_Ctrl | ImGui.Key_K,
+            clearQuickChain   = ImGui.Mod_Alt | ImGui.Key_K,
+            quickTag          = ImGui.Mod_Ctrl | ImGui.Key_T,
+            copyTags          = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_C,
+            pasteTags         = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_V,
+            syncTags          = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_Y,
+            clearTags         = ImGui.Mod_Ctrl | ImGui.Mod_Alt | ImGui.Mod_Shift | ImGui.Key_X,
+            clearRating       = ImGui.Mod_Alt | ImGui.Key_0,
+            rate1             = ImGui.Mod_Alt | ImGui.Key_1,
+            rate2             = ImGui.Mod_Alt | ImGui.Key_2,
+            rate3             = ImGui.Mod_Alt | ImGui.Key_3,
+            rate4             = ImGui.Mod_Alt | ImGui.Key_4,
+            rate5             = ImGui.Mod_Alt | ImGui.Key_5,
         },
-        
+
         -- Items Specific Settings
         recentlyAddedDays = 30,
         showFxUI = SHOW_FX_UI.FOLLOW_PREFERENCE,
@@ -172,7 +178,7 @@ PB_Settings = OD_Settings:new({
         showInvisibleTakeMarkers = false,
         projectScanFolders = {},
         scanRecentProjects = true,
-        
+
         -- * SET IN THE UI
         minimalMode = false,
         showSideBar = true,
@@ -180,7 +186,7 @@ PB_Settings = OD_Settings:new({
         showQuickChain = false,
         quickChainWidth = 160,
         hideAllTags = false,
-        
+
         -- * INTERNAL
         minSideBarWidth = 140,
         minQuickChainWidth = 140,

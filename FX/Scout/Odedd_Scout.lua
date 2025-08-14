@@ -2099,7 +2099,20 @@ RunApp = function()
                                                 end
                                             end
 
+                                            if result.rating > 0 then
+                                                app.gui:pushFont(app.gui.st.fonts.icons, 'tiny')
+                                                app.gui:pushColors(app.gui.st.col.assetRating)
+                                                for i = 1, result.rating do
+                                                    ImGui.SameLine(ctx, nil, i==1 and spacingX*2 or 0)
+                                                    ImGui.Text(ctx, ICONS.STAR)
+                                                end
+                                                app.gui:popColors(app.gui.st.col.assetRating)
+                                                ImGui.PopFont(ctx)
+                                            end
+
                                             if (result.tags and #result.tags > 0) then
+                                                ImGui.SameLine(ctx, 0, spacingX)
+                                                ImGui.Dummy(ctx, 0,0)
                                                 local visibleTags = {}
                                                 local invisibleTags = {}
                                                 for _, tagId in ipairs(result.tags) do
@@ -5343,6 +5356,42 @@ RunApp = function()
                                 pressed = true
                             elseif app.guiHelpers.isShortcutPressed('clearQuickChain') then
                                 app.temp.quickChain = {}
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('clearRating') and app.temp.searchMode ~= SEARCH_MODE.FILTERS then
+                                for _, asset in ipairs(app.selection:results()) do
+                                    asset:rate(0, false)
+                                end
+                                app.userdata:save()
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('rate1') and app.temp.searchMode ~= SEARCH_MODE.FILTERS then
+                                for _, asset in ipairs(app.selection:results()) do
+                                    asset:rate(1, false)
+                                end
+                                app.userdata:save()
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('rate2') and app.temp.searchMode ~= SEARCH_MODE.FILTERS then
+                                for _, asset in ipairs(app.selection:results()) do
+                                    asset:rate(2, false)
+                                end
+                                app.userdata:save()
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('rate3') and app.temp.searchMode ~= SEARCH_MODE.FILTERS then
+                                for _, asset in ipairs(app.selection:results()) do
+                                    asset:rate(3, false)
+                                end
+                                app.userdata:save()
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('rate4') and app.temp.searchMode ~= SEARCH_MODE.FILTERS then
+                                for _, asset in ipairs(app.selection:results()) do
+                                    asset:rate(4, false)
+                                end
+                                app.userdata:save()
+                                pressed = true
+                            elseif app.guiHelpers.isShortcutPressed('rate5') and app.temp.searchMode ~= SEARCH_MODE.FILTERS then
+                                for _, asset in ipairs(app.selection:results()) do
+                                    asset:rate(5, false)
+                                end
+                                app.userdata:save()
                                 pressed = true
                             elseif (app.temp.searchMode == SEARCH_MODE.MAIN or app.temp.searchMode == SEARCH_MODE.SEND_BUDDY) and app.guiHelpers.isShortcutPressed('markFavorite') and app.selection.keyboardPos then
                                 -- Toggle favorite status for all selected assets

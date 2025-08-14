@@ -391,6 +391,17 @@ BaseAssetType.assetActions = {
             key .. '" from position ' .. currentPosition .. ' to position ' .. targetPosition)
         return true
     end,
+
+    rate = function(self, rating, persist)
+        local ratings = self.context.userdata.current.ratings
+        local key = self.key
+        self.context.userdata:rateAsset(key, rating)
+        self.rating = (rating ~= 0) and rating or 0
+        if persist then
+            self.context.userdata:save()
+        end
+    end,
+
     addToRecents = function(self, filterResults)
         if filterResults == nil then filterResults = true end
         self.context.userdata:addAssetToRecents(self.key)
@@ -448,6 +459,7 @@ function BaseAssetType:createAssetBase(params)
         execute = self:executeAndAddToRecents(),
         batchToggleFavorites = self.assetActions.batchToggleFavorites,
         batchToggleHidden = self.assetActions.batchToggleHidden,
+        rate = self.assetActions.rate,
         moveFavorite = self.assetActions.moveFavorite,
         addToRecents = self.assetActions.addToRecents
     }

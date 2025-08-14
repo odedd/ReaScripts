@@ -141,6 +141,9 @@ PB_Gui.init = function(self, fonts)
                 [ImGui.Col_ButtonActive] = self.st.basecolors.mainBrighter,
             }
         },
+        assetRating = {
+            [ImGui.Col_Text] = 0xebc334ff,
+        },
         tagButtons = {
             [ImGui.Col_Text] = self.st.basecolors.main,
             [ImGui.Col_Button] = 0x00000000,

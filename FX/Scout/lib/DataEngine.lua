@@ -305,6 +305,7 @@ PB_DataEngine = {
         self:getMagicWords()
         -- Use the new modular assembleAssets (this populates fxDevelopers)
         self:assembleAssets(forceRebuildCache)
+        self:getRatings()
 
         -- Populate the dynamic filter menus (after tags, presets, and assets are loaded)
         self:updateFilterMenus()
@@ -1273,6 +1274,11 @@ PB_DataEngine.getFlatTags = function(self)
     flattenTagsOfParent(TAGS_ROOT_PARENT)
     return flatTags
 end
+PB_DataEngine.getRatings = function(self)
+    for _, asset in ipairs(self.assets) do
+        asset.rating = self.app.userdata.current.ratings[asset.key] or 0
+    end
+end
 PB_DataEngine.tagAssets = function(self)
     local flatTags = self:getFlatTags()
 
@@ -1443,6 +1449,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                         allowMultiple = filterType == FILTER_TYPES.OTHER,
                         searchText = { { text = itemName } },
                         order = item.order,
+                        rating = 0,
                         load = item.query,
                         loadAll = item.allQuery or filter.allQuery,
                         group = T.FILTER_NAMES[filterType],
@@ -1451,7 +1458,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                                 context, count, itemName, T.FILTER_NAMES_PLURAL[filterType])
                         end
                     }
-                    if item.shortcut then table.insert(filterAsset.searchText, { text = item.shortcut}) end
+                    if item.shortcut then table.insert(filterAsset.searchText, { text = item.shortcut }) end
                     -- Add execute function directly to the asset
                     filterAsset.execute = function(asset, mods, context, contextData, confirm, total, index, tempStore,
                                                    skipAllConfirmations)
@@ -1473,6 +1480,7 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                     type = FILTER_TYPES.TAG,
                     searchText = { { text = tag.name, color = tag.displayColor } },
                     order = tag.order,
+                    rating = 0,
                     object = tag,
                     load = tag.id,
                     -- displayColor = tag.displayColor,
@@ -1529,7 +1537,8 @@ PB_DataEngine.assembleFilterAssets = function(self, whichFilters)
                 type = FILTER_TYPES.PRESET,
                 searchText = { { text = preset.name }, { text = preset.word or '' } },
                 order = preset.id, -- Use ID as order for now, could be customized later
-                preset = preset,   -- Store reference to preset
+                rating = 0,
+                preset = preset, -- Store reference to preset
                 group = T.FILTER_NAMES[FILTER_TYPES.PRESET],
                 getInteractionHintFor = function(self, mods, context, contextData, count)
                     return interactionHints(FILTER_TYPES.PRESET, mods,
