@@ -2099,7 +2099,7 @@ RunApp = function()
                                                 end
                                             end
 
-                                            if result.rating > 0 then
+                                            if result.rating and result.rating > 0 then
                                                 local oldLineHeight = ImGui.GetTextLineHeight(ctx)
                                                 app.gui:pushFont(app.gui.st.fonts.icons, 'tiny')
                                                 app.gui:pushColors(app.gui.st.col.assetRating)

@@ -204,10 +204,22 @@ function PB_UserData:export(filename)
         file:write(sanitizedHidden .. '\n')
         hiddenCount = hiddenCount + 1
     end
+    file:write('\n')
+    self.app.logger:logDebug('Exported hidden', hiddenCount)
+
+    -- Export ratings
+    file:write('[ratings]\n')
+    local ratingsCount = 0
+    for ratedAsset, rating in pairs(self.current.ratings) do
+        -- Sanitize hidden asset ID and write with proper escaping
+        local sanitizedHidden = OD_EscapeCSV(ratedAsset)
+        file:write(sanitizedHidden .. ':' .. rating .. '\n')
+        ratingsCount = ratingsCount + 1
+    end
 
     file:close()
 
-    self.app.logger:logDebug('Exported hidden', hiddenCount)
+    self.app.logger:logDebug('Exported ratings', ratingsCount)
     self.app.logger:logInfo('Successfully exported ' ..
         tagCount ..
         ' tags, ' ..
@@ -215,6 +227,8 @@ function PB_UserData:export(filename)
         ' tagged assets, ' ..
         presetsCount ..
         ' presets, ' ..
+        ratingsCount ..
+        ' ratings, ' ..
         quickChainPresetsCount .. ' QuickChain Presets, ' ..
         hiddenCount .. ' Hidden items, ' ..
         'and ' .. favoritesCount .. ' favorites to ' .. filename)
@@ -257,6 +271,7 @@ function PB_UserData:import(args)
         taggedAssets = 0,
         presets = 0,
         quickChainPresets = 0,
+        ratings = 0,
         favorites = 0,
         hidden = 0
     }
@@ -275,6 +290,8 @@ function PB_UserData:import(args)
             currentSection = "presets"
         elseif line:match("^%[quickChainPresets%]") then
             currentSection = "quickChainPresets"
+        elseif line:match("^%[ratings%]") then
+            currentSection = "ratings"
         elseif line:match("^%[favorites%]") then
             currentSection = "favorites"
         elseif line:match("^%[hidden%]") then
@@ -299,6 +316,7 @@ function PB_UserData:import(args)
         ', taggedAssets: ' .. sectionCounts.taggedAssets ..
         ', presets: ' .. sectionCounts.presets ..
         ', quickChainPresets: ' .. sectionCounts.quickChainPresets ..
+        ', ratings: ' .. sectionCounts.ratings ..
         ', hidden: ' .. sectionCounts.hidden ..
         ', favorites: ' .. sectionCounts.favorites)
 
@@ -308,6 +326,7 @@ function PB_UserData:import(args)
     local importedPresets = {}           -- Track imported presets
     local importedquickChainPresets = {} -- Track imported QuickChain Presets
     local importedFavorites = {}         -- Track imported favorites
+    local importedRatings = {}           -- Track imported rated items
     local importedHidden = {}            -- Track imported hidden items
     local importedAssetTypes = {}        -- Map of imported asset type ID -> class name
     local assetTypeMapping = {}          -- Map of imported asset type ID -> current system asset type ID
@@ -340,6 +359,8 @@ function PB_UserData:import(args)
             section = "quickChainPresets"
         elseif line:match("^%[favorites%]") then
             section = "favorites"
+        elseif line:match("^%[ratings%]") then
+            section = "ratings"
         elseif line:match("^%[hidden%]") then
             section = "hidden"
         elseif section == "version" and line ~= "" then
@@ -417,22 +438,12 @@ function PB_UserData:import(args)
 
                     -- Verify the asset type exists in the current system (skip validation for same-system imports)
                     local targetAssetType = nil
-                    local isSameSystemImport = (next(assetTypeMapping) == nil) -- Empty mapping means same system
-
-                    if not isSameSystemImport then
-                        targetAssetType = self.app.engine.assetTypeManager:getAssetTypeById(mappedAssetTypeId)
-                        if not targetAssetType then
-                            local className = importedAssetTypes[importedAssetTypeId] or "unknown"
-                            self.app.logger:logDebug('Skipping asset with unsupported asset type',
-                                className .. ' (ID: ' .. importedAssetTypeId .. '): ' .. asset)
-                            goto continue_asset_parsing
-                        end
-                    else
-                        -- For same-system imports, create a dummy asset type object or assume it's valid
-                        -- File-based asset types: 1=Plugins, 2=FXChains, 3=TrackTemplates, 4=ProjectTemplates, 10=Projects
-                        targetAssetType = {
-                            shouldMapBaseFilenames = (mappedAssetTypeId == 1 or mappedAssetTypeId == 2 or mappedAssetTypeId == 3 or mappedAssetTypeId == 4 or mappedAssetTypeId == 10)
-                        }
+                    targetAssetType = self.app.engine.assetTypeManager:getAssetTypeById(mappedAssetTypeId)
+                    if not targetAssetType then
+                        local className = importedAssetTypes[importedAssetTypeId] or "unknown"
+                        self.app.logger:logDebug('Skipping asset with unsupported asset type',
+                            className .. ' (ID: ' .. importedAssetTypeId .. '): ' .. asset)
+                        goto continue_asset_parsing
                     end
 
                     -- Extract basename for matching - different logic for different asset types
@@ -506,6 +517,22 @@ function PB_UserData:import(args)
                 end
             else
                 self.app.logger:logError('No colon separator found in taggedAssets line', line)
+            end
+        elseif section == "ratings" and line ~= "" then
+            -- First unescape the entire line, then find the last colon
+            local unescapedLine = OD_UnescapeCSV(line)
+            local colonPos = unescapedLine:find(colonPattern) -- Find last colon
+            if colonPos then
+                local asset = unescapedLine:sub(1, colonPos - 1)
+                local ratingStr = unescapedLine:sub(colonPos + 1)
+                if asset and ratingStr and asset ~= "" and ratingStr ~= "" then
+                    -- Use efficient direct table building instead of table.insert in loo
+                    importedRatings[asset] = tonumber(ratingStr)
+                else
+                    self.app.logger:logError('Invalid ratings line format', line)
+                end
+            else
+                self.app.logger:logError('No colon separator found in ratings line', line)
             end
         elseif section == "presets" and line ~= "" then
             -- Parse presets: id,name,word,filter
@@ -665,6 +692,7 @@ function PB_UserData:import(args)
     local importedquickChainPresetsCount = 0
     for _ in pairs(importedquickChainPresets) do importedquickChainPresetsCount = importedquickChainPresetsCount + 1 end
     local importedFavoritesCount = #importedFavorites
+    local importedRatingsCount = OD_TableLength(importedRatings)
     local importedHiddenCount = #importedHidden
     self.app.logger:logDebug('Parsed ' ..
         importedTagCount ..
@@ -673,6 +701,7 @@ function PB_UserData:import(args)
         ' tagged assets, ' ..
         importedPresetsCount .. ' presets, ' ..
         importedquickChainPresetsCount .. ' QuickChain Presets, ' ..
+        importedRatingsCount .. ' Rated Items, and ' ..
         importedHiddenCount .. ' Hidden Items, and ' ..
         importedFavoritesCount .. ' favorites from file')
     if fileVersion then
@@ -769,29 +798,6 @@ function PB_UserData:import(args)
                 cache[parentId] = getTagPath(parentId, importedTagInfo, idMappingTable, {})
             end
             return cache[parentId]
-        end
-
-        -- Optimized function to find existing tag with same name and parent path
-        local function findExistingTag(importedTag, importedParentId, idMappingTable)
-            local importedPath = getCachedImportedPath(importedParentId, idMappingTable)
-
-            -- Fast lookup by traversing the path hierarchy
-            local currentParentId = TAGS_ROOT_PARENT
-            for _, pathSegment in ipairs(importedPath) do
-                local candidates = existingTagsByParent[currentParentId]
-                if not candidates or not candidates[pathSegment] then
-                    return nil -- Path doesn't exist in current system
-                end
-                currentParentId = candidates[pathSegment]
-            end
-
-            -- Now check if the final tag name exists under this parent
-            local finalCandidates = existingTagsByParent[currentParentId]
-            if finalCandidates and finalCandidates[importedTag.name] then
-                return finalCandidates[importedTag.name]
-            end
-
-            return nil
         end
 
         -- Merge mode: find existing tags with same name and parent path, create hierarchy as needed
@@ -1461,6 +1467,60 @@ function PB_UserData:import(args)
         end
     end
 
+    -- Process imported ratings
+    local mappedRatingsCount = 0
+    local skippedRatingsCount = 0
+    local finalRatings = {}
+
+    if mergeMode then
+        -- In merge mode, preserve existing favorites
+        for ratingAssetKey, rating in pairs(self.current.ratings) do
+            -- if not ratingsSet[ratingAssetKey] then
+                finalRatings[ratingAssetKey] = rating
+            -- end
+        end
+    end
+
+    -- Map imported ratings to current system assets
+    for importedRatingKey, rating in pairs(importedRatings) do
+        local mappedAssetId, mappedAssetType = mapImportedAssetToSystem(importedRatingKey)
+
+        if mappedAssetId then
+            -- Add to ratings
+            finalRatings[mappedAssetId] = rating
+            mappedRatingsCount = mappedRatingsCount + 1
+            self.app.logger:logDebug('✓ Mapped rating for "' .. importedRatingKey .. '" to "' .. mappedAssetId .. '"')
+        else
+            -- Check if we should import unmapped ratings (e.g., for tracks)
+            local importedAssetTypeId = tonumber(importedRatingKey:match("^(%d+)"))
+            local mappedAssetTypeId = assetTypeMapping[importedAssetTypeId] or importedAssetTypeId
+            local cachedAssetTypeData = mappedAssetTypeId and getAssetTypeData(mappedAssetTypeId)
+            local shouldImportUnmapped = cachedAssetTypeData and
+                not cachedAssetTypeData.assetType.requiresMappingOnImport
+
+            if shouldImportUnmapped then
+                -- Import unmapped favorite (will apply when asset becomes available)
+                local remappedAssetId = importedRatingKey
+                if importedAssetTypeId and mappedAssetTypeId and importedAssetTypeId ~= mappedAssetTypeId then
+                    remappedAssetId = importedRatingKey:gsub("^" .. importedAssetTypeId, tostring(mappedAssetTypeId))
+                end
+
+                finalRatings[remappedAssetId] = rating
+                mappedRatingsCount = mappedRatingsCount + 1
+                self.app.logger:logDebug('✓ Imported unmapped ratings for "' ..
+                    remappedAssetId .. '" (will apply when asset becomes available)')
+            else
+                skippedRatingsCount = skippedRatingsCount + 1
+                self.app.logger:logDebug('✗ Rating for "' .. importedRatingKey .. '" not found in system assets')
+            end
+        end
+    end
+
+    -- Update ratings
+    self.current.ratings = finalRatings
+
+    self.app.logger:logInfo('Ratings import: ' ..
+        mappedRatingsCount .. ' mapped, ' .. skippedRatingsCount .. ' skipped, total ratings: ' .. #finalRatings)
     -- Process imported favorites
     local mappedFavoritesCount = 0
     local skippedFavoritesCount = 0
@@ -2043,11 +2103,13 @@ function PB_UserData:import(args)
     local totalPresetsImported = mappedPresetsCount or 0
     local totalQuickChainPresetsImported = mappedquickChainPresetsCount or 0
     local totalFavoritesImported = mappedFavoritesCount or 0
+    local totalRatingsImported = mappedRatingsCount or 0
     local totalHiddenImported = mappedHiddenCount or 0
     local totalAssetsSkipped = skippedAssetsCount or 0
     local totalPresetsSkipped = skippedPresetsCount or 0
     local totalQuickChainPresetsSkipped = skippedquickChainPresetsCount or 0
     local totalFavoritesSkipped = skippedFavoritesCount or 0
+    local totalRatingsSkipped = skippedRatingsCount or 0
     local totalHiddenSkipped = skippedHiddenCount or 0
 
     if mergeMode then
@@ -2068,7 +2130,9 @@ function PB_UserData:import(args)
         totalPresetsImported, totalPresetsSkipped,                     -- presets imported, presets skipped
         totalQuickChainPresetsImported, totalQuickChainPresetsSkipped, -- QuickChain presets imported, skipped
         totalHiddenImported, totalHiddenSkipped,                       -- hidden items imported, hidden items skipped
-        totalFavoritesImported, totalFavoritesSkipped)                 -- favorites imported, favorites skipped
+        totalFavoritesImported, totalFavoritesSkipped,                 -- favorites imported, favorites skipped
+        totalRatingsImported, totalRatingsSkipped                      -- ratings imported, ratings skipped
+    )
     if self.app.logger.profile then self.app.profiler.stop() end
 
     return { success = true, msg = msg }
