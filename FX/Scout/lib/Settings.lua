@@ -186,6 +186,8 @@ PB_Settings = OD_Settings:new({
         showQuickChain = false,
         quickChainWidth = 160,
         hideAllTags = false,
+        hideRatings = false,
+        sortByRating = true,
 
         -- * INTERNAL
         minSideBarWidth = 140,

@@ -305,7 +305,6 @@ PB_DataEngine = {
         self:getMagicWords()
         -- Use the new modular assembleAssets (this populates fxDevelopers)
         self:assembleAssets(forceRebuildCache)
-        self:getRatings()
 
         -- Populate the dynamic filter menus (after tags, presets, and assets are loaded)
         self:updateFilterMenus()
@@ -1333,7 +1332,8 @@ PB_DataEngine.assembleAssets = function(self, forceRebuildCache)
     end
 
     self:markAssetDates()
-
+    self:getRatings()
+    
     self:sortAssets() -- Final sort with special groups and group priority cache
 
     self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
@@ -1641,20 +1641,39 @@ PB_DataEngine.sortAssets = function(self)
     end
 
     local groupPriority = self._groupPriorityCache
-
+    
+    local sortByRatings = self.app.settings.current.sortByRating
     table.sort(self.assets, function(a, b)
         local aPriority = groupPriority[a.group] or 1000
         local bPriority = groupPriority[b.group] or 1000
-
         if aPriority == bPriority then
             if a.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES] and b.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.FAVORITES] then
                 -- Special handling for favorites: sort by favoriteOrder instead of alphabetically
                 return (a.favoriteOrder or 0) < (b.favoriteOrder or 0)
-                -- Special handling for recents: sort by recentOrder instead of alphabetically
             elseif a.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] and b.group == T.SPECIAL_GROUPS[SPECIAL_GROUPS.RECENTS] then
+                -- Special handling for recents: sort by recentOrder instead of alphabetically
                 return (a.recentOrder or 0) < (b.recentOrder or 0)
             elseif a.variantOrder ~= nil and b.variantOrder ~= nil and a.baseName == b.baseName and a.vendorBaseName == b.vendorBaseName then
                 return a.variantOrder < b.variantOrder
+            elseif sortByRatings and a.rating ~= nil and b.rating ~= nil then
+                if a.rating ~= b.rating then
+                    return a.rating > b.rating
+                else
+                    -- If ratings are equal, sort by order, then by text, just like other assets
+                    if a.order ~= nil and b.order ~= nil then
+                        return a.order < b.order
+                    elseif a.order ~= nil and b.order == nil then
+                        return true
+                    elseif a.order == nil and b.order ~= nil then
+                        return false
+                    else
+                        return a.searchText[1].text < b.searchText[1].text
+                    end
+                end
+            elseif sortByRatings and a.rating ~= nil and b.rating == nil then
+                return true
+            elseif sortByRatings and a.rating == nil and b.rating ~= nil then
+                return false
             elseif a.order ~= nil and b.order ~= nil then
                 return a.order < b.order
             elseif a.order ~= nil and b.order == nil then

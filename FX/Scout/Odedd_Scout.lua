@@ -363,6 +363,8 @@ RunApp = function()
                     local hasTypeFilters = validatedFilter.type or validatedFilter.fx_type or
                         validatedFilter.fxDeveloper or validatedFilter.fxFolderId or
                         validatedFilter.fxCategory or validatedFilter.untagged or
+                        validatedFilter.rating or validatedFilter.rating or
+                        validatedFilter.ratingType or validatedFilter.ratingType or
                         validatedFilter.tagged or validatedFilter.hidden or validatedFilter.recentlyAdded
                     local hasTagFilters = next(validatedFilter.tags) ~= nil
 
@@ -377,6 +379,8 @@ RunApp = function()
                         typeFilterChecks.untagged = validatedFilter.untagged
                         typeFilterChecks.tagged = validatedFilter.tagged
                         typeFilterChecks.hidden = validatedFilter.hidden
+                        typeFilterChecks.rating = validatedFilter.rating
+                        typeFilterChecks.ratingType = validatedFilter.ratingType
                         typeFilterChecks.recentlyAdded = validatedFilter.recentlyAdded
                     end
 
@@ -449,6 +453,17 @@ RunApp = function()
                                 end
                                 if (typeFilterChecks.recentlyAdded and (not asset.addedAt or asset.addedAt < (os.time() - app.settings.current.recentlyAddedDays * 86400))) then
                                     goto skip
+                                end
+                                if typeFilterChecks.rating and typeFilterChecks.ratingType then
+                                    local assetRating = asset.rating or 0
+                                    local requiredRating = typeFilterChecks.rating
+                                    if typeFilterChecks.ratingType == RATING_FILTER_TYPE.EQUAL then
+                                        if assetRating ~= requiredRating then goto skip end
+                                    elseif typeFilterChecks.ratingType == RATING_FILTER_TYPE.EQUAL_OR_LESS then
+                                        if assetRating > requiredRating or assetRating == 0 then goto skip end
+                                    elseif typeFilterChecks.ratingType == RATING_FILTER_TYPE.EQUAL_OR_MORE then
+                                        if assetRating < requiredRating then goto skip end
+                                    end
                                 end
                                 if (typeFilterChecks.fxDeveloper and (not asset.vendor or asset.vendorBaseName ~= (PLUGIN.ALIASES_TO_VENDORS[typeFilterChecks.fxDeveloper] or typeFilterChecks.fxDeveloper))) then
                                     goto skip
@@ -2099,7 +2114,7 @@ RunApp = function()
                                                 end
                                             end
 
-                                            if result.rating and result.rating > 0 then
+                                            if not app.settings.current.hideRatings and result.rating and result.rating > 0 then
                                                 local oldLineHeight = ImGui.GetTextLineHeight(ctx)
                                                 app.gui:pushFont(app.gui.st.fonts.icons, 'tiny')
                                                 app.gui:pushColors(app.gui.st.col.assetRating)
@@ -2896,6 +2911,102 @@ RunApp = function()
                         ImGui.SeparatorText(ctx, "Filters")
                         ImGui.Spacing(ctx)
                         drawFilterMenu(FILTER_MENU, 'root')
+                        ImGui.SeparatorText(ctx, "Ratings")
+                        ImGui.SameLine(ctx)
+
+                        app.gui:pushFont(app.gui.st.fonts.icons, 'small')
+                        local toggleHideRatingsIcon = app.settings.current.hideRatings and ICONS.INVISIBLE or
+                            ICONS.VISIBLE
+                        local sortRatingsIcon = app.settings.current.sortByRating and ICONS.RATING_SORT or
+                            ICONS.RATING_SORT_DISABLED
+                        ImGui.SetCursorPosX(ctx,
+                            ImGui.GetCursorPosX(ctx) + ImGui.GetContentRegionAvail(ctx) - spacingX - paddingX * 2 -
+                            ImGui.CalcTextSize(ctx, toggleHideRatingsIcon) - spacingX - paddingX * 2 -
+                            ImGui.CalcTextSize(ctx, sortRatingsIcon))
+                        if ImGui.Button(ctx, sortRatingsIcon .. '##sortByRatings') then
+                            app.settings.current.sortByRating = not app.settings.current.sortByRating
+                            app.engine:sortAssets()
+                            app.flow.filterResults({}, true, true)
+                        end
+                        if ImGui.IsItemHovered(ctx) then
+                            ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                        end
+                        app:setHoveredHint('main',
+                            app.settings.current.sortByRating and 'Do no sort by ratings' or 'Sort by ratings')
+                        ImGui.SameLine(ctx)
+                        -- ImGui.AlignTextToFramePadding(ctx)
+                        if ImGui.Button(ctx, toggleHideRatingsIcon .. '##hideRatings') then
+                            app.settings.current.hideRatings = not app.settings.current.hideRatings
+                        end
+                        if ImGui.IsItemHovered(ctx) then
+                            ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                        end
+                        app:setHoveredHint('main',
+                            app.settings.current.hideRatings and 'Unhide ratings' or 'Hide ratings')
+                        ImGui.PopFont(ctx)
+                        if app.temp.ratingFilterType == nil then
+                            app.temp.ratingFilterType = RATING_FILTER_TYPE
+                                .EQUAL_OR_MORE
+                        end
+                        local sign
+                        if app.temp.ratingFilterType == RATING_FILTER_TYPE.EQUAL then sign = ' =' end
+                        if app.temp.ratingFilterType == RATING_FILTER_TYPE.EQUAL_OR_MORE then sign = '>=' end
+                        if app.temp.ratingFilterType == RATING_FILTER_TYPE.EQUAL_OR_LESS then sign = '<=' end
+                        ImGui.Text(ctx, sign)
+                        if ImGui.IsItemHovered(ctx) then
+                            ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                            if ImGui.IsMouseClicked(ctx, ImGui.MouseButton_Left) then
+                                if app.temp.ratingFilterType == OD_TableLength(RATING_FILTER_TYPE) - 1 then
+                                    app.temp.ratingFilterType = 0
+                                else
+                                    app.temp.ratingFilterType = app.temp.ratingFilterType + 1
+                                end
+                                app.flow.filterResults({ ratingType = app.temp.ratingFilterType })
+                            end
+                        end
+                        ImGui.SameLine(ctx)
+                        app.gui:pushFont(app.gui.st.fonts.icons, 'small')
+
+                        -- end
+                        if ImGui.BeginChild(ctx, 'ratingFilter', 0.0, ImGui.GetTextLineHeight(ctx), nil, ImGui.WindowFlags_NoScrollWithMouse | ImGui.WindowFlags_NoScrollbar) then
+                            app.gui:pushColors(app.gui.st.col.assetRating)
+                            -- local starW, starH = ImGui.CalcTextSize(ctx, ICONS.STAR)
+                            for i = 1, 5 do
+                                local ratingFilter = app.temp.filter.rating or 0
+                                local hoveredRating = app.temp.hoveredRatingFilter or 0
+                                local icon = (i <= ratingFilter or i <= hoveredRating) and ICONS.STAR or
+                                    ICONS.STAR_OUTLINE
+                                -- local x, y = ImGui.GetCursorPos(ctx)
+                                ImGui.Text(ctx, icon)
+                                if ImGui.IsItemHovered(ctx) then
+                                    ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                                    app.temp.hoveredRatingFilter = i
+                                    if ImGui.IsMouseClicked(ctx, ImGui.MouseButton_Left) then
+                                        app.temp.hoveredRatingFilter = i
+                                        app.flow.filterResults({ rating = i, ratingType = app.temp.ratingFilterType })
+                                    end
+                                end
+                                -- if ImGui.Is
+                                if i < 5 then ImGui.SameLine(ctx) end
+                            end
+                            app.gui:popColors(app.gui.st.col.assetRating)
+
+                            if app.temp.filter.rating then
+                                ImGui.SameLine(ctx, 0, spacingX * 2)
+                                if app.guiHelpers.tinyIcon(ctx, 'resetRatingFilter', ICONS.CLOSE) then
+                                    app.flow.filterResults({rating = 'all', ratingType = 'all'})
+                                end
+                                if ImGui.IsItemHovered(ctx) then
+                                    app.temp.hoveredRatingFilter = nil
+                                end
+                                -- ImGui.Text(ctx, ICONS.CLOSE)
+                            end
+                            ImGui.EndChild(ctx)
+                        end
+                        if not ImGui.IsItemHovered(ctx) then
+                            app.temp.hoveredRatingFilter = nil
+                        end
+                        ImGui.PopFont(ctx)
 
                         ImGui.SeparatorText(ctx, "Tags")
                         ImGui.SameLine(ctx)
@@ -2906,16 +3017,6 @@ RunApp = function()
                             ImGui.CalcTextSize(ctx, ICONS.PLUS) - spacingX - paddingX * 2 -
                             ImGui.CalcTextSize(ctx, toggleHideTagsIcon))
                         -- ImGui.AlignTextToFramePadding(ctx)
-                        if ImGui.Button(ctx, toggleHideTagsIcon .. '##hideAllTags') then
-                            app.settings.current.hideAllTags = not app.settings.current.hideAllTags
-                            app.engine:getTags()
-                        end
-                        if ImGui.IsItemHovered(ctx) then
-                            ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
-                        end
-                        app:setHoveredHint('main',
-                            app.settings.current.hideAllTags and 'Unhide all tags' or 'Hide all tags')
-                        ImGui.SameLine(ctx)
                         if ImGui.Button(ctx, ICONS.PLUS .. '##CreateTag') then
                             local newTag = app.userdata:createTag('New Tag', TAGS_ROOT_PARENT)
                             app.temp.tagRename = newTag.id
@@ -2925,6 +3026,16 @@ RunApp = function()
                             ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
                         end
                         app:setHoveredHint('main', 'Create new tag')
+                        ImGui.SameLine(ctx)
+                        if ImGui.Button(ctx, toggleHideTagsIcon .. '##hideAllTags') then
+                            app.settings.current.hideAllTags = not app.settings.current.hideAllTags
+                            app.engine:getTags()
+                        end
+                        if ImGui.IsItemHovered(ctx) then
+                            ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                        end
+                        app:setHoveredHint('main',
+                            app.settings.current.hideAllTags and 'Unhide all tags' or 'Hide all tags')
                         ImGui.PopFont(ctx)
                         ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
                         ImGui.SetNextWindowScroll(ctx, 0, -1)

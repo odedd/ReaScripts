@@ -54,8 +54,11 @@
 -- DONE: Setting to reset on wakeup or not
 -- DONE: Default Preset
 -- FIXED: Jumping focus issue keeps coming up every now and then
--- TODO: filter based on rating
--- TODO: add rating to import/export
+-- DONE: add rating to import/export
+-- DONE: sort based on rating
+-- DONE: filter based on rating (=, >=, <=) 
+-- TODO: display rating filters in filter search mode
+-- TODO: Hints for rating filter
 -- TODO: add ratings to help
 -- TODO: Test on windows
 ---------------------------------------
