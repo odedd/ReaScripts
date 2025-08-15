@@ -364,7 +364,6 @@ RunApp = function()
                         validatedFilter.fxDeveloper or validatedFilter.fxFolderId or
                         validatedFilter.fxCategory or validatedFilter.untagged or
                         validatedFilter.rating or validatedFilter.rating or
-                        validatedFilter.ratingType or validatedFilter.ratingType or
                         validatedFilter.tagged or validatedFilter.hidden or validatedFilter.recentlyAdded
                     local hasTagFilters = next(validatedFilter.tags) ~= nil
 
@@ -380,7 +379,6 @@ RunApp = function()
                         typeFilterChecks.tagged = validatedFilter.tagged
                         typeFilterChecks.hidden = validatedFilter.hidden
                         typeFilterChecks.rating = validatedFilter.rating
-                        typeFilterChecks.ratingType = validatedFilter.ratingType
                         typeFilterChecks.recentlyAdded = validatedFilter.recentlyAdded
                     end
 
@@ -454,14 +452,17 @@ RunApp = function()
                                 if (typeFilterChecks.recentlyAdded and (not asset.addedAt or asset.addedAt < (os.time() - app.settings.current.recentlyAddedDays * 86400))) then
                                     goto skip
                                 end
-                                if typeFilterChecks.rating and typeFilterChecks.ratingType then
+                                if typeFilterChecks.rating then
                                     local assetRating = asset.rating or 0
-                                    local requiredRating = typeFilterChecks.rating
-                                    if typeFilterChecks.ratingType == RATING_FILTER_TYPE.EQUAL then
+                                    local requiredRating, requierdRatingType = (typeFilterChecks.rating):match(
+                                        '(%d)(%d)')
+                                    requierdRatingType = tonumber(requierdRatingType)
+                                    requiredRating = tonumber(requiredRating)
+                                    if requierdRatingType == RATING_FILTER_TYPE.EQUAL then
                                         if assetRating ~= requiredRating then goto skip end
-                                    elseif typeFilterChecks.ratingType == RATING_FILTER_TYPE.EQUAL_OR_LESS then
+                                    elseif requierdRatingType == RATING_FILTER_TYPE.EQUAL_OR_LESS then
                                         if assetRating > requiredRating or assetRating == 0 then goto skip end
-                                    elseif typeFilterChecks.ratingType == RATING_FILTER_TYPE.EQUAL_OR_MORE then
+                                    elseif requierdRatingType == RATING_FILTER_TYPE.EQUAL_OR_MORE then
                                         if assetRating < requiredRating then goto skip end
                                     end
                                 end
@@ -2835,85 +2836,174 @@ RunApp = function()
                         end
                         local function drawFilterMenu(menu, menuId)
                             for k, menuInfo in OD_PairsByOrder(menu) do
-                                if OD_TableLength(menuInfo.items) > 0 then
-                                    ImGui.PushID(ctx, menuId .. '/' .. k)
-                                    if k ~= FILTER_TYPES.PRESET or (k == FILTER_TYPES.PRESET and OD_Tablelength(app.engine.presets) > 0) then
-                                        if ImGui.BeginMenu(ctx, T.FILTER_NAMES[k] .. '##filterMenu') then
-                                            app:setHint('main', '')
-                                            app.temp.ignoreEscapeKey = true
-                                            -- Special handling for Presets menu
-                                            if k == FILTER_TYPES.PRESET then
-                                                -- "Edit Preset >" - show submenu with all presets
-                                                if ImGui.BeginMenu(ctx, 'Edit/Delete Preset...##editPreset') then
-                                                    for presetId, preset in OD_PairsByOrder(app.engine.presets) do
-                                                        if ImGui.MenuItem(ctx, preset.name .. '##editPreset_' .. presetId) then
-                                                            app.temp.showCreatePresetDialog = true
-                                                            app.temp.presetName = preset.name
-                                                            app.temp.presetWord = preset.word
-                                                            app.temp.editingPresetId = presetId
-                                                            app.temp.originalPresetFilter = preset
-                                                                .filter -- Store original filter
-                                                        end
-                                                        app:setHoveredHint('main',
-                                                            (T.HINTS.EDIT_PRESET_DEFAULT):format(preset.name))
-                                                    end
-                                                    ImGui.EndMenu(ctx)
-                                                end
-
-                                                ImGui.Separator(ctx)
-                                            end
-
-                                            for item, value in OD_PairsByOrder(menuInfo.items) do
-                                                if value.submenu then
-                                                    drawFilterMenu({ [item] = value.submenu }, menuId .. '-' .. item)
-                                                elseif value.query then
-                                                    local selected = true
-                                                    for k, v in pairs(value.query) do
-                                                        if app.temp.filter[k] ~= value.query[k] then
-                                                            selected = false
-                                                        end
-                                                    end
-                                                    if ImGui.MenuItem(ctx, item, value.shortcut, selected) then
-                                                        if selected then
-                                                            app.flow.filterResults(value.allQuery or menuInfo.allQuery)
-                                                        else
-                                                            app.flow.filterResults(value.query)
-                                                        end
-                                                    end
-                                                    if ImGui.IsItemHovered(ctx) then
-                                                        if k == FILTER_TYPES.PRESET then
-                                                            if value.shortcut then
-                                                                app:setHint('main',
-                                                                    (T.HINTS.PRESET_WITH_WORD_DEFAULT):format(item,
-                                                                        value.shortcut))
-                                                            else
-                                                                app:setHint('main', (T.HINTS.PRESET_DEFAULT):format(item))
+                                if not menuInfo.hide then
+                                    if OD_TableLength(menuInfo.items) > 0 then
+                                        ImGui.PushID(ctx, menuId .. '/' .. k)
+                                        if k ~= FILTER_TYPES.PRESET or (k == FILTER_TYPES.PRESET and OD_Tablelength(app.engine.presets) > 0) then
+                                            if ImGui.BeginMenu(ctx, T.FILTER_NAMES[k] .. '##filterMenu') then
+                                                app:setHint('main', '')
+                                                app.temp.ignoreEscapeKey = true
+                                                -- Special handling for Presets menu
+                                                if k == FILTER_TYPES.PRESET then
+                                                    -- "Edit Preset >" - show submenu with all presets
+                                                    if ImGui.BeginMenu(ctx, 'Edit/Delete Preset...##editPreset') then
+                                                        for presetId, preset in OD_PairsByOrder(app.engine.presets) do
+                                                            if ImGui.MenuItem(ctx, preset.name .. '##editPreset_' .. presetId) then
+                                                                app.temp.showCreatePresetDialog = true
+                                                                app.temp.presetName = preset.name
+                                                                app.temp.presetWord = preset.word
+                                                                app.temp.editingPresetId = presetId
+                                                                app.temp.originalPresetFilter = preset
+                                                                    .filter -- Store original filter
                                                             end
-                                                        elseif k == FILTER_TYPES.OTHER then
-                                                            app:setHint('main', T.HINTS.OTHER_FILTERS[item])
-                                                        else
-                                                            app:setHint('main',
-                                                                (T.HINTS.LOAD_FILTER_DEFAULT):format(T.FILTER_NAMES[k],
-                                                                    item))
+                                                            app:setHoveredHint('main',
+                                                                (T.HINTS.EDIT_PRESET_DEFAULT):format(preset.name))
+                                                        end
+                                                        ImGui.EndMenu(ctx)
+                                                    end
+
+                                                    ImGui.Separator(ctx)
+                                                end
+
+                                                for item, value in OD_PairsByOrder(menuInfo.items) do
+                                                    if value.submenu then
+                                                        drawFilterMenu({ [item] = value.submenu }, menuId .. '-' .. item)
+                                                    elseif value.query then
+                                                        local selected = true
+                                                        for k, v in pairs(value.query) do
+                                                            if app.temp.filter[k] ~= value.query[k] then
+                                                                selected = false
+                                                            end
+                                                        end
+                                                        if ImGui.MenuItem(ctx, item, value.shortcut, selected) then
+                                                            if selected then
+                                                                app.flow.filterResults(value.allQuery or
+                                                                    menuInfo.allQuery)
+                                                            else
+                                                                app.flow.filterResults(value.query)
+                                                            end
+                                                        end
+                                                        if ImGui.IsItemHovered(ctx) then
+                                                            if k == FILTER_TYPES.PRESET then
+                                                                if value.shortcut then
+                                                                    app:setHint('main',
+                                                                        (T.HINTS.PRESET_WITH_WORD_DEFAULT):format(item,
+                                                                            value.shortcut))
+                                                                else
+                                                                    app:setHint('main',
+                                                                        (T.HINTS.PRESET_DEFAULT):format(item))
+                                                                end
+                                                            elseif k == FILTER_TYPES.OTHER then
+                                                                app:setHint('main', T.HINTS.OTHER_FILTERS[item])
+                                                            else
+                                                                app:setHint('main',
+                                                                    (T.HINTS.LOAD_FILTER_DEFAULT):format(
+                                                                        T.FILTER_NAMES[k],
+                                                                        item))
+                                                            end
                                                         end
                                                     end
                                                 end
+                                                ImGui.EndMenu(ctx)
                                             end
-                                            ImGui.EndMenu(ctx)
                                         end
-                                    end
 
-                                    ImGui.PopID(ctx)
+                                        ImGui.PopID(ctx)
+                                    end
                                 end
                             end
+                        end
+
+                        local function drawRatingFilter()
+                            if app.temp.ratingFilterType == nil then
+                                app.temp.ratingFilterType = RATING_FILTER_TYPE
+                                    .EQUAL_OR_MORE
+                            end
+                            local sign
+                            if app.temp.ratingFilterType == RATING_FILTER_TYPE.EQUAL then sign = ' =' end
+                            if app.temp.ratingFilterType == RATING_FILTER_TYPE.EQUAL_OR_MORE then sign = '>=' end
+                            if app.temp.ratingFilterType == RATING_FILTER_TYPE.EQUAL_OR_LESS then sign = '<=' end
+                            local rating
+                            if app.temp.filter.rating then
+                                ImGui.Text(ctx, sign)
+                                rating = tonumber((app.temp.filter.rating):sub(-1))
+                                app:setHoveredHint('main',(T.HINTS.RATING_HOVER_STAR):format((T.RATING_FILTERS[app.temp.ratingFilterType]):format(rating,
+                                    rating > 0 and 's' or '')))
+                            else
+                                ImGui.BeginDisabled(ctx)
+                                ImGui.TextDisabled(ctx, sign)
+                            end
+                            if ImGui.IsItemHovered(ctx) then
+                                ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                                if ImGui.IsMouseClicked(ctx, ImGui.MouseButton_Left) then
+                                    if app.temp.ratingFilterType == OD_TableLength(RATING_FILTER_TYPE) - 1 then
+                                        app.temp.ratingFilterType = 0
+                                    else
+                                        app.temp.ratingFilterType = app.temp.ratingFilterType + 1
+                                    end
+                                    app.flow.filterResults({ rating = app.temp.ratingFilterType .. rating })
+                                end
+                            end
+                            if not app.temp.filter.rating then
+                                ImGui.EndDisabled(ctx)
+                            end
+                            ImGui.SameLine(ctx)
+                            app.gui:pushFont(app.gui.st.fonts.icons, 'small')
+
+                            -- end
+                            if ImGui.BeginChild(ctx, 'ratingFilter', 0.0, ImGui.GetTextLineHeight(ctx), nil, ImGui.WindowFlags_NoScrollWithMouse | ImGui.WindowFlags_NoScrollbar) then
+                                app.gui:pushColors(app.gui.st.col.assetRating)
+                                -- local starW, starH = ImGui.CalcTextSize(ctx, ICONS.STAR)
+                                local ratingFilter = app.temp.filter.rating and tonumber(app.temp.filter.rating:sub(-1)) or
+                                    0
+                                for i = 1, 5 do
+                                    local hoveredRating = app.temp.hoveredRatingFilter or 0
+                                    local icon = (i <= ratingFilter or i <= hoveredRating) and ICONS.STAR or
+                                        ICONS.STAR_OUTLINE
+                                    local color = (i <= ratingFilter or i <= hoveredRating) and
+                                        app.gui.st.col.assetRating[ImGui.Col_Text] or app.gui.st.basecolors.textDark
+                                    -- local x, y = ImGui.GetCursorPos(ctx)
+                                    ImGui.TextColored(ctx, color, icon)
+                                    
+                                    if ImGui.IsItemHovered(ctx) then
+                                        ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
+                                        app.temp.hoveredRatingFilter = i
+                                        if ImGui.IsMouseClicked(ctx, ImGui.MouseButton_Left) then
+                                            app.temp.hoveredRatingFilter = i
+                                            app.flow.filterResults({ rating = app.temp.ratingFilterType .. i })
+                                        end
+                                    end
+                                    -- if ImGui.Is
+                                    if i < 5 then ImGui.SameLine(ctx) end
+                                end
+                                app.gui:popColors(app.gui.st.col.assetRating)
+
+                                if app.temp.filter.rating then
+                                    ImGui.SameLine(ctx, 0, spacingX * 2)
+                                    if app.guiHelpers.tinyIcon(ctx, 'resetRatingFilter', ICONS.CLOSE, nil, nil, T.HINTS.RATING_HOVER_CLEAR) then
+                                        app.flow.filterResults({ rating = 'all' })
+                                    end
+                                    if ImGui.IsItemHovered(ctx) then
+                                        app.temp.hoveredRatingFilter = nil
+                                    end
+                                    -- ImGui.Text(ctx, ICONS.CLOSE)
+                                end
+                                ImGui.EndChild(ctx)
+                            end
+                            if not ImGui.IsItemHovered(ctx) then
+                                app.temp.hoveredRatingFilter = nil
+                            end
+                            if app.temp.hoveredRatingFilter then 
+                                app:setHoveredHint('main',(T.HINTS.RATING_HOVER_STAR):format((T.RATING_FILTERS[app.temp.ratingFilterType]):format(app.temp.hoveredRatingFilter,app.temp.hoveredRatingFilter> 0 and 's' or '')))
+                            end
+                                 ImGui.PopFont(ctx)
                         end
 
                         ImGui.SeparatorText(ctx, "Filters")
                         ImGui.Spacing(ctx)
                         drawFilterMenu(FILTER_MENU, 'root')
-                        ImGui.SeparatorText(ctx, "Ratings")
+                        ImGui.SeparatorText(ctx, "Rating")
                         ImGui.SameLine(ctx)
-
                         app.gui:pushFont(app.gui.st.fonts.icons, 'small')
                         local toggleHideRatingsIcon = app.settings.current.hideRatings and ICONS.INVISIBLE or
                             ICONS.VISIBLE
@@ -2944,69 +3034,8 @@ RunApp = function()
                         app:setHoveredHint('main',
                             app.settings.current.hideRatings and 'Unhide ratings' or 'Hide ratings')
                         ImGui.PopFont(ctx)
-                        if app.temp.ratingFilterType == nil then
-                            app.temp.ratingFilterType = RATING_FILTER_TYPE
-                                .EQUAL_OR_MORE
-                        end
-                        local sign
-                        if app.temp.ratingFilterType == RATING_FILTER_TYPE.EQUAL then sign = ' =' end
-                        if app.temp.ratingFilterType == RATING_FILTER_TYPE.EQUAL_OR_MORE then sign = '>=' end
-                        if app.temp.ratingFilterType == RATING_FILTER_TYPE.EQUAL_OR_LESS then sign = '<=' end
-                        ImGui.Text(ctx, sign)
-                        if ImGui.IsItemHovered(ctx) then
-                            ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
-                            if ImGui.IsMouseClicked(ctx, ImGui.MouseButton_Left) then
-                                if app.temp.ratingFilterType == OD_TableLength(RATING_FILTER_TYPE) - 1 then
-                                    app.temp.ratingFilterType = 0
-                                else
-                                    app.temp.ratingFilterType = app.temp.ratingFilterType + 1
-                                end
-                                app.flow.filterResults({ ratingType = app.temp.ratingFilterType })
-                            end
-                        end
-                        ImGui.SameLine(ctx)
-                        app.gui:pushFont(app.gui.st.fonts.icons, 'small')
 
-                        -- end
-                        if ImGui.BeginChild(ctx, 'ratingFilter', 0.0, ImGui.GetTextLineHeight(ctx), nil, ImGui.WindowFlags_NoScrollWithMouse | ImGui.WindowFlags_NoScrollbar) then
-                            app.gui:pushColors(app.gui.st.col.assetRating)
-                            -- local starW, starH = ImGui.CalcTextSize(ctx, ICONS.STAR)
-                            for i = 1, 5 do
-                                local ratingFilter = app.temp.filter.rating or 0
-                                local hoveredRating = app.temp.hoveredRatingFilter or 0
-                                local icon = (i <= ratingFilter or i <= hoveredRating) and ICONS.STAR or
-                                    ICONS.STAR_OUTLINE
-                                -- local x, y = ImGui.GetCursorPos(ctx)
-                                ImGui.Text(ctx, icon)
-                                if ImGui.IsItemHovered(ctx) then
-                                    ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
-                                    app.temp.hoveredRatingFilter = i
-                                    if ImGui.IsMouseClicked(ctx, ImGui.MouseButton_Left) then
-                                        app.temp.hoveredRatingFilter = i
-                                        app.flow.filterResults({ rating = i, ratingType = app.temp.ratingFilterType })
-                                    end
-                                end
-                                -- if ImGui.Is
-                                if i < 5 then ImGui.SameLine(ctx) end
-                            end
-                            app.gui:popColors(app.gui.st.col.assetRating)
-
-                            if app.temp.filter.rating then
-                                ImGui.SameLine(ctx, 0, spacingX * 2)
-                                if app.guiHelpers.tinyIcon(ctx, 'resetRatingFilter', ICONS.CLOSE) then
-                                    app.flow.filterResults({rating = 'all', ratingType = 'all'})
-                                end
-                                if ImGui.IsItemHovered(ctx) then
-                                    app.temp.hoveredRatingFilter = nil
-                                end
-                                -- ImGui.Text(ctx, ICONS.CLOSE)
-                            end
-                            ImGui.EndChild(ctx)
-                        end
-                        if not ImGui.IsItemHovered(ctx) then
-                            app.temp.hoveredRatingFilter = nil
-                        end
-                        ImGui.PopFont(ctx)
+                        drawRatingFilter()
 
                         ImGui.SeparatorText(ctx, "Tags")
                         ImGui.SameLine(ctx)
@@ -4088,6 +4117,54 @@ RunApp = function()
                                     function(k, v) return k ~= 'syncTags' end)
                             })
                         if resetCounter then app.temp.captureCounter = 0 end
+                        app.settings.current.shortcuts.rate1, resetCounter = app.gui:setting('shortcut',
+                            (T.SETTINGS.SHORTCUTS.RATE.LABEL):format(1),
+                            (T.SETTINGS.SHORTCUTS.RATE.HINT):format(1), app.settings.current.shortcuts.rate1,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'rate1' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+                        app.settings.current.shortcuts.rate2, resetCounter = app.gui:setting('shortcut',
+                            (T.SETTINGS.SHORTCUTS.RATE.LABEL):format(2),
+                            (T.SETTINGS.SHORTCUTS.RATE.HINT):format(2), app.settings.current.shortcuts.rate2,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'rate2' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+                        app.settings.current.shortcuts.rate3, resetCounter = app.gui:setting('shortcut',
+                            (T.SETTINGS.SHORTCUTS.RATE.LABEL):format(3),
+                            (T.SETTINGS.SHORTCUTS.RATE.HINT):format(3), app.settings.current.shortcuts.rate3,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'rate3' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+                        app.settings.current.shortcuts.rate4, resetCounter = app.gui:setting('shortcut',
+                            (T.SETTINGS.SHORTCUTS.RATE.LABEL):format(4),
+                            (T.SETTINGS.SHORTCUTS.RATE.HINT):format(4), app.settings.current.shortcuts.rate4,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'rate4' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+                        app.settings.current.shortcuts.rate5, resetCounter = app.gui:setting('shortcut',
+                            (T.SETTINGS.SHORTCUTS.RATE.LABEL):format(5),
+                            (T.SETTINGS.SHORTCUTS.RATE.HINT):format(5), app.settings.current.shortcuts.rate5,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'rate5' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
+                        app.settings.current.shortcuts.clearRating, resetCounter = app.gui:setting('shortcut',
+                            T.SETTINGS.SHORTCUTS.CLEAR_RATING.LABEL,
+                            T.SETTINGS.SHORTCUTS.CLEAR_RATING.HINT, app.settings.current.shortcuts.clearRating,
+                            {
+                                existingShortcuts = OD_TableFilter(app.settings.current.shortcuts,
+                                    function(k, v) return k ~= 'clearRating' end)
+                            })
+                        if resetCounter then app.temp.captureCounter = 0 end
 
 
                         ImGui.SeparatorText(ctx, 'Item specific settings')
@@ -4217,7 +4294,7 @@ RunApp = function()
             end,
             help = function(ctx)
                 if app.temp.showHelpWindow then
-                    local w = 810 * app.gui.scale
+                    local w = 820 * app.gui.scale
                     local h = 830 * app.gui.scale
                     local maxH = app.gui.screen.size[2] * .8
                     -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger

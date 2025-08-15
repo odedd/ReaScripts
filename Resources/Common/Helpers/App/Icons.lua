@@ -12,6 +12,7 @@ ICONS = {
     ['UNDOCK'] = 'E',
     ['FOLDER'] = 'f',
     ['ARROW_LEFT'] = 'F',
+    ['GOGGLES'] = 'g',
     ['GEAR'] = 'G',
     ['QUESTION_CIRCLE'] = 'h',
     ['HEADPHONES'] = 'H',

@@ -138,6 +138,7 @@ FILTER_TYPES = {
     DEVELOPER = -6,
     TAG = -7,
     OTHER = -8,
+    RATING = -9,
 }
 
 FILTER_ICONS = {
@@ -148,7 +149,8 @@ FILTER_ICONS = {
     [FILTER_TYPES.FOLDER] = ICONS.FOLDER,
     [FILTER_TYPES.DEVELOPER] = ICONS.COMPUTER,
     [FILTER_TYPES.TAG] = ICONS.TAG,
-    [FILTER_TYPES.OTHER] = ICONS.STAR,
+    [FILTER_TYPES.OTHER] = ICONS.GOGGLES,
+    [FILTER_TYPES.RATING] = ICONS.STAR,
 }
 
 FILTER_MENU = {
@@ -205,8 +207,17 @@ FILTER_MENU = {
                 query = { recentlyAdded = true }
             }
         } -- added in DataEngine.lua once folders are loaded
+    },
+    [FILTER_TYPES.RATING] = {
+        order = 0,
+        hide = true,
+        allQuery = { rating = 'all' },
+        items = {
+
+        }
     }
 }
+
 -- FX type filter menu will be populated dynamically by DataEngine based on fxTypeVisibility settings
 
 -- Import failure reasons

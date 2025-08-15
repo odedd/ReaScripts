@@ -57,9 +57,10 @@
 -- DONE: add rating to import/export
 -- DONE: sort based on rating
 -- DONE: filter based on rating (=, >=, <=) 
--- TODO: display rating filters in filter search mode
--- TODO: Hints for rating filter
--- TODO: add ratings to help
+-- DONE: display rating filters in filter search mode
+-- DONE: Hints for rating filter
+-- DONE: add ratings to help
+-- TODO: Think about rearranging settings window - maybe make sections collapsible?
 -- TODO: Test on windows
 ---------------------------------------
 -- AFTER LAUNCH -----------------------

@@ -112,7 +112,8 @@ T.FILTER_NAMES = {
     [FILTER_TYPES.CATEGORY] = 'Category',
     [FILTER_TYPES.DEVELOPER] = 'Developer',
     [FILTER_TYPES.TAG] = 'Tag',
-    [FILTER_TYPES.OTHER] = 'Other'
+    [FILTER_TYPES.OTHER] = 'Other',
+    [FILTER_TYPES.RATING] = 'Rating'
 }
 T.FILTER_NAMES_PLURAL = {
     [FILTER_TYPES.PRESET] = 'Presets',
@@ -122,8 +123,28 @@ T.FILTER_NAMES_PLURAL = {
     [FILTER_TYPES.CATEGORY] = 'Categories',
     [FILTER_TYPES.DEVELOPER] = 'Developers',
     [FILTER_TYPES.TAG] = 'Tags',
-    [FILTER_TYPES.OTHER] = 'Others'
+    [FILTER_TYPES.OTHER] = 'Others',
+    [FILTER_TYPES.RATING] = 'Ratings'
 }
+
+T.RATING_FILTERS = {
+    [RATING_FILTER_TYPE.EQUAL] = "%d Star%s",
+    [RATING_FILTER_TYPE.EQUAL_OR_MORE] = "%d Star%s or more",
+    [RATING_FILTER_TYPE.EQUAL_OR_LESS] = "%d Star%s or less",
+}
+
+
+local i = 0
+for rating = 1, 5 do
+for ratingType = 0, OD_TableLength(RATING_FILTER_TYPE) - 1 do
+        i = i + 1
+        FILTER_MENU[FILTER_TYPES.RATING].items[(T.RATING_FILTERS[ratingType]):format(rating, rating > 1 and 's' or '')] = {
+            order = i,
+            query = { rating = ratingType .. rating }
+        }
+    end
+end
+
 T.ERROR = {
     NO_DOCK = ([[
 No previous dock found.
@@ -283,7 +304,9 @@ T.SETTINGS = {
         },
         TOGGLE_AFTER_ACTION = {
             LABEL = 'Toggle post-perform behavior',
-            HINT = ('Toggle between %s, %s and %s.'):format(T.AFTER_ACTION_DESCRIPTIONS[AFTER_ACTION.CLOSE],T.AFTER_ACTION_DESCRIPTIONS[AFTER_ACTION.CLEAR_TEXT], T.AFTER_ACTION_DESCRIPTIONS[AFTER_ACTION.DO_NOTHING]),
+            HINT = ('Toggle between %s, %s and %s.'):format(T.AFTER_ACTION_DESCRIPTIONS[AFTER_ACTION.CLOSE],
+                T.AFTER_ACTION_DESCRIPTIONS[AFTER_ACTION.CLEAR_TEXT],
+                T.AFTER_ACTION_DESCRIPTIONS[AFTER_ACTION.DO_NOTHING]),
         },
         PERFORM_ACTION = {
             LABEL = 'Perform selected item',
@@ -310,16 +333,24 @@ T.SETTINGS = {
             HINT = 'Add selected FX/FX Chains to the QuickChain.',
         },
         COPY_TAGS = {
-            LABEL = 'Copy Item\'s Tags',
+            LABEL = 'Copy item\'s Tags',
             HINT = 'Copy selected item\'s tags to the clipboard.',
         },
         PASTE_TAGS = {
-            LABEL = 'Paste Item\'s Tags',
+            LABEL = 'Paste item\'s Tags',
             HINT = 'Paste copied tags to selected item(s).',
         },
         SYNC_TAGS = {
-            LABEL = 'Sync Item\'s Tags',
+            LABEL = 'Sync item\'s Tags',
             HINT = 'Copy selected item\'s tags to all the FX\'s other formats and variants.',
+        },
+        RATE = {
+            LABEL = 'Rate item %d stars',
+            HINT = 'Rate selected item(s) %d stars.',
+        },
+        CLEAR_RATING = {
+            LABEL = 'Clear item\'s rating',
+            HINT = 'Clear selected item(s) rating.',
         },
         CLEAR_TAGS = {
             LABEL = 'Clear Item\'s Tags',
@@ -464,7 +495,7 @@ T.HINTS = {
     MULTI_TYPE_SELECTION = '%s to execute %d items.',
     -- ACTIVE_FILTER_DEFAULT = '%s: %s',
     ACTIVE_FILTER_REMOVE = 'Remove filter.',
-    LOAD_FILTER_DEFAULT = 'Show items whose %s is %s.',
+    LOAD_FILTER_DEFAULT = 'Show items where %s is %s.',
     PRESET_DEFAULT = 'Load preset %s.',
     PRESET_WITH_WORD_DEFAULT = 'Load preset %s. You can also type \'%s\' followed by space to load it.',
     EDIT_PRESET_DEFAULT = 'Edit preset %s.',
@@ -472,6 +503,8 @@ T.HINTS = {
         ['Untagged'] = 'Show items that have no tags.',
         ['Recently Added'] = 'Show actions and FX that were added recently.'
     },
+    RATING_HOVER_STAR = 'Show items with a rating of %s.',
+    RATING_HOVER_CLEAR = 'Remove rating filter.',
     TAG_DEFAULT = 'Tag \'%s\'. Double-Click to rename. Right-Click for more options.',
     TAG_DEFAULT_SHIFT = 'Shift+Drag to another tag to merge with it.',
     TAG_CONTEXT_MENU_RENAME = 'Rename tag',
@@ -600,10 +633,15 @@ $script searches for #FX#, #Actions#, #Projects#, #Project Templates#, #Track Te
 - Use filter `Other->Recently Added` to see Recently added FX/Actions
 - $script can only track items added after it was first run
 
+#`RATINGS`#
+- Rate items from 1 to 5 stars (see `shortcuts` in settings window)
+- Press $shortcut:clearRating to clear the asset's rating 
+- Filter and sort by rating
+
 #`CUSTOM ACTIONS`#
 - Export filters and QuickChain presets as `custom Reaper actions`
 - Filter actions can either `load a filter` or `randomly run a result`
-- QuickChains actions can instantly perform each of $script's actions 
+- QuickChains actions can instantly perform each of $script's actions
 
 #`EXPORT/IMPORT`#
 - Export your data to share between systems
@@ -617,7 +655,9 @@ $script searches for #FX#, #Actions#, #Projects#, #Project Templates#, #Track Te
 - Start quickly by `converting FX folders and categories` to tags
 - Spend some time `tagging your items` in a smart, methodical way
 - Modify FX type and FX variant `order` and `priority`
-- Only show one available FX type and variant to `avoid redundant results`
+- Think of `favorites` as a quick way to get to `frequently used items`
+- Think of `ratings` as a quick way to note to yourself `items you like`
+- Only show one FX type and variant to `avoid redundant results`
 - Create `filter presets` for commonly used filter combinations
 - Use `Magic Words` and `Reaper actions` to quickly load filter presets
 - Boost your creativity by letting $script run `random results`
