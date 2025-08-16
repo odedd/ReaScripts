@@ -200,6 +200,12 @@ T.SPECIAL_GROUPS = {
 
 
 T.SETTINGS = {
+    SECTIONS = {
+        [SETTINGS_SECTIONS.GENERAL] = { NAME = 'General', HINT = 'hint'},
+        [SETTINGS_SECTIONS.ORDERING] = { NAME = 'Result Order', HINT = ''},
+        [SETTINGS_SECTIONS.SHORTCUTS] = { NAME = 'Keyboard Shortcuts', HINT = ''},
+        [SETTINGS_SECTIONS.ITEM] = { NAME = 'Item Settings', HINT = ''}
+    },
     LISTS = {},
 
     CREATE_INSIDE_FODLER = {
@@ -212,7 +218,7 @@ T.SETTINGS = {
     },
     LOAD_DEFAULT_PRESET = {
         LABEL = 'Use default preset',
-        HINT = 'Open Scout with a default preset on launch, and on wakeup (if resetting filters).',
+        HINT = 'Open Scout with a default preset on launch and on wakeup (if resetting filters).',
     },
     DEFAULT_PRESET = {
         LABEL = 'Default preset',
@@ -304,9 +310,7 @@ T.SETTINGS = {
         },
         TOGGLE_AFTER_ACTION = {
             LABEL = 'Toggle post-perform behavior',
-            HINT = ('Toggle between %s, %s and %s.'):format(T.AFTER_ACTION_DESCRIPTIONS[AFTER_ACTION.CLOSE],
-                T.AFTER_ACTION_DESCRIPTIONS[AFTER_ACTION.CLEAR_TEXT],
-                T.AFTER_ACTION_DESCRIPTIONS[AFTER_ACTION.DO_NOTHING]),
+            HINT = 'Toggle what to do after performing an action.',
         },
         PERFORM_ACTION = {
             LABEL = 'Perform selected item',
@@ -342,7 +346,7 @@ T.SETTINGS = {
         },
         SYNC_TAGS = {
             LABEL = 'Sync item\'s Tags',
-            HINT = 'Copy selected item\'s tags to all the FX\'s other formats and variants.',
+            HINT = 'Copy item\'s tags to all FX\'s formats and variants.',
         },
         RATE = {
             LABEL = 'Rate item %d stars',
@@ -353,7 +357,7 @@ T.SETTINGS = {
             HINT = 'Clear selected item(s) rating.',
         },
         CLEAR_TAGS = {
-            LABEL = 'Clear Item\'s Tags',
+            LABEL = 'Clear item\'s Tags',
             HINT = 'Remove selected item\'s tags.',
         },
         QUICK_TAG = {
@@ -406,12 +410,12 @@ T.SETTINGS = {
         HINT = 'Interface scale. Double click to enter manually.',
     },
     EXPORT_TAGS = {
-        LABEL = '',
+        LABEL = 'Export User Data',
         BUTTON_LABEL = 'Export',
         HINT = 'Export user data for use on another system or as a backup.',
     },
     IMPORT_TAGS = {
-        LABEL = 'Import / Export',
+        LABEL = 'Import User Data',
         BUTTON_LABEL = 'Import (Overwrite)',
         BUTTON_LABEL_MERGE = 'Import (Merge)',
         HINT = 'Import user data. Shift+click to overwrite existing data.',
@@ -457,6 +461,24 @@ T.PROGRESS = {
         'Import successful (overwritten).\n\n%d tags imported, %d existing tags replaced\n%d items were tagged, %d were skipped\n%d presets imported, %d skipped\n%d QuickChain presets imported, %d skipped\n%d hidden items imported, %d skipped\n%d favorites imported, %d skipped\n%d ratings imported, %d skipped'
     }
 }
+T.CONVERT_EXPLANATION =
+[[Convert Reaper's user defineable folders and the FX's own categories
+into tags. This is a good starting place for creating your own tags.]]
+
+T.EXPORT_USER_DATA_EXPLANATION =
+[[Export user data to a file which can be transferred and imported to
+another system or saved for backup. 
+
+User data includes all tags, favorites, presets, QuickChains and ratings.]]
+
+T.IMPORT_USER_DATA_EXPLANATION =
+[[Import user data from another system. Since different systems might
+have different FX, actions, projects etc... the import operation will
+attempt to match the imported items to this system's items. 
+Merge mode keeps existing user data, while overwrite (hold Shift)
+deletes it (Use with care - perhaps export a backup first).
+
+User data includes all tags, favorites, presets, QuickChains and ratings.]]
 
 T.RECENTLY_ADDED_EXPLANATION =
 [[The script can only track FX and actions added after it was first

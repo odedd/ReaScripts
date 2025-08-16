@@ -119,6 +119,13 @@ EXPORT_ACTIONS = {
 
 TAGS_ROOT_PARENT = -1
 
+SETTINGS_SECTIONS = {
+    GENERAL = {order = 1},
+    ORDERING = {order = 3},
+    SHORTCUTS = {order = 4},
+    ITEM = {order = 2}
+
+}
 -- Special group constants
 -- Note: groupOrder in settings uses asset type class names (e.g., "ProjectAssetType")
 -- instead of group display names (e.g., "Projects") for better maintainability

@@ -43,7 +43,7 @@ function BaseAssetType:getDataWithLogging(forceRefresh)
     end
 
     self.context.logger:logDebug('-- ' ..
-    (className or "Unknown") .. ':getData()' .. (forceRefresh and ' (forced refresh)' or ''))
+        (className or "Unknown") .. ':getData()' .. (forceRefresh and ' (forced refresh)' or ''))
     local data = self:getData()
     local count = data and #data or 0
     -- Use group name (plural) for logging instead of singular name
@@ -399,6 +399,10 @@ BaseAssetType.assetActions = {
         self.rating = (rating ~= 0) and rating or 0
         if persist then
             self.context.userdata:save()
+            if self.context.settings.current.sortByRating then
+                self.context.engine:sortAssets()
+                self.context.flow.filterResults({}, true, true)
+            end
         end
     end,
 
@@ -474,11 +478,11 @@ function BaseAssetType:getFilterMenuEntry()
         [self.name] = {
             order = self.filterOrder,
             query = { type = self.assetTypeId }
-        }}
-        if self.magicWord then
-            filterMenuEntry[self.name].shortcut = self.magicWord
-        end
+        }
+    }
+    if self.magicWord then
+        filterMenuEntry[self.name].shortcut = self.magicWord
+    end
 
-        return filterMenuEntry
-    
+    return filterMenuEntry
 end

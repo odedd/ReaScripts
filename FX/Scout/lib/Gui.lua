@@ -166,8 +166,6 @@ PB_Gui.init = function(self, fonts)
         searchWindow = {
             [ImGui.Col_TableBorderStrong] = 0x00000000,
             [ImGui.Col_TextSelectedBg] = self.st.basecolors.main,
-            [ImGui.Col_Header] = self.st.basecolors.mainDark,
-            [ImGui.Col_HeaderHovered] = self.st.basecolors.mainDark,
             [ImGui.Col_Button] = self.st.basecolors.darkBG,
             [ImGui.Col_ButtonHovered] = self.st.basecolors.darkHovered,
             [ImGui.Col_ButtonActive] = self.st.basecolors.darkActive,
@@ -251,7 +249,7 @@ PB_Gui.init = function(self, fonts)
             [ImGui.Col_SliderGrabActive] = self.st.basecolors.active,
             [ImGui.Col_Text] = self.st.basecolors.textBright,
             [ImGui.Col_TextSelectedBg] = self.st.basecolors.darkActive,
-            [ImGui.Col_HeaderHovered] = self.st.basecolors.headerHovered,
+            -- [ImGui.Col_HeaderHovered] = self.st.basecolors.headerHovered,
             [ImGui.Col_Tab] = self.st.basecolors.darkBG,
             [ImGui.Col_TabSelected] = self.st.basecolors.header,
             [ImGui.Col_TabHovered] = self.st.basecolors.headerHovered,
@@ -273,6 +271,9 @@ PB_Gui.init = function(self, fonts)
             [ImGui.Col_HeaderActive] = self.st.basecolors.main,
             [ImGui.Col_DragDropTarget] = self.st.basecolors.mainBright,
             [ImGui.Col_WindowBg] = 0x181818FF,
+            [ImGui.Col_Header] = self.st.basecolors.mainDark,
+            [ImGui.Col_HeaderHovered] = self.st.basecolors.mainDark,
+            
         },
         title = {
             [ImGui.Col_Text] = self.st.basecolors.mainBright,
