@@ -701,6 +701,7 @@ $script searches for #FX#, #Actions#, #Projects#, #Project Templates#, #Track Te
 - Modify FX type and FX variant `order` and `priority`
 - Think of `favorites` as a quick way to get to `frequently used items`
 - Think of `ratings` as a quick way to note to yourself `items you like`
+- Favorites can be ordered by `dragging and dropping` them in the list
 - Only show one FX type and variant to `avoid redundant results`
 - Create `filter presets` for commonly used filter combinations
 - Use `Magic Words` and `Reaper actions` to quickly load filter presets
