@@ -170,6 +170,14 @@ PB_Gui.init = function(self, fonts)
             [ImGui.Col_ButtonHovered] = self.st.basecolors.darkHovered,
             [ImGui.Col_ButtonActive] = self.st.basecolors.darkActive,
         },
+        sideBar = {
+            [ImGui.Col_Header] = self.st.basecolors.darkerBG,
+            [ImGui.Col_HeaderHovered] = self.st.basecolors.darkBG,
+            [ImGui.Col_HeaderActive] =  self.st.basecolors.midBG,
+            [ImGui.Col_Button] = 0x00000000,
+            [ImGui.Col_ButtonHovered] = 0x00000000,
+            [ImGui.Col_ButtonActive] = 0x00000000,
+        },
         quickChainActive = {
             [ImGui.Col_FrameBg] = self.st.basecolors.mainDark,
             [ImGui.Col_FrameBgHovered] = self.st.basecolors.mainDark,
@@ -273,7 +281,7 @@ PB_Gui.init = function(self, fonts)
             [ImGui.Col_WindowBg] = 0x181818FF,
             [ImGui.Col_Header] = self.st.basecolors.mainDark,
             [ImGui.Col_HeaderHovered] = self.st.basecolors.mainDark,
-            
+
         },
         title = {
             [ImGui.Col_Text] = self.st.basecolors.mainBright,
@@ -331,6 +339,9 @@ PB_Gui.init = function(self, fonts)
                 [ImGui.StyleVar_SeparatorTextAlign] = { 0, 0 },
                 [ImGui.StyleVar_SeparatorTextBorderSize] = { 1 * scale, nil },
                 [ImGui.StyleVar_SeparatorTextPadding] = { 0, 0 },
+            },
+            sideBar = {
+                [ImGui.StyleVar_FrameRounding] = { 0, nil }
             },
             searchResultsTable = {
                 [ImGui.StyleVar_ItemInnerSpacing] = { 0, 0 },
@@ -649,7 +660,7 @@ PB_Gui.init = function(self, fonts)
                         if shortcut == testVal then
                             testVal = nil
                             self.app.flow.msg('Shortcut already in use')
-                        self.app.temp._capturing = nil
+                            self.app.temp._capturing = nil
                             break
                         end
                     end

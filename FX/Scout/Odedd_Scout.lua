@@ -2408,6 +2408,8 @@ RunApp = function()
                 end
                 local drawsideBar = function()
                     if ImGui.BeginChild(ctx, 'sideBar', sideBarW - spacingX * 2, sideBarH) then
+                        app.gui:pushStyles(app.gui.st.vars.sideBar)
+                        app.gui:pushColors(app.gui.st.col.sideBar)
                         local function drawTagsOfParent(parentId, indent, parentsDragged)
                             local drawTagNode
                             local triangleW = app.gui.st.vars.tagList[ImGui.StyleVar_IndentSpacing][1]
@@ -2913,7 +2915,6 @@ RunApp = function()
                                 end
                             end
                         end
-
                         local function drawRatingFilter()
                             if app.temp.ratingFilterType == nil then
                                 app.temp.ratingFilterType = RATING_FILTER_TYPE
@@ -2981,7 +2982,7 @@ RunApp = function()
                                 end
                                 app.gui:popColors(app.gui.st.col.assetRating)
 
-                                if app.temp.filter.rating and ImGui.IsMouseHoveringRect(ctx, sX, sY, sX+w, sY+ImGui.GetTextLineHeightWithSpacing(ctx)) then
+                                if app.temp.filter.rating and ImGui.IsMouseHoveringRect(ctx, sX, sY, sX + w, sY + ImGui.GetTextLineHeightWithSpacing(ctx)) then
                                     ImGui.SameLine(ctx, 0, spacingX * 2)
                                     if app.guiHelpers.tinyIcon(ctx, 'resetRatingFilter', ICONS.CLOSE, nil, nil, T.HINTS.RATING_HOVER_CLEAR) then
                                         app.flow.filterResults({ rating = 'all' })
@@ -3005,20 +3006,24 @@ RunApp = function()
                             ImGui.PopFont(ctx)
                         end
 
-                        ImGui.SeparatorText(ctx, "Filters")
-                        ImGui.Spacing(ctx)
-                        drawFilterMenu(FILTER_MENU, 'root')
-                        ImGui.SeparatorText(ctx, "Rating")
+                        app.settings.current.sideBarShowFilters = ImGui.CollapsingHeader(ctx, 'Filters', false,
+                            app.settings.current.sideBarShowFilters and ImGui.TreeNodeFlags_DefaultOpen or 0)
+                        if app.settings.current.sideBarShowFilters then
+                            drawFilterMenu(FILTER_MENU, 'root')
+                        end
+                        app.settings.current.sideBarShowRatingFilter = ImGui.CollapsingHeader(ctx, 'Rating', false,
+                            (app.settings.current.sideBarShowRatingFilter and ImGui.TreeNodeFlags_DefaultOpen or 0) |
+                            ImGui.TreeNodeFlags_AllowOverlap)
                         ImGui.SameLine(ctx)
                         app.gui:pushFont(app.gui.st.fonts.icons, 'small')
                         local toggleHideRatingsIcon = app.settings.current.hideRatings and ICONS.INVISIBLE or
                             ICONS.VISIBLE
                         local sortRatingsIcon = app.settings.current.sortByRating and ICONS.RATING_SORT or
                             ICONS.RATING_SORT_DISABLED
-                        ImGui.SetCursorPosX(ctx,
+                        ImGui.SetCursorPos(ctx,
                             ImGui.GetCursorPosX(ctx) + ImGui.GetContentRegionAvail(ctx) - spacingX - paddingX * 2 -
                             ImGui.CalcTextSize(ctx, toggleHideRatingsIcon) - spacingX - paddingX * 2 -
-                            ImGui.CalcTextSize(ctx, sortRatingsIcon))
+                            ImGui.CalcTextSize(ctx, sortRatingsIcon), ImGui.GetCursorPosY(ctx) + paddingY)
                         if ImGui.Button(ctx, sortRatingsIcon .. '##sortByRatings') then
                             app.settings.current.sortByRating = not app.settings.current.sortByRating
                             app.engine:sortAssets()
@@ -3030,6 +3035,7 @@ RunApp = function()
                         app:setHoveredHint('main',
                             app.settings.current.sortByRating and 'Do no sort by ratings' or 'Sort by ratings')
                         ImGui.SameLine(ctx)
+                        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + paddingY)
                         -- ImGui.AlignTextToFramePadding(ctx)
                         if ImGui.Button(ctx, toggleHideRatingsIcon .. '##hideRatings') then
                             app.settings.current.hideRatings = not app.settings.current.hideRatings
@@ -3040,18 +3046,20 @@ RunApp = function()
                         app:setHoveredHint('main',
                             app.settings.current.hideRatings and 'Unhide ratings' or 'Hide ratings')
                         ImGui.PopFont(ctx)
+                        if app.settings.current.sideBarShowRatingFilter then
+                            drawRatingFilter()
+                        end
 
-                        drawRatingFilter()
-
-                        ImGui.SeparatorText(ctx, "Tags")
+                        app.settings.current.sideBarShowTags = ImGui.CollapsingHeader(ctx, 'Tags', false,
+                            (app.settings.current.sideBarShowTags and ImGui.TreeNodeFlags_DefaultOpen or 0) |
+                            ImGui.TreeNodeFlags_AllowOverlap)
                         ImGui.SameLine(ctx)
                         app.gui:pushFont(app.gui.st.fonts.icons, 'small')
                         local toggleHideTagsIcon = app.settings.current.hideAllTags and ICONS.INVISIBLE or ICONS.VISIBLE
-                        ImGui.SetCursorPosX(ctx,
+                        ImGui.SetCursorPos(ctx,
                             ImGui.GetCursorPosX(ctx) + ImGui.GetContentRegionAvail(ctx) - spacingX - paddingX * 2 -
                             ImGui.CalcTextSize(ctx, ICONS.PLUS) - spacingX - paddingX * 2 -
-                            ImGui.CalcTextSize(ctx, toggleHideTagsIcon))
-                        -- ImGui.AlignTextToFramePadding(ctx)
+                            ImGui.CalcTextSize(ctx, toggleHideTagsIcon), ImGui.GetCursorPosY(ctx) + paddingY)
                         if ImGui.Button(ctx, ICONS.PLUS .. '##CreateTag') then
                             local newTag = app.userdata:createTag('New Tag', TAGS_ROOT_PARENT)
                             app.temp.tagRename = newTag.id
@@ -3062,6 +3070,7 @@ RunApp = function()
                         end
                         app:setHoveredHint('main', 'Create new tag')
                         ImGui.SameLine(ctx)
+                        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + paddingY)
                         if ImGui.Button(ctx, toggleHideTagsIcon .. '##hideAllTags') then
                             app.settings.current.hideAllTags = not app.settings.current.hideAllTags
                             app.engine:getTags()
@@ -3072,15 +3081,20 @@ RunApp = function()
                         app:setHoveredHint('main',
                             app.settings.current.hideAllTags and 'Unhide all tags' or 'Hide all tags')
                         ImGui.PopFont(ctx)
-                        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
-                        ImGui.SetNextWindowScroll(ctx, 0, -1)
-                        if ImGui.BeginChild(ctx, 'TagScrollArea', sideBarW - paddingX * 2, select(2, ImGui.GetContentRegionAvail(ctx)) - spacingY) then
-                            ImGui.Spacing(ctx)
-                            drawTagsOfParent(TAGS_ROOT_PARENT, false, false)
-                            ImGui.Dummy(ctx, 0, 0)
-                            ImGui.EndChild(ctx)
+                        if app.settings.current.sideBarShowTags then
+                            ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
+                            ImGui.SetNextWindowScroll(ctx, 0, -1)
+                            if ImGui.BeginChild(ctx, 'TagScrollArea', sideBarW - paddingX * 2, select(2, ImGui.GetContentRegionAvail(ctx)) - spacingY) then
+                                ImGui.Spacing(ctx)
+                                drawTagsOfParent(TAGS_ROOT_PARENT, false, false)
+                                ImGui.Dummy(ctx, 0, 0)
+                                ImGui.EndChild(ctx)
+                            end
                         end
                         ImGui.Dummy(ctx, 0, 0)
+                        app.gui:popStyles(app.gui.st.vars.sideBar)
+                        app.gui:popColors(app.gui.st.col.sideBar)
+
                         ImGui.EndChild(ctx)
                     end
                 end

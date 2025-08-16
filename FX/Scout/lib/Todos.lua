@@ -60,7 +60,8 @@
 -- DONE: display rating filters in filter search mode
 -- DONE: Hints for rating filter
 -- DONE: add ratings to help
--- TODO: Think about rearranging settings window - maybe make sections collapsible?
+-- DONE: Think about rearranging settings window - maybe make sections collapsible?
+-- FIX: Some of the rating filtering doesn't work
 -- TODO: Test on windows
 ---------------------------------------
 -- AFTER LAUNCH -----------------------

@@ -182,6 +182,9 @@ PB_Settings = OD_Settings:new({
         -- * SET IN THE UI
         minimalMode = false,
         showSideBar = true,
+        sideBarShowFilters = true,
+        sideBarShowRatingFilter = true,
+        sideBarShowTags = true,
         sideBarWidth = 200,
         showQuickChain = false,
         quickChainWidth = 160,
