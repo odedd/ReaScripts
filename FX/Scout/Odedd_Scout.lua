@@ -3033,7 +3033,7 @@ RunApp = function()
                             ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
                         end
                         app:setHoveredHint('main',
-                            app.settings.current.sortByRating and 'Do no sort by ratings' or 'Sort by ratings')
+                            app.settings.current.sortByRating and T.HINTS.DONT_SORT_BY_RATINGS or T.HINTS.SORT_BY_RATINGS)
                         ImGui.SameLine(ctx)
                         ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + paddingY)
                         -- ImGui.AlignTextToFramePadding(ctx)
@@ -3044,7 +3044,7 @@ RunApp = function()
                             ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
                         end
                         app:setHoveredHint('main',
-                            app.settings.current.hideRatings and 'Unhide ratings' or 'Hide ratings')
+                            app.settings.current.hideRatings and T.HINTS.UNHIDE_RATINGS or T.HINTS.HIDE_RATINGS)
                         ImGui.PopFont(ctx)
                         if app.settings.current.sideBarShowRatingFilter then
                             drawRatingFilter()
@@ -3068,7 +3068,7 @@ RunApp = function()
                         if ImGui.IsItemHovered(ctx) then
                             ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
                         end
-                        app:setHoveredHint('main', 'Create new tag')
+                        app:setHoveredHint('main', T.HINTS.CREATE_TAG)
                         ImGui.SameLine(ctx)
                         ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + paddingY)
                         if ImGui.Button(ctx, toggleHideTagsIcon .. '##hideAllTags') then
@@ -3079,7 +3079,7 @@ RunApp = function()
                             ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
                         end
                         app:setHoveredHint('main',
-                            app.settings.current.hideAllTags and 'Unhide all tags' or 'Hide all tags')
+                            app.settings.current.hideAllTags and T.HINTS.UNHIDE_TAGS or T.HINTS.HIDE_TAGS)
                         ImGui.PopFont(ctx)
                         if app.settings.current.sideBarShowTags then
                             ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) - spacingY)
@@ -4113,7 +4113,7 @@ RunApp = function()
                                 })
                             if resetCounter then app.temp.captureCounter = 0 end
 
-                            ImGui.SeparatorText(ctx, 'Quick Chain')
+                            ImGui.SeparatorText(ctx, 'QuickChain')
                             app.settings.current.shortcuts.toggleQuickChain, resetCounter = app.gui:setting('shortcut',
                                 T.SETTINGS.SHORTCUTS.TOGGLE_QUICK_CHAIN.LABEL,
                                 T.SETTINGS.SHORTCUTS.TOGGLE_QUICK_CHAIN.HINT, app.settings.current.shortcuts

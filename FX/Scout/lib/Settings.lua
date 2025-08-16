@@ -4,45 +4,44 @@ PB_Settings = OD_Settings:new({
     default = {
         -- * SETTINGS WINDOW
 
+        -- -----------
+        -- | GENERAL |
+        -- -----------
         -- General Settings
-        uiScale = 1,
-        centerOnOpen = true,
         afterAction = AFTER_ACTION.CLOSE,
         sleepMode = false,
+        -- Display
+        uiScale = 1,
+        centerOnOpen = true,
+        tagDefaultColor = 5658198,
+        -- Filtering
         resetFiltersOnWakeup = true,
         loadDefaultPreset = false,
         defaultPreset = nil,
-
-        -- Ordering
+        recentlyAddedDays = 30,
+        -- -----------------
+        -- | ITEM SETTINGS |
+        -- -----------------
+        -- FX, FX Chains
+        showFxUI = SHOW_FX_UI.FOLLOW_PREFERENCE,
+        addInstrumentsAsInstrumentTracks = true,
         showOnlyHighestPriorityPlugin = true,
-        fxTypeVisibility = {
-            ['Internal'] = true,
-            ['VST3'] = true,
-            ['VST3i'] = true,
-            ['VST'] = true,
-            ['VSTi'] = true,
-            ['AU'] = true,
-            ['AUi'] = true,
-            ['JS'] = true,
-            ['CLAP'] = true,
-            ['CLAPi'] = true,
-            ['LV2'] = true,
-            ['LV2i'] = true
-        },
-        fxTypeOrder = {
-            "Internal",
-            "VST3",
-            "VST3i",
-            "VST",
-            "VSTi",
-            "AU",
-            "AUi",
-            "JS",
-            "CLAP",
-            "CLAPi",
-            "LV2",
-            "LV2i"
-        },
+        showOnlyHighestPriorityVariant = true,
+        createSendsInsideFolder = false,
+        sendFolderName = 'FX Return Tracks',
+        overrideDefaultSendVolume = false,
+        sendVolume = -12,
+        -- Tracks
+        showInvisibleTracks = true,
+        -- Take Markers
+        showInvisibleTakeMarkers = false,
+        -- Projects
+        projectScanFolders = {},
+        scanRecentProjects = true,
+        -- -------------------
+        -- | RESULT ORDERING |
+        -- -------------------
+        -- Ordering
         groupOrder = {
             SPECIAL_GROUPS.RECENTS,      -- Recents (special group)
             SPECIAL_GROUPS.FAVORITES,    -- Favorites (special group)
@@ -74,9 +73,36 @@ PB_Settings = OD_Settings:new({
             ["RegionAssetType"] = true,          -- Markers asset type
             ["ProjectTemplateAssetType"] = true, -- Project Templates asset type
             ["QuickChainPresetAssetType"] = true
-        },                                       -- Project Templates asset type
-        showOnlyHighestPriorityVariant = true,
-        variantMatchingOrder = {
+        },
+        fxTypeVisibility = {
+            ['Internal'] = true,
+            ['VST3'] = true,
+            ['VST3i'] = true,
+            ['VST'] = true,
+            ['VSTi'] = true,
+            ['AU'] = true,
+            ['AUi'] = true,
+            ['JS'] = true,
+            ['CLAP'] = true,
+            ['CLAPi'] = true,
+            ['LV2'] = true,
+            ['LV2i'] = true
+        },
+        fxTypeOrder = {
+            "Internal",
+            "VST3",
+            "VST3i",
+            "VST",
+            "VSTi",
+            "AU",
+            "AUi",
+            "JS",
+            "CLAP",
+            "CLAPi",
+            "LV2",
+            "LV2i"
+        },
+        variantMatchingOrder = { -- NOT TO BE CHANGED BY USER, This is to prevent partly matching before exact matches
             '%(?(stereo/%d%.%d)%)?',
             '%(?(mono/stereo)%)?',
             '%(?(stereo)%)?',
@@ -130,54 +156,46 @@ PB_Settings = OD_Settings:new({
             ['%((x86_64)%)'] = true,
             ['%((x64)%)'] = true,
         },
-        -- Tags, Presets and Favorites
-        tagDefaultColor = 5658198,
-
+        -- ----------------------
+        -- | KEYBOARD SHORTCUTS |
+        -- ----------------------
         -- Shortcuts
         shortcuts = {
+            -- General Behavior
             closeScript       = ImGui.Key_Escape,
             performAction     = ImGui.Key_Enter,
             toggleSearchMode  = ImGui.Key_Tab,
             hardCloseScript   = ImGui.Mod_Ctrl | ImGui.Key_Q,
             selectAllResults  = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_A,
-            clearFilters      = ImGui.Mod_Ctrl | ImGui.Key_L,
-            markFavorite      = ImGui.Mod_Ctrl | ImGui.Key_F,
-            markHidden        = ImGui.Mod_Ctrl | ImGui.Key_H,
             runRandomResult   = ImGui.Mod_Ctrl | ImGui.Key_R,
+            toggleMinimalMode = ImGui.Mod_Ctrl | ImGui.Key_M,
+            toggleDock        = ImGui.Mod_Ctrl | ImGui.Key_D,
             toggleAfterAction = ImGui.Mod_Ctrl | ImGui.Key_B,
             showSettings      = ImGui.Mod_Ctrl | ImGui.Key_Comma,
             showHelp          = ImGui.Mod_Ctrl | ImGui.Key_F1,
-            toggleDock        = ImGui.Mod_Ctrl | ImGui.Key_D,
-            toggleMinimalMode = ImGui.Mod_Ctrl | ImGui.Key_M,
+            -- Item Actions
+            markFavorite      = ImGui.Mod_Ctrl | ImGui.Key_F,
+            markHidden        = ImGui.Mod_Ctrl | ImGui.Key_H,
+            -- Filters and Tags
             toggleSideBar     = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_S,
-            toggleQuickChain  = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_K,
-            addToQuickChain   = ImGui.Mod_Ctrl | ImGui.Key_K,
-            clearQuickChain   = ImGui.Mod_Alt | ImGui.Key_K,
+            clearFilters      = ImGui.Mod_Ctrl | ImGui.Key_L,
             quickTag          = ImGui.Mod_Ctrl | ImGui.Key_T,
             copyTags          = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_C,
             pasteTags         = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_V,
-            syncTags          = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_Y,
             clearTags         = ImGui.Mod_Ctrl | ImGui.Mod_Alt | ImGui.Mod_Shift | ImGui.Key_X,
-            clearRating       = ImGui.Mod_Alt | ImGui.Key_0,
+            syncTags          = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_Y,
+            -- QuickChain
+            toggleQuickChain  = ImGui.Mod_Ctrl | ImGui.Mod_Shift | ImGui.Key_K,
+            addToQuickChain   = ImGui.Mod_Ctrl | ImGui.Key_K,
+            clearQuickChain   = ImGui.Mod_Alt | ImGui.Key_K,
+            -- Ratings
             rate1             = ImGui.Mod_Alt | ImGui.Key_1,
             rate2             = ImGui.Mod_Alt | ImGui.Key_2,
             rate3             = ImGui.Mod_Alt | ImGui.Key_3,
             rate4             = ImGui.Mod_Alt | ImGui.Key_4,
             rate5             = ImGui.Mod_Alt | ImGui.Key_5,
+            clearRating       = ImGui.Mod_Alt | ImGui.Key_0,
         },
-
-        -- Items Specific Settings
-        recentlyAddedDays = 30,
-        showFxUI = SHOW_FX_UI.FOLLOW_PREFERENCE,
-        addInstrumentsAsInstrumentTracks = true,
-        createSendsInsideFolder = false,
-        sendFolderName = 'FX Return Tracks',
-        overrideDefaultSendVolume = false,
-        sendVolume = -12,
-        showInvisibleTracks = true,
-        showInvisibleTakeMarkers = false,
-        projectScanFolders = {},
-        scanRecentProjects = true,
 
         -- * SET IN THE UI
         minimalMode = false,
@@ -187,14 +205,14 @@ PB_Settings = OD_Settings:new({
         sideBarShowTags = true,
         sideBarWidth = 200,
         showQuickChain = false,
-        quickChainWidth = 160,
+        quickChainWidth = 200,
         hideAllTags = false,
         hideRatings = false,
         sortByRating = true,
 
         -- * INTERNAL
-        minSideBarWidth = 140,
-        minQuickChainWidth = 140,
+        minSideBarWidth = 165,
+        minQuickChainWidth = 165,
         lastDockId = nil,
         lastDockedState = false,
         numberOfResultsThatRequireConfirmation = 10,
