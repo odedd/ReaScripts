@@ -454,15 +454,15 @@ RunApp = function()
                                 end
                                 if typeFilterChecks.rating then
                                     local assetRating = asset.rating or 0
-                                    local requiredRating, requierdRatingType = (typeFilterChecks.rating):match(
+                                    local requiredRatingType, requiredRating = (typeFilterChecks.rating):match(
                                         '(%d)(%d)')
-                                    requierdRatingType = tonumber(requierdRatingType)
+                                    requiredRatingType = tonumber(requiredRatingType)
                                     requiredRating = tonumber(requiredRating)
-                                    if requierdRatingType == RATING_FILTER_TYPE.EQUAL then
+                                    if requiredRatingType == RATING_FILTER_TYPE.EQUAL then
                                         if assetRating ~= requiredRating then goto skip end
-                                    elseif requierdRatingType == RATING_FILTER_TYPE.EQUAL_OR_LESS then
+                                    elseif requiredRatingType == RATING_FILTER_TYPE.EQUAL_OR_LESS then
                                         if assetRating > requiredRating or assetRating == 0 then goto skip end
-                                    elseif requierdRatingType == RATING_FILTER_TYPE.EQUAL_OR_MORE then
+                                    elseif requiredRatingType == RATING_FILTER_TYPE.EQUAL_OR_MORE then
                                         if assetRating < requiredRating then goto skip end
                                     end
                                 end
