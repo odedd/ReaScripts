@@ -121,10 +121,10 @@ TAGS_ROOT_PARENT = -1
 
 SETTINGS_SECTIONS = {
     GENERAL = {order = 1},
+    ITEM = {order = 2},
     ORDERING = {order = 3},
     SHORTCUTS = {order = 4},
-    ITEM = {order = 2}
-
+    USER_DATA = {order = 5}
 }
 -- Special group constants
 -- Note: groupOrder in settings uses asset type class names (e.g., "ProjectAssetType")

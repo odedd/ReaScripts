@@ -19,6 +19,10 @@ PB_Settings = OD_Settings:new({
         loadDefaultPreset = false,
         defaultPreset = nil,
         recentlyAddedDays = 30,
+        -- Confirmations
+        numberOfResultsThatRequireConfirmation = 10,
+        numberOfTracksThatRequireConfirmation = 6,
+        numberOfMediaItemsThatRequireConfirmation = 6,
         -- -----------------
         -- | ITEM SETTINGS |
         -- -----------------
@@ -41,6 +45,8 @@ PB_Settings = OD_Settings:new({
         -- -------------------
         -- | RESULT ORDERING |
         -- -------------------
+        -- Recents Section
+        numberOfRecents = 5,
         -- Ordering
         groupOrder = {
             SPECIAL_GROUPS.RECENTS,      -- Recents (special group)
@@ -215,10 +221,6 @@ PB_Settings = OD_Settings:new({
         minQuickChainWidth = 165,
         lastDockId = nil,
         lastDockedState = false,
-        numberOfResultsThatRequireConfirmation = 10,
-        numberOfTracksThatRequireConfirmation = 6,
-        numberOfMediaItemsThatRequireConfirmation = 6,
-        numberOfRecents = 5,
         welcomeScreenShown = false
     },
     initial = {

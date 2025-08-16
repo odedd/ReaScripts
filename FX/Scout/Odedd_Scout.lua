@@ -2962,10 +2962,18 @@ RunApp = function()
                                     0
                                 for i = 1, 5 do
                                     local hoveredRating = app.temp.hoveredRatingFilter or 0
-                                    local icon = (i <= ratingFilter or i <= hoveredRating) and ICONS.STAR or
-                                        ICONS.STAR_OUTLINE
-                                    local color = (i <= ratingFilter or i <= hoveredRating) and
-                                        app.gui.st.col.assetRating[ImGui.Col_Text] or app.gui.st.basecolors.textDark
+                                    local icon, color
+                                    if app.temp.hoveredRatingFilter then
+                                        icon = i <= hoveredRating and ICONS.STAR or ICONS.STAR_OUTLINE
+                                        color = i <= hoveredRating and app.gui.st.col.assetRating[ImGui.Col_Text] or
+                                            app.gui.st.basecolors.textDark
+                                    else
+                                        icon = i <= ratingFilter and ICONS.STAR or ICONS.STAR_OUTLINE
+                                        color = i <= ratingFilter and app.gui.st.col.assetRating[ImGui.Col_Text] or
+                                            app.gui.st.basecolors.textDark
+                                    end
+                                    -- local color = (i <= ratingFilter or i <= hoveredRating) and
+                                    -- app.gui.st.col.assetRating[ImGui.Col_Text] or app.gui.st.basecolors.textDark
                                     -- local x, y = ImGui.GetCursorPos(ctx)
                                     ImGui.TextColored(ctx, color, icon)
 
@@ -3033,7 +3041,8 @@ RunApp = function()
                             ImGui.SetMouseCursor(ctx, ImGui.MouseCursor_Hand)
                         end
                         app:setHoveredHint('main',
-                            app.settings.current.sortByRating and T.HINTS.DONT_SORT_BY_RATINGS or T.HINTS.SORT_BY_RATINGS)
+                            app.settings.current.sortByRating and T.HINTS.DONT_SORT_BY_RATINGS or T.HINTS
+                            .SORT_BY_RATINGS)
                         ImGui.SameLine(ctx)
                         ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + paddingY)
                         -- ImGui.AlignTextToFramePadding(ctx)
@@ -3843,8 +3852,54 @@ RunApp = function()
                                     format = "%.0f",
                                     help = T.RECENTLY_ADDED_EXPLANATION
                                 })
+                            ImGui.SeparatorText(ctx, 'Confirmations')
+
+                            app.settings.current.numberOfResultsThatRequireConfirmation = app.gui:setting('dragdouble',
+                                T.SETTINGS.NUMBER_OF_RESULTS_THAT_REQUIRE_CONFIRMATION.LABEL,
+                                T.SETTINGS.NUMBER_OF_RESULTS_THAT_REQUIRE_CONFIRMATION.HINT,
+                                app.settings.current.numberOfResultsThatRequireConfirmation,
+                                {
+                                    speed = 1,
+                                    min = 1,
+                                    max = 100,
+                                    format = "%.0f",
+                                })
+                            app.settings.current.numberOfTracksThatRequireConfirmation = app.gui:setting('dragdouble',
+                                T.SETTINGS.NUMBER_OF_TRACKS_THAT_REQUIRE_CONFIRMATION.LABEL,
+                                T.SETTINGS.NUMBER_OF_TRACKS_THAT_REQUIRE_CONFIRMATION.HINT,
+                                app.settings.current.numberOfTracksThatRequireConfirmation,
+                                {
+                                    speed = 1,
+                                    min = 1,
+                                    max = 100,
+                                    format = "%.0f",
+                                })
+                            app.settings.current.numberOfMediaItemsThatRequireConfirmation = app.gui:setting(
+                                'dragdouble',
+                                T.SETTINGS.NUMBER_OF_MEDIA_ITEMS_THAT_REQUIRE_CONFIRMATION.LABEL,
+                                T.SETTINGS.NUMBER_OF_MEDIA_ITEMS_THAT_REQUIRE_CONFIRMATION.HINT,
+                                app.settings.current.numberOfMediaItemsThatRequireConfirmation,
+                                {
+                                    speed = 1,
+                                    min = 1,
+                                    max = 100,
+                                    format = "%.0f",
+                                })
+                            ImGui.SeparatorText(ctx, 'Recents Section')
+                            app.settings.current.numberOfRecents = app.gui:setting('dragdouble',
+                                T.SETTINGS.NUMBER_OF_RECENTS.LABEL,
+                                T.SETTINGS.NUMBER_OF_RECENTS.HINT, app.settings.current.numberOfRecents,
+                                {
+                                    speed = 1,
+                                    min = 1,
+                                    max = 60,
+                                    format = "%.0f"
+                                })
+                        elseif section == SETTINGS_SECTIONS.USER_DATA then
                             ImGui.SeparatorText(ctx, 'User Data')
 
+                            ImGui.TextWrapped(ctx, T.USER_DATA_EXPLANATION)
+                            ImGui.Spacing(ctx)
                             -- Convert Folders to Tags button
                             if app.gui:setting('button', T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.LABEL, T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.HINT, nil, { label = T.SETTINGS.CONVERT_FOLDERS_TO_TAGS.BUTTON_LABEL, help = T.CONVERT_EXPLANATION }) then
                                 app.temp.progressCoroutine = OD_CreateSafeCoroutine(app.userdata.convertFoldersToTags,

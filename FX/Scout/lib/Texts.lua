@@ -201,10 +201,11 @@ T.SPECIAL_GROUPS = {
 
 T.SETTINGS = {
     SECTIONS = {
-        [SETTINGS_SECTIONS.GENERAL] = { NAME = 'General', HINT = 'hint'},
+        [SETTINGS_SECTIONS.GENERAL] = { NAME = 'General', HINT = ''},
         [SETTINGS_SECTIONS.ORDERING] = { NAME = 'Result Order', HINT = ''},
         [SETTINGS_SECTIONS.SHORTCUTS] = { NAME = 'Keyboard Shortcuts', HINT = ''},
-        [SETTINGS_SECTIONS.ITEM] = { NAME = 'Item Settings', HINT = ''}
+        [SETTINGS_SECTIONS.ITEM] = { NAME = 'Item Settings', HINT = ''},
+        [SETTINGS_SECTIONS.USER_DATA] = { NAME = 'User Data', HINT = ''}
     },
     LISTS = {},
 
@@ -259,8 +260,24 @@ T.SETTINGS = {
         HINT = 'Scan Reaper\'s recently open projects and add them to the list.',
     },
     RECENTLY_ADDED_DAYS = {
-        LABEL = 'Days counted as recent',
+        LABEL = 'Recently added (days)',
         HINT = 'How long should actions and FX be considered recently added.',
+    },
+    NUMBER_OF_RECENTS = {
+        LABEL = 'Number of recents',
+        HINT = 'How many items should be kept in the recents section.',
+    },
+    NUMBER_OF_RESULTS_THAT_REQUIRE_CONFIRMATION = {
+        LABEL = 'Number of results',
+        HINT = 'Number of results above which confirmation is required before being executed.',
+    },
+    NUMBER_OF_TRACKS_THAT_REQUIRE_CONFIRMATION = {
+        LABEL = 'Number of tracks',
+        HINT = 'Number of tracks above which confirmation is required before being executed.',
+    },
+    NUMBER_OF_MEDIA_ITEMS_THAT_REQUIRE_CONFIRMATION = {
+        LABEL = 'Number of media items',
+        HINT = 'Number of media items above which confirmation is required before being executed.',
     },
     GROUP_ORDER = {
         LABEL = 'Item and FX priority',
@@ -461,24 +478,22 @@ T.PROGRESS = {
         'Import successful (overwritten).\n\n%d tags imported, %d existing tags replaced\n%d items were tagged, %d were skipped\n%d presets imported, %d skipped\n%d QuickChain presets imported, %d skipped\n%d hidden items imported, %d skipped\n%d favorites imported, %d skipped\n%d ratings imported, %d skipped'
     }
 }
+
+T.USER_DATA_EXPLANATION = 'User data includes all tags, favorites, presets, QuickChains and ratings.'
 T.CONVERT_EXPLANATION =
 [[Convert Reaper's user defineable folders and the FX's own categories
 into tags. This is a good starting place for creating your own tags.]]
 
 T.EXPORT_USER_DATA_EXPLANATION =
 [[Export user data to a file which can be transferred and imported to
-another system or saved for backup. 
-
-User data includes all tags, favorites, presets, QuickChains and ratings.]]
+another system or saved for backup.]]
 
 T.IMPORT_USER_DATA_EXPLANATION =
 [[Import user data from another system. Since different systems might
 have different FX, actions, projects etc... the import operation will
 attempt to match the imported items to this system's items. 
 Merge mode keeps existing user data, while overwrite (hold Shift)
-deletes it (Use with care - perhaps export a backup first).
-
-User data includes all tags, favorites, presets, QuickChains and ratings.]]
+deletes it (Use with care - perhaps export a backup first).]]
 
 T.RECENTLY_ADDED_EXPLANATION =
 [[The script can only track FX and actions added after it was first
