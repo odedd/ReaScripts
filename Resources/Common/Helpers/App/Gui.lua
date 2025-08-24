@@ -86,14 +86,6 @@ function OD_Gui:init(addDefaultFonts)
         }
     }
 
-    self.icons = {
-        caution = r.ImGui_CreateImage(OD_LocalOrCommon('Resources/Icons/caution.png', self.app.scr.dir)),
-        error = r.ImGui_CreateImage(OD_LocalOrCommon('Resources/Icons/error.png', self.app.scr.dir))
-    }
-
-    r.ImGui_Attach(self.ctx, self.icons.caution)
-    r.ImGui_Attach(self.ctx, self.icons.error)
-
 end
 
 OD_Gui.recalculateZoom = function(self, scale)
