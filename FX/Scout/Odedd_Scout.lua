@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.3
+-- @version 1.0.4
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus
 -- @license GNU GPL v3
@@ -17,7 +17,7 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   Double firings of some magic words fixed
+--   Running random actions when Scout is closed does not open it
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
 if DATA == nil then
