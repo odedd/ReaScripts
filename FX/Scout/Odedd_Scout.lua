@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.4
+-- @version 1.0.5
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus
 -- @license GNU GPL v3
@@ -17,7 +17,7 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   Running random actions when Scout is closed does not open it
+--   "Send to track" when selecting track asset types now respects default send volume override
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
 if DATA == nil then
