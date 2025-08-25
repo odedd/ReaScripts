@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="18c4929f6c27dbd804abe2308d9b76f1a7126744">
+<index version="1" name="Odedd ReaScripts" commit="f0929310b63892c037b65146fd8b204ed1fa8aea">
   <category name="FX/Scout">
     <reapack name="Odedd_Scout.lua" type="script" desc="Scout">
       <metadata>
@@ -42,6 +42,15 @@
         <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/18c4929f6c27dbd804abe2308d9b76f1a7126744/FX/Scout/Resources/Fonts/Cousine-Regular.ttf</source>
         <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/18c4929f6c27dbd804abe2308d9b76f1a7126744/FX/Scout/Resources/Fonts/Icons-Regular.otf</source>
         <source file="scout54.dat">https://github.com/odedd/ReaScripts/raw/18c4929f6c27dbd804abe2308d9b76f1a7126744/FX/Scout/scout54.dat</source>
+      </version>
+      <version name="1.0.3" author="Oded Davidov" time="2025-08-25T12:49:41Z">
+        <changelog><![CDATA[Double firings of some magic words fixed]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/f0929310b63892c037b65146fd8b204ed1fa8aea/FX/Scout/Odedd_Scout.lua</source>
+        <source file="Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/f0929310b63892c037b65146fd8b204ed1fa8aea/FX/Scout/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="Resources/Fonts/Cousine-Bold.ttf">https://github.com/odedd/ReaScripts/raw/f0929310b63892c037b65146fd8b204ed1fa8aea/FX/Scout/Resources/Fonts/Cousine-Bold.ttf</source>
+        <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/f0929310b63892c037b65146fd8b204ed1fa8aea/FX/Scout/Resources/Fonts/Cousine-Regular.ttf</source>
+        <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/f0929310b63892c037b65146fd8b204ed1fa8aea/FX/Scout/Resources/Fonts/Icons-Regular.otf</source>
+        <source file="scout54.dat">https://github.com/odedd/ReaScripts/raw/f0929310b63892c037b65146fd8b204ed1fa8aea/FX/Scout/scout54.dat</source>
       </version>
     </reapack>
   </category>
