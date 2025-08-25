@@ -1,5 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="0c09696260251e7aec2040509b4efabb5ba4cad5">
+<index version="1" name="Odedd ReaScripts" commit="486bf6b85ffd0a29dc558ee7a5f1b84d9f1d3284">
+  <category name="FX/Scout">
+    <reapack name="Odedd_Scout.lua" type="script" desc="Scout">
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\deff0{\fonttbl{\f0 \fswiss Helvetica;}{\f1 \fmodern Courier;}}
+{\colortbl;\red255\green0\blue0;\red0\green0\blue255;}
+\widowctrl\hyphauto
+
+{\pard \ql \f0 \sa180 \li0 \fi0 \outlinelevel0 \b \fs36 Scout\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 A powerful search and organization tool for Reaper assets, providing a unified interface to quickly find, tag, rate, add notes, hide, and favorite items.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 Scout prioritizes speed and efficiency, helping you manage: FX, Actions, Projects, Project Templates, Track Templates, FX Chains, Tracks, Takes, Markers, Regions, Take Markers and QuickChain Presets - all without leaving the keyboard.\par}
+{\pard \ql \f0 \sa180 \li0 \fi0 While Scout is full of features, Scout+ has even more! Be sure to check them out at https://odedd.gumroad.com/l/scout-plus.\par}
+}
+]]></description>
+        <link rel="website" href="https://www.random.tools/l/scout-plus">Product Page</link>
+        <link rel="donation">https://paypal.me/odedda</link>
+      </metadata>
+      <version name="1.0.0" author="Oded Davidov" time="2025-08-25T05:33:06Z">
+        <changelog><![CDATA[v0]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/486bf6b85ffd0a29dc558ee7a5f1b84d9f1d3284/FX/Scout/Odedd_Scout.lua</source>
+        <source file="Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/486bf6b85ffd0a29dc558ee7a5f1b84d9f1d3284/FX/Scout/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="Resources/Fonts/Cousine-Bold.ttf">https://github.com/odedd/ReaScripts/raw/486bf6b85ffd0a29dc558ee7a5f1b84d9f1d3284/FX/Scout/Resources/Fonts/Cousine-Bold.ttf</source>
+        <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/486bf6b85ffd0a29dc558ee7a5f1b84d9f1d3284/FX/Scout/Resources/Fonts/Cousine-Regular.ttf</source>
+        <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/486bf6b85ffd0a29dc558ee7a5f1b84d9f1d3284/FX/Scout/Resources/Fonts/Icons-Regular.otf</source>
+        <source file="scout54.dat">https://github.com/odedd/ReaScripts/raw/486bf6b85ffd0a29dc558ee7a5f1b84d9f1d3284/FX/Scout/scout54.dat</source>
+      </version>
+    </reapack>
+  </category>
   <category name="FX/Send Buddy">
     <reapack name="Odedd_Send Buddy.lua" type="script" desc="Send Buddy">
       <metadata>
