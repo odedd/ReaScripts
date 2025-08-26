@@ -1,8 +1,8 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.1
+-- @version 1.0.0
 -- @donation https://paypal.me/odedda
--- @link Product Page https://www.random.tools/l/scout-plus
+-- @link Product Page https://odedd.gumroad.com/l/scout-plus?utm_source=scout&utm_medium=reaper&utm_campaign=script
 -- @license GNU GPL v3
 -- @about
 --   # Scout
@@ -17,9 +17,7 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   Hints for dragging tags improved
---   Visual change for note edit window
---   Convert categories to tags speed optimized
+--   Initial Release
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
 if DATA == nil then
