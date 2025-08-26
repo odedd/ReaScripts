@@ -84,12 +84,13 @@ function OD_GetSubfolders(folder)
     return folders
 end
 
-function OD_GetFilesInFolder(folder, ignore_ds)
+function OD_GetFilesInFolder(folder, ext, ignore_ds)
     local files = {}
     local i = 0
+    ext = ((ext == nil) and '' or ext):gsub('^%.', '')
     repeat
         local retval = r.EnumerateFiles(folder, i)
-        if retval and ((not ignore_ds) or retval ~= '.DS_Store') then
+        if retval and retval:lower():match("%."..OD_EscapePattern(ext):lower()..'$') and ((not ignore_ds) or retval ~= '.DS_Store') then
             table.insert(files, retval)
         end
         i = i + 1
@@ -97,8 +98,21 @@ function OD_GetFilesInFolder(folder, ignore_ds)
     return files
 end
 
+function OD_GetFilesInFolderAndSubfolders(folder, ext, ignore_ds)
+    folder = folder:gsub('\\','/'):gsub('/$', '') -- remove trailing slash
+    local files = OD_GetFilesInFolder(folder, ext, ignore_ds)
+    local folders = OD_GetSubfolders(folder)
+    for i, subfolder in ipairs(folders) do
+        local subfiles = OD_GetFilesInFolderAndSubfolders(folder .. OD_FolderSep() .. subfolder, ext, ignore_ds)
+        for j, subfile in ipairs(subfiles) do
+            table.insert(files, subfolder .. OD_FolderSep() .. subfile)
+        end
+    end
+    return files
+end
+
 function OD_IsFolderEmpty(folder)
-    local files = OD_GetFilesInFolder(folder, true)
+    local files = OD_GetFilesInFolder(folder, nil, true)
     return r.EnumerateSubdirectories(folder, 0) == nil and #files == 0
 end
 

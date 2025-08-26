@@ -6,13 +6,13 @@ function OD_GetScreenSize()
         top = bottom
         bottom = oldTop
     end
-    return left, top, right, bottom
+    return right, bottom
 end
 
 function OD_GetMousePos()
     local x, y = reaper.GetMousePosition()
     if _OD_ISMAC then
-        local _, _, _, bottom = OD_GetScreenSize()
+        local _, bottom = OD_GetScreenSize()
         y = bottom - y
     end
     return x, y

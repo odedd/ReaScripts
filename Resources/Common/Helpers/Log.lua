@@ -114,6 +114,14 @@ function OD_Logger:logTable(level, tableName, table, depth_offset)
 
 end
 
+function OD_Logger:logAppInfo(level, app)
+    self:log(level,'OS: ', reaper.GetOS())
+    self:log(level,'Reaper version: ', r.GetAppVersion():match("[%d%.]+"))
+    self:log(level,'Script file: ', app.scr.path)
+    self:log(level,'Script version: ', tostring(app.scr.version))
+    -- self:logInfo(level,'JS_ReaScriptAPI version: ', tostring(r.APIExists('JS_ReaScriptAPI_Version')))
+end
+
 function OD_Logger:setLogFile(filename)
     if filename ~= self.filename then self:closeLogFile() end
     local path, basename, ext = OD_DissectFilename(filename)

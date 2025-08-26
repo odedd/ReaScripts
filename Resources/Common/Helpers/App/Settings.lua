@@ -26,9 +26,15 @@ function OD_Settings:getDefault(factory)
 
     if not factory then
         local loaded_ext_settings = table.load(self.dfsetfile) or {}
-        for k, v in pairs(loaded_ext_settings or {}) do
-            st.default[k] = v
-        end
+        st.default = OD_MergeTables(st.default, loaded_ext_settings)
+        -- for k, v in pairs(loaded_ext_settings or {}) do
+        --     if type(v) == 'table' then
+        --         -- st.default[k] = v
+        --         st.default[k] = OD_MergeTables(st.default[k], v)
+        --     else
+        --         st.default[k] = v
+        --     end
+        -- end
     end
 
     return st
