@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="70a1960b1648ad3b9ea802b047d9352ff9b014e4">
+<index version="1" name="Odedd ReaScripts" commit="c20f75b44c34057e6371a816057e45a93a45a660">
   <category name="FX/Scout">
     <reapack name="Odedd_Scout.lua" type="script" desc="Scout">
       <metadata>
@@ -33,6 +33,15 @@
         <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/70a1960b1648ad3b9ea802b047d9352ff9b014e4/FX/Scout/Resources/Fonts/Cousine-Regular.ttf</source>
         <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/70a1960b1648ad3b9ea802b047d9352ff9b014e4/FX/Scout/Resources/Fonts/Icons-Regular.otf</source>
         <source file="scout54.dat">https://github.com/odedd/ReaScripts/raw/70a1960b1648ad3b9ea802b047d9352ff9b014e4/FX/Scout/scout54.dat</source>
+      </version>
+      <version name="1.0.2" author="Oded Davidov" time="2025-08-27T13:37:47Z">
+        <changelog><![CDATA[Bug fix]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/c20f75b44c34057e6371a816057e45a93a45a660/FX/Scout/Odedd_Scout.lua</source>
+        <source file="Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/c20f75b44c34057e6371a816057e45a93a45a660/FX/Scout/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="Resources/Fonts/Cousine-Bold.ttf">https://github.com/odedd/ReaScripts/raw/c20f75b44c34057e6371a816057e45a93a45a660/FX/Scout/Resources/Fonts/Cousine-Bold.ttf</source>
+        <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/c20f75b44c34057e6371a816057e45a93a45a660/FX/Scout/Resources/Fonts/Cousine-Regular.ttf</source>
+        <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/c20f75b44c34057e6371a816057e45a93a45a660/FX/Scout/Resources/Fonts/Icons-Regular.otf</source>
+        <source file="scout54.dat">https://github.com/odedd/ReaScripts/raw/c20f75b44c34057e6371a816057e45a93a45a660/FX/Scout/scout54.dat</source>
       </version>
     </reapack>
   </category>
