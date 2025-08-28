@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.7
+-- @version 1.0.8
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -17,7 +17,8 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   Alt+click in filter search mode clear current filter
+--   Instruments/FX separated
+--   Added setting to select newly added tracks
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
