@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="4b24da6a203d0b5cf34e39e3b1464d8cec4ee5d9">
+<index version="1" name="Odedd ReaScripts" commit="a7da5de6962af85b7dcb44be2e3aaee984a3ccb1">
   <category name="FX/Scout">
     <reapack name="Odedd_Scout.lua" type="script" desc="Scout">
       <metadata>
@@ -60,6 +60,18 @@
         <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/4b24da6a203d0b5cf34e39e3b1464d8cec4ee5d9/FX/Scout/Resources/Fonts/Cousine-Regular.ttf</source>
         <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/4b24da6a203d0b5cf34e39e3b1464d8cec4ee5d9/FX/Scout/Resources/Fonts/Icons-Regular.otf</source>
         <source file="scout54.dat">https://github.com/odedd/ReaScripts/raw/4b24da6a203d0b5cf34e39e3b1464d8cec4ee5d9/FX/Scout/scout54.dat</source>
+      </version>
+      <version name="1.0.5" author="Oded Davidov" time="2025-08-28T17:52:30Z">
+        <changelog><![CDATA[Fixed: Right clicking in filter search mode causes crash (no menu though)
+Fixed: Using random result shortcut produces two random results
+Fixed: After action: clear text search setting does not get saved after restart + hint is nil
+Option/Alt clicking tag + or - buttons or filter clears filter]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/a7da5de6962af85b7dcb44be2e3aaee984a3ccb1/FX/Scout/Odedd_Scout.lua</source>
+        <source file="Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/a7da5de6962af85b7dcb44be2e3aaee984a3ccb1/FX/Scout/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="Resources/Fonts/Cousine-Bold.ttf">https://github.com/odedd/ReaScripts/raw/a7da5de6962af85b7dcb44be2e3aaee984a3ccb1/FX/Scout/Resources/Fonts/Cousine-Bold.ttf</source>
+        <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/a7da5de6962af85b7dcb44be2e3aaee984a3ccb1/FX/Scout/Resources/Fonts/Cousine-Regular.ttf</source>
+        <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/a7da5de6962af85b7dcb44be2e3aaee984a3ccb1/FX/Scout/Resources/Fonts/Icons-Regular.otf</source>
+        <source file="scout54.dat">https://github.com/odedd/ReaScripts/raw/a7da5de6962af85b7dcb44be2e3aaee984a3ccb1/FX/Scout/scout54.dat</source>
       </version>
     </reapack>
   </category>
