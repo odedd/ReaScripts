@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.5
+-- @version 1.0.6
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -17,10 +17,7 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   Fixed: Right clicking in filter search mode causes crash (no menu though)
---   Fixed: Using random result shortcut produces two random results
---   Fixed: After action: clear text search setting does not get saved after restart + hint is nil
---   Option/Alt clicking tag + or - buttons or filter clears filter
+--   Prevent Cmd/Ctrl+C/V/X from being used as shortcuts
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
