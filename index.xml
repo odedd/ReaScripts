@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="82900e5f21e300686a6d0eb05854ec83159edfd7">
+<index version="1" name="Odedd ReaScripts" commit="08d4534142a8e9d60e6b66721fd236f51bd9f73e">
   <category name="FX/Scout">
     <reapack name="Odedd_Scout.lua" type="script" desc="Scout">
       <metadata>
@@ -118,6 +118,16 @@ Added setting to select newly added tracks]]></changelog>
         <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/82900e5f21e300686a6d0eb05854ec83159edfd7/FX/Scout/Resources/Fonts/Cousine-Regular.ttf</source>
         <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/82900e5f21e300686a6d0eb05854ec83159edfd7/FX/Scout/Resources/Fonts/Icons-Regular.otf</source>
         <source file="scout54.dat">https://github.com/odedd/ReaScripts/raw/82900e5f21e300686a6d0eb05854ec83159edfd7/FX/Scout/scout54.dat</source>
+      </version>
+      <version name="1.0.12" author="Oded Davidov" time="2025-08-29T10:19:42Z">
+        <changelog><![CDATA[Cmd/Ctrl+Click creates a new track with FX/FX Chain on it
+Instrument tracks now get named by the instrument name (if "Use instrument tracks" setting is checked)]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/08d4534142a8e9d60e6b66721fd236f51bd9f73e/FX/Scout/Odedd_Scout.lua</source>
+        <source file="Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/08d4534142a8e9d60e6b66721fd236f51bd9f73e/FX/Scout/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="Resources/Fonts/Cousine-Bold.ttf">https://github.com/odedd/ReaScripts/raw/08d4534142a8e9d60e6b66721fd236f51bd9f73e/FX/Scout/Resources/Fonts/Cousine-Bold.ttf</source>
+        <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/08d4534142a8e9d60e6b66721fd236f51bd9f73e/FX/Scout/Resources/Fonts/Cousine-Regular.ttf</source>
+        <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/08d4534142a8e9d60e6b66721fd236f51bd9f73e/FX/Scout/Resources/Fonts/Icons-Regular.otf</source>
+        <source file="scout54.dat">https://github.com/odedd/ReaScripts/raw/08d4534142a8e9d60e6b66721fd236f51bd9f73e/FX/Scout/scout54.dat</source>
       </version>
     </reapack>
   </category>
