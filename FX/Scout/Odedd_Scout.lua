@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.17
+-- @version 1.0.18
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -17,7 +17,7 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   Fixed error when setting default preset without existing presets
+--   Much better fuzzy search algorithm (more relevant results show up first)
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
