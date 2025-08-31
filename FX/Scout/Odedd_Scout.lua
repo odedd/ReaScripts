@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.19
+-- @version 1.0.20
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -17,8 +17,7 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   Faster Fuzzy search
---   Fix crash in filter search mode
+--   Fix crash when changing search modes
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
