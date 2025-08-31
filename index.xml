@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="611d4902e2e0da2542da9a6b9c3f465ee34d58d2">
+<index version="1" name="Odedd ReaScripts" commit="0305912b581a3c590ee1d2142ebe858e3b957bc6">
   <category name="FX/Scout">
     <reapack name="Odedd_Scout.lua" type="script" desc="Scout">
       <metadata>
@@ -220,6 +220,15 @@ Fix crash in filter search mode]]></changelog>
         <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/611d4902e2e0da2542da9a6b9c3f465ee34d58d2/FX/Scout/Resources/Fonts/Cousine-Regular.ttf</source>
         <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/611d4902e2e0da2542da9a6b9c3f465ee34d58d2/FX/Scout/Resources/Fonts/Icons-Regular.otf</source>
         <source file="scout54.dat">https://github.com/odedd/ReaScripts/raw/611d4902e2e0da2542da9a6b9c3f465ee34d58d2/FX/Scout/scout54.dat</source>
+      </version>
+      <version name="1.0.23" author="Oded Davidov" time="2025-08-31T18:30:44Z">
+        <changelog><![CDATA[Fixed crash after waking from sleep mode]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/0305912b581a3c590ee1d2142ebe858e3b957bc6/FX/Scout/Odedd_Scout.lua</source>
+        <source file="Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/0305912b581a3c590ee1d2142ebe858e3b957bc6/FX/Scout/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="Resources/Fonts/Cousine-Bold.ttf">https://github.com/odedd/ReaScripts/raw/0305912b581a3c590ee1d2142ebe858e3b957bc6/FX/Scout/Resources/Fonts/Cousine-Bold.ttf</source>
+        <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/0305912b581a3c590ee1d2142ebe858e3b957bc6/FX/Scout/Resources/Fonts/Cousine-Regular.ttf</source>
+        <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/0305912b581a3c590ee1d2142ebe858e3b957bc6/FX/Scout/Resources/Fonts/Icons-Regular.otf</source>
+        <source file="scout54.dat">https://github.com/odedd/ReaScripts/raw/0305912b581a3c590ee1d2142ebe858e3b957bc6/FX/Scout/scout54.dat</source>
       </version>
     </reapack>
   </category>
