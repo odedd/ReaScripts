@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.16
+-- @version 1.0.17
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -17,8 +17,7 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   Fuzzy search implemented
---   Ctrl+Alt+Shift+Click/Enter now replaces all FX in selected track(s) with the selected FX/FX Chain
+--   Fixed error when setting default preset without existing presets
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
