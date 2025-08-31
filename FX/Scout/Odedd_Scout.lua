@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.22
+-- @version 1.0.23
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -17,7 +17,7 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   Added setting to activate magic words with either tab or space
+--   Fixed crash after waking from sleep mode
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
