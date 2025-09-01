@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.23
+-- @version 1.0.24
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -17,7 +17,8 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   Fixed crash after waking from sleep mode
+--   New asset type: Project FX
+--   Fuzzy Search optimized
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
