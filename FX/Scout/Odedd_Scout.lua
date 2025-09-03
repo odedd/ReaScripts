@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.24
+-- @version 1.0.25
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -17,8 +17,7 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   New asset type: Project FX
---   Fuzzy Search optimized
+--   Setting to turn off grouping by FX format
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
