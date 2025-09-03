@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.26
+-- @version 1.0.27
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -17,8 +17,7 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   QuickChain execution order fixed when QuickChain has mixed types (Instruments/FX/FX Chains)
---   QuickChain export action wording fix 
+--   Added support for FX Chains in folders (both in filter and in folder to tag conversion)
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
