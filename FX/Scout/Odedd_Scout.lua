@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.27
+-- @version 1.0.28
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -17,7 +17,7 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   Added support for FX Chains in folders (both in filter and in folder to tag conversion)
+--   Fixed bug that prevented things to be added to recents (introduced in v1.0.26)
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
