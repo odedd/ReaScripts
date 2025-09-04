@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.29
+-- @version 1.0.30
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -17,7 +17,7 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   Can now open multiple Projects/Project templates
+--   Tag filtering by Shift/Ctrl/Alt clicking the tags themselves (see help)
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
