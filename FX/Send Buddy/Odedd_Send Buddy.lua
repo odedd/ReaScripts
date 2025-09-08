@@ -1311,7 +1311,7 @@ if OD_PrereqsOK({
             ImGui.SetKeyboardFocusHere(ctx, 0)
         end
         ImGui.SetNextItemWidth(ctx, w)
-        local rv, searchInput = ImGui.InputText(ctx, "##searchInput", app.temp.searchInput)
+        local rv, searchInput = ImGui.InputTextWithHint(ctx, "##searchInput", "Search", app.temp.searchInput)
 
         local h = select(2, ImGui.GetContentRegionAvail(ctx))
         local maxSearchResults = math.floor(h / (fontLineHeight))
