@@ -250,11 +250,12 @@ if OD_PrereqsOK({
 
     function app.drawMixer()
         local ctx = app.gui.ctx
+        -- if app.settings.current.globalShortcuts and not ImGui.IsWindowFocused(app.gui.ctx, ImGui.FocusedFlags_RootAndChildWindows) then 
         local altPressed = OD_IsGlobalKeyDown(OD_KEYCODES.ALT, false, -60)
         local ctrlPressed = OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL, false, -60)
         local macCtrlPressed = _OD_ISMAC and OD_IsGlobalKeyDown(OD_KEYCODES.STARTKEY, false, -60)
         local shiftPressed = OD_IsGlobalKeyDown(OD_KEYCODES.SHIFT, false, -60)
-
+        -- end
         app.db:sync()
         app.gui:pushFont(app.gui.st.fonts.default, 'small')
 
@@ -1225,6 +1226,7 @@ if OD_PrereqsOK({
     end
 
     function app.isShortcutPressed(key)
+        -- if not app.settings.current.globalShortcuts and not ImGui.IsWindowFocused(app.gui.ctx, ImGui.FocusedFlags_RootAndChildWindows) then return false end
         if app.settings.current.shortcuts[key] and app.settings.current.shortcuts[key].key == -1 then return false end
         return app.settings.current.shortcuts[key] and OD_IsGlobalKeyPressed(app.settings.current.shortcuts[key].key) and
             OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL) == app.settings.current.shortcuts[key].ctrl
@@ -1620,6 +1622,11 @@ if OD_PrereqsOK({
                 })
 
             ImGui.SeparatorText(ctx, 'Shortcuts')
+            -- app.settings.current.globalShortcuts = app.gui:setting('checkbox', T.SETTINGS.GLOBAL_SHORTCUTS
+            --     .LABEL, T.SETTINGS.GLOBAL_SHORTCUTS.HINT, app.settings.current.globalShortcuts)
+            ImGui.BeginDisabled(ctx)
+            ImGui.TextWrapped(ctx, T.GLOBAL_SHORTCUTS_EXPLANATION)
+            ImGui.EndDisabled(ctx)
             local resetCounter = false
             app.settings.current.shortcuts.closeScript, resetCounter = app.gui:setting('shortcut',
                 T.SETTINGS.SHORTCUTS.CLOSE_SCRIPT.LABEL,

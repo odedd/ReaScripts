@@ -14,6 +14,10 @@ T.SETTINGS = {
         LABEL = 'Folder name',
         HINT = 'If one does not exist, it will be created when adding sends.',
     },
+    GLOBAL_SHORTCUTS = {
+        LABEL = 'Global shortcuts',
+        HINT = ('Should shortcuts work when %s is not in focus.?'):format(Scr.name),
+    },
     FOLLOW_SELECTED_TRACK = {
         LABEL = 'Follow selected track',
         HINT = ('Change track in %s when a new track is selected.'):format(Scr.name),
@@ -98,6 +102,8 @@ T.AUTO_MODE_DESCRIPTIONS = {
     [AUTO_MODE.WRITE] = { order = 6, label = 'Write', description = 'Record fader positions to armed envelopes' },
 }
 
+T.GLOBAL_SHORTCUTS_EXPLANATION = [[Global shortcuts work throughout Reaper regardless of focus.
+Choose shortcuts that won't conflict with other actions.]]
 T.ERROR = {
     NO_DOCK = ([[
 No previous dock found.
