@@ -365,11 +365,12 @@ function GetMediaFiles()
                     local sources = item:findAllChunksByName("SOURCE")
                     for s, source in ipairs(sources) do
                         local sourceType = source:getParam(1):getString()
-                        if sourceType ~= 'WAVE' then break end
+                        if ALL_FORMATS[sourceType] == nil then break end
+                        if ALL_FORMATS[sourceType].type == 'INCOMPATIBLE' then break end
                         local fileNodes = source:findAllNodesByName("FILE")
                         assert(fileNodes ~= nil, 'Frozen file not found')
                         local filename = fileNodes[1]:getParam(1):getString()
-                        filename = OD_GetRelativeOrAbsoluteFile(filename, Op.app.projPath) -- convert path to relative if possible, to match the mediaFiles table
+                        -- filename = filename -- convert path to relative if possible, to match the mediaFiles table
                         Op.app.logger:logDebug('Found frozen file', filename)
                         Op.app.mediaFiles[filename] = nil
                         addMediaFile(filename, FILE_TYPES.AUDIO, true)
@@ -581,8 +582,8 @@ function MinimizeAndApplyMedia()
 
             -- Set the position and length for the new item
             -- r.SetMediaItemPosition(oc.newItem, oc.startTime + oc.section_offset - oc.startpadding, false)
-            r.SetMediaItemPosition(oc.newItem, oc.startTime - oc.startpadding, false)
-            r.SetMediaItemLength(oc.newItem, ocLength, false)
+            r.SetMediaItemPosition(oc.newItem, OD_Round(oc.startTime - oc.startpadding,9), false)
+            r.SetMediaItemLength(oc.newItem, OD_Round(ocLength,9), false)
             r.SetMediaItemInfo_Value(oc.newItem, "D_FADEINLEN", 0)
             r.SetMediaItemInfo_Value(oc.newItem, "D_FADEOUTLEN", 0)
             r.SetMediaItemInfo_Value(oc.newItem, "D_FADEINLEN_AUTO", -1)
@@ -743,30 +744,32 @@ function MinimizeAndApplyMedia()
                     local iitStart = reaper.GetMediaItemInfo_Value(itemInTrack, "D_POSITION")
                     local iitEnd = iitStart + reaper.GetMediaItemInfo_Value(itemInTrack, "D_LENGTH")
                     local selectedIIT = selItemGUID[reaper.BR_GetMediaItemGUID(itemInTrack)] or false
+                    local failed = false
                     -- do not compare item with itself, compare only with unselected items
                     if itemInTrack ~= selItems[i] and not selectedIIT then
                         ---- Cases: ----
 
-                        if iitStart >= startTime and iitEnd <= endTime then     -- checked item is contained
+                        if OD_Round(iitStart, 9) >= OD_Round(startTime, 9) and OD_Round(iitEnd, 9) <= OD_Round(endTime, 9) then -- checked item is contained
                             -- Store items in table for deletion after item iteration finishes
                             toDelete[#toDelete + 1] = { track = track, item = itemInTrack }
-                        elseif iitStart >= startTime and iitStart < endTime and iitEnd > endTime then     -- checked item touches item's End
+                        elseif OD_Round(iitStart, 9) >= OD_Round(startTime, 9) and OD_Round(iitStart, 9) < OD_Round(endTime, 9) and OD_Round(iitEnd, 9) > OD_Round(endTime, 9) then -- checked item touches item's End
                             reaper.SetMediaItemSelected(itemInTrack, true)
-                            reaper.ApplyNudge(0, 1, 1, 1, endTime, false, 0)
+                            reaper.ApplyNudge(0, 1, 1, 1, OD_Round(endTime, 9), false, 0)
                             reaper.SetMediaItemSelected(itemInTrack, false)
                             -- remove fade in of trimmed item
                             reaper.SetMediaItemInfo_Value(itemInTrack, "D_FADEINLEN", 0)
-                        elseif iitEnd > startTime and iitEnd <= endTime and iitStart < startTime then     -- checked item touches item's Start
+                        elseif OD_Round(iitEnd, 9) > OD_Round(startTime, 9) and OD_Round(iitEnd, 9) <= OD_Round(endTime, 9) and OD_Round(iitStart, 9) < OD_Round(startTime, 9) then -- checked item touches item's Start
                             reaper.SetMediaItemSelected(itemInTrack, true)
                             reaper.ApplyNudge(0, 1, 3, 1, startTime, false, 0)
                             reaper.SetMediaItemSelected(itemInTrack, false)
                             -- remove fade out of trimmed item
                             reaper.SetMediaItemInfo_Value(itemInTrack, "D_FADEOUTLEN", 0)
-                        elseif iitStart < startTime and iitEnd > endTime then     -- checked item encloses selected item
+                        elseif OD_Round(iitStart, 9) < OD_Round(startTime, 9) and OD_Round(iitEnd, 9) > OD_Round(endTime, 9) then -- checked item encloses selected item
                             local new_item = reaper.SplitMediaItem(itemInTrack, startTime)
-                            reaper.SetMediaItemSelected(new_item, true)
-                            reaper.ApplyNudge(0, 1, 1, 1, endTime, false, 0)
-                            reaper.SetMediaItemSelected(new_item, false)
+                                -- raise('encloses selected item')
+                                reaper.SetMediaItemSelected(new_item, true)
+                                reaper.ApplyNudge(0, 1, 1, 1, endTime, false, 0)
+                                reaper.SetMediaItemSelected(new_item, false)
                             -- checked item has nothing to do with selected item
                         else
                             -- do nothing
@@ -994,6 +997,11 @@ function MinimizeAndApplyMedia()
 
                     r.SetMediaItemTake_Source(oc.take, newSrc)
                     r.SetMediaItemTakeInfo_Value(oc.take, "D_STARTOFFS", oc.newItemPosition)
+                    local rv, chunk = r.GetItemStateChunk(oc.item, '', false)
+                    if rv and chunk:match('FREEZE .-%s.-%s(.-)\n') then 
+                        chunk = chunk:gsub('(FREEZE .-%s.-%s).-(\n)','%1'..tostring(oc.newItemPosition)..'%2')
+                        r.SetItemStateChunk(oc.item, chunk, false)
+                    end
                     local _, oldTakeName = r.GetSetMediaItemTakeInfo_String(oc.take, 'P_NAME', '', false)
                     if oldTakeName:match(fileInfo.filenameWithoutPath) then
                         local _, newBasename, newExt = OD_DissectFilename(uniqueName)
@@ -1127,11 +1135,11 @@ function Revert(cancel)
     else
         Op.app.logger:logError('Temporary RPP backup file not restored', Op.app.revert.tmpBackupFileName)
     end
-    r.reduce_open_files(2) -- seems ok. might be needed for win, but I tested and I'm pretty sure it's not needed.
     -- delete files created but not used
     for filename, fileInfo in pairs(Op.app.mediaFiles) do
         if fileInfo.newfilename and fileInfo.status ~= STATUS.DONE then
             if OD_FileExists(fileInfo.newfilename) then
+                r.reduce_open_files(2) 
                 local success = os.remove(fileInfo.newfilename)
                 if success then
                     Op.app.logger:logInfo('Temporary file deleted', fileInfo.newfilename)
@@ -1153,6 +1161,7 @@ function Revert(cancel)
 end
 
 function Cancel(msg)
+    -- r.ShowConsoleMsg(msg)
     Op.app.logger:logError('-- Cancel(msg)', msg)
     if msg then
         Op.app:msg(msg .. T.CANCEL_RELOAD, 'Operation Cancelled')
@@ -1350,7 +1359,7 @@ function DeleteOriginals()
                 coroutine.yield(stat)
                 if OS_is.win then
                     if settings.deleteMethod ~= DELETE_METHOD.MOVE_TO_TRASH then
-                        r.reduce_open_files(2) -- windows won't delete/move files that are in use
+                        if OS_is.win then r.reduce_open_files(2) end -- windows won't delete/move files that are in use
                         if os.remove(fileInfo.filenameWithPath) then
                             Op.app.logger:logInfo('Delete successful', fileInfo.filenameWithPath)
                             Op.app.usedFiles[fileInfo.filenameWithPath] = nil
@@ -1533,9 +1542,10 @@ function FixFrozenTracksFileAssociations()
                 local sources = item:findAllChunksByName("SOURCE")
                 for s, source in ipairs(sources) do
                     local sourceType = source:getParam(1):getString()
-                    if sourceType ~= 'WAVE' then break end
+                    if ALL_FORMATS[sourceType] == nil then break end
+                    if ALL_FORMATS[sourceType].type == 'INCOMPATIBLE' then break end
                     local filename = source:findAllNodesByName("FILE")[1]:getParam(1):getString()
-                    filename = OD_GetRelativeOrAbsoluteFile(filename, Op.app.projPath) -- convert path to relative if possible, to match the mediaFiles table
+                    -- filename = OD_GetRelativeOrAbsoluteFile(filename, Op.app.projPath) -- convert path to relative if possible, to match the mediaFiles table
                     local fileInfo = Op.app.mediaFiles[filename]
                     local newFilename = fileInfo.newfilename or filename
 
@@ -1549,6 +1559,7 @@ function FixFrozenTracksFileAssociations()
                         newFilename = targetPathInBackupDestination ..
                             unqBasename .. (unqExt and ('.' .. unqExt) or '')
                     end
+                    newFilename = OS_is.win and newFilename:gsub('/', '\\') or newFilename
                     Op.app.logger:logDebug('Fixing frozen file association', filename .. ' -> ' .. newFilename)
                     source:findAllNodesByName("FILE")[1]:getParam(1):setString(newFilename)
                     if filename ~= newFilename then filenameUpdated = true end

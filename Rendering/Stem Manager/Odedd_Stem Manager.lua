@@ -1,6 +1,6 @@
 -- @description Stem Manager
 -- @author Oded Davidov
--- @version 1.8.0
+-- @version 1.8.4
 -- @donation https://paypal.me/odedda
 -- @link https://forum.cockos.com/showthread.php?t=268512
 -- @license GNU GPL v3
@@ -20,8 +20,7 @@
 --
 --   This is where Stem Manager comes in.
 -- @changelog
---   Preset "directory" filed now gets properly loaded with preset.
---   Added ability to play sound after rendering.
+--   Internal Changes
 
 local r = reaper
 local p = debug.getinfo(1, "S").source:match [[^@?(.*[\/])[^\/]-$]]
@@ -576,7 +575,7 @@ end]]):gsub('$(%w+)', {
                                 App.render_count)
                             -- for some reason selecting in windows requires region manager window to remain open for some time
                             -- (this is a workaround until proper api support for selecting regions exists)
-                            if OS_is.win then
+                            -- if OS_is.win then
                                 OD_SelectMarkers(rsg.selected_markers, false)
                                 local t = os.clock()
                                 while (os.clock() - t < 0.5) do
@@ -584,9 +583,9 @@ end]]):gsub('$(%w+)', {
                                         App.render_count)
                                 end
                                 r.Main_OnCommand(40326, 0) -- close region/marker manager
-                            else
-                                OD_SelectMarkers(rsg.selected_markers)
-                            end
+                            -- else
+                            --     OD_SelectMarkers(rsg.selected_markers)
+                            -- end
                         elseif render_preset.boundsflag == RB_SELECTED_REGIONS and rsg.select_regions then
                             -- window must be given an opportunity to open (therefore yielded) for the selection to work
 
@@ -595,7 +594,7 @@ end]]):gsub('$(%w+)', {
                                 App.render_count)
                             -- for some reason selecting in windows requires region manager window to remain open for some time
                             -- (this is a workaround until proper api support for selecting regions exists)
-                            if OS_is.win then
+                            -- if OS_is.win then
                                 OD_SelectRegions(rsg.selected_regions, false)
                                 local t = os.clock()
                                 while (os.clock() - t < 0.5) do
@@ -603,9 +602,9 @@ end]]):gsub('$(%w+)', {
                                         App.render_count)
                                 end
                                 r.Main_OnCommand(40326, 0) -- close region/marker manager
-                            else
-                                OD_SelectRegions(rsg.selected_regions)
-                            end
+                            -- else
+                            --     OD_SelectRegions(rsg.selected_regions)
+                            -- end
                         elseif render_preset.boundsflag == RB_TIME_SELECTION and rsg.make_timeSel then
                             r.GetSet_LoopTimeRange2(0, true, false, rsg.timeSelStart, rsg.timeSelEnd, 0) -- , boolean isLoop, number start, number end, boolean allowautoseek)
                         end
@@ -698,7 +697,7 @@ end]]):gsub('$(%w+)', {
             if save_marker_selection and r.APIExists('JS_Localize') then
                 OD_OpenAndGetRegionManagerWindow()
                 coroutine.yield('Restoring marker/region selection', 1, 1)
-                if OS_is.win then
+                -- if OS_is.win then
                     -- for some reason selecting in windows requires region manager window to remain open for some time
                     -- (this is a workaround until proper api support for selecting regions exists)
                     OD_SelectRegionsOrMarkers(saved_markeregion_selection, false)
@@ -707,9 +706,9 @@ end]]):gsub('$(%w+)', {
                         coroutine.yield('Restoring marker/region selection', idx, App.render_count)
                     end
                     r.Main_OnCommand(40326, 0) -- close region/marker manager
-                else
-                    OD_SelectRegionsOrMarkers(saved_markeregion_selection)
-                end
+                -- else
+                --     OD_SelectRegionsOrMarkers(saved_markeregion_selection)
+                -- end
             end
             if save_time_selection then
                 r.GetSet_LoopTimeRange2(0, true, false, saved_time_selection[1], saved_time_selection[2], 0) -- , boolean isLoop, number start, number end, boolean allowautoseek)
