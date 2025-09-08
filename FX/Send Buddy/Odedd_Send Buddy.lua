@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Internal change for supporting future scripts
+--   Updated to ReaImGui v0.10.0.1 (now required)
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -42,12 +42,12 @@ r.ClearConsole()
 OD_Init()
 
 if OD_PrereqsOK({
-        reaimgui_version = '0.9.1',
+        reaimgui_version = '0.10.0',
         js_version = 1.310,    -- required for JS_Window_Find and JS_VKeys_GetState
         reaper_version = 7.03, -- required for set_action_options
     }) then
     package.path = reaper.ImGui_GetBuiltinPath() .. '/?.lua'
-    ImGui = require 'imgui' '0.9.1'
+    ImGui = require 'imgui' '0.10.0'
 
     dofile(p .. 'lib/Constants.lua')
     dofile(p .. 'lib/Settings.lua')
@@ -256,7 +256,7 @@ if OD_PrereqsOK({
         local shiftPressed = OD_IsGlobalKeyDown(OD_KEYCODES.SHIFT, false, -60)
 
         app.db:sync()
-        ImGui.PushFont(ctx, app.gui.st.fonts.small)
+        app.gui:pushFont(app.gui.st.fonts.default, 'small')
 
         local drawSend = function(s, parts)
             local drawDummy = function(w, col, h)
@@ -297,8 +297,8 @@ if OD_PrereqsOK({
                 end
                 if app.temp.confirmation[confirmationKey] == nil then -- not else because then I miss a frame after the timeout just passed
                     app.gui:pushColors(app.gui.st.col.buttons.deleteSend.initial)
-                    ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
-                    if ImGui.Button(ctx, ICONS.TRASH .. '##deleteSend', w) then
+                    app.gui:pushFont(app.gui.st.fonts.icons, 'small')
+                    if ImGui.Button(ctx, ICONS.TRASH .. '##deleteSend', w, app.gui.TEXT_BASE_HEIGHT) then
                         app.temp.confirmation[confirmationKey] = reaper.time_precise()
                     end
                     app:setHoveredHint('main',
@@ -489,8 +489,8 @@ if OD_PrereqsOK({
                     ImGui.BeginDisabled(ctx)
                 end
                 app.gui:pushColors(app.gui.st.col.buttons.mono[s.mono])
-                ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
-                if ImGui.Button(ctx, (s.mono and ICONS.MONO or ICONS.STEREO) .. '##mono' .. s.order, w) then
+                app.gui:pushFont(app.gui.st.fonts.icons, 'small')
+                if ImGui.Button(ctx, (s.mono and ICONS.MONO or ICONS.STEREO) .. '##mono' .. s.order, w, app.gui.TEXT_BASE_HEIGHT) then
                     s:setMono(not s.mono)
                 end
                 app:setHoveredHint('main',
@@ -524,8 +524,8 @@ if OD_PrereqsOK({
             end
             local drawPhase = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.polarity[s.polarity])
-                ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
-                if ImGui.Button(ctx, ICONS.POLARITY .. '##polarity' .. s.order, w) then
+                app.gui:pushFont(app.gui.st.fonts.icons, 'small')
+                if ImGui.Button(ctx, ICONS.POLARITY .. '##polarity' .. s.order, w, app.gui.TEXT_BASE_HEIGHT) then
                     s:setPolarity(not s.polarity)
                 end
                 app:setHoveredHint('main', s.name .. ' - Invert polarity')
@@ -535,7 +535,7 @@ if OD_PrereqsOK({
             local drawGoToDestTrack = function(w)
                 if s.type == SEND_TYPE.SEND or s.type == SEND_TYPE.RECV then
                     app.gui:pushColors(app.gui.st.col.buttons.scrollToTrack)
-                    ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                    app.gui:pushFont(app.gui.st.fonts.icons, 'small')
                     local icon = s.type == SEND_TYPE.SEND and ICONS.ARROW_RIGHT or ICONS.ARROW_LEFT
                     if ImGui.Button(ctx, icon .. '##goToDest' .. s.order, w) then
                         s:goToDestTrack()
@@ -551,8 +551,8 @@ if OD_PrereqsOK({
             local drawListen = function(w, listenMode)
                 local state = s:isListening()
                 app.gui:pushColors(app.gui.st.col.buttons.listen[state and s.track.sendListenMode or listenMode][state])
-                ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
-                if ImGui.Button(ctx, ICONS.HEADPHONES .. '##listen' .. s.order, w) then
+                app.gui:pushFont(app.gui.st.fonts.icons, 'small')
+                if ImGui.Button(ctx, ICONS.HEADPHONES .. '##listen' .. s.order, w, app.gui.TEXT_BASE_HEIGHT) then
                     s:toggleListen(listenMode)
                 end
                 app:setHoveredHint('main',
@@ -887,7 +887,7 @@ if OD_PrereqsOK({
                             deleteHint):gsub('^%l', string.upper)))
                 end
                 app.gui:pushColors(app.gui.st.col.insert.add)
-                ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                app.gui:pushFont(app.gui.st.fonts.icons, 'small')
                 if ImGui.Button(ctx, "P##", w) then
                     app.temp.addFxToSend = s
                     app.temp.addSendType = nil
@@ -1001,7 +1001,7 @@ if OD_PrereqsOK({
                 end
 
                 ImGui.BeginGroup(ctx)
-                ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                app.gui:pushFont(app.gui.st.fonts.icons, 'small')
                 app.gui:pushStyles(app.gui.st.vars.addSendButton)
                 app.gui:pushColors(app.gui.st.col.buttons.addSend)
                 local clicked = false
@@ -1434,7 +1434,7 @@ if OD_PrereqsOK({
                 end
 
                 if result.group == FAVORITE_GROUP then
-                    ImGui.PushFont(ctx, app.gui.st.fonts.icons_small)
+                    app.gui:pushFont(app.gui.st.fonts.icons, 'small')
                     app.gui:pushColors(app.gui.st.col.search.favorite)
                     ImGui.Text(ctx, ICONS.STAR)
                     app.gui:popColors(app.gui.st.col.search.favorite)
@@ -1542,9 +1542,8 @@ if OD_PrereqsOK({
         end
     end
 
-    function app.iconButton(ctx, icon, colClass, font)
-        local font = font or app.gui.st.fonts.icons_large
-        ImGui.PushFont(ctx, font)
+    function app.iconButton(ctx, icon, colClass)
+        app.gui:pushFont(app.gui.st.fonts.icons, 'large')
         local x, y = ImGui.GetCursorPos(ctx)
         local w = select(1, ImGui.CalcTextSize(ctx, ICONS[(icon):upper()])) +
             ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding) * 2
@@ -1705,7 +1704,7 @@ if OD_PrereqsOK({
             local windowEnd = app.gui.mainWindow.size[1] - ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) -
                 ((ImGui.GetScrollMaxY(app.gui.ctx) > 0) and ImGui.GetStyleVar(ctx, ImGui.StyleVar_ScrollbarSize) or 0)
             ImGui.SameLine(ctx, windowEnd)
-            ImGui.PushFont(ctx, app.gui.st.fonts.icons_large)
+            app.gui:pushFont(app.gui.st.fonts.icons, 'large')
             local clicked = nil
             local prevX = ImGui.GetCursorPosX(ctx) - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
             for i, btn in ipairs(buttons) do
@@ -1724,14 +1723,16 @@ if OD_PrereqsOK({
 
         local ctx = app.gui.ctx
         ImGui.BeginGroup(ctx)
-        ImGui.PushFont(ctx, app.gui.st.fonts.large_bold)
+        app.gui:pushFont(app.gui.st.fonts.bold, 'large')
+
         app.gui:pushColors(app.gui.st.col.title)
         ImGui.AlignTextToFramePadding(ctx)
         ImGui.Text(ctx, app.scr.name)
         app:setHoveredHint('main', app.scr.name .. ' v' .. app.scr.version .. ' by ' .. app.scr.author)
         app.gui:popColors(app.gui.st.col.title)
         ImGui.PopFont(ctx)
-        ImGui.PushFont(ctx, app.gui.st.fonts.large)
+        app.gui:pushFont(app.gui.st.fonts.default, 'large')
+
         ImGui.SameLine(ctx)
         if app.db.track and next(app.db.track) then
             ImGui.SetCursorPosX(ctx, ImGui.GetCursorPosX(ctx) + ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2)
@@ -1807,7 +1808,7 @@ if OD_PrereqsOK({
         local status, col = app:getHint(window)
         ImGui.Separator(ctx)
         if col then app.gui:pushColors(app.gui.st.col[col]) end
-        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + select(2,ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding))*2)
+        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx) + select(2, ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding)) * 2)
         ImGui.Text(ctx, status)
         if col then app.gui:popColors(app.gui.st.col[col]) end
         app:setHint(window, '')
@@ -1818,7 +1819,7 @@ if OD_PrereqsOK({
         local w = 100 * app.settings.current.uiScale
         local gripWidth = 12 * app.settings.current.uiScale
         local minZoom, maxZoom = 45, 110
-        ImGui.PushFont(ctx, app.gui.st.fonts.small)
+        app.gui:pushFont(app.gui.st.fonts.default, 'small')
         app.gui:pushStyles(app.gui.st.vars.zoomSlider)
         app.gui:pushColors(app.gui.st.col.zoomSlider)
         ImGui.SetCursorPos(ctx,
@@ -1954,8 +1955,7 @@ if OD_PrereqsOK({
         app.db:syncUIVol()
         app.gui:pushColors(app.gui.st.col.main)
         app.gui:pushStyles(app.gui.st.vars.main)
-        ImGui.PushFont(ctx, app.gui.st.fonts.default)
-
+        app.gui:pushFont(app.gui.st.fonts.default)
         app.handlePageSwitch()
         app.open = app.drawMainWindow()
         ImGui.PopFont(ctx)

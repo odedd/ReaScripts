@@ -1,27 +1,31 @@
 -- @noindex
-package.path = r.ImGui_GetBuiltinPath() .. '/?.lua'
-ImGui = require 'imgui' '0.9.1'
-
 SM_Gui = OD_Gui:new({
 
 })
 
 SM_Gui.init = function(self, fonts)
-    OD_Gui.addFont(self, 'vertical', 'Resources/Fonts/Cousine-90deg.otf', 11)
+    -- OD_Gui.addFont(self, 'vertical', 'Resources/Fonts/Cousine-90deg.otf', 11)
 
-    local small = 16
-    local default = 18
-    local large = 22
-    self:createFonts({
-        default = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = default },
-        small = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = small },
-        large = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = large },
-        large_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = large },
-        icons_small = { file = 'Resources/Fonts/Icons-Regular.otf', size = small },
-        icons_large = { file = 'Resources/Fonts/Icons-Regular.otf', size = large }
-    })
+    -- local small = 16
+    -- local default = 18
+    -- local large = 22
+    -- self:createFonts({
+    --     default = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = default },
+    --     small = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = small },
+    --     large = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = large },
+    --     large_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = large },
+    --     icons_small = { file = 'Resources/Fonts/Icons-Regular.otf', size = small },
+    --     icons_large = { file = 'Resources/Fonts/Icons-Regular.otf', size = large }
+    -- })
 
-    OD_Gui.init(self, false)
+    self:createFontsImGui010({
+        default = { file = 'Resources/Fonts/Cousine-Regular.ttf' },
+        vertical = { file = 'Resources/Fonts/Cousine-90deg.otf'},
+        bold = { file = 'Resources/Fonts/Cousine-Regular.ttf', flags = ImGui.FontFlags_Bold },
+        icons = { file = 'Resources/Fonts/Icons-Regular.otf' },
+    }, { default = 18, small = 16, large = 22 })
+
+    OD_Gui.init(self)
 
     self.st.basecolors = {
         darkestBG = 0x131313ff,
@@ -323,9 +327,9 @@ SM_Gui.init = function(self, fonts)
         main = {
             [ImGui.Col_Tab] = self.st.basecolors.darkHovered,
             [ImGui.Col_TabHovered] = self.st.basecolors.darkActive,
-            [ImGui.Col_TabActive] = self.st.basecolors.darkActive,
-            [ImGui.Col_TabUnfocused] = self.st.basecolors.darkBG,
-            [ImGui.Col_TabUnfocusedActive] = self.st.basecolors.darkBG,
+            [ImGui.Col_TabSelected] = self.st.basecolors.darkActive,
+            [ImGui.Col_TabDimmed] = self.st.basecolors.darkBG,
+            [ImGui.Col_TabDimmedSelected] = self.st.basecolors.darkBG,
             [ImGui.Col_FrameBg] = self.st.basecolors.darkBG,
             [ImGui.Col_FrameBgHovered] = self.st.basecolors.darkHovered,
             [ImGui.Col_FrameBgActive] = self.st.basecolors.darkActive,
@@ -401,14 +405,16 @@ SM_Gui.init = function(self, fonts)
     end
 
     self.updateCachedTextHeightsToScale = function(self)
-        ImGui.PushFont(self.ctx, self.st.fonts.vertical)
+        self:pushFont(self.st.fonts.vertical, 'small')
         self.VERTICAL_TEXT_BASE_WIDTH, self.VERTICAL_TEXT_BASE_HEIGHT = ImGui.CalcTextSize(self.ctx, 'A')
         self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET = -2
         ImGui.PopFont(self.ctx)
+        OD_Gui.updateCachedTextHeightsToScale(self)
     end
 
     self.updateSizesToScale = function(self)
-        ImGui.PushFont(self.ctx, self.st.fonts.default) -- hint font! important!
+        self:pushFont(self.st.fonts.default)
+        -- local baseHeight = ImGui.GetTextLineHeightWithSpacing(self.ctx)
         self.st.sizes = {
             sendTypeSeparatorWidth = self.TEXT_BASE_HEIGHT,
             sendTypeSeparatorHeight = 95 * self.app.settings.current.uiScale,
@@ -425,14 +431,21 @@ SM_Gui.init = function(self, fonts)
             local change = scale / (self.scale or scale) -- return change to allow for scaling of other elements (eg. Resize window)
             self.scale = scale
 
-            self:reAddFonts()
-
+            -- self:reAddFonts()
+            self:updateFontsToScale()
             self:updateVarsToScale()
             self:pushStyles(self.st.vars.main)
-            OD_Gui.recalculateZoom(self, scale)
             self:updateCachedTextHeightsToScale()
             self:updateSizesToScale()
             self:popStyles(self.st.vars.main)
+
+
+            -- self:updateVarsToScale()
+            -- self:pushStyles(self.st.vars.main)
+            -- OD_Gui.recalculateZoom(self, scale)
+            -- self:updateCachedTextHeightsToScale()
+            -- self:updateSizesToScale()
+            -- self:popStyles(self.st.vars.main)
             return change
         end
         return 1
@@ -453,7 +466,7 @@ SM_Gui.init = function(self, fonts)
 
     self.drawVerticalText = function(self, drawList, text, x, y, color, yIsTop, xIsRight)
         local color = color or 0xffffffff
-        ImGui.PushFont(self.ctx, self.st.fonts.vertical)
+        self:pushFont(self.st.fonts.vertical, 'small')
         local letterspacing = (self.VERTICAL_TEXT_BASE_HEIGHT + self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET)
         if yIsTop then
             y = y + letterspacing * #text
