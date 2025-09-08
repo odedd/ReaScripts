@@ -29,15 +29,45 @@ function OD_Gui:createFonts(fonts)
     end
 end
 
+function OD_Gui:createFontsImGui010(fonts, sizes)
+    for k, font in pairs(fonts) do
+        self:addFontImGui010(k, font.file, sizes, font.flags)
+    end
+end
+
 function OD_Gui:addFont(key, file, size, recalculation)
     if not recalculation then
         self.originalFonts = self.originalFonts or {}
         self.originalFonts[key] = { file = file, size = size } -- save for recalculating zoom later
     end
     self.st.fonts = self.st.fonts or {}
-    local scale =  self.app.settings.current.uiScale 
+    local scale = self.app.settings.current.uiScale
     self.st.fonts[key] = r.ImGui_CreateFont(OD_LocalOrCommon(file, self.app.scr.dir), math.floor(size * scale))
 end
+
+function OD_Gui:addFontImGui010(key, file, sizes, flags)
+    self.st.fonts = self.st.fonts or {}
+    if file then
+        self.st.fonts[key] = { font = r.ImGui_CreateFontFromFile(OD_LocalOrCommon(file, self.app.scr.dir), 0, flags), sizes = sizes }
+    else
+        self.st.fonts[key] = { font = r.ImGui_CreateFont(OD_LocalOrCommon('sans-serif', self.app.scr.dir), flags), sizes = sizes }
+    end
+end
+
+function OD_Gui:updateFontsToScale()
+    local scale = self.scale
+    for fontName, font in pairs(self.st.fonts) do
+        font.scaledSizes = {}
+        for sizeKey, size in pairs(font.sizes) do
+            font.scaledSizes[sizeKey] = size * scale
+        end
+    end
+end
+
+-- function OD_Gui:getNormalizedScale(scale, font)
+--     local size = self.originalFonts.default.size
+--     return scale * (math.floor(size * scale) / (size * scale))
+-- end
 
 function OD_Gui:reAddFonts()
     for key, font in pairs(self.originalFonts) do
@@ -47,32 +77,10 @@ function OD_Gui:reAddFonts()
     end
 end
 
-function OD_Gui:init(addDefaultFonts)
-    local addDefaultFonts = (addDefaultFonts == nil) and (not self.st.fonts) or addDefaultFonts
-    if addDefaultFonts then
-        local small = 16
-        local default = 18
-        local medium = 20
-        local large = 22
-        self:createFonts({
-            default = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = default },
-            small = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = small },
-            medium = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = medium },
-            large = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = large },
-            bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = default },
-            small_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = small },
-            medium_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = medium },
-            large_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = large },
-            icons = { file = 'Resources/Fonts/Icons-Regular.otf', size = default },
-            icons_small = { file = 'Resources/Fonts/Icons-Regular.otf', size = small },
-            icons_medium = { file = 'Resources/Fonts/Icons-Regular.otf', size = medium },
-            icons_large = { file = 'Resources/Fonts/Icons-Regular.otf', size = large }
-        })
-    end
-
-    self.ctx = r.ImGui_CreateContext(self.app.scr.context_name) --, reaper.ImGui_ConfigFlags_DockingEnable())
+function OD_Gui:init()
+    self.ctx = r.ImGui_CreateContext(self.app.scr.context_name, ImGui.ConfigFlags_NavEnableKeyboard) --, reaper.ImGui_ConfigFlags_DockingEnable())
     for k, font in pairs(self.st.fonts) do
-        r.ImGui_Attach(self.ctx, font)
+        r.ImGui_Attach(self.ctx, font.font)
     end
     self.draw_list = r.ImGui_GetWindowDrawList(self.ctx)
     self.keyModCtrlCmd = (OS_is.mac or OS_is.mac_arm) and r.ImGui_Mod_Super() or r.ImGui_Mod_Ctrl()
@@ -85,67 +93,48 @@ function OD_Gui:init(addDefaultFonts)
             status = ""
         }
     }
-
-    self.icons = {
-        caution = r.ImGui_CreateImage(OD_LocalOrCommon('Resources/Icons/caution.png', self.app.scr.dir)),
-        error = r.ImGui_CreateImage(OD_LocalOrCommon('Resources/Icons/error.png', self.app.scr.dir))
-    }
-
-    r.ImGui_Attach(self.ctx, self.icons.caution)
-    r.ImGui_Attach(self.ctx, self.icons.error)
-
 end
 
 OD_Gui.recalculateZoom = function(self, scale)
     OD_Gui.updateCachedTextHeightsToScale(self)
 end
 
-OD_Gui.reloadZoomFonts = function(self) -- FIND A SMART WAY TO USE THIS
-    for key, font in pairs(self.originalFonts) do
-        r.ImGui_Detach(self.ctx, self.st.fonts[key])
-        self:addFont(key, font.file, font.size, true)
-        r.ImGui_Attach(self.ctx, self.st.fonts[key])
-    end
-    self:updateCachedTextHeightsToScale()
-end
-
 OD_Gui.updateCachedTextHeightsToScale = function(self)
-
     if self.st.fonts.default then
-        r.ImGui_PushFont(self.ctx, self.st.fonts.default)
-        self.TEXT_BASE_WIDTH, self.TEXT_BASE_HEIGHT = r.ImGui_CalcTextSize(self.ctx, 'A'),
-            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
-        r.ImGui_PopFont(self.ctx)
-    end
-    if self.st.fonts.small then
-        r.ImGui_PushFont(self.ctx, self.st.fonts.small)
-        self.TEXT_BASE_WIDTH_SMALL, self.TEXT_BASE_HEIGHT_SMALL = r.ImGui_CalcTextSize(self.ctx, 'A'),
-            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
-        r.ImGui_PopFont(self.ctx)
-    end
-    if self.st.fonts.medium then
-        r.ImGui_PushFont(self.ctx, self.st.fonts.medium)
-        self.TEXT_BASE_WIDTH_MEDIUM, self.TEXT_BASE_HEIGHT_MEDIUM = r.ImGui_CalcTextSize(self.ctx, 'A'),
-            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
-        r.ImGui_PopFont(self.ctx)
+        self:pushFont(self.st.fonts.default)
+        self.TEXT_BASE_WIDTH, self.TEXT_BASE_HEIGHT = ImGui.CalcTextSize(self.ctx, 'A'),
+            ImGui.GetTextLineHeightWithSpacing(self.ctx)
+        ImGui.PopFont(self.ctx)
+        if self.st.fonts.default.scaledSizes.small then
+            self:pushFont(self.st.fonts.default, 'small')
+            self.TEXT_BASE_WIDTH_SMALL, self.TEXT_BASE_HEIGHT_SMALL = ImGui.CalcTextSize(self.ctx, 'A'),
+                ImGui.GetTextLineHeightWithSpacing(self.ctx)
+            ImGui.PopFont(self.ctx)
+        end
+        if self.st.fonts.default.scaledSizes.medium then
+            self:pushFont(self.st.fonts.default, 'medium')
+            self.TEXT_BASE_WIDTH_MEDIUM, self.TEXT_BASE_HEIGHT_MEDIUM = ImGui.CalcTextSize(self.ctx, 'A'),
+                ImGui.GetTextLineHeightWithSpacing(self.ctx)
+            ImGui.PopFont(self.ctx)
+        end
+        if self.st.fonts.default.scaledSizes.large then
+            self:pushFont(self.st.fonts.default, 'large')
+            self.TEXT_BASE_WIDTH_LARGE, self.TEXT_BASE_HEIGHT_LARGE = ImGui.CalcTextSize(self.ctx, 'A'),
+                ImGui.GetTextLineHeightWithSpacing(self.ctx)
+            ImGui.PopFont(self.ctx)
+        end
     end
     if self.st.fonts.bold then
-        r.ImGui_PushFont(self.ctx, self.st.fonts.bold)
-        self.TEXT_BASE_WIDTH_BOLD, self.TEXT_BASE_HEIGHT_BOLD = r.ImGui_CalcTextSize(self.ctx, 'A'),
-            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
-        r.ImGui_PopFont(self.ctx)
-    end
-    if self.st.fonts.large then
-        r.ImGui_PushFont(self.ctx, self.st.fonts.large)
-        self.TEXT_BASE_WIDTH_LARGE, self.TEXT_BASE_HEIGHT_LARGE = r.ImGui_CalcTextSize(self.ctx, 'A'),
-            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
-        r.ImGui_PopFont(self.ctx)
-    end
-    if self.st.fonts.large_bold then
-        r.ImGui_PushFont(self.ctx, self.st.fonts.large_bold)
-        self.TEXT_BASE_WIDTH_LARGE_BOLD, self.TEXT_BASE_HEIGHT_LARGE_BOLD = r.ImGui_CalcTextSize(self.ctx, 'A'),
-            r.ImGui_GetTextLineHeightWithSpacing(self.ctx)
-        r.ImGui_PopFont(self.ctx)
+        self:pushFont(self.st.fonts.bold)
+        self.TEXT_BASE_WIDTH_BOLD, self.TEXT_BASE_HEIGHT_BOLD = ImGui.CalcTextSize(self.ctx, 'A'),
+            ImGui.GetTextLineHeightWithSpacing(self.ctx)
+        ImGui.PopFont(self.ctx)
+        if self.st.fonts.bold.scaledSizes.large then
+            self:pushFont(self.st.fonts.bold, 'large')
+            self.TEXT_BASE_WIDTH_LARGE_BOLD, self.TEXT_BASE_HEIGHT_LARGE_BOLD = ImGui.CalcTextSize(self.ctx, 'A'),
+                ImGui.GetTextLineHeightWithSpacing(self.ctx)
+            ImGui.PopFont(self.ctx)
+        end
     end
 end
 
@@ -171,6 +160,15 @@ function OD_Gui:popStyles(key)
     for k in pairs(key) do
         r.ImGui_PopStyleVar(self.ctx)
     end
+end
+
+function OD_Gui:pushFont(font, sizeKey)
+    local sizeKey = sizeKey or 'default'
+    r.ImGui_PushFont(self.ctx, font.font, math.ceil(font.scaledSizes[sizeKey]))
+end
+
+function OD_Gui:popFont()
+    r.ImGui_PopFont(self.ctx)
 end
 
 function OD_Gui:updateModKeys()

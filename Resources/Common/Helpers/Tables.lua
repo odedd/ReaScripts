@@ -37,6 +37,39 @@ function OD_Tablelength(T)
     return count
 end
 
+function OD_IsList(t)
+    if type(t) ~= "table" then
+        return false -- Not a table
+    end
+
+    local len = #t -- Get the "length" of the array part
+
+    -- If the table is empty (no keys at all), it can be considered a list
+    if len == 0 then
+        -- Check if table is actually empty or just has no numeric indices
+        for k, v in pairs(t) do
+            return false -- Table has keys but no numeric indices, so it's not a list
+        end
+        return true -- Table is truly empty
+    end
+
+    -- Check if all elements from 1 to len exist and are not nil
+    for i = 1, len do
+        if t[i] == nil then
+            return false -- Missing an element in the sequence
+        end
+    end
+
+    -- Check if there are any non-numeric keys or keys beyond 'len'
+    for k, v in pairs(t) do
+        if type(k) ~= "number" or k > len or k < 1 or math.floor(k) ~= k then
+            return false -- Found a non-numeric key, or a key outside the expected list range
+        end
+    end
+
+    return true -- All keys are consecutive positive integers
+end
+
 ------------------------------------------- --
 -- Pickle.lua
 -- A table serialization utility for lua

@@ -14,6 +14,47 @@ function OD_GetTrackFromGuid(project, guid)
     return nil
 end
 
+function OD_GetChildTracks(parentTrack)
+    local children = {}
+    local parentIndex = nil
+    local numTracks = r.CountTracks(0)
+    
+    -- Find the parent track index
+    for i = 0, numTracks - 1 do
+        if r.GetTrack(0, i) == parentTrack then
+            parentIndex = i
+            break
+        end
+    end
+    
+    if not parentIndex then return children end
+    
+    local parentDepth = r.GetMediaTrackInfo_Value(parentTrack, 'I_FOLDERDEPTH')
+    if parentDepth <= 0 then return children end -- Not a folder track
+    
+    local currentDepth = parentDepth
+    
+    -- Traverse tracks after the parent to find children
+    for i = parentIndex + 1, numTracks - 1 do
+        local track = r.GetTrack(0, i)
+        local trackDepth = r.GetMediaTrackInfo_Value(track, 'I_FOLDERDEPTH')
+        
+        -- Add this track as a child
+        table.insert(children, track)
+        
+        -- Update current depth
+        currentDepth = currentDepth + trackDepth
+        
+        -- If we've closed the folder, stop looking
+        if currentDepth <= 0 then
+            break
+        end
+    end
+    
+    return children
+end
+
+
 function OD_InsertTrackAtFolder(folderTrack)
     local folderDepthChange = 0
     local trackFound = false  -- found track, not necessary in a folder form
