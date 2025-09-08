@@ -23,7 +23,7 @@ SM_Gui.init = function(self, fonts)
         vertical = { file = 'Resources/Fonts/Cousine-90deg.otf'},
         bold = { file = 'Resources/Fonts/Cousine-Regular.ttf', flags = ImGui.FontFlags_Bold },
         icons = { file = 'Resources/Fonts/Icons-Regular.otf' },
-    }, { default = 18, small = 16, large = 22 })
+    }, { default = 18, small = 16, large = 22, tiny = 12 })
 
     OD_Gui.init(self)
 
@@ -405,7 +405,7 @@ SM_Gui.init = function(self, fonts)
     end
 
     self.updateCachedTextHeightsToScale = function(self)
-        self:pushFont(self.st.fonts.vertical, 'small')
+        self:pushFont(self.st.fonts.vertical, 'tiny')
         self.VERTICAL_TEXT_BASE_WIDTH, self.VERTICAL_TEXT_BASE_HEIGHT = ImGui.CalcTextSize(self.ctx, 'A')
         self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET = -2
         ImGui.PopFont(self.ctx)
@@ -466,7 +466,7 @@ SM_Gui.init = function(self, fonts)
 
     self.drawVerticalText = function(self, drawList, text, x, y, color, yIsTop, xIsRight)
         local color = color or 0xffffffff
-        self:pushFont(self.st.fonts.vertical, 'small')
+        self:pushFont(self.st.fonts.vertical, 'tiny')
         local letterspacing = (self.VERTICAL_TEXT_BASE_HEIGHT + self.VERTICAL_TEXT_BASE_HEIGHT_OFFSET)
         if yIsTop then
             y = y + letterspacing * #text
