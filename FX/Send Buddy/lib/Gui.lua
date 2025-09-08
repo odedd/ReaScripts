@@ -14,6 +14,7 @@ SM_Gui.init = function(self, fonts)
     local large = 22
     self:createFonts({
         default = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = default },
+        default_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = default },
         small = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = small },
         large = { file = 'Resources/Fonts/Cousine-Regular.ttf', size = large },
         large_bold = { file = 'Resources/Fonts/Cousine-Bold.ttf', size = large },

@@ -24,6 +24,7 @@ SM_Settings = OD_Settings:new({
             [SEND_TYPE.RECV] = 0x371f23FF,
             [SEND_TYPE.HW] = 0x371f23FF
         },
+        multiSelectMode = false,
         shortcuts = {
             addSend = {
                 key = OD_KEYCODES.S,

@@ -1281,7 +1281,7 @@ if OD_PrereqsOK({
                     end
                 end
             end
-            app.temp.highlightedResult = #app.temp.searchResults > 0 and 1 or nil
+            app.temp.highlightedResult = nil -- Don't auto-highlight first item
             app.temp.lastInvisibleGroup = nil
             -- if receiving track, add assign all results to ALL_TRACKS_GROUP and sort them by track order
             if app.temp.addSendType == SEND_TYPE.RECV then
@@ -1308,9 +1308,37 @@ if OD_PrereqsOK({
         if app.pageSwitched then
             app.db:init()
             filterResults('')
+            app.temp.selectedResults = {} -- Clear selection when entering search page
             ImGui.SetKeyboardFocusHere(ctx, 0)
         end
-        ImGui.SetNextItemWidth(ctx, w)
+        
+        -- Multi-select toggle button and search input
+        local multiSelectButtonWidth = 135
+        app.gui:pushStyles(app.gui.st.vars.addSendButton)
+        if app.settings.current.multiSelectMode then
+            app.gui:pushColors(app.gui.st.col.buttons.mute[false]) 
+        else
+            app.gui:pushColors(app.gui.st.col.buttons.addSend) 
+        end
+        ImGui.PushStyleVar(ctx, ImGui.StyleVar_FrameRounding, app.gui.st.rounding * 3 * app.gui.scale)
+        local multiSelectText = "Multi-select"
+        if ImGui.Button(ctx, multiSelectText, multiSelectButtonWidth, ImGui.GetTextLineHeightWithSpacing(ctx)) then
+            app.settings.current.multiSelectMode = not app.settings.current.multiSelectMode
+            app.settings:save()
+            if not app.settings.current.multiSelectMode then
+                app.temp.selectedResults = {} -- Clear selection when turning off multi-select
+            end
+        end
+        ImGui.PopStyleVar(ctx)
+        if app.settings.current.multiSelectMode then
+            app.gui:popColors(app.gui.st.col.buttons.mute[false])
+        else
+            app.gui:popColors(app.gui.st.col.buttons.addSend)
+        end
+        app.gui:popStyles(app.gui.st.vars.addSendButton)
+        
+        ImGui.SameLine(ctx)
+        ImGui.SetNextItemWidth(ctx, w - multiSelectButtonWidth - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing))
         local rv, searchInput = ImGui.InputText(ctx, "##searchInput", app.temp.searchInput)
 
         local h = select(2, ImGui.GetContentRegionAvail(ctx))
@@ -1324,7 +1352,14 @@ if OD_PrereqsOK({
         if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
             app.temp.ignoreEscapeKey = true
             app.setPage(APP_PAGE.MIXER)
-        elseif app.temp.highlightedResult then
+        elseif app.temp.highlightedResult or ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) or ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) then
+            -- Handle arrow keys - initialize if no item highlighted, then continue with navigation
+            if not app.temp.highlightedResult and #app.temp.searchResults > 0 then
+                app.temp.highlightedResult = 1
+                app.temp.checkScrollDown = true
+            end
+            
+            if app.temp.highlightedResult then
             hintResult = app.temp.searchResults[app.temp.highlightedResult]
             hintContext = 'Enter'
             if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) then
@@ -1355,7 +1390,18 @@ if OD_PrereqsOK({
                 end
             elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
                 if app.temp.highlightedResult then
-                    selectedResult = app.temp.searchResults[app.temp.highlightedResult]
+                    local result = app.temp.searchResults[app.temp.highlightedResult]
+                    if app.settings.current.multiSelectMode then
+                        -- Toggle selection in multi-select mode
+                        if app.temp.selectedResults[result.load] then
+                            app.temp.selectedResults[result.load] = nil
+                        else
+                            app.temp.selectedResults[result.load] = result
+                        end
+                    else
+                        -- Direct selection in single-select mode
+                        selectedResult = result
+                    end
                 else
                     ImGui.SetKeyboardFocusHere(ctx, -1)
                 end
@@ -1375,15 +1421,18 @@ if OD_PrereqsOK({
                     end
                 end
             end
+            end
         end
 
         local selectableFlags = ImGui.SelectableFlags_SpanAllColumns
-        local outer_size = { 0.0, fontLineHeight * h / (fontLineHeight) }
+        local buttonSpaceNeeded = app.settings.current.multiSelectMode and 40 or 0
+        local outer_size = { 0.0, fontLineHeight * h / (fontLineHeight) - buttonSpaceNeeded }
         local tableFlags = ImGui.TableFlags_ScrollY
         local lastGroup = nil
 
         local upperRowY = select(2, ImGui.GetCursorScreenPos(ctx))
         if ImGui.BeginTable(ctx, "##searchResults", 1, tableFlags, table.unpack(outer_size)) then
+            ImGui.TableSetupColumn(ctx, "##content", ImGui.TableColumnFlags_WidthStretch)
             ImGui.TableSetupScrollFreeze(ctx, 0, 1)
             if app.temp.scrollToTop == true then
                 ImGui.SetScrollY(ctx, 0)
@@ -1414,12 +1463,52 @@ if OD_PrereqsOK({
                 if (app.temp.checkScrollDown or app.temp.checkScrollUp) and i == app.temp.highlightedResult then
                     highlightedY = select(2, ImGui.GetCursorScreenPos(ctx))
                 end
-                if ImGui.Selectable(ctx, '', i == app.temp.highlightedResult, selectableFlags, 0, 0) then
-                    selectedResult = result
+                
+                local isHighlighted = i == app.temp.highlightedResult
+                local isSelected = app.settings.current.multiSelectMode and app.temp.selectedResults[result.load] ~= nil
+                
+                if isSelected then
+                    -- Selected items: full opacity background
+                    ImGui.PushStyleColor(ctx, ImGui.Col_Header, app.gui.st.col.buttons.addSend[ImGui.Col_Button])
+                    ImGui.PushStyleColor(ctx, ImGui.Col_HeaderActive, app.gui.st.col.buttons.addSend[ImGui.Col_Button])
                 end
+                
+                -- Set gray hover color for all items (both selected and non-selected) at half opacity
+                local grayColor = app.gui.st.basecolors.midBG
+                local halfOpacityGray = (grayColor & 0xFFFFFF00) | ((grayColor & 0xFF) >> 1)
+                ImGui.PushStyleColor(ctx, ImGui.Col_HeaderHovered, halfOpacityGray)
+                
+                -- Apply keyboard navigation opacity
+                if isHighlighted then
+                    ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 0.5)
+                end
+                
+                if ImGui.Selectable(ctx, '', isHighlighted or isSelected, selectableFlags, 0, 0) then
+                    if app.settings.current.multiSelectMode then
+                        -- Toggle selection instead of direct action
+                        if app.temp.selectedResults[result.load] then
+                            app.temp.selectedResults[result.load] = nil
+                        else
+                            app.temp.selectedResults[result.load] = result
+                        end
+                    else
+                        selectedResult = result
+                    end
+                end
+                
+                if isSelected then
+                    ImGui.PopStyleColor(ctx, 3) -- Pop Header, HeaderActive, and HeaderHovered
+                else
+                    ImGui.PopStyleColor(ctx, 1) -- Pop just HeaderHovered for non-selected items
+                end
+                
+                if isHighlighted then
+                    ImGui.PopStyleVar(ctx) -- Pop the alpha style var for hovered items
+                end
+                
                 if ImGui.IsItemHovered(ctx) then
                     hintResult = app.temp.searchResults[i]
-                    hintContext = 'Click'
+                    hintContext = app.settings.current.multiSelectMode and 'Click to toggle selection' or 'Click'
                 end
                 ImGui.SameLine(ctx)
 
@@ -1443,6 +1532,11 @@ if OD_PrereqsOK({
                 end
 
                 -- draw result name, highlighting the search query
+                
+                -- Use bold font for selected items (same size as default)
+                if app.settings.current.multiSelectMode and isSelected then
+                    ImGui.PushFont(ctx, app.gui.st.fonts.default_bold)
+                end
 
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 0.0, 0.0)
                 for j, st in ipairs(result.searchText) do
@@ -1482,6 +1576,11 @@ if OD_PrereqsOK({
                     end
                 end
                 ImGui.PopStyleVar(ctx)
+                
+                -- Pop bold font for selected items
+                if app.settings.current.multiSelectMode and isSelected then
+                    ImGui.PopFont(ctx)
+                end
 
                 ImGui.PopID(ctx)
             end
@@ -1498,6 +1597,42 @@ if OD_PrereqsOK({
             end
             ImGui.EndTable(ctx)
         end
+        
+        -- Apply button for multi-selection
+        local selectedCount = 0
+        for _ in pairs(app.temp.selectedResults) do
+            selectedCount = selectedCount + 1
+        end
+        
+        -- Selection control buttons (only in multi-select mode)
+        if app.settings.current.multiSelectMode then
+            ImGui.Separator(ctx)
+            local buttonWidth = (w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing) * 2) / 3
+            
+            app.gui:pushColors(app.gui.st.col.buttons.addSend)
+            ImGui.PushStyleVar(ctx, ImGui.StyleVar_FrameRounding, app.gui.st.rounding * 3 * app.gui.scale)
+            if ImGui.Button(ctx, "Select All", buttonWidth, 25) then
+                for _, result in ipairs(app.temp.searchResults) do
+                    app.temp.selectedResults[result.load] = result
+                end
+            end
+            ImGui.SameLine(ctx)
+            ImGui.BeginDisabled(ctx, selectedCount == 0)
+            if ImGui.Button(ctx, "Clear All", buttonWidth, 25) then
+                app.temp.selectedResults = {}
+            end
+            ImGui.EndDisabled(ctx)
+            ImGui.SameLine(ctx)
+            local applyButtonText = selectedCount > 0 and string.format("Apply (%d)", selectedCount) or "Apply (0)"
+            ImGui.BeginDisabled(ctx, selectedCount == 0)
+            if ImGui.Button(ctx, applyButtonText, buttonWidth, 25) then
+                selectedResult = "APPLY_MULTIPLE"
+            end
+            ImGui.EndDisabled(ctx)
+            ImGui.PopStyleVar(ctx)
+            app.gui:popColors(app.gui.st.col.buttons.addSend)
+        end
+        
         app.gui:popColors(app.gui.st.col.searchWindow)
         app.gui:popStyles(app.gui.st.vars.searchWindow)
         if hintResult then
@@ -1508,17 +1643,43 @@ if OD_PrereqsOK({
                 (app.getShortcutDescription('markFavorite') ~= '' and (' Press %s to %s.'):format(app.getShortcutDescription('markFavorite'),
                     hintResult.group == FAVORITE_GROUP and 'unfavorite' or 'favorite') or ''))
         else
-            app:setHint('main', '')
+            if app.settings.current.multiSelectMode then
+                if selectedCount > 0 then
+                    app:setHint('main', string.format('Click Apply to create %d sends/receives', selectedCount))
+                else
+                    app:setHint('main', 'Multi-select mode: Click items to select, then Apply.')
+                end
+            else
+                app:setHint('main', 'Single-select mode: Click to create send/receive.')
+            end
         end
         if selectedResult then
-            if app.page == APP_PAGE.SEARCH_FX then
-                app.temp.addFxToSend:addInsert(selectedResult.load)
-                app.temp.addFxToSend = nil
-            elseif app.page == APP_PAGE.SEARCH_SEND then
-                app.db:createNewSend(app.temp.addSendType, selectedResult.type, selectedResult.load,
-                    selectedResult.searchText[1].text)
+            if selectedResult == "APPLY_MULTIPLE" then
+                -- Handle multiple selection
+                if app.page == APP_PAGE.SEARCH_FX then
+                    for _, result in pairs(app.temp.selectedResults) do
+                        app.temp.addFxToSend:addInsert(result.load)
+                    end
+                    app.temp.addFxToSend = nil
+                elseif app.page == APP_PAGE.SEARCH_SEND then
+                    for _, result in pairs(app.temp.selectedResults) do
+                        app.db:createNewSend(app.temp.addSendType, result.type, result.load,
+                            result.searchText[1].text)
+                    end
+                end
+                app.temp.selectedResults = {}
+                app.setPage(APP_PAGE.MIXER)
+            else
+                -- Handle single selection (legacy behavior)
+                if app.page == APP_PAGE.SEARCH_FX then
+                    app.temp.addFxToSend:addInsert(selectedResult.load)
+                    app.temp.addFxToSend = nil
+                elseif app.page == APP_PAGE.SEARCH_SEND then
+                    app.db:createNewSend(app.temp.addSendType, selectedResult.type, selectedResult.load,
+                        selectedResult.searchText[1].text)
+                end
+                app.setPage(APP_PAGE.MIXER)
             end
-            app.setPage(APP_PAGE.MIXER)
         end
     end
 
