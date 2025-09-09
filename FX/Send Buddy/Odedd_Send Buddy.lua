@@ -1544,7 +1544,7 @@ if OD_PrereqsOK({
             -- handle request
             if app.pageSwitched then
                 r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_RESULTS', '', false)
-                local script_name = 'Odedd_Scout'
+                local script_name = 'Odedd_Scout.lua'
                 local cmdId, cmdName, cmdPath = OD_GetScriptDetails(script_name)
                 if cmdId then
                     local scoutVer = OD_GetScriptVersion(cmdPath)
@@ -1704,12 +1704,13 @@ if OD_PrereqsOK({
         
         local function refreshScoutStatus()
 
-            local script_name = 'Odedd_Scout'
+            local script_name = 'Odedd_Scout.lua'
                 local cmdId, cmdName, cmdPath = OD_GetScriptDetails(script_name)
                 if cmdId then
                     app.temp.scoutStatus = SCOUT_STATUS.OK
                     local scoutVer = OD_GetScriptVersion(cmdPath)
                     if not OD_IsVersionAtLeast(scoutVer, MIN_SCOUT_VERSION) then
+                        r.ShowConsoleMsg('scout version: '.. scoutVer..'\n')
                         app.temp.scoutStatus = SCOUT_STATUS.UPDATE
                     end
                 else
