@@ -477,7 +477,7 @@ if OD_PrereqsOK({
             end
             local drawMute = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.mute[s.mute])
-                if ImGui.Button(ctx, 'M##mute' .. s.order, w) then
+                if ImGui.Button(ctx, 'M##mute' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     s:setMute(not s.mute)
                 end
                 app:setHoveredHint('main',
@@ -490,7 +490,7 @@ if OD_PrereqsOK({
                 end
                 app.gui:pushColors(app.gui.st.col.buttons.mono[s.mono])
                 app.gui:pushFont(app.gui.st.fonts.icons, 'small')
-                if ImGui.Button(ctx, (s.mono and ICONS.MONO or ICONS.STEREO) .. '##mono' .. s.order, w, app.gui.TEXT_BASE_HEIGHT) then
+                if ImGui.Button(ctx, (s.mono and ICONS.MONO or ICONS.STEREO) .. '##mono' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     s:setMono(not s.mono)
                 end
                 app:setHoveredHint('main',
@@ -505,7 +505,7 @@ if OD_PrereqsOK({
             local drawSolo = function(w)
                 local soloed = s:getSolo() -- OD_BfCheck(s.track.soloMatrix, 2^(s.order))
                 app.gui:pushColors(app.gui.st.col.buttons.solo[soloed])
-                if ImGui.Button(ctx, (soloed == SOLO_STATES.SOLO_DEFEAT and 'D' or 'S') .. '##solo' .. s.order, w) then
+                if ImGui.Button(ctx, (soloed == SOLO_STATES.SOLO_DEFEAT and 'D' or 'S') .. '##solo' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     s:setSolo((soloed == SOLO_STATES.NONE) and SOLO_STATES.SOLO or SOLO_STATES.NONE,
                         not ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd))
                 end
@@ -516,7 +516,7 @@ if OD_PrereqsOK({
             local drawSoloDefeat = function(w)
                 local soloed = s:getSolo() == SOLO_STATES.SOLO_DEFEAT
                 app.gui:pushColors(app.gui.st.col.buttons.solo[soloed and SOLO_STATES.SOLO_DEFEAT or SOLO_STATES.NONE])
-                if ImGui.Button(ctx, 'D##solodefeat' .. s.order, w) then
+                if ImGui.Button(ctx, 'D##solodefeat' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     s:setSolo(soloed and SOLO_STATES.NONE or SOLO_STATES.SOLO_DEFEAT)
                 end
                 app:setHoveredHint('main', s.name .. ' - Toggle solo defeat')
@@ -525,7 +525,7 @@ if OD_PrereqsOK({
             local drawPhase = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.polarity[s.polarity])
                 app.gui:pushFont(app.gui.st.fonts.icons, 'small')
-                if ImGui.Button(ctx, ICONS.POLARITY .. '##polarity' .. s.order, w, app.gui.TEXT_BASE_HEIGHT) then
+                if ImGui.Button(ctx, ICONS.POLARITY .. '##polarity' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     s:setPolarity(not s.polarity)
                 end
                 app:setHoveredHint('main', s.name .. ' - Invert polarity')
@@ -537,7 +537,7 @@ if OD_PrereqsOK({
                     app.gui:pushColors(app.gui.st.col.buttons.scrollToTrack)
                     app.gui:pushFont(app.gui.st.fonts.icons, 'small')
                     local icon = s.type == SEND_TYPE.SEND and ICONS.ARROW_RIGHT or ICONS.ARROW_LEFT
-                    if ImGui.Button(ctx, icon .. '##goToDest' .. s.order, w) then
+                    if ImGui.Button(ctx, icon .. '##goToDest' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                         s:goToDestTrack()
                     end
                     app:setHoveredHint('main',
@@ -552,7 +552,7 @@ if OD_PrereqsOK({
                 local state = s:isListening()
                 app.gui:pushColors(app.gui.st.col.buttons.listen[state and s.track.sendListenMode or listenMode][state])
                 app.gui:pushFont(app.gui.st.fonts.icons, 'small')
-                if ImGui.Button(ctx, ICONS.HEADPHONES .. '##listen' .. s.order, w, app.gui.TEXT_BASE_HEIGHT) then
+                if ImGui.Button(ctx, ICONS.HEADPHONES .. '##listen' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     s:toggleListen(listenMode)
                 end
                 app:setHoveredHint('main',
@@ -566,7 +566,7 @@ if OD_PrereqsOK({
             local drawModeButton = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.mode[s.mode])
                 local label = SEND_MODE[s.mode]
-                if ImGui.Button(ctx, label .. '##mode' .. s.order, w) then
+                if ImGui.Button(ctx, label .. '##mode' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     s:setMode(s.mode == 0 and 1 or (s.mode == 1 and 3 or 0))
                 end
                 app:setHoveredHint('main', s.name .. ' - Send placement')
@@ -576,7 +576,7 @@ if OD_PrereqsOK({
                 local label = app.minimizeText(T.AUTO_MODE_DESCRIPTIONS[s.autoMode].label,
                     w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 4)
                 app.gui:pushColors(app.gui.st.col.buttons.autoMode[s.autoMode])
-                if ImGui.Button(ctx, label .. '##autoMode' .. s.order, w) then
+                if ImGui.Button(ctx, label .. '##autoMode' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     ImGui.OpenPopup(ctx, '##autoModeMenu' .. s.order)
                 end
                 app:setHoveredHint('main',
@@ -620,7 +620,7 @@ if OD_PrereqsOK({
                     if s.midiSrcBus == 255 then
                         label = 'None'
                     end
-                    if ImGui.Button(ctx, label .. '##srcMidiChan' .. s.order, w) then
+                    if ImGui.Button(ctx, label .. '##srcMidiChan' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                         ImGui.OpenPopup(ctx, '##srcMidiChanMenu' .. s.order)
                     end
                     app:setHoveredHint('main', s.name .. ' - Source MIDI channel')
@@ -637,7 +637,7 @@ if OD_PrereqsOK({
                         label = s.midiDestChn
                     end
 
-                    if ImGui.Button(ctx, label .. '##destMidiChan' .. s.order, w) then
+                    if ImGui.Button(ctx, label .. '##destMidiChan' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                         ImGui.OpenPopup(ctx, '##destMidiChanMenu' .. s.order)
                     end
                     app:setHoveredHint('main', s.name .. ' - Destination MIDI channel')
@@ -718,7 +718,7 @@ if OD_PrereqsOK({
             local drawRouteButtons = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.route)
                 ImGui.BeginGroup(ctx)
-                if ImGui.Button(ctx, SRC_CHANNELS[s.srcChan].label .. '##srcChan' .. s.order, w) then
+                if ImGui.Button(ctx, SRC_CHANNELS[s.srcChan].label .. '##srcChan' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     ImGui.OpenPopup(ctx, '##srcChanMenu' .. s.order)
                 end
                 app:setHoveredHint('main', s.name .. ' - Source audio channel')
@@ -734,7 +734,7 @@ if OD_PrereqsOK({
                 if s.srcChan == -1 then
                     ImGui.BeginDisabled(ctx)
                 end
-                if ImGui.Button(ctx, label .. '##destChan' .. s.order, w) then
+                if ImGui.Button(ctx, label .. '##destChan' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     ImGui.OpenPopup(ctx, '##destChanMenu' .. s.order)
                 end
                 app:setHoveredHint('main', s.name .. ' - Destination audio channel')
@@ -847,7 +847,7 @@ if OD_PrereqsOK({
                     local colors = insert.offline and app.gui.st.col.insert.offline or
                         (not insert.enabled and app.gui.st.col.insert.disabled or app.gui.st.col.insert.enabled)
                     app.gui:pushColors(colors)
-                    local rv = ImGui.Button(ctx, insert.shortName .. "##" .. i, w)
+                    local rv = ImGui.Button(ctx, insert.shortName .. "##" .. i, w, app.gui.TEXT_BASE_HEIGHT_SMALL)
                     app.gui:popColors(colors)
                     if rv then
                         if ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd) and ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
