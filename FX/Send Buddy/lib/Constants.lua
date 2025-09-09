@@ -2,6 +2,7 @@
 -- ! CONSTANTS
 DB_SCALE = math.log(10.0) * 0.05
 FLT_MIN, FLT_MAX = ImGui.NumericLimits_Float()
+MIN_SCOUT_VERSION = '1.0.30'
 
 SEND_TYPE = {
     ['SEND'] = 0,

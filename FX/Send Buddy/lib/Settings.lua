@@ -1,5 +1,7 @@
 -- @noindex
 
+local scout_exists = OD_GetScriptDetails('Odedd_Scout') ~= nil
+
 SM_Settings = OD_Settings:new({
     default = {
         -- Settings window
@@ -7,6 +9,7 @@ SM_Settings = OD_Settings:new({
         followSelectedTrack = true,
         createInsideFolder = true,
         sendFolderName = 'FX Return Tracks',
+        useScout = scout_exists,
         volType = VOL_TYPE.UI,
         textMinimizationStyle = MINIMIZATION_STYLE.PT,
         sendTypeVisibility = {
