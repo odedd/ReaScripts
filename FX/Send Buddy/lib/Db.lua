@@ -839,7 +839,7 @@ DB.getTracks = function(self)
                         shortName = fxName,
                         shortened = false,
                         calculateShortName = function(self)
-                            self.app.gui:pushFont(self.app.gui.st.fonts.default, 'small')
+                            self.db.app.gui:pushFont(self.db.app.gui.st.fonts.default, 'small')
                             self.shortName, self.shortened = self.db.app.minimizeText(
                                 self.name:gsub('.-%:', ''):gsub('%(.-%)$', ''):gsub("^%s+", ''):gsub("%s+$", ''),
                                 math.floor(self.db.app.settings.current.sendWidth * self.db.app.settings.current.uiScale) -
