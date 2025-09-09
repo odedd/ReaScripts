@@ -90,7 +90,8 @@ DB = {
             end
         end
     end,
-    sync = function(self, refresh)
+    sync = function(self, refresh, returnToMixer)
+        local returnToMixer = returnToMixer == nil and true or returnToMixer
         self.track, self.changedTrack = self:getSelectedTrack()
         self.refresh = refresh or false
         if self.changedTrack then
@@ -445,14 +446,16 @@ DB = {
                                 end
                             end
                         end,
-                        addInsert = function(self, fxName) -- undo point is created by TrackFX_AddByName
+                        addInsert = function(self, fxName, finished) -- undo point is created by TrackFX_AddByName
                             local fxIndex = r.TrackFX_AddByName(self.destTrack.object, fxName, false, -1)
                             if fxIndex == -1 then
                                 self.db.app.logger:logError('Cannot add ' .. fxName .. ' to ' .. self.destTrack.name)
                                 return false
                             end
-                            self.db:sync(true)
-                            self.db.app.focusMainReaperWindow = false
+                            if finished then
+                                self.db:sync(true)
+                                self.db.app.focusMainReaperWindow = false
+                            end
                             return true
                         end,
                         toggleVolEnv = function(self, show)
@@ -545,19 +548,23 @@ DB = {
                     end
                 end
             end
-            self.app.setPage(APP_PAGE.MIXER)
+            if returnToMixer then
+                self.app.setPage(APP_PAGE.MIXER)
+            end
         end
     end
 }
 
 --- Sends
 
-DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
+DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName, finished)
     self:beginUndoBlock()
     if sendType == SEND_TYPE.HW then
         local sndIdx = reaper.CreateTrackSend(self.track.object, nil)
         reaper.SetTrackSendInfo_Value(self.track.object, sendType, sndIdx, 'I_DSTCHAN', assetType)
-        self:sync(true)
+        if finished then
+            self:sync(true)
+        end
         return
     end
     if assetType == ASSETS.TRACK_TEMPLATE then
@@ -630,7 +637,9 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
 
         r.SetOnlyTrackSelected(self.track.object)
         r.Main_OnCommand(40913, 0)
-        self:sync(true)
+        if finished then
+            self:sync(true)
+        end
     elseif assetType == ASSETS.TRACK then
         -- local sendTrackIndex = asset.load
         local targetTrack = OD_GetTrackFromGuid(0, assetLoad)
@@ -641,7 +650,9 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
                 reaper.CreateTrackSend(targetTrack, self.track.object)
             end
         end
-        self:sync(true)
+        if finished then
+            self:sync(true)
+        end
     elseif assetType == ASSETS.PLUGIN or assetType == ASSETS.FX_CHAIN then
         local newTrack = nil
         local numTracks = r.CountTracks(0)
@@ -672,10 +683,10 @@ DB.createNewSend = function(self, sendType, assetType, assetLoad, trackName)
             local rv = reaper.CreateTrackSend(self.track.object, newTrack)
             self:getTracks()
             r.SetOnlyTrackSelected(self.track.object)
-            self:sync(true)
+            self:sync(true, false)
             for _, send in ipairs(self.sends) do
                 if send.destTrack ~= nil and (send.destTrack.object == newTrack) then
-                    send:addInsert(assetLoad)
+                    send:addInsert(assetLoad, finished)
                 end
             end
         end

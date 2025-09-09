@@ -848,7 +848,7 @@ if OD_PrereqsOK({
                     local colors = insert.offline and app.gui.st.col.insert.offline or
                         (not insert.enabled and app.gui.st.col.insert.disabled or app.gui.st.col.insert.enabled)
                     app.gui:pushColors(colors)
-                    local rv = ImGui.Button(ctx, insert.shortName .. "##" .. i, w, app.gui.TEXT_BASE_HEIGHT_SMALL)
+                    local rv = ImGui.Button(ctx, insert.shortName .. "##" .. i, w, app.gui.TEXT_BASE_HEIGHT)
                     app.gui:popColors(colors)
                     if rv then
                         if ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd) and ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
@@ -889,7 +889,7 @@ if OD_PrereqsOK({
                 end
                 app.gui:pushColors(app.gui.st.col.insert.add)
                 app.gui:pushFont(app.gui.st.fonts.icons, 'small')
-                if ImGui.Button(ctx, "P##", w) then
+                if ImGui.Button(ctx, "P##", w, app.gui.TEXT_BASE_HEIGHT) then
                     app.temp.addFxToSend = s
                     app.temp.addSendType = nil
                     app.setPage(APP_PAGE.SEARCH_FX)
@@ -903,7 +903,7 @@ if OD_PrereqsOK({
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 1.0)
                 if totalDrawn < app.settings.current.maxNumInserts then
                     for i = totalDrawn + 1, app.settings.current.maxNumInserts do
-                        ImGui.Button(ctx, "##dummy", w)
+                        ImGui.Button(ctx, "##dummyInsert"..i, w, app.gui.TEXT_BASE_HEIGHT)
                     end
                 end
                 ImGui.PopStyleVar(ctx)
@@ -1041,7 +1041,7 @@ if OD_PrereqsOK({
                         if ImGui.BeginMenu(ctx, 'Downmix to mono') then
                             for j = 0, app.db.numAudioOutputs - 1 do
                                 if ImGui.MenuItem(ctx, OUTPUT_CHANNEL_NAMES[j + 1], nil, false, true) then
-                                    app.db:createNewSend(type, j + 1024)
+                                    app.db:createNewSend(type, j + 1024, nil, nil, true)
                                 end
                             end
                             ImGui.EndMenu(ctx)
@@ -1050,7 +1050,7 @@ if OD_PrereqsOK({
                         for j = 0, app.db.numAudioOutputs - 2 do
                             local label = ((OUTPUT_CHANNEL_NAMES[j + 1] .. '/' .. OUTPUT_CHANNEL_NAMES[j + 2]))
                             if ImGui.MenuItem(ctx, label, nil, false, true) then
-                                app.db:createNewSend(type, j)
+                                app.db:createNewSend(type, j, nil, nil, true)
                             end
                         end
                         app.focusMainReaperWindow = false
@@ -1512,7 +1512,7 @@ if OD_PrereqsOK({
             else
                 app:setHint('main', '')
             end
-            return selectedResult
+            return { selectedResult }
         end
 
         local function scoutSearch()
@@ -1521,14 +1521,14 @@ if OD_PrereqsOK({
                 local script_name = 'Odedd_Scout'
                 local cmdId, cmdName, cmdPath = OD_GetScriptDetails(script_name)
                 if cmdId then
-                        local scoutVer = OD_GetScriptVersion(cmdPath)
-                        if not OD_IsVersionAtLeast(scoutVer, MIN_SCOUT_VERSION) then
-                            app:msg('Please upgrade Scout to version ' .. MIN_SCOUT_VERSION..'\nor use internal search.')
-                            -- reaper.ReaPack_BrowsePackages('Odedd Scout')
-                            app.temp.scoutRequestSent = nil
-                            app.setPage(APP_PAGE.MIXER)
-                            return
-                        end
+                    local scoutVer = OD_GetScriptVersion(cmdPath)
+                    if not OD_IsVersionAtLeast(scoutVer, MIN_SCOUT_VERSION) then
+                        app:msg('Please upgrade Scout to version ' .. MIN_SCOUT_VERSION .. '\nor use internal search.')
+                        -- reaper.ReaPack_BrowsePackages('Odedd Scout')
+                        app.temp.scoutRequestSent = nil
+                        app.setPage(APP_PAGE.MIXER)
+                        return
+                    end
                     r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH', 'Send Buddy', false)
 
                     if app.page == APP_PAGE.SEARCH_FX then
@@ -1536,7 +1536,7 @@ if OD_PrereqsOK({
                     elseif app.temp.addSendType == SEND_TYPE.RECV then
                         r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_TYPES', 'TrackAssetType', false)
                     else
-                        r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_TYPES', 'PluginAssetType,FXChainAssetType,TrackAssetType', false)
+                        r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_TYPES', 'PluginAssetType,FXChainAssetType,TrackAssetType,TrackTemplateAssetType', false)
                     end
                     local intId = r.NamedCommandLookup('_' .. cmdId)
                     if intId ~= 0 then r.Main_OnCommand(intId, 0) end
@@ -1555,7 +1555,7 @@ if OD_PrereqsOK({
                     if results and results ~= '' then
                         -- r.ShowConsoleMsg('GOT RESULTS: \n' .. results .. '\n')
                         local byLine = "([^\r\n]*)\r?\n?"
-                        local selectedResult = {}
+                        local selectedResults = {}
                         for result in string.gmatch(results, byLine) do
                             local scoutType, loadStr = result:match('^([^%s]+)%s(.+)$')
                             local mappedType
@@ -1570,7 +1570,7 @@ if OD_PrereqsOK({
                             end
                             for i, asset in ipairs(app.db.assets) do
                                 if asset.type == mappedType and asset.load == loadStr then
-                                    selectedResult = asset
+                                    table.insert(selectedResults, asset)
                                 end
                             end
                         end
@@ -1580,7 +1580,7 @@ if OD_PrereqsOK({
                             r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_RESULTS_MODS', '', false)
                         end
 
-                        return selectedResult
+                        return selectedResults
                     end
                     return -- wait for results
                 else
@@ -1591,21 +1591,24 @@ if OD_PrereqsOK({
             end
         end
 
-        local selectedResult
+        local selectedResults
         if app.settings.current.useScout then
-            selectedResult = scoutSearch()
+            selectedResults = scoutSearch()
         else
-            selectedResult = ownSearch()
+            selectedResults = ownSearch()
         end
 
-        if selectedResult then
-            if app.page == APP_PAGE.SEARCH_FX then
-                app.temp.addFxToSend:addInsert(selectedResult.load)
-                app.temp.addFxToSend = nil
-            elseif app.page == APP_PAGE.SEARCH_SEND then
-                app.db:createNewSend(app.temp.addSendType, selectedResult.type, selectedResult.load,
-                    selectedResult.searchText[1].text)
+        if selectedResults then
+            for i, selectedResult in ipairs(selectedResults) do
+                if app.page == APP_PAGE.SEARCH_FX then
+                    app.temp.addFxToSend:addInsert(selectedResult.load, i == #selectedResults)
+                elseif app.page == APP_PAGE.SEARCH_SEND then
+                    -- r.ShowConsoleMsg('adding result '..i..': '..selectedResult.load..'\n')
+                    app.db:createNewSend(app.temp.addSendType, selectedResult.type, selectedResult.load,
+                        selectedResult.searchText[1].text, i == #selectedResults)
+                end
             end
+            app.temp.addFxToSend = nil
             app.setPage(APP_PAGE.MIXER)
         end
     end
