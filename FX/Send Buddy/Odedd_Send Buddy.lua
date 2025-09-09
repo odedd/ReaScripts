@@ -1530,7 +1530,14 @@ if OD_PrereqsOK({
                             return
                         end
                     r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH', 'Send Buddy', false)
-                    r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_TYPES', 'PluginAssetType,TrackAssetType,FXChainAssetType,TrackTemplateAssetType', false)
+
+                    if app.page == APP_PAGE.SEARCH_FX then
+                        r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_TYPES', 'PluginAssetType,FXChainAssetType', false)
+                    elseif app.temp.addSendType == SEND_TYPE.RECV then
+                        r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_TYPES', 'TrackAssetType', false)
+                    else
+                        r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_TYPES', 'PluginAssetType,FXChainAssetType,TrackAssetType', false)
+                    end
                     local intId = r.NamedCommandLookup('_' .. cmdId)
                     if intId ~= 0 then r.Main_OnCommand(intId, 0) end
                 else
