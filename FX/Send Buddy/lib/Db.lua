@@ -1161,8 +1161,10 @@ DB.assembleAssets = function(self)
     end
     self.app.logger:logInfo('A total of ' .. count .. ' assets were added to the database')
 
-    self:markFavorites()
-    self:sortAssets()
+    if not self.app.settings.current.useScout then -- let scout handle that
+        self:markFavorites()
+        self:sortAssets()
+    end
 end
 
 DB.sortAssets = function(self)

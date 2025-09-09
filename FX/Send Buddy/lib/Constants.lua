@@ -2,7 +2,7 @@
 -- ! CONSTANTS
 DB_SCALE = math.log(10.0) * 0.05
 FLT_MIN, FLT_MAX = ImGui.NumericLimits_Float()
-MIN_SCOUT_VERSION = '1.0.30'
+MIN_SCOUT_VERSION = '1.0.31'
 
 SEND_TYPE = {
     ['SEND'] = 0,
@@ -37,6 +37,12 @@ SRC_CHANNELS[-1] = {
     numChannels = 0,
     group = "None",
     label = 'None'
+}
+
+SCOUT_STATUS = {
+    OK = 0,
+    UPDATE = 1,
+    MISSING = 2
 }
 
 MINIMIZATION_STYLE = {

@@ -23,6 +23,7 @@
 --   [nomain] lib/**
 -- @changelog
 --   Updated to ReaImGui v0.10.0.1 (now required)
+--   Support searching using Scout (requires Scout v1.0.31+)
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -1516,8 +1517,33 @@ if OD_PrereqsOK({
         end
 
         local function scoutSearch()
-            -- local skipPulse
+            -- draw window content
+            local ctx = app.gui.ctx
+            local w, h =
+            select(1, ImGui.GetContentRegionAvail(ctx)) -
+            ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2,
+            select(2, ImGui.GetContentRegionAvail(ctx)) -- app.gui.st.sizes.hintHeight
+            if ImGui.BeginChild(ctx, '##waitingForScout', w, h, nil, nil) then
+                ImGui.Dummy(ctx, w, h)
+                local text = 'Please select items in the Scout window'
+                ImGui.SetCursorPos(ctx, (w - ImGui.CalcTextSize(ctx, text)) / 2,
+                    h / 2 - app.gui.TEXT_BASE_HEIGHT / 2)
+                ImGui.Text(ctx, text)
+                local text = 'Cancel'
+                ImGui.SetCursorPosX(ctx,
+                    (w - ImGui.CalcTextSize(ctx, text) - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2) /
+                    2)
+                if ImGui.Button(ctx, text) then
+                    app.temp.scoutRequestSent = nil
+                    app.temp.ignoreEscapeKey = true
+                    app.setPage(APP_PAGE.MIXER)
+                end
+
+                ImGui.EndChild(ctx)
+            end
+            -- handle request
             if app.pageSwitched then
+                r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_RESULTS', '', false)
                 local script_name = 'Odedd_Scout'
                 local cmdId, cmdName, cmdPath = OD_GetScriptDetails(script_name)
                 if cmdId then
@@ -1553,6 +1579,15 @@ if OD_PrereqsOK({
                 if scoutPulse == '1' then
                     local results = r.GetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_RESULTS')
                     if results and results ~= '' then
+
+
+                        local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or r.JS_Window_FindTop(Scr.name, true)
+                        if scriptHwnd then
+                            r.DockWindowActivate(scriptHwnd)
+                            r.JS_Window_SetFocus(scriptHwnd)
+                            ImGui.SetNextWindowFocus(ctx)
+                        end
+
                         -- r.ShowConsoleMsg('GOT RESULTS: \n' .. results .. '\n')
                         local byLine = "([^\r\n]*)\r?\n?"
                         local selectedResults = {}
@@ -1591,6 +1626,11 @@ if OD_PrereqsOK({
             end
         end
 
+        if app.pageSwitched then
+            app.db:getTracks()
+            app.db:assembleAssets()
+        end
+        
         local selectedResults
         if app.settings.current.useScout then
             selectedResults = scoutSearch()
@@ -1661,6 +1701,21 @@ if OD_PrereqsOK({
     function app.drawSettings()
         local ctx = app.gui.ctx
         local w = 700 * app.settings.current.uiScale
+        
+        local function refreshScoutStatus()
+
+            local script_name = 'Odedd_Scout'
+                local cmdId, cmdName, cmdPath = OD_GetScriptDetails(script_name)
+                if cmdId then
+                    app.temp.scoutStatus = SCOUT_STATUS.OK
+                    local scoutVer = OD_GetScriptVersion(cmdPath)
+                    if not OD_IsVersionAtLeast(scoutVer, MIN_SCOUT_VERSION) then
+                        app.temp.scoutStatus = SCOUT_STATUS.UPDATE
+                    end
+                else
+                    app.temp.scoutStatus = SCOUT_STATUS.MISSING
+                end
+        end
         -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger
         -- closing this window. So we increment a counter which will be reset if the shortcut is
         -- being captured, so that we can know to ignore the captured key unless some frames have passed.
@@ -1686,6 +1741,23 @@ if OD_PrereqsOK({
                 100
             app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
                 .LABEL, T.SETTINGS.FOLLOW_SELECTED_TRACK.HINT, app.settings.current.followSelectedTrack)
+            if app.temp.oldScoutStatus == nil or app.temp.oldScoutStatus ~= app.temp.scoutStatus then
+                refreshScoutStatus()
+                app.temp.oldScoutStatus = app.temp.scoutStatus
+            end
+            app.settings.current.useScout = app.gui:setting('checkbox', T.SETTINGS.USE_SCOUT
+                .LABEL, T.SETTINGS.USE_SCOUT.HINT, app.settings.current.useScout)
+            if app.settings.current.useScout then
+                if app.temp.scoutStatus == SCOUT_STATUS.UPDATE or app.temp.scoutStatus == SCOUT_STATUS.MISSING then
+                    if app.gui:setting('button', 'updateScout', T.SETTINGS.UPDATE_SCOUT.HINT, nil, { label = T.SCOUT_STATUS[app.temp.scoutStatus] }, true) then
+                        r.ReaPack_BrowsePackages('Odedd Scout')
+                    end
+                else
+                    local spacing = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+                    ImGui.SameLine(ctx, 0, spacing)
+                    ImGui.TextDisabled(ctx, T.SCOUT_STATUS[app.temp.scoutStatus])
+                end
+            end
             app.settings.current.mouseScrollReversed = app.gui:setting('checkbox', T.SETTINGS.MW_REVERSED.LABEL,
                 T.SETTINGS.MW_REVERSED.HINT, app.settings.current.mouseScrollReversed)
             app.settings.current.volType = app.gui:setting('combo', T.SETTINGS.VOL_TYPE.LABEL, T.SETTINGS.VOL_TYPE.HINT,
@@ -1784,6 +1856,7 @@ if OD_PrereqsOK({
         end
         if app.temp.settingsWindowOpen and not ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow') then
             app.temp.settingsWindowOpen = false
+            app.temp.scoutStatus = nil
             OD_ReleaseGlobalKeys()
             app.db:sync(true)
             app.settings:save()

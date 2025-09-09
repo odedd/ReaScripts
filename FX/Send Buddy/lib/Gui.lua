@@ -52,6 +52,7 @@ SM_Gui.init = function(self, fonts)
         mainBrightest = 0xd75869ff,
         textBright = 0xf7f7f7ff,
         textDark = 0x7c7c7cff,
+        success = 0x04eb00ff,
     }
     self.st.colpresets = {
         darkButton = {
