@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.2.3
+-- @version 1.2.4
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,9 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Display glitch fixed in some zoom levels
+--   Creating envelopes consistent with the Reaper setting: "When adding volume/pan envelopes, apply trim to envelope and reset trim"
+--   Manually entered send levels now updated only after enter is pressed
+--   Language changed in settings window to more correctly reflect current track determination
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -250,11 +252,12 @@ if OD_PrereqsOK({
 
     function app.drawMixer()
         local ctx = app.gui.ctx
+        -- if app.settings.current.globalShortcuts and not ImGui.IsWindowFocused(app.gui.ctx, ImGui.FocusedFlags_RootAndChildWindows) then
         local altPressed = OD_IsGlobalKeyDown(OD_KEYCODES.ALT, false, -60)
         local ctrlPressed = OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL, false, -60)
         local macCtrlPressed = _OD_ISMAC and OD_IsGlobalKeyDown(OD_KEYCODES.STARTKEY, false, -60)
         local shiftPressed = OD_IsGlobalKeyDown(OD_KEYCODES.SHIFT, false, -60)
-
+        -- end
         app.db:sync()
         app.gui:pushFont(app.gui.st.fonts.default, 'small')
 
@@ -472,8 +475,9 @@ if OD_PrereqsOK({
                     (s.name .. ' - %s volume. Double-click to enter exact amount.'):format((s.type == SEND_TYPE.RECV) and
                         'Receive' or 'Send'))
                 if rv then
-                    target:setVolDB(v3, ImGui.IsItemDeactivatedAfterEdit(ctx))
-                    r.Undo_OnStateChangeEx2(0, 'Set send volume', 1, -1)
+                    if ImGui.IsItemDeactivatedAfterEdit(ctx) then
+                        target:setVolDB(v3, true, true)
+                    end
                 end
             end
             local drawMute = function(w)
@@ -1226,6 +1230,7 @@ if OD_PrereqsOK({
     end
 
     function app.isShortcutPressed(key)
+        -- if not app.settings.current.globalShortcuts and not ImGui.IsWindowFocused(app.gui.ctx, ImGui.FocusedFlags_RootAndChildWindows) then return false end
         if app.settings.current.shortcuts[key] and app.settings.current.shortcuts[key].key == -1 then return false end
         return app.settings.current.shortcuts[key] and OD_IsGlobalKeyPressed(app.settings.current.shortcuts[key].key) and
             OD_IsGlobalKeyDown(OD_KEYCODES.CONTROL) == app.settings.current.shortcuts[key].ctrl
@@ -1780,6 +1785,11 @@ if OD_PrereqsOK({
                 })
 
             ImGui.SeparatorText(ctx, 'Shortcuts')
+            -- app.settings.current.globalShortcuts = app.gui:setting('checkbox', T.SETTINGS.GLOBAL_SHORTCUTS
+            --     .LABEL, T.SETTINGS.GLOBAL_SHORTCUTS.HINT, app.settings.current.globalShortcuts)
+            ImGui.BeginDisabled(ctx)
+            ImGui.TextWrapped(ctx, T.GLOBAL_SHORTCUTS_EXPLANATION)
+            ImGui.EndDisabled(ctx)
             local resetCounter = false
             app.settings.current.shortcuts.closeScript, resetCounter = app.gui:setting('shortcut',
                 T.SETTINGS.SHORTCUTS.CLOSE_SCRIPT.LABEL,

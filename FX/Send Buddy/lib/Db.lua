@@ -216,7 +216,24 @@ DB = {
                             self.db:sync(true)
                             self.db:endUndoBlock('Delete send', 1)
                         end,
-                        setVolDB = function(self, dB, done)
+                        setVol = function(self, vol)
+                            if vol ~= self.vol then -- if it was called just to create an undo point
+                                if vol < OD_ValFromdB(self.db.app.settings.current.minSendVol) then
+                                    vol = OD_ValFromdB(self.db.app.settings.current.minSendVol)
+                                elseif vol > OD_ValFromdB(self.db.app.settings.current.maxSendVol) then
+                                    vol = OD_ValFromdB(self.db.app.settings.current.maxSendVol)
+                                end
+                                local vol = (vol <= OD_ValFromdB(self.db.app.settings.current.minSendVol) and 0 or vol)
+                                if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
+                                    reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_VOL', vol)
+                                else
+                                    reaper.SetTrackSendUIVol(self.track.object, self.UIIndex, vol, -1)
+                                end
+                                self.db:sync(true) -- otherwise the volume is not updated in the GUI
+                            end
+                            -- if done then r.Undo_OnStateChangeEx2(0, 'Set send volume', 1, -1) end
+                        end,
+                        setVolDB = function(self, dB, done, instant_edit)
                             done = (done == nil) and true or done
                             if dB ~= self.vol then -- if it was called just to create an undo point
                                 if dB < self.db.app.settings.current.minSendVol then
@@ -228,7 +245,7 @@ DB = {
                                 if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
                                     reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_VOL', vol)
                                 else
-                                    reaper.SetTrackSendUIVol(self.track.object, self.UIIndex, vol, done and 1 or 0)
+                                    reaper.SetTrackSendUIVol(self.track.object, self.UIIndex, vol, instant_edit and -1 or (done and 1 or 0))
                                 end
                                 self.db:sync(true) -- otherwise the volume is not updated in the GUI
                             end
@@ -459,13 +476,56 @@ DB = {
                             return true
                         end,
                         toggleVolEnv = function(self, show)
+                            local envelopeBehavior = select(2, r.get_config_var_string('envtrimadjmode'))
+                            local trackSendAutoMode = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_AUTOMODE')
+                            local copyToEnv
+                            if envelopeBehavior == '0' then copyToEnv = true end
+                            if envelopeBehavior == '1' then
+                                if trackSendAutoMode == AUTO_MODE.TRACK then
+                                    local trackAutoMode = r.GetMediaTrackInfo_Value(self.track.object, 'I_AUTOMODE')
+                                    if trackAutoMode == AUTO_MODE.READ or trackAutoMode == AUTO_MODE.WRITE then
+                                        copyToEnv = true
+                                    end
+                                elseif trackSendAutoMode == AUTO_MODE.READ or trackSendAutoMode == AUTO_MODE.WRITE then
+                                    copyToEnv = true
+                                end
+                            end
                             local env = reaper.GetTrackSendInfo_Value(self.track.object, self.type, i, "P_ENV:<VOLENV")
-                            OD_ToggleShowEnvelope(env, show)
+                            local shown, oldVal, envelopeExists = OD_ToggleShowEnvelope(env, show, copyToEnv and self.vol or 1)
+
+                            local newVol
+                            if shown then
+                                newVol = (copyToEnv and not envelopeExists) and 1 or self.vol
+                            else
+                                newVol = ((oldVal or 1) * self.vol) or self.vol
+                            end
+                            self:setVol(newVol)
                             self.db:setUndoPoint('Show/hide send volume envelope', 1)
                         end,
                         togglePanEnv = function(self, show)
+                            local envelopeBehavior = select(2, r.get_config_var_string('envtrimadjmode'))
+                            local trackSendAutoMode = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_AUTOMODE')
+                            local copyToEnv
+                            if envelopeBehavior == '0' then copyToEnv = true end
+                            if envelopeBehavior == '1' then
+                                if trackSendAutoMode == AUTO_MODE.TRACK then
+                                    local trackAutoMode = r.GetMediaTrackInfo_Value(self.track.object, 'I_AUTOMODE')
+                                    if trackAutoMode == AUTO_MODE.READ or trackAutoMode == AUTO_MODE.WRITE then
+                                        copyToEnv = true
+                                    end
+                                elseif trackSendAutoMode == AUTO_MODE.READ or trackSendAutoMode == AUTO_MODE.WRITE then
+                                    copyToEnv = true
+                                end
+                            end
                             local env = reaper.GetTrackSendInfo_Value(self.track.object, self.type, i, "P_ENV:<PANENV")
-                            OD_ToggleShowEnvelope(env, show)
+                            local shown, oldVal, envelopeExists = OD_ToggleShowEnvelope(env, show, copyToEnv and -self.pan or 0)
+                            local newPan
+                            if shown then
+                                newPan = (copyToEnv and not envelopeExists) and 0 or self.pan
+                            else
+                                newPan = (math.min(1,math.max(-1,(oldVal and -oldVal or 0) + (self.pan)))) or self.pan
+                            end
+                            self:setPan(newPan)
                             self.db:setUndoPoint('Show/hide send pan envelope', 1)
                         end,
                         toggleMuteEnv = function(self, show)

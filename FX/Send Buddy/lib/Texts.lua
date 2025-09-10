@@ -22,8 +22,8 @@ T.SETTINGS = {
         HINT = 'Update Scout to enable Send Buddy integration'
     },
     FOLLOW_SELECTED_TRACK = {
-        LABEL = 'Follow selected track',
-        HINT = ('Change track in %s when a new track is selected.'):format(Scr.name),
+        LABEL = 'Follow touched track',
+        HINT = ('Change track in %s when a new track is touched.'):format(Scr.name),
     },
     FX_TYPE_ORDER = {
         LABEL = 'FX type priority',
@@ -111,6 +111,8 @@ T.AUTO_MODE_DESCRIPTIONS = {
     [AUTO_MODE.WRITE] = { order = 6, label = 'Write', description = 'Record fader positions to armed envelopes' },
 }
 
+T.GLOBAL_SHORTCUTS_EXPLANATION = [[Global shortcuts work throughout Reaper regardless of focus.
+Choose shortcuts that won't conflict with other actions.]]
 T.ERROR = {
     NO_DOCK = ([[
 No previous dock found.

@@ -11,6 +11,7 @@ SM_Settings = OD_Settings:new({
         sendFolderName = 'FX Return Tracks',
         useScout = scout_exists,
         volType = VOL_TYPE.UI,
+        -- globalShortcuts = true,
         textMinimizationStyle = MINIMIZATION_STYLE.PT,
         sendTypeVisibility = {
             [SEND_TYPE.SEND] = true,
