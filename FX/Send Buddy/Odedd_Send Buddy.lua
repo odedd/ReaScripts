@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.2.0
+-- @version 1.2.1
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,8 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Updated to ReaImGui v0.10.0.1 (now required)
---   Support searching using Scout (requires Scout v1.0.31+)
+--   Some visual tweaks
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -1523,8 +1522,8 @@ if OD_PrereqsOK({
             select(1, ImGui.GetContentRegionAvail(ctx)) -
             ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2,
             select(2, ImGui.GetContentRegionAvail(ctx)) -- app.gui.st.sizes.hintHeight
-            if ImGui.BeginChild(ctx, '##waitingForScout', w, h, nil, nil) then
-                ImGui.Dummy(ctx, w, h)
+            if ImGui.BeginChild(ctx, '##waitingForScout', w, h, nil, ImGui.WindowFlags_NoNav) then
+                -- ImGui.Dummy(ctx, w, h)
                 local text = 'Please select items in the Scout window'
                 ImGui.SetCursorPos(ctx, (w - ImGui.CalcTextSize(ctx, text)) / 2,
                     h / 2 - app.gui.TEXT_BASE_HEIGHT / 2)
@@ -1660,7 +1659,7 @@ if OD_PrereqsOK({
             select(1, ImGui.GetContentRegionAvail(ctx)) -
             ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2,
             select(2, ImGui.GetContentRegionAvail(ctx)) -- app.gui.st.sizes.hintHeight
-        if ImGui.BeginChild(ctx, '##noTrack', w, h, nil, nil) then
+        if ImGui.BeginChild(ctx, '##noTrack', w, h, nil, ImGui.WindowFlags_NoNav) then
             ImGui.Dummy(ctx, w, h)
             ImGui.SetCursorPos(ctx, w / 2,
                 h / 2 - app.gui.TEXT_BASE_HEIGHT * 1)

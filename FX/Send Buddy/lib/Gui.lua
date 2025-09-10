@@ -326,6 +326,7 @@ SM_Gui.init = function(self, fonts)
             }
         },
         main = {
+            [ImGui.Col_NavCursor] = 0x00000000,
             [ImGui.Col_Tab] = self.st.basecolors.darkHovered,
             [ImGui.Col_TabHovered] = self.st.basecolors.darkActive,
             [ImGui.Col_TabSelected] = self.st.basecolors.darkActive,
