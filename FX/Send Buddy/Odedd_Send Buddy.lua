@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.2.2
+-- @version 1.2.3
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Scout integration fix
+--   Display glitch fixed in some zoom levels
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -903,7 +903,7 @@ if OD_PrereqsOK({
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 1.0)
                 if totalDrawn < app.settings.current.maxNumInserts then
                     for i = totalDrawn + 1, app.settings.current.maxNumInserts do
-                        ImGui.Button(ctx, "##dummyInsert"..i, w, app.gui.TEXT_BASE_HEIGHT)
+                        ImGui.Button(ctx, "##dummyInsert" .. i, w, app.gui.TEXT_BASE_HEIGHT)
                     end
                 end
                 ImGui.PopStyleVar(ctx)
@@ -992,7 +992,7 @@ if OD_PrereqsOK({
             end
         end
 
-        if ImGui.BeginChild(ctx, "##inserts", w, h, ImGui.ChildFlags_None) then
+        if ImGui.BeginChild(ctx, "##inserts", w, h + 2 * app.gui.scale, ImGui.ChildFlags_None) then
             for _, type in ipairs(visibleSendTypes) do
                 local count = 0
                 for i, s in pairs(app.db.sends) do
@@ -1519,9 +1519,9 @@ if OD_PrereqsOK({
             -- draw window content
             local ctx = app.gui.ctx
             local w, h =
-            select(1, ImGui.GetContentRegionAvail(ctx)) -
-            ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2,
-            select(2, ImGui.GetContentRegionAvail(ctx)) -- app.gui.st.sizes.hintHeight
+                select(1, ImGui.GetContentRegionAvail(ctx)) -
+                ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2,
+                select(2, ImGui.GetContentRegionAvail(ctx)) -- app.gui.st.sizes.hintHeight
             if ImGui.BeginChild(ctx, '##waitingForScout', w, h, nil, ImGui.WindowFlags_NoNav) then
                 -- ImGui.Dummy(ctx, w, h)
                 local text = 'Please select items in the Scout window'
@@ -1578,8 +1578,6 @@ if OD_PrereqsOK({
                 if scoutPulse == '1' then
                     local results = r.GetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_RESULTS')
                     if results and results ~= '' then
-
-
                         local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or r.JS_Window_FindTop(Scr.name, true)
                         if scriptHwnd then
                             r.DockWindowActivate(scriptHwnd)
@@ -1629,7 +1627,7 @@ if OD_PrereqsOK({
             app.db:getTracks()
             app.db:assembleAssets()
         end
-        
+
         local selectedResults
         if app.settings.current.useScout then
             selectedResults = scoutSearch()
@@ -1700,21 +1698,20 @@ if OD_PrereqsOK({
     function app.drawSettings()
         local ctx = app.gui.ctx
         local w = 700 * app.settings.current.uiScale
-        
-        local function refreshScoutStatus()
 
+        local function refreshScoutStatus()
             local script_name = 'Odedd_Scout.lua'
-                local cmdId, cmdName, cmdPath = OD_GetScriptDetails(script_name)
-                if cmdId then
-                    app.temp.scoutStatus = SCOUT_STATUS.OK
-                    local scoutVer = OD_GetScriptVersion(cmdPath)
-                    if not OD_IsVersionAtLeast(scoutVer, MIN_SCOUT_VERSION) then
-                        r.ShowConsoleMsg('scout version: '.. scoutVer..'\n')
-                        app.temp.scoutStatus = SCOUT_STATUS.UPDATE
-                    end
-                else
-                    app.temp.scoutStatus = SCOUT_STATUS.MISSING
+            local cmdId, cmdName, cmdPath = OD_GetScriptDetails(script_name)
+            if cmdId then
+                app.temp.scoutStatus = SCOUT_STATUS.OK
+                local scoutVer = OD_GetScriptVersion(cmdPath)
+                if not OD_IsVersionAtLeast(scoutVer, MIN_SCOUT_VERSION) then
+                    r.ShowConsoleMsg('scout version: ' .. scoutVer .. '\n')
+                    app.temp.scoutStatus = SCOUT_STATUS.UPDATE
                 end
+            else
+                app.temp.scoutStatus = SCOUT_STATUS.MISSING
+            end
         end
         -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger
         -- closing this window. So we increment a counter which will be reset if the shortcut is

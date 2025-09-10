@@ -381,8 +381,8 @@ SM_Gui.init = function(self, fonts)
                 [ImGui.StyleVar_WindowRounding] = { 10 * scale, nil },
                 [ImGui.StyleVar_WindowPadding] = { 8 * scale, 8 * scale },
                 [ImGui.StyleVar_ScrollbarSize] = { 10 * scale, nil },
-                [ImGui.StyleVar_FramePadding] = { 4 * scale, 3 * scale },
-                [ImGui.StyleVar_ItemInnerSpacing] = { 4 * scale, 4 * scale },
+                [ImGui.StyleVar_FramePadding] = { math.ceil(4 * scale), math.ceil(3 * scale) },
+                [ImGui.StyleVar_ItemInnerSpacing] = { math.ceil(4 * scale), math.ceil(4 * scale) },
                 [ImGui.StyleVar_SeparatorTextBorderSize] = { 1 * scale, nil },
             },
             searchWindow = {
