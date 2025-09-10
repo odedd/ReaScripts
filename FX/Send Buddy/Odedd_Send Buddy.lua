@@ -1358,7 +1358,7 @@ if OD_PrereqsOK({
                     end
                 elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
                     if app.temp.highlightedResult then
-                        selectedResult = app.temp.searchResults[app.temp.highlightedResult]
+                        selectedResult = { app.temp.searchResults[app.temp.highlightedResult] }
                     else
                         ImGui.SetKeyboardFocusHere(ctx, -1)
                     end
@@ -1418,7 +1418,7 @@ if OD_PrereqsOK({
                         highlightedY = select(2, ImGui.GetCursorScreenPos(ctx))
                     end
                     if ImGui.Selectable(ctx, '', i == app.temp.highlightedResult, selectableFlags, 0, 0) then
-                        selectedResult = result
+                        selectedResult = { result }
                     end
                     if ImGui.IsItemHovered(ctx) then
                         hintResult = app.temp.searchResults[i]
@@ -1513,7 +1513,7 @@ if OD_PrereqsOK({
             else
                 app:setHint('main', '')
             end
-            return { selectedResult }
+            return selectedResult
         end
 
         local function scoutSearch()
