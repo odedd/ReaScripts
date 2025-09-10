@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.30
+-- @version 1.0.32
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -17,7 +17,7 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   Tag filtering by Shift/Ctrl/Alt clicking the tags themselves (see help)
+--   Reset QuickChain preset on load if set to reset filter
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'

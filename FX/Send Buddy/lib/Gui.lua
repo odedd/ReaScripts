@@ -52,6 +52,7 @@ SM_Gui.init = function(self, fonts)
         mainBrightest = 0xd75869ff,
         textBright = 0xf7f7f7ff,
         textDark = 0x7c7c7cff,
+        success = 0x04eb00ff,
     }
     self.st.colpresets = {
         darkButton = {
@@ -325,6 +326,7 @@ SM_Gui.init = function(self, fonts)
             }
         },
         main = {
+            [ImGui.Col_NavCursor] = 0x00000000,
             [ImGui.Col_Tab] = self.st.basecolors.darkHovered,
             [ImGui.Col_TabHovered] = self.st.basecolors.darkActive,
             [ImGui.Col_TabSelected] = self.st.basecolors.darkActive,
@@ -379,8 +381,8 @@ SM_Gui.init = function(self, fonts)
                 [ImGui.StyleVar_WindowRounding] = { 10 * scale, nil },
                 [ImGui.StyleVar_WindowPadding] = { 8 * scale, 8 * scale },
                 [ImGui.StyleVar_ScrollbarSize] = { 10 * scale, nil },
-                [ImGui.StyleVar_FramePadding] = { 4 * scale, 3 * scale },
-                [ImGui.StyleVar_ItemInnerSpacing] = { 4 * scale, 4 * scale },
+                [ImGui.StyleVar_FramePadding] = { math.ceil(4 * scale), math.ceil(3 * scale) },
+                [ImGui.StyleVar_ItemInnerSpacing] = { math.ceil(4 * scale), math.ceil(4 * scale) },
                 [ImGui.StyleVar_SeparatorTextBorderSize] = { 1 * scale, nil },
             },
             searchWindow = {

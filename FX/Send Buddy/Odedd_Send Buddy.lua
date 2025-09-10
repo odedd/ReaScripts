@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.1.9
+-- @version 1.2.3
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Updated to ReaImGui v0.10.0.1 (now required)
+--   Display glitch fixed in some zoom levels
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -261,6 +261,7 @@ if OD_PrereqsOK({
 
         local drawSend = function(s, parts)
             local drawDummy = function(w, col, h)
+                local h = h or app.gui.TEXT_BASE_HEIGHT_SMALL
                 app.gui:pushColors(col)
                 ImGui.BeginDisabled(ctx)
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 1.0)
@@ -288,7 +289,7 @@ if OD_PrereqsOK({
                         app.temp.confirmation[confirmationKey] = nil
                     else
                         app.gui:pushColors(app.gui.st.col.buttons.deleteSend.confirm)
-                        if ImGui.Button(ctx, 'Sure?##deleteSend', w) then
+                        if ImGui.Button(ctx, 'Sure?##deleteSend', w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                             s:delete()
                             app.temp.confirmation[confirmationKey] = nil
                         end
@@ -299,7 +300,7 @@ if OD_PrereqsOK({
                 if app.temp.confirmation[confirmationKey] == nil then -- not else because then I miss a frame after the timeout just passed
                     app.gui:pushColors(app.gui.st.col.buttons.deleteSend.initial)
                     app.gui:pushFont(app.gui.st.fonts.icons, 'small')
-                    if ImGui.Button(ctx, ICONS.TRASH .. '##deleteSend', w, app.gui.TEXT_BASE_HEIGHT) then
+                    if ImGui.Button(ctx, ICONS.TRASH .. '##deleteSend', w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                         app.temp.confirmation[confirmationKey] = reaper.time_precise()
                     end
                     app:setHoveredHint('main',
@@ -478,7 +479,7 @@ if OD_PrereqsOK({
             end
             local drawMute = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.mute[s.mute])
-                if ImGui.Button(ctx, 'M##mute' .. s.order, w) then
+                if ImGui.Button(ctx, 'M##mute' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     s:setMute(not s.mute)
                 end
                 app:setHoveredHint('main',
@@ -491,7 +492,7 @@ if OD_PrereqsOK({
                 end
                 app.gui:pushColors(app.gui.st.col.buttons.mono[s.mono])
                 app.gui:pushFont(app.gui.st.fonts.icons, 'small')
-                if ImGui.Button(ctx, (s.mono and ICONS.MONO or ICONS.STEREO) .. '##mono' .. s.order, w, app.gui.TEXT_BASE_HEIGHT) then
+                if ImGui.Button(ctx, (s.mono and ICONS.MONO or ICONS.STEREO) .. '##mono' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     s:setMono(not s.mono)
                 end
                 app:setHoveredHint('main',
@@ -506,7 +507,7 @@ if OD_PrereqsOK({
             local drawSolo = function(w)
                 local soloed = s:getSolo() -- OD_BfCheck(s.track.soloMatrix, 2^(s.order))
                 app.gui:pushColors(app.gui.st.col.buttons.solo[soloed])
-                if ImGui.Button(ctx, (soloed == SOLO_STATES.SOLO_DEFEAT and 'D' or 'S') .. '##solo' .. s.order, w) then
+                if ImGui.Button(ctx, (soloed == SOLO_STATES.SOLO_DEFEAT and 'D' or 'S') .. '##solo' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     s:setSolo((soloed == SOLO_STATES.NONE) and SOLO_STATES.SOLO or SOLO_STATES.NONE,
                         not ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd))
                 end
@@ -517,7 +518,7 @@ if OD_PrereqsOK({
             local drawSoloDefeat = function(w)
                 local soloed = s:getSolo() == SOLO_STATES.SOLO_DEFEAT
                 app.gui:pushColors(app.gui.st.col.buttons.solo[soloed and SOLO_STATES.SOLO_DEFEAT or SOLO_STATES.NONE])
-                if ImGui.Button(ctx, 'D##solodefeat' .. s.order, w) then
+                if ImGui.Button(ctx, 'D##solodefeat' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     s:setSolo(soloed and SOLO_STATES.NONE or SOLO_STATES.SOLO_DEFEAT)
                 end
                 app:setHoveredHint('main', s.name .. ' - Toggle solo defeat')
@@ -526,7 +527,7 @@ if OD_PrereqsOK({
             local drawPhase = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.polarity[s.polarity])
                 app.gui:pushFont(app.gui.st.fonts.icons, 'small')
-                if ImGui.Button(ctx, ICONS.POLARITY .. '##polarity' .. s.order, w, app.gui.TEXT_BASE_HEIGHT) then
+                if ImGui.Button(ctx, ICONS.POLARITY .. '##polarity' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     s:setPolarity(not s.polarity)
                 end
                 app:setHoveredHint('main', s.name .. ' - Invert polarity')
@@ -538,7 +539,7 @@ if OD_PrereqsOK({
                     app.gui:pushColors(app.gui.st.col.buttons.scrollToTrack)
                     app.gui:pushFont(app.gui.st.fonts.icons, 'small')
                     local icon = s.type == SEND_TYPE.SEND and ICONS.ARROW_RIGHT or ICONS.ARROW_LEFT
-                    if ImGui.Button(ctx, icon .. '##goToDest' .. s.order, w) then
+                    if ImGui.Button(ctx, icon .. '##goToDest' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                         s:goToDestTrack()
                     end
                     app:setHoveredHint('main',
@@ -553,7 +554,7 @@ if OD_PrereqsOK({
                 local state = s:isListening()
                 app.gui:pushColors(app.gui.st.col.buttons.listen[state and s.track.sendListenMode or listenMode][state])
                 app.gui:pushFont(app.gui.st.fonts.icons, 'small')
-                if ImGui.Button(ctx, ICONS.HEADPHONES .. '##listen' .. s.order, w, app.gui.TEXT_BASE_HEIGHT) then
+                if ImGui.Button(ctx, ICONS.HEADPHONES .. '##listen' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     s:toggleListen(listenMode)
                 end
                 app:setHoveredHint('main',
@@ -567,7 +568,7 @@ if OD_PrereqsOK({
             local drawModeButton = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.mode[s.mode])
                 local label = SEND_MODE[s.mode]
-                if ImGui.Button(ctx, label .. '##mode' .. s.order, w) then
+                if ImGui.Button(ctx, label .. '##mode' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     s:setMode(s.mode == 0 and 1 or (s.mode == 1 and 3 or 0))
                 end
                 app:setHoveredHint('main', s.name .. ' - Send placement')
@@ -577,7 +578,7 @@ if OD_PrereqsOK({
                 local label = app.minimizeText(T.AUTO_MODE_DESCRIPTIONS[s.autoMode].label,
                     w - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 4)
                 app.gui:pushColors(app.gui.st.col.buttons.autoMode[s.autoMode])
-                if ImGui.Button(ctx, label .. '##autoMode' .. s.order, w) then
+                if ImGui.Button(ctx, label .. '##autoMode' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     ImGui.OpenPopup(ctx, '##autoModeMenu' .. s.order)
                 end
                 app:setHoveredHint('main',
@@ -621,7 +622,7 @@ if OD_PrereqsOK({
                     if s.midiSrcBus == 255 then
                         label = 'None'
                     end
-                    if ImGui.Button(ctx, label .. '##srcMidiChan' .. s.order, w) then
+                    if ImGui.Button(ctx, label .. '##srcMidiChan' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                         ImGui.OpenPopup(ctx, '##srcMidiChanMenu' .. s.order)
                     end
                     app:setHoveredHint('main', s.name .. ' - Source MIDI channel')
@@ -638,7 +639,7 @@ if OD_PrereqsOK({
                         label = s.midiDestChn
                     end
 
-                    if ImGui.Button(ctx, label .. '##destMidiChan' .. s.order, w) then
+                    if ImGui.Button(ctx, label .. '##destMidiChan' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                         ImGui.OpenPopup(ctx, '##destMidiChanMenu' .. s.order)
                     end
                     app:setHoveredHint('main', s.name .. ' - Destination MIDI channel')
@@ -719,7 +720,7 @@ if OD_PrereqsOK({
             local drawRouteButtons = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.route)
                 ImGui.BeginGroup(ctx)
-                if ImGui.Button(ctx, SRC_CHANNELS[s.srcChan].label .. '##srcChan' .. s.order, w) then
+                if ImGui.Button(ctx, SRC_CHANNELS[s.srcChan].label .. '##srcChan' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     ImGui.OpenPopup(ctx, '##srcChanMenu' .. s.order)
                 end
                 app:setHoveredHint('main', s.name .. ' - Source audio channel')
@@ -735,7 +736,7 @@ if OD_PrereqsOK({
                 if s.srcChan == -1 then
                     ImGui.BeginDisabled(ctx)
                 end
-                if ImGui.Button(ctx, label .. '##destChan' .. s.order, w) then
+                if ImGui.Button(ctx, label .. '##destChan' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     ImGui.OpenPopup(ctx, '##destChanMenu' .. s.order)
                 end
                 app:setHoveredHint('main', s.name .. ' - Destination audio channel')
@@ -848,7 +849,7 @@ if OD_PrereqsOK({
                     local colors = insert.offline and app.gui.st.col.insert.offline or
                         (not insert.enabled and app.gui.st.col.insert.disabled or app.gui.st.col.insert.enabled)
                     app.gui:pushColors(colors)
-                    local rv = ImGui.Button(ctx, insert.shortName .. "##" .. i, w)
+                    local rv = ImGui.Button(ctx, insert.shortName .. "##" .. i, w, app.gui.TEXT_BASE_HEIGHT)
                     app.gui:popColors(colors)
                     if rv then
                         if ImGui.IsKeyDown(ctx, app.gui.keyModCtrlCmd) and ImGui.IsKeyDown(ctx, ImGui.Mod_Shift) then
@@ -889,7 +890,7 @@ if OD_PrereqsOK({
                 end
                 app.gui:pushColors(app.gui.st.col.insert.add)
                 app.gui:pushFont(app.gui.st.fonts.icons, 'small')
-                if ImGui.Button(ctx, "P##", w) then
+                if ImGui.Button(ctx, "P##", w, app.gui.TEXT_BASE_HEIGHT) then
                     app.temp.addFxToSend = s
                     app.temp.addSendType = nil
                     app.setPage(APP_PAGE.SEARCH_FX)
@@ -903,7 +904,7 @@ if OD_PrereqsOK({
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 1.0)
                 if totalDrawn < app.settings.current.maxNumInserts then
                     for i = totalDrawn + 1, app.settings.current.maxNumInserts do
-                        ImGui.Button(ctx, "##dummy", w)
+                        ImGui.Button(ctx, "##dummyInsert" .. i, w, app.gui.TEXT_BASE_HEIGHT)
                     end
                 end
                 ImGui.PopStyleVar(ctx)
@@ -992,7 +993,7 @@ if OD_PrereqsOK({
             end
         end
 
-        if ImGui.BeginChild(ctx, "##inserts", w, h, ImGui.ChildFlags_None) then
+        if ImGui.BeginChild(ctx, "##inserts", w, h + 2 * app.gui.scale, ImGui.ChildFlags_None) then
             for _, type in ipairs(visibleSendTypes) do
                 local count = 0
                 for i, s in pairs(app.db.sends) do
@@ -1041,7 +1042,7 @@ if OD_PrereqsOK({
                         if ImGui.BeginMenu(ctx, 'Downmix to mono') then
                             for j = 0, app.db.numAudioOutputs - 1 do
                                 if ImGui.MenuItem(ctx, OUTPUT_CHANNEL_NAMES[j + 1], nil, false, true) then
-                                    app.db:createNewSend(type, j + 1024)
+                                    app.db:createNewSend(type, j + 1024, nil, nil, true)
                                 end
                             end
                             ImGui.EndMenu(ctx)
@@ -1050,7 +1051,7 @@ if OD_PrereqsOK({
                         for j = 0, app.db.numAudioOutputs - 2 do
                             local label = ((OUTPUT_CHANNEL_NAMES[j + 1] .. '/' .. OUTPUT_CHANNEL_NAMES[j + 2]))
                             if ImGui.MenuItem(ctx, label, nil, false, true) then
-                                app.db:createNewSend(type, j)
+                                app.db:createNewSend(type, j, nil, nil, true)
                             end
                         end
                         app.focusMainReaperWindow = false
@@ -1249,277 +1250,404 @@ if OD_PrereqsOK({
     end
 
     function app.drawSearch()
-        local function filterResults(query)
-            app.temp.searchInput = query
-            app.temp.searchResults = {}
-            query = query:gsub('%s+', ' ')
-            for i, asset in ipairs(app.db.assets) do
-                local skip = false
-                if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then skip = true end
-                if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK_TEMPLATE then skip = true end
-                if app.temp.addSendType == SEND_TYPE.RECV and asset.type ~= ASSETS.TRACK then skip = true end
-                if asset.type == ASSETS.TRACK and asset.load == app.db.track.guid then skip = true end
-                if not skip then
-                    local foundIndexes = {}
-                    local allWordsFound = true
-                    for word in query:lower():gmatch("%S+") do
-                        local wordFound = false
-                        for j, assetWord in ipairs(asset.searchText) do
-                            local pos = string.find((assetWord.text):lower(), OD_EscapePattern(word))
-                            if pos then
-                                foundIndexes[j] = foundIndexes[j] or {}
-                                table.insert(foundIndexes[j], { from = pos, to = pos + #word - 1, order = pos })
-                                wordFound = true
+        local function ownSearch()
+            local function filterResults(query)
+                app.temp.searchInput = query
+                app.temp.searchResults = {}
+                query = query:gsub('%s+', ' ')
+                for i, asset in ipairs(app.db.assets) do
+                    local skip = false
+                    if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK then skip = true end
+                    if app.page == APP_PAGE.SEARCH_FX and asset.type == ASSETS.TRACK_TEMPLATE then skip = true end
+                    if app.temp.addSendType == SEND_TYPE.RECV and asset.type ~= ASSETS.TRACK then skip = true end
+                    if asset.type == ASSETS.TRACK and asset.load == app.db.track.guid then skip = true end
+                    if not skip then
+                        local foundIndexes = {}
+                        local allWordsFound = true
+                        for word in query:lower():gmatch("%S+") do
+                            local wordFound = false
+                            for j, assetWord in ipairs(asset.searchText) do
+                                local pos = string.find((assetWord.text):lower(), OD_EscapePattern(word))
+                                if pos then
+                                    foundIndexes[j] = foundIndexes[j] or {}
+                                    table.insert(foundIndexes[j], { from = pos, to = pos + #word - 1, order = pos })
+                                    wordFound = true
+                                end
                             end
-                        end
-                        if not wordFound then
-                            allWordsFound = false
-                            break
-                        end
-                    end
-                    if allWordsFound then
-                        asset.foundIndexes = foundIndexes
-                        table.insert(app.temp.searchResults, asset)
-                    end
-                end
-            end
-            app.temp.highlightedResult = #app.temp.searchResults > 0 and 1 or nil
-            app.temp.lastInvisibleGroup = nil
-            -- if receiving track, add assign all results to ALL_TRACKS_GROUP and sort them by track order
-            if app.temp.addSendType == SEND_TYPE.RECV then
-                table.sort(app.temp.searchResults, function(a, b)
-                    return a.order < b.order
-                end)
-                for i, result in ipairs(app.temp.searchResults) do
-                    result.group = ALL_TRACKS_GROUP
-                end
-            end
-        end
-
-        local ctx = app.gui.ctx
-        local selectedResult = nil
-        local hintResult = nil
-        local hintContext = nil
-        local w = select(1, ImGui.GetContentRegionAvail(ctx))
-
-        local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx)
-        app.gui:pushStyles(app.gui.st.vars.searchWindow)
-        app.gui:pushColors(app.gui.st.col.searchWindow)
-        app.temp.searchResults = app.temp.searchResults or {}
-
-        if app.pageSwitched then
-            app.db:init()
-            filterResults('')
-            ImGui.SetKeyboardFocusHere(ctx, 0)
-        end
-        ImGui.SetNextItemWidth(ctx, w)
-        local rv, searchInput = ImGui.InputTextWithHint(ctx, "##searchInput", "Search", app.temp.searchInput)
-
-        local h = select(2, ImGui.GetContentRegionAvail(ctx))
-        local maxSearchResults = math.floor(h / (fontLineHeight))
-
-        if rv then
-            filterResults(searchInput)
-            app.temp.scrollToTop = true
-        end
-
-        if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
-            app.temp.ignoreEscapeKey = true
-            app.setPage(APP_PAGE.MIXER)
-        elseif app.temp.highlightedResult then
-            hintResult = app.temp.searchResults[app.temp.highlightedResult]
-            hintContext = 'Enter'
-            if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) then
-                if app.temp.highlightedResult < #app.temp.searchResults then
-                    app.temp.highlightedResult = app.temp.highlightedResult + 1
-                    app.temp.checkScrollDown = true
-                end
-            elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageDown) then
-                if app.temp.highlightedResult + maxSearchResults - 3 < #app.temp.searchResults then
-                    app.temp.highlightedResult = app.temp.highlightedResult + maxSearchResults - 3
-                    app.temp.checkScrollDown = true
-                elseif app.temp.highlightedResult ~= #app.temp.searchResults then
-                    app.temp.highlightedResult = #app.temp.searchResults
-                    app.temp.checkScrollDown = true
-                end
-            elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageUp) then
-                if app.temp.highlightedResult - maxSearchResults - 3 > 1 then
-                    app.temp.highlightedResult = app.temp.highlightedResult - maxSearchResults - 3
-                    app.temp.checkScrollUp = true
-                elseif app.temp.highlightedResult ~= 1 then
-                    app.temp.highlightedResult = 1
-                    app.temp.checkScrollUp = true
-                end
-            elseif ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) then
-                if app.temp.highlightedResult > 1 then
-                    app.temp.highlightedResult = app.temp.highlightedResult - 1
-                    app.temp.checkScrollUp = true
-                end
-            elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
-                if app.temp.highlightedResult then
-                    selectedResult = app.temp.searchResults[app.temp.highlightedResult]
-                else
-                    ImGui.SetKeyboardFocusHere(ctx, -1)
-                end
-            elseif app.isShortcutPressed('markFavorite') then
-                if app.temp.highlightedResult then
-                    local result = app.temp.searchResults[app.temp.highlightedResult]
-                    local fav = result:toggleFavorite()
-                    filterResults(searchInput)
-                    if fav then
-                        for i, r in ipairs(app.temp.searchResults) do
-                            -- if r.type == oldType and r.load == oldLoad then
-                            if r == result then
-                                app.temp.highlightedResult = i
+                            if not wordFound then
+                                allWordsFound = false
                                 break
                             end
                         end
+                        if allWordsFound then
+                            asset.foundIndexes = foundIndexes
+                            table.insert(app.temp.searchResults, asset)
+                        end
+                    end
+                end
+                app.temp.highlightedResult = #app.temp.searchResults > 0 and 1 or nil
+                app.temp.lastInvisibleGroup = nil
+                -- if receiving track, add assign all results to ALL_TRACKS_GROUP and sort them by track order
+                if app.temp.addSendType == SEND_TYPE.RECV then
+                    table.sort(app.temp.searchResults, function(a, b)
+                        return a.order < b.order
+                    end)
+                    for i, result in ipairs(app.temp.searchResults) do
+                        result.group = ALL_TRACKS_GROUP
                     end
                 end
             end
-        end
 
-        local selectableFlags = ImGui.SelectableFlags_SpanAllColumns
-        local outer_size = { 0.0, fontLineHeight * h / (fontLineHeight) }
-        local tableFlags = ImGui.TableFlags_ScrollY
-        local lastGroup = nil
+            local ctx = app.gui.ctx
+            local selectedResult = nil
+            local hintResult = nil
+            local hintContext = nil
+            local w = select(1, ImGui.GetContentRegionAvail(ctx))
 
-        local upperRowY = select(2, ImGui.GetCursorScreenPos(ctx))
-        if ImGui.BeginTable(ctx, "##searchResults", 1, tableFlags, table.unpack(outer_size)) then
-            ImGui.TableSetupScrollFreeze(ctx, 0, 1)
-            if app.temp.scrollToTop == true then
-                ImGui.SetScrollY(ctx, 0)
-                app.temp.scrollToTop = false
+            local fontLineHeight = ImGui.GetTextLineHeightWithSpacing(ctx)
+            app.gui:pushStyles(app.gui.st.vars.searchWindow)
+            app.gui:pushColors(app.gui.st.col.searchWindow)
+            app.temp.searchResults = app.temp.searchResults or {}
+
+            if app.pageSwitched then
+                app.db:init()
+                filterResults('')
+                ImGui.SetKeyboardFocusHere(ctx, 0)
             end
-            local highlightedY = 0
-            local foundInvisibleGroup = false
-            local absIndex = 0
-            for i, result in ipairs(app.temp.searchResults) do
-                -- local currentScreenY =
+            ImGui.SetNextItemWidth(ctx, w)
+            local rv, searchInput = ImGui.InputTextWithHint(ctx, "##searchInput", "Search", app.temp.searchInput)
 
-                if result.group ~= lastGroup then
+            local h = select(2, ImGui.GetContentRegionAvail(ctx))
+            local maxSearchResults = math.floor(h / (fontLineHeight))
+
+            if rv then
+                filterResults(searchInput)
+                app.temp.scrollToTop = true
+            end
+
+            if ImGui.IsKeyPressed(ctx, ImGui.Key_Escape) then
+                app.temp.ignoreEscapeKey = true
+                app.setPage(APP_PAGE.MIXER)
+            elseif app.temp.highlightedResult then
+                hintResult = app.temp.searchResults[app.temp.highlightedResult]
+                hintContext = 'Enter'
+                if ImGui.IsKeyPressed(ctx, ImGui.Key_DownArrow) then
+                    if app.temp.highlightedResult < #app.temp.searchResults then
+                        app.temp.highlightedResult = app.temp.highlightedResult + 1
+                        app.temp.checkScrollDown = true
+                    end
+                elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageDown) then
+                    if app.temp.highlightedResult + maxSearchResults - 3 < #app.temp.searchResults then
+                        app.temp.highlightedResult = app.temp.highlightedResult + maxSearchResults - 3
+                        app.temp.checkScrollDown = true
+                    elseif app.temp.highlightedResult ~= #app.temp.searchResults then
+                        app.temp.highlightedResult = #app.temp.searchResults
+                        app.temp.checkScrollDown = true
+                    end
+                elseif ImGui.IsKeyPressed(ctx, ImGui.Key_PageUp) then
+                    if app.temp.highlightedResult - maxSearchResults - 3 > 1 then
+                        app.temp.highlightedResult = app.temp.highlightedResult - maxSearchResults - 3
+                        app.temp.checkScrollUp = true
+                    elseif app.temp.highlightedResult ~= 1 then
+                        app.temp.highlightedResult = 1
+                        app.temp.checkScrollUp = true
+                    end
+                elseif ImGui.IsKeyPressed(ctx, ImGui.Key_UpArrow) then
+                    if app.temp.highlightedResult > 1 then
+                        app.temp.highlightedResult = app.temp.highlightedResult - 1
+                        app.temp.checkScrollUp = true
+                    end
+                elseif ImGui.IsKeyPressed(ctx, ImGui.Key_Enter) then
+                    if app.temp.highlightedResult then
+                        selectedResult = { app.temp.searchResults[app.temp.highlightedResult] }
+                    else
+                        ImGui.SetKeyboardFocusHere(ctx, -1)
+                    end
+                elseif app.isShortcutPressed('markFavorite') then
+                    if app.temp.highlightedResult then
+                        local result = app.temp.searchResults[app.temp.highlightedResult]
+                        local fav = result:toggleFavorite()
+                        filterResults(searchInput)
+                        if fav then
+                            for i, r in ipairs(app.temp.searchResults) do
+                                -- if r.type == oldType and r.load == oldLoad then
+                                if r == result then
+                                    app.temp.highlightedResult = i
+                                    break
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+
+            local selectableFlags = ImGui.SelectableFlags_SpanAllColumns
+            local outer_size = { 0.0, fontLineHeight * h / (fontLineHeight) }
+            local tableFlags = ImGui.TableFlags_ScrollY
+            local lastGroup = nil
+
+            local upperRowY = select(2, ImGui.GetCursorScreenPos(ctx))
+            if ImGui.BeginTable(ctx, "##searchResults", 1, tableFlags, table.unpack(outer_size)) then
+                ImGui.TableSetupScrollFreeze(ctx, 0, 1)
+                if app.temp.scrollToTop == true then
+                    ImGui.SetScrollY(ctx, 0)
+                    app.temp.scrollToTop = false
+                end
+                local highlightedY = 0
+                local foundInvisibleGroup = false
+                local absIndex = 0
+                for i, result in ipairs(app.temp.searchResults) do
+                    -- local currentScreenY =
+
+                    if result.group ~= lastGroup then
+                        ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
+                        absIndex = absIndex + 1
+                        ImGui.TableSetColumnIndex(ctx, 0)
+                        ImGui.SeparatorText(ctx, i == 1 and app.temp.lastInvisibleGroup or result.group)
+                        lastGroup = result.group
+                        if select(2, ImGui.GetCursorScreenPos(ctx)) <= upperRowY + fontLineHeight then
+                            app.temp.lastInvisibleGroup = result.group
+                            foundInvisibleGroup = true
+                        end
+                    end
+                    if not foundInvisibleGroup then app.temp.lastInvisibleGroup = nil end
+                    ImGui.PushID(ctx, 'result' .. i)
                     ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
                     absIndex = absIndex + 1
                     ImGui.TableSetColumnIndex(ctx, 0)
-                    ImGui.SeparatorText(ctx, i == 1 and app.temp.lastInvisibleGroup or result.group)
-                    lastGroup = result.group
-                    if select(2, ImGui.GetCursorScreenPos(ctx)) <= upperRowY + fontLineHeight then
-                        app.temp.lastInvisibleGroup = result.group
-                        foundInvisibleGroup = true
+                    if (app.temp.checkScrollDown or app.temp.checkScrollUp) and i == app.temp.highlightedResult then
+                        highlightedY = select(2, ImGui.GetCursorScreenPos(ctx))
                     end
-                end
-                if not foundInvisibleGroup then app.temp.lastInvisibleGroup = nil end
-                ImGui.PushID(ctx, 'result' .. i)
-                ImGui.TableNextRow(ctx, ImGui.TableRowFlags_None, fontLineHeight)
-                absIndex = absIndex + 1
-                ImGui.TableSetColumnIndex(ctx, 0)
-                if (app.temp.checkScrollDown or app.temp.checkScrollUp) and i == app.temp.highlightedResult then
-                    highlightedY = select(2, ImGui.GetCursorScreenPos(ctx))
-                end
-                if ImGui.Selectable(ctx, '', i == app.temp.highlightedResult, selectableFlags, 0, 0) then
-                    selectedResult = result
-                end
-                if ImGui.IsItemHovered(ctx) then
-                    hintResult = app.temp.searchResults[i]
-                    hintContext = 'Click'
-                end
-                ImGui.SameLine(ctx)
-
-                if result.type == ASSETS.TRACK then
-                    ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx))
-                    local size = fontLineHeight -
-                        select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding)) * 2
-                    ImGui.ColorButton(ctx, 'color', result.color,
-                        ImGui.ColorEditFlags_NoBorder |
-                        ImGui.ColorEditFlags_NoTooltip, size, size)
+                    if ImGui.Selectable(ctx, '', i == app.temp.highlightedResult, selectableFlags, 0, 0) then
+                        selectedResult = { result }
+                    end
+                    if ImGui.IsItemHovered(ctx) then
+                        hintResult = app.temp.searchResults[i]
+                        hintContext = 'Click'
+                    end
                     ImGui.SameLine(ctx)
-                end
 
-                if result.group == FAVORITE_GROUP then
-                    app.gui:pushFont(app.gui.st.fonts.icons, 'small')
-                    app.gui:pushColors(app.gui.st.col.search.favorite)
-                    ImGui.Text(ctx, ICONS.STAR)
-                    app.gui:popColors(app.gui.st.col.search.favorite)
-                    ImGui.PopFont(ctx)
-                    ImGui.SameLine(ctx)
-                end
+                    if result.type == ASSETS.TRACK then
+                        ImGui.SetCursorPosY(ctx, ImGui.GetCursorPosY(ctx))
+                        local size = fontLineHeight -
+                            select(2, ImGui.GetStyleVar(app.gui.ctx, ImGui.StyleVar_FramePadding)) * 2
+                        ImGui.ColorButton(ctx, 'color', result.color,
+                            ImGui.ColorEditFlags_NoBorder |
+                            ImGui.ColorEditFlags_NoTooltip, size, size)
+                        ImGui.SameLine(ctx)
+                    end
 
-                -- draw result name, highlighting the search query
+                    if result.group == FAVORITE_GROUP then
+                        app.gui:pushFont(app.gui.st.fonts.icons, 'small')
+                        app.gui:pushColors(app.gui.st.col.search.favorite)
+                        ImGui.Text(ctx, ICONS.STAR)
+                        app.gui:popColors(app.gui.st.col.search.favorite)
+                        ImGui.PopFont(ctx)
+                        ImGui.SameLine(ctx)
+                    end
 
-                ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 0.0, 0.0)
-                for j, st in ipairs(result.searchText) do
-                    if not st.hide then
-                        if j > 1 then
-                            ImGui.Text(ctx, ' ')
-                            ImGui.SameLine(ctx)
-                            app.gui:pushColors(app.gui.st.col.search.secondaryResult)
-                        else
-                            app.gui:pushColors(app.gui.st.col.search.mainResult)
-                        end
-                        local curIndex = 1
-                        for k, highlight in OD_PairsByOrder(result.foundIndexes[j] or {}) do
-                            if curIndex <= highlight.from then
-                                ImGui.Text(ctx, (st.text):sub(curIndex, highlight.from - 1))
+                    -- draw result name, highlighting the search query
+
+                    ImGui.PushStyleVar(ctx, ImGui.StyleVar_ItemSpacing, 0.0, 0.0)
+                    for j, st in ipairs(result.searchText) do
+                        if not st.hide then
+                            if j > 1 then
+                                ImGui.Text(ctx, ' ')
                                 ImGui.SameLine(ctx)
+                                app.gui:pushColors(app.gui.st.col.search.secondaryResult)
+                            else
+                                app.gui:pushColors(app.gui.st.col.search.mainResult)
                             end
-                            if curIndex <= highlight.to + 1 then
-                                app.gui:pushColors(app.gui.st.col.search.highlight)
-                                local txt = (st.text):sub(math.max(curIndex, highlight.from), highlight.to)
+                            local curIndex = 1
+                            for k, highlight in OD_PairsByOrder(result.foundIndexes[j] or {}) do
+                                if curIndex <= highlight.from then
+                                    ImGui.Text(ctx, (st.text):sub(curIndex, highlight.from - 1))
+                                    ImGui.SameLine(ctx)
+                                end
+                                if curIndex <= highlight.to + 1 then
+                                    app.gui:pushColors(app.gui.st.col.search.highlight)
+                                    local txt = (st.text):sub(math.max(curIndex, highlight.from), highlight.to)
+                                    ImGui.Text(ctx, txt)
+                                    app.gui:popColors(app.gui.st.col.search.highlight)
+                                    ImGui.SameLine(ctx)
+                                    curIndex = highlight.to + 1
+                                end
+                            end
+                            if curIndex <= #(st.text) then
+                                local txt = (st.text):sub(curIndex, #(st.text))
                                 ImGui.Text(ctx, txt)
-                                app.gui:popColors(app.gui.st.col.search.highlight)
                                 ImGui.SameLine(ctx)
-                                curIndex = highlight.to + 1
+                            end
+                            if j > 1 then
+                                app.gui:popColors(app.gui.st.col.search.secondaryResult)
+                            else
+                                app.gui:popColors(app.gui.st.col.search.mainResult)
                             end
                         end
-                        if curIndex <= #(st.text) then
-                            local txt = (st.text):sub(curIndex, #(st.text))
-                            ImGui.Text(ctx, txt)
-                            ImGui.SameLine(ctx)
-                        end
-                        if j > 1 then
-                            app.gui:popColors(app.gui.st.col.search.secondaryResult)
-                        else
-                            app.gui:popColors(app.gui.st.col.search.mainResult)
-                        end
                     end
-                end
-                ImGui.PopStyleVar(ctx)
+                    ImGui.PopStyleVar(ctx)
 
-                ImGui.PopID(ctx)
+                    ImGui.PopID(ctx)
+                end
+                if app.temp.checkScrollDown and highlightedY > upperRowY + maxSearchResults * fontLineHeight then
+                    ImGui.SetScrollY(ctx,
+                        ImGui.GetScrollY(ctx) +
+                        (highlightedY - (upperRowY + (maxSearchResults - 1) * fontLineHeight) - 1))
+                    app.temp.checkScrollDown = false
+                end
+                if app.temp.checkScrollUp and highlightedY <= upperRowY + fontLineHeight then
+                    ImGui.SetScrollY(ctx,
+                        ImGui.GetScrollY(ctx) - (upperRowY - highlightedY + 1) - fontLineHeight - 1)
+                    app.temp.checkScrollUp = false
+                end
+                ImGui.EndTable(ctx)
             end
-            if app.temp.checkScrollDown and highlightedY > upperRowY + maxSearchResults * fontLineHeight then
-                ImGui.SetScrollY(ctx,
-                    ImGui.GetScrollY(ctx) +
-                    (highlightedY - (upperRowY + (maxSearchResults - 1) * fontLineHeight) - 1))
-                app.temp.checkScrollDown = false
+            app.gui:popColors(app.gui.st.col.searchWindow)
+            app.gui:popStyles(app.gui.st.vars.searchWindow)
+            if hintResult then
+                local action = (hintResult.type == ASSETS.TRACK and 'add a send to track %s' or 'create a new track with FX %s')
+                    :format(hintResult.searchText[1].text)
+                app:setHint('main',
+                    ('%s to %s.'):format(hintContext, action) ..
+                    (app.getShortcutDescription('markFavorite') ~= '' and (' Press %s to %s.'):format(app.getShortcutDescription('markFavorite'),
+                        hintResult.group == FAVORITE_GROUP and 'unfavorite' or 'favorite') or ''))
+            else
+                app:setHint('main', '')
             end
-            if app.temp.checkScrollUp and highlightedY <= upperRowY + fontLineHeight then
-                ImGui.SetScrollY(ctx,
-                    ImGui.GetScrollY(ctx) - (upperRowY - highlightedY + 1) - fontLineHeight - 1)
-                app.temp.checkScrollUp = false
-            end
-            ImGui.EndTable(ctx)
+            return selectedResult
         end
-        app.gui:popColors(app.gui.st.col.searchWindow)
-        app.gui:popStyles(app.gui.st.vars.searchWindow)
-        if hintResult then
-            local action = (hintResult.type == ASSETS.TRACK and 'add a send to track %s' or 'create a new track with FX %s')
-                :format(hintResult.searchText[1].text)
-            app:setHint('main',
-                ('%s to %s.'):format(hintContext, action) ..
-                (app.getShortcutDescription('markFavorite') ~= '' and (' Press %s to %s.'):format(app.getShortcutDescription('markFavorite'),
-                    hintResult.group == FAVORITE_GROUP and 'unfavorite' or 'favorite') or ''))
+
+        local function scoutSearch()
+            -- draw window content
+            local ctx = app.gui.ctx
+            local w, h =
+                select(1, ImGui.GetContentRegionAvail(ctx)) -
+                ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2,
+                select(2, ImGui.GetContentRegionAvail(ctx)) -- app.gui.st.sizes.hintHeight
+            if ImGui.BeginChild(ctx, '##waitingForScout', w, h, nil, ImGui.WindowFlags_NoNav) then
+                -- ImGui.Dummy(ctx, w, h)
+                local text = 'Please select items in the Scout window'
+                ImGui.SetCursorPos(ctx, (w - ImGui.CalcTextSize(ctx, text)) / 2,
+                    h / 2 - app.gui.TEXT_BASE_HEIGHT / 2)
+                ImGui.Text(ctx, text)
+                local text = 'Cancel'
+                ImGui.SetCursorPosX(ctx,
+                    (w - ImGui.CalcTextSize(ctx, text) - ImGui.GetStyleVar(ctx, ImGui.StyleVar_FramePadding) * 2) /
+                    2)
+                if ImGui.Button(ctx, text) then
+                    app.temp.scoutRequestSent = nil
+                    app.temp.ignoreEscapeKey = true
+                    app.setPage(APP_PAGE.MIXER)
+                end
+
+                ImGui.EndChild(ctx)
+            end
+            -- handle request
+            if app.pageSwitched then
+                r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_RESULTS', '', false)
+                local script_name = 'Odedd_Scout.lua'
+                local cmdId, cmdName, cmdPath = OD_GetScriptDetails(script_name)
+                if cmdId then
+                    local scoutVer = OD_GetScriptVersion(cmdPath)
+                    if not OD_IsVersionAtLeast(scoutVer, MIN_SCOUT_VERSION) then
+                        app:msg('Please upgrade Scout to version ' .. MIN_SCOUT_VERSION .. '\nor use internal search.')
+                        -- reaper.ReaPack_BrowsePackages('Odedd Scout')
+                        app.temp.scoutRequestSent = nil
+                        app.setPage(APP_PAGE.MIXER)
+                        return
+                    end
+                    r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH', 'Send Buddy', false)
+
+                    if app.page == APP_PAGE.SEARCH_FX then
+                        r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_TYPES', 'PluginAssetType,FXChainAssetType', false)
+                    elseif app.temp.addSendType == SEND_TYPE.RECV then
+                        r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_TYPES', 'TrackAssetType', false)
+                    else
+                        r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_TYPES', 'PluginAssetType,FXChainAssetType,TrackAssetType,TrackTemplateAssetType', false)
+                    end
+                    local intId = r.NamedCommandLookup('_' .. cmdId)
+                    if intId ~= 0 then r.Main_OnCommand(intId, 0) end
+                else
+                    app:msg('Scout not found. Please install it using ReaPack or use internal search.')
+                    -- reaper.ReaPack_BrowsePackages('Odedd Scout')
+                    app.temp.scoutRequestSent = nil
+                    app.setPage(APP_PAGE.MIXER)
+                    return
+                end
+                app.temp.scoutRequestSent = ImGui.GetFrameCount(app.gui.ctx)
+            elseif app.temp.scoutRequestSent and app.temp.scoutRequestSent < ImGui.GetFrameCount(app.gui.ctx) - 1 then
+                local scoutPulse = r.GetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_PULSE')
+                if scoutPulse == '1' then
+                    local results = r.GetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_RESULTS')
+                    if results and results ~= '' then
+                        local scriptHwnd = r.JS_Window_Find(Scr.context_name, true) or r.JS_Window_FindTop(Scr.name, true)
+                        if scriptHwnd then
+                            r.DockWindowActivate(scriptHwnd)
+                            r.JS_Window_SetFocus(scriptHwnd)
+                            ImGui.SetNextWindowFocus(ctx)
+                        end
+
+                        -- r.ShowConsoleMsg('GOT RESULTS: \n' .. results .. '\n')
+                        local byLine = "([^\r\n]*)\r?\n?"
+                        local selectedResults = {}
+                        for result in string.gmatch(results, byLine) do
+                            local scoutType, loadStr = result:match('^([^%s]+)%s(.+)$')
+                            local mappedType
+                            if scoutType == 'PluginAssetType' then
+                                mappedType = ASSETS.PLUGIN
+                            elseif scoutType == 'TrackAssetType' then
+                                mappedType = ASSETS.TRACK
+                            elseif scoutType == 'FXChainAssetType' then
+                                mappedType = ASSETS.FX_CHAIN
+                            elseif scoutType == 'TrackTemplateAssetType' then
+                                mappedType = ASSETS.TRACK_TEMPLATE
+                            end
+                            for i, asset in ipairs(app.db.assets) do
+                                if asset.type == mappedType and asset.load == loadStr then
+                                    table.insert(selectedResults, asset)
+                                end
+                            end
+                        end
+                        r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_RESULTS', '', false)
+                        local mods = r.GetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_RESULTS_MODS')
+                        if mods and modes ~= '' then
+                            r.SetExtState('Odedd_Scout', 'EXTERNAL_SEARCH_RESULTS_MODS', '', false)
+                        end
+
+                        return selectedResults
+                    end
+                    return -- wait for results
+                else
+                    app.temp.scoutRequestSent = nil
+                    app.temp.ignoreEscapeKey = true
+                    app.setPage(APP_PAGE.MIXER)
+                end
+            end
+        end
+
+        if app.pageSwitched then
+            app.db:getTracks()
+            app.db:assembleAssets()
+        end
+
+        local selectedResults
+        if app.settings.current.useScout then
+            selectedResults = scoutSearch()
         else
-            app:setHint('main', '')
+            selectedResults = ownSearch()
         end
-        if selectedResult then
-            if app.page == APP_PAGE.SEARCH_FX then
-                app.temp.addFxToSend:addInsert(selectedResult.load)
-                app.temp.addFxToSend = nil
-            elseif app.page == APP_PAGE.SEARCH_SEND then
-                app.db:createNewSend(app.temp.addSendType, selectedResult.type, selectedResult.load,
-                    selectedResult.searchText[1].text)
+
+        if selectedResults then
+            for i, selectedResult in ipairs(selectedResults) do
+                if app.page == APP_PAGE.SEARCH_FX then
+                    app.temp.addFxToSend:addInsert(selectedResult.load, i == #selectedResults)
+                elseif app.page == APP_PAGE.SEARCH_SEND then
+                    -- r.ShowConsoleMsg('adding result '..i..': '..selectedResult.load..'\n')
+                    app.db:createNewSend(app.temp.addSendType, selectedResult.type, selectedResult.load,
+                        selectedResult.searchText[1].text, i == #selectedResults)
+                end
             end
+            app.temp.addFxToSend = nil
             app.setPage(APP_PAGE.MIXER)
         end
     end
@@ -1531,7 +1659,7 @@ if OD_PrereqsOK({
             select(1, ImGui.GetContentRegionAvail(ctx)) -
             ImGui.GetStyleVar(ctx, ImGui.StyleVar_WindowPadding) * 2,
             select(2, ImGui.GetContentRegionAvail(ctx)) -- app.gui.st.sizes.hintHeight
-        if ImGui.BeginChild(ctx, '##noTrack', w, h, nil, nil) then
+        if ImGui.BeginChild(ctx, '##noTrack', w, h, nil, ImGui.WindowFlags_NoNav) then
             ImGui.Dummy(ctx, w, h)
             ImGui.SetCursorPos(ctx, w / 2,
                 h / 2 - app.gui.TEXT_BASE_HEIGHT * 1)
@@ -1572,6 +1700,21 @@ if OD_PrereqsOK({
     function app.drawSettings()
         local ctx = app.gui.ctx
         local w = 700 * app.settings.current.uiScale
+
+        local function refreshScoutStatus()
+            local script_name = 'Odedd_Scout.lua'
+            local cmdId, cmdName, cmdPath = OD_GetScriptDetails(script_name)
+            if cmdId then
+                app.temp.scoutStatus = SCOUT_STATUS.OK
+                local scoutVer = OD_GetScriptVersion(cmdPath)
+                if not OD_IsVersionAtLeast(scoutVer, MIN_SCOUT_VERSION) then
+                    r.ShowConsoleMsg('scout version: ' .. scoutVer .. '\n')
+                    app.temp.scoutStatus = SCOUT_STATUS.UPDATE
+                end
+            else
+                app.temp.scoutStatus = SCOUT_STATUS.MISSING
+            end
+        end
         -- since sometimes we need to capture Escape, we need to make sure it doesn't trigger
         -- closing this window. So we increment a counter which will be reset if the shortcut is
         -- being captured, so that we can know to ignore the captured key unless some frames have passed.
@@ -1597,6 +1740,23 @@ if OD_PrereqsOK({
                 100
             app.settings.current.followSelectedTrack = app.gui:setting('checkbox', T.SETTINGS.FOLLOW_SELECTED_TRACK
                 .LABEL, T.SETTINGS.FOLLOW_SELECTED_TRACK.HINT, app.settings.current.followSelectedTrack)
+            if app.temp.oldScoutStatus == nil or app.temp.oldScoutStatus ~= app.temp.scoutStatus then
+                refreshScoutStatus()
+                app.temp.oldScoutStatus = app.temp.scoutStatus
+            end
+            app.settings.current.useScout = app.gui:setting('checkbox', T.SETTINGS.USE_SCOUT
+                .LABEL, T.SETTINGS.USE_SCOUT.HINT, app.settings.current.useScout)
+            if app.settings.current.useScout then
+                if app.temp.scoutStatus == SCOUT_STATUS.UPDATE or app.temp.scoutStatus == SCOUT_STATUS.MISSING then
+                    if app.gui:setting('button', 'updateScout', T.SETTINGS.UPDATE_SCOUT.HINT, nil, { label = T.SCOUT_STATUS[app.temp.scoutStatus] }, true) then
+                        r.ReaPack_BrowsePackages('Odedd Scout')
+                    end
+                else
+                    local spacing = ImGui.GetStyleVar(ctx, ImGui.StyleVar_ItemSpacing)
+                    ImGui.SameLine(ctx, 0, spacing)
+                    ImGui.TextDisabled(ctx, T.SCOUT_STATUS[app.temp.scoutStatus])
+                end
+            end
             app.settings.current.mouseScrollReversed = app.gui:setting('checkbox', T.SETTINGS.MW_REVERSED.LABEL,
                 T.SETTINGS.MW_REVERSED.HINT, app.settings.current.mouseScrollReversed)
             app.settings.current.volType = app.gui:setting('combo', T.SETTINGS.VOL_TYPE.LABEL, T.SETTINGS.VOL_TYPE.HINT,
@@ -1700,6 +1860,7 @@ if OD_PrereqsOK({
         end
         if app.temp.settingsWindowOpen and not ImGui.IsPopupOpen(ctx, Scr.name .. ' Settings##settingsWindow') then
             app.temp.settingsWindowOpen = false
+            app.temp.scoutStatus = nil
             OD_ReleaseGlobalKeys()
             app.db:sync(true)
             app.settings:save()

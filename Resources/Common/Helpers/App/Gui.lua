@@ -102,37 +102,37 @@ end
 OD_Gui.updateCachedTextHeightsToScale = function(self)
     if self.st.fonts.default then
         self:pushFont(self.st.fonts.default)
-        self.TEXT_BASE_WIDTH, self.TEXT_BASE_HEIGHT = ImGui.CalcTextSize(self.ctx, 'A'),
-            ImGui.GetTextLineHeightWithSpacing(self.ctx)
+        self.TEXT_BASE_WIDTH, self.TEXT_BASE_HEIGHT = math.ceil(ImGui.CalcTextSize(self.ctx, 'A')),
+            math.ceil(ImGui.GetTextLineHeightWithSpacing(self.ctx))
         ImGui.PopFont(self.ctx)
         if self.st.fonts.default.scaledSizes.small then
             self:pushFont(self.st.fonts.default, 'small')
-            self.TEXT_BASE_WIDTH_SMALL, self.TEXT_BASE_HEIGHT_SMALL = ImGui.CalcTextSize(self.ctx, 'A'),
-                ImGui.GetTextLineHeightWithSpacing(self.ctx)
+            self.TEXT_BASE_WIDTH_SMALL, self.TEXT_BASE_HEIGHT_SMALL = math.ceil(ImGui.CalcTextSize(self.ctx, 'A')),
+                math.ceil(ImGui.GetTextLineHeightWithSpacing(self.ctx))
             ImGui.PopFont(self.ctx)
         end
         if self.st.fonts.default.scaledSizes.medium then
             self:pushFont(self.st.fonts.default, 'medium')
-            self.TEXT_BASE_WIDTH_MEDIUM, self.TEXT_BASE_HEIGHT_MEDIUM = ImGui.CalcTextSize(self.ctx, 'A'),
-                ImGui.GetTextLineHeightWithSpacing(self.ctx)
+            self.TEXT_BASE_WIDTH_MEDIUM, self.TEXT_BASE_HEIGHT_MEDIUM = math.ceil(ImGui.CalcTextSize(self.ctx, 'A')),
+                math.ceil(ImGui.GetTextLineHeightWithSpacing(self.ctx))
             ImGui.PopFont(self.ctx)
         end
         if self.st.fonts.default.scaledSizes.large then
             self:pushFont(self.st.fonts.default, 'large')
-            self.TEXT_BASE_WIDTH_LARGE, self.TEXT_BASE_HEIGHT_LARGE = ImGui.CalcTextSize(self.ctx, 'A'),
-                ImGui.GetTextLineHeightWithSpacing(self.ctx)
+            self.TEXT_BASE_WIDTH_LARGE, self.TEXT_BASE_HEIGHT_LARGE = math.ceil(ImGui.CalcTextSize(self.ctx, 'A')),
+                math.ceil(ImGui.GetTextLineHeightWithSpacing(self.ctx))
             ImGui.PopFont(self.ctx)
         end
     end
     if self.st.fonts.bold then
         self:pushFont(self.st.fonts.bold)
-        self.TEXT_BASE_WIDTH_BOLD, self.TEXT_BASE_HEIGHT_BOLD = ImGui.CalcTextSize(self.ctx, 'A'),
-            ImGui.GetTextLineHeightWithSpacing(self.ctx)
+        self.TEXT_BASE_WIDTH_BOLD, self.TEXT_BASE_HEIGHT_BOLD = math.ceil(ImGui.CalcTextSize(self.ctx, 'A')),
+            math.ceil(ImGui.GetTextLineHeightWithSpacing(self.ctx))
         ImGui.PopFont(self.ctx)
         if self.st.fonts.bold.scaledSizes.large then
             self:pushFont(self.st.fonts.bold, 'large')
-            self.TEXT_BASE_WIDTH_LARGE_BOLD, self.TEXT_BASE_HEIGHT_LARGE_BOLD = ImGui.CalcTextSize(self.ctx, 'A'),
-                ImGui.GetTextLineHeightWithSpacing(self.ctx)
+            self.TEXT_BASE_WIDTH_LARGE_BOLD, self.TEXT_BASE_HEIGHT_LARGE_BOLD = math.ceil(ImGui.CalcTextSize(self.ctx, 'A')),
+                math.ceil(ImGui.GetTextLineHeightWithSpacing(self.ctx))
             ImGui.PopFont(self.ctx)
         end
     end

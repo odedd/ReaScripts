@@ -14,9 +14,12 @@ T.SETTINGS = {
         LABEL = 'Folder name',
         HINT = 'If one does not exist, it will be created when adding sends.',
     },
-    GLOBAL_SHORTCUTS = {
-        LABEL = 'Global shortcuts',
-        HINT = ('Should shortcuts work when %s is not in focus.?'):format(Scr.name),
+    USE_SCOUT = {
+        LABEL = 'Search using Scout',
+        HINT = 'Leverage the power of Scout to add sends and FX in Send Buddy',
+    },
+    UPDATE_SCOUT = {
+        HINT = 'Update Scout to enable Send Buddy integration'
     },
     FOLLOW_SELECTED_TRACK = {
         LABEL = 'Follow selected track',
@@ -90,6 +93,12 @@ T.SETTINGS.LISTS = {
         [MINIMIZATION_STYLE.PT] = 'Pro-Tools style',
         [MINIMIZATION_STYLE.TRIM] = 'Trim text to length',
     },
+}
+
+T.SCOUT_STATUS = {
+    [SCOUT_STATUS.OK] = 'Scout installation found',
+    [SCOUT_STATUS.MISSING] = 'Install Scout',
+    [SCOUT_STATUS.UPDATE] = 'Update Scout',
 }
 
 T.AUTO_MODE_DESCRIPTIONS = {
