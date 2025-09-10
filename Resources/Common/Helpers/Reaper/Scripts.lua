@@ -23,8 +23,10 @@ function OD_GetScriptDetails(script_name)
     if content:find(santizedSn) then
         local cmd_id, cmd_name, cmd_path = content:match('[^\r\n].+(RS.+) "Custom: (' .. santizedSn..'[^"]-)"%s"?([^"\r\n]+)')
         if cmd_path and not cmd_path:match("^/") then
-            cmd_path = r.GetResourcePath() .. "/" .. cmd_path
+            cmd_path = r.GetResourcePath() .. "/Scripts/" .. cmd_path
         end
         return cmd_id, cmd_name, cmd_path
+    else
+        r.ShowConsoleMsg('not found')
     end
 end
