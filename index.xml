@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="1928ab630fb07bf1f4f82d0fce9dd05b44c7fd78">
+<index version="1" name="Odedd ReaScripts" commit="16322e23f7c508d217671432acc29f85c5e76cc2">
   <category name="FX/Scout">
     <reapack name="Odedd_Scout.lua" type="script" desc="Scout">
       <metadata>
@@ -312,6 +312,16 @@ QuickChain export action wording fix ]]></changelog>
         <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/c4d0de6754f9bc9911db7e7747771746b8406a74/FX/Scout/Resources/Fonts/Cousine-Regular.ttf</source>
         <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/c4d0de6754f9bc9911db7e7747771746b8406a74/FX/Scout/Resources/Fonts/Icons-Regular.otf</source>
         <source file="scout54.dat">https://github.com/odedd/ReaScripts/raw/c4d0de6754f9bc9911db7e7747771746b8406a74/FX/Scout/scout54.dat</source>
+      </version>
+      <version name="1.0.33" author="Oded Davidov" time="2025-09-10T09:57:11Z">
+        <changelog><![CDATA[Fix results not launching with Enter (introduced in 1.0.31)
+Added Keypad Enter to launch results]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/16322e23f7c508d217671432acc29f85c5e76cc2/FX/Scout/Odedd_Scout.lua</source>
+        <source file="Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/16322e23f7c508d217671432acc29f85c5e76cc2/FX/Scout/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="Resources/Fonts/Cousine-Bold.ttf">https://github.com/odedd/ReaScripts/raw/16322e23f7c508d217671432acc29f85c5e76cc2/FX/Scout/Resources/Fonts/Cousine-Bold.ttf</source>
+        <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/16322e23f7c508d217671432acc29f85c5e76cc2/FX/Scout/Resources/Fonts/Cousine-Regular.ttf</source>
+        <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/16322e23f7c508d217671432acc29f85c5e76cc2/FX/Scout/Resources/Fonts/Icons-Regular.otf</source>
+        <source file="scout54.dat">https://github.com/odedd/ReaScripts/raw/16322e23f7c508d217671432acc29f85c5e76cc2/FX/Scout/scout54.dat</source>
       </version>
     </reapack>
   </category>
