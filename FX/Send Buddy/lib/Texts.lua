@@ -22,8 +22,8 @@ T.SETTINGS = {
         HINT = 'Update Scout to enable Send Buddy integration'
     },
     FOLLOW_SELECTED_TRACK = {
-        LABEL = 'Follow selected track',
-        HINT = ('Change track in %s when a new track is selected.'):format(Scr.name),
+        LABEL = 'Follow touched track',
+        HINT = ('Change track in %s when a new track is touched.'):format(Scr.name),
     },
     FX_TYPE_ORDER = {
         LABEL = 'FX type priority',
