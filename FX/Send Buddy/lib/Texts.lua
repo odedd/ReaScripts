@@ -67,6 +67,14 @@ T.SETTINGS = {
         LABEL = '%s group',
         HINT = '%s group separator color.',
     },
+    SHOW_METERS = {
+        LABEL = 'Show meters',
+        HINT = 'Show level meters (hover over ? for details).',
+    },
+    METERS_COLOR = {
+        LABEL = 'Meters',
+        HINT = 'Meters color.',
+    },
     UI_SCALE = {
         LABEL = 'Zoom',
         HINT = 'Interface scale. Double click to enter manually.',
@@ -123,3 +131,18 @@ the window to the dock of your choice.
 After that, %s will remember
 the dock position.]]):format(Scr.name)
 }
+
+T.SHOW_METERS_EXPLANATION = [[Reaper does not report send levels directly.
+Instead, Send Buddy estimates send levels based
+on the source track's volume and pan, which may
+not always be accurate.
+
+Specifically, in pre-fader mode, if the source
+track volume is set to -inf, the meters will 
+show no level, even if audio is being sent.
+
+If you set Reaper to show pre-fader levels in 
+the meters (Settings -> Appearance -> Track 
+Meters -> Track meters display pre-fader levels)
+Send Buddy's meters will reflect pre-fader levels
+accurately.]]
