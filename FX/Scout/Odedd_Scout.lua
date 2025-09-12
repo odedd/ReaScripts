@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.0.33
+-- @version 1.0.34
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -17,8 +17,8 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
 -- @changelog
---   Fix results not launching with Enter (introduced in 1.0.31)
---   Added Keypad Enter to launch results
+--   Fixed bug on import (overwrite)
+--   Fixed ReaImGui id warning
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
