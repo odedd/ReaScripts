@@ -109,6 +109,8 @@ SM_Gui.init = function(self, fonts)
             },
             blank = {
                 [ImGui.Col_Button] = self.st.basecolors.darkestBG,
+                [ImGui.Col_ButtonHovered] = self.st.basecolors.darkestBG,
+                [ImGui.Col_ButtonActive] = self.st.basecolors.darkestBG,
             },
         },
         buttons = {

@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.3.1
+-- @version 1.3.2
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,8 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Meters take into account mute state
+--   Double click send/receive name to rename track
+--   Fixed metering with hardware outputs
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -260,12 +261,12 @@ if OD_PrereqsOK({
         app.gui:pushFont(app.gui.st.fonts.default, 'small')
 
         local drawSend = function(s, parts)
-            local drawDummy = function(w, col, h)
+            local drawDummy = function(w, col, h, i)
                 local h = h or app.gui.TEXT_BASE_HEIGHT_SMALL
                 app.gui:pushColors(col)
                 ImGui.BeginDisabled(ctx)
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 1.0)
-                ImGui.Button(ctx, '##dummy' .. s.order, w, h)
+                ImGui.Button(ctx, '##dummy' .. s.order .. i, w, h)
                 ImGui.PopStyleVar(ctx)
                 ImGui.EndDisabled(ctx)
                 app:setHoveredHint('main', ' ')
@@ -385,7 +386,7 @@ if OD_PrereqsOK({
                         end
                         local rmsWindow = 3 -- number of samples to average for RMS
                         local prefaderSetting = tonumber(select(2, r.get_config_var_string('nometers'))) & 1024 ~= 0
-                        local meteredTrack = targetTrack and s.destTrack or s.srcTrack
+                        local meteredTrack = (targetTrack) and s.destTrack or (s.type == SEND_TYPE.HW and s.track or s.srcTrack)
 
                         local trackVolMultiplier = prefaderSetting and ((s.mode == 0) and meteredTrack.vol or 1.0) or ((s.mode == 0) and 1.0 or (meteredTrack.vol > 1e-49 and (1.0 / meteredTrack.vol) or 0.0))
                         local meterValues = {}
@@ -472,7 +473,7 @@ if OD_PrereqsOK({
                     end
                 end
                 if targetTrack and s.type == SEND_TYPE.HW then
-                    drawDummy(w, app.gui.st.colpresets.darkButton, h)
+                    drawDummy(w, app.gui.st.colpresets.darkButton, h, 'fader')
                     return
                 end
                 local target = targetTrack and ((s.type == SEND_TYPE.SEND) and s.destTrack or s.srcTrack) or s
@@ -550,7 +551,7 @@ if OD_PrereqsOK({
             end
             local drawPan = function(w, targetTrack)
                 if targetTrack and s.type == SEND_TYPE.HW then
-                    drawDummy(w, app.gui.st.colpresets.darkButton, nil)
+                    drawDummy(w, app.gui.st.colpresets.darkButton, nil, 'pan')
                     return
                 end
                 local target = targetTrack and ((s.type == SEND_TYPE.SEND) and s.destTrack or s.srcTrack) or s
@@ -594,7 +595,7 @@ if OD_PrereqsOK({
             end
             local drawVolLabel = function(w, targetTrack)
                 if targetTrack and s.type == SEND_TYPE.HW then
-                    drawDummy(w, app.gui.st.colpresets.darkButton, nil)
+                    drawDummy(w, app.gui.st.colpresets.darkButton, nil, 'volLabel')
                     return
                 end
                 local target = targetTrack and ((s.type == SEND_TYPE.SEND) and s.destTrack or s.srcTrack) or s
@@ -686,7 +687,7 @@ if OD_PrereqsOK({
                     ImGui.PopFont(ctx)
                     app.gui:popColors(app.gui.st.col.buttons.scrollToTrack)
                 else
-                    drawDummy(w, app.gui.st.colpresets.darkButton, nil)
+                    drawDummy(w, app.gui.st.colpresets.darkButton, nil,'GoToDestTrack')
                 end
             end
             local drawListen = function(w, listenMode)
@@ -742,8 +743,8 @@ if OD_PrereqsOK({
             local drawMIDIRouteButtons = function(w)
                 if s.type == SEND_TYPE.HW then
                     ImGui.BeginGroup(ctx)
-                    drawDummy(w, app.gui.st.col.buttons.route, nil)
-                    drawDummy(w, app.gui.st.col.buttons.route, nil)
+                    drawDummy(w, app.gui.st.col.buttons.route, nil,'midiRouteBtn1')
+                    drawDummy(w, app.gui.st.col.buttons.route, nil,'midiRouteBtn2')
                     ImGui.EndGroup(ctx)
                 else
                     app.gui:pushColors(app.gui.st.col.buttons.route)
@@ -963,18 +964,49 @@ if OD_PrereqsOK({
                 local track = s.type == SEND_TYPE.RECV and s.srcTrack or s.destTrack
                 if s.type ~= SEND_TYPE.HW then
                     ImGui.PushStyleColor(ctx, ImGui.Col_Button, track.color or 0x000000ff)
+                    ImGui.PushStyleColor(ctx, ImGui.Col_ButtonHovered, track.color or 0x000000ff)
+                    ImGui.PushStyleColor(ctx, ImGui.Col_ButtonActive, track.color or 0x000000ff)
                     ImGui.PushStyleColor(ctx, ImGui.Col_Text, OD_ColorIsBright(track.color) and 0x000000ff or 0xffffffff)
                 else
                     app.gui:pushColors(app.gui.st.col.insert.blank)
                 end
-                ImGui.BeginDisabled(ctx)
+                local rename = app.temp.channelRename == s.order
                 ImGui.PushStyleVar(ctx, ImGui.StyleVar_Alpha, 1.0)
-                ImGui.Button(ctx, s.shortName .. "##sendName", w, app.gui.TEXT_BASE_HEIGHT_SMALL)
+
+                if rename then
+                    local rv
+                    app.temp.ignoreEscapeKey = true
+                    ImGui.SetNextItemWidth(ctx, w)
+                    ImGui.PushStyleColor(ctx, ImGui.Col_FrameBg, track.color)
+                    ImGui.PushStyleColor(ctx, ImGui.Col_TextSelectedBg, OD_MultiplyHSLInRGB(track.color, 1, 1, 1.15))
+                    rv, app.temp.channelRenameBuffer = ImGui.InputText(ctx, '##editChannelName', app.temp.channelRenameBuffer, ImGui.InputTextFlags_AutoSelectAll)
+                    ImGui.PopStyleColor(ctx)
+                    if ImGui.IsItemActivated then
+                        ImGui.SetKeyboardFocusHere(ctx, -1)
+                    end
+                    -- if ImGui.IsItemDeactivatedAfterEdit(ctx) then
+                    --     local renamedTrack = s.type == SEND_TYPE.RECV and s.srcTrack or s.destTrack
+                    --     renamedTrack:rename(app.temp.channelRenameBuffer)
+                    -- end
+                    if ImGui.IsItemDeactivated(ctx) or (ImGui.IsItemActive(ctx) and (not ImGui.IsItemHovered(ctx)) and ImGui.IsMouseDown(ctx, ImGui.MouseButton_Left)) then --or ((not ImGui.IsItemHovered(ctx)) and ImGui.IsMouseDown(ctx, ImGui.MouseButton_Left)) then
+                        local renamedTrack = s.type == SEND_TYPE.RECV and s.srcTrack or s.destTrack
+                        renamedTrack:rename(app.temp.channelRenameBuffer)
+                        app.temp.channelRename = nil
+                        app.temp.channelRenameBuffer = nil
+                        app.temp.ignoreEscapeKey = nil
+                    end
+                else
+                    -- ImGui.BeginDisabled(ctx)
+                    ImGui.Button(ctx, s.shortName .. "##sendName", w, app.gui.TEXT_BASE_HEIGHT_SMALL)
+                    if s.type ~= SEND_TYPE.HW and ImGui.IsItemHovered(ctx, ImGui.HoveredFlags_AllowWhenDisabled) and ImGui.IsMouseDoubleClicked(ctx, ImGui.MouseButton_Left) then
+                        app.temp.channelRename = s.order
+                        app.temp.channelRenameBuffer = s.name
+                    end
+                    -- ImGui.EndDisabled(ctx)
+                end
                 ImGui.PopStyleVar(ctx)
-                ImGui.EndDisabled(ctx)
                 if s.destTrack then
-                    ImGui.PopStyleColor(ctx)
-                    ImGui.PopStyleColor(ctx)
+                    ImGui.PopStyleColor(ctx, rename and 5 or 4)
                 else
                     app.gui:popColors(app.gui.st.col.insert.blank)
                 end
@@ -1072,9 +1104,9 @@ if OD_PrereqsOK({
                 if part.name == 'inserts' then
                     drawInserts(w)
                 elseif part.name == 'dummy' then
-                    drawDummy(w, part.color)
+                    drawDummy(w, part.color, nil, i)
                 elseif part.name == 'dummyFader' then
-                    drawDummy(w, app.gui.st.colpresets.darkButton, faderHeight)
+                    drawDummy(w, app.gui.st.colpresets.darkButton, faderHeight, i)
                 elseif part.name == 'pan' then
                     drawPan(w, part.targetTrack)
                 elseif part.name == 'envmute' then

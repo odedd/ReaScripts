@@ -822,6 +822,14 @@ DB.getTracks = function(self)
             order = i,
             numInserts = 0,
             inserts = {},
+            rename = function(self, name, done)
+                done = (done == nil) and true or done
+                if name ~= self.name then -- if it was called just to create an undo point
+                self.name = name
+                    reaper.GetSetMediaTrackInfo_String(self.object, 'P_NAME', self.name, true)
+                end
+                if done then r.Undo_OnStateChangeEx2(0, 'Rename track', 1, -1) end
+            end,
 
             setVolDB = function(self, dB, done)
                 -- done not implemented due to reaper bug: https://forums.cockos.com/showthread.php?t=291664
