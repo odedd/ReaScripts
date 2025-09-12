@@ -28,6 +28,7 @@ SM_Settings = OD_Settings:new({
             [SEND_TYPE.RECV] = 0x371f23FF,
             [SEND_TYPE.HW] = 0x371f23FF
         },
+        metersColor = 0x3F9865FF, -- good gray option: 0x3d3d43ff
         shortcuts = {
             addSend = {
                 key = OD_KEYCODES.S,

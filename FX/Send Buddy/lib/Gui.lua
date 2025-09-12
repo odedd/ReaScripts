@@ -20,7 +20,7 @@ SM_Gui.init = function(self, fonts)
 
     self:createFontsImGui010({
         default = { file = 'Resources/Fonts/Cousine-Regular.ttf' },
-        vertical = { file = 'Resources/Fonts/Cousine-90deg.otf'},
+        vertical = { file = 'Resources/Fonts/Cousine-90deg.otf' },
         bold = { file = 'Resources/Fonts/Cousine-Regular.ttf', flags = ImGui.FontFlags_Bold },
         icons = { file = 'Resources/Fonts/Icons-Regular.otf' },
     }, { default = 18, small = 16, large = 22, tiny = 12 })
@@ -287,13 +287,17 @@ SM_Gui.init = function(self, fonts)
             [SEND_TYPE.RECV] = self.st.basecolors.mainDark, --0x371f37ff,
             [SEND_TYPE.HW] = self.st.basecolors.mainDark,   --0x35371fff,
         },
+        transparentFader = {
+            [ImGui.Col_FrameBg] = 0x00000000,
+            [ImGui.Col_FrameBgHovered] =  0x00000000,
+            [ImGui.Col_FrameBgActive] = 0x00000000,
+        },
         targetFader = {
             [ImGui.Col_FrameBg] = 0x1c2533ff,
             [ImGui.Col_FrameBgHovered] = 0x283b59ff,
             [ImGui.Col_FrameBgActive] = 0x2f4e80ff,
             [ImGui.Col_SliderGrab] = 0x4781deff,
             [ImGui.Col_SliderGrabActive] = 0x669cf2ff,
-
         },
         searchWindow = {
             [ImGui.Col_TableBorderStrong] = 0x00000000,
@@ -535,7 +539,7 @@ SM_Gui.init = function(self, fonts)
                 data.dontUnpdateWhileEnteringManually and self.app.temp.tempSettingsVal[text] or val, data.speed, data.min, data.max,
                 data.format, data.flags or 0)
             if data.dontUnpdateWhileEnteringManually then
-                if ImGui.IsItemActive(ctx) and not ImGui.IsMouseDragging(ctx,ImGui.MouseButton_Left) then
+                if ImGui.IsItemActive(ctx) and not ImGui.IsMouseDragging(ctx, ImGui.MouseButton_Left) then
                     self.app.temp.tempSettingsVal[text] = retval1
                     retval1 = val
                 else

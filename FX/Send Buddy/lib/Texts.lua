@@ -67,6 +67,10 @@ T.SETTINGS = {
         LABEL = '%s group',
         HINT = '%s group separator color.',
     },
+    METERS_COLOR = {
+        LABEL = 'Meters',
+        HINT = 'Meters color.',
+    },
     UI_SCALE = {
         LABEL = 'Zoom',
         HINT = 'Interface scale. Double click to enter manually.',

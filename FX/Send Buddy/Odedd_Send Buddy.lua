@@ -338,6 +338,108 @@ if OD_PrereqsOK({
                 app.gui:popColors(app.gui.st.col.buttons.route)
             end
             local drawFader = function(w, h, targetTrack)
+                local function drawMeter(w, h, targetTrack)
+                    -- meter bg
+                    local x, y = ImGui.GetCursorScreenPos(ctx)
+                    local col
+                    if ImGui.IsMouseHoveringRect(ctx, x, y, x + w, y + h) then
+                        if ImGui.IsMouseDown(ctx, ImGui.MouseButton_Left) then
+                            col = ImGui.GetColor(ctx, ImGui.Col_FrameBgActive)
+                        else
+                            col = ImGui.GetColor(ctx, ImGui.Col_FrameBgHovered)
+                        end
+                    else
+                        col = ImGui.GetColor(ctx, ImGui.Col_FrameBg)
+                    end
+                    ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), x, y, x + w, y + h, col, app.gui.st.vars.main[ImGui.StyleVar_FrameRounding][1])
+
+                    if app.temp.lastSamples == nil then app.temp.lastSamples = {} end
+                    if app.temp.lastSamples[s.order] == nil then app.temp.lastSamples[s.order] = {} end
+
+                    -- Calculate current source channel number and span
+                    local srcChannelNumber, srcChannelSpan
+                    if s.srcChan == -1 then
+                        srcChannelNumber = -1
+                        srcChannelSpan = 0
+                    else
+                        -- Check if it's multichannel first (encoded as numChannels * 512 + channelIndex)
+                        local numChannels = math.floor(s.srcChan / 512)
+                        local remainder = s.srcChan % 512
+                        if numChannels > 2 then
+                            -- Multichannel source (4, 6, 8, etc. channels)
+                            srcChannelNumber = remainder + 1 -- +1 to make it 1-based
+                            srcChannelSpan = numChannels
+                        elseif s.srcChan >= 1024 then
+                            -- Mono source: srcChan = channelIndex + 1024
+                            srcChannelNumber = (s.srcChan - 1024) + 1 -- +1 to make it 1-based
+                            srcChannelSpan = 1
+                        else
+                            -- Stereo source: srcChan = channelIndex (0-based)
+                            srcChannelNumber = s.srcChan + 1 -- +1 to make it 1-based
+                            srcChannelSpan = 2
+                        end
+                    end
+                    local rmsWindow = 3 -- number of samples to average for RMS
+                    -- TODO: panning support?
+                    -- TODO: handle -inf
+                    local trackVolMultiplier = (s.mode == 0) and 1.0 or (s.srcTrack.vol > 0 and (1.0 / s.srcTrack.vol) or 0.0)
+                    local meterValues = {}
+                    local maxMeterValue = 0
+                    for i = 1, srcChannelSpan do
+                        local channelSample = r.Track_GetPeakInfo(s.srcTrack.object, srcChannelNumber + i - 2)
+                        -- Apply track volume compensation immediately to the raw sample
+                        local normalizedSample = channelSample * trackVolMultiplier
+                        if app.temp.lastSamples[s.order][i] == nil then
+                            app.temp.lastSamples[s.order][i] = {}
+                        end
+                        local squaredSample = normalizedSample * normalizedSample
+                        local samples = app.temp.lastSamples[s.order][i]
+                        samples[#samples + 1] = squaredSample
+                        if #samples > rmsWindow then
+                            table.remove(samples, 1)
+                        end
+                        local sum = 0
+                        for j = 1, #samples do
+                            sum = sum + samples[j]
+                        end
+                        meterValues[i] = math.sqrt(sum / #samples) * s.vol
+                        maxMeterValue = math.max(maxMeterValue, meterValues[i])
+                    end
+                    if maxMeterValue > 1e-7 then -- Slightly more efficient comparison
+                        -- Convert linear value to dB (optimized: 20*log10(x) = 8.685889638*ln(x))
+                        local padding = 4*app.gui.scale
+
+                        local w = (w / srcChannelSpan) - padding / 4
+                        for i = 1, srcChannelSpan do
+                            local thisDB = 8.685889638 * math.log(meterValues[i])
+
+                            -- Pre-calculate commonly used values
+                            local scaleLevel = app.settings.current.scaleLevel
+                            local scaleFactor = app.settings.current.scaleFactor
+                            local minVol = app.settings.current.minSendVol
+
+                            -- Apply scaling logic
+                            local scaledLevel
+                            if thisDB >= scaleLevel then
+                                scaledLevel = thisDB * scaleFactor
+                            else
+                                -- Pre-calculate the denominator to avoid repeated calculation
+                                local denominator = (minVol - scaleLevel) / (minVol - (scaleLevel * scaleFactor))
+                                scaledLevel = scaleLevel * scaleFactor + (thisDB - scaleLevel) / denominator
+                            end
+
+                            -- Map to 0-1 range: meter caps at 0 dB, not maxSendVol like the fader
+                            local meterMaxDB = 0 -- Meter caps at 0 dB (unity gain)
+                            local meterMaxScaled = meterMaxDB >= scaleLevel and (meterMaxDB * scaleFactor) or
+                                (scaleLevel * scaleFactor + (meterMaxDB - scaleLevel) /
+                                    ((minVol - scaleLevel) / (minVol - (scaleLevel * scaleFactor))))
+
+                            local displayLevel = math.max(0, math.min(1,
+                                (scaledLevel - minVol) / (meterMaxScaled - minVol)))
+                        ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), x+(padding/2)+w*(i-1), y + h - displayLevel * h, x-(padding/4)+w*(i-1) + w, y + h, app.settings.current.metersColor, app.gui.st.vars.main[ImGui.StyleVar_FrameRounding][1])
+                        end
+                    end
+                end
                 if targetTrack and s.type == SEND_TYPE.HW then
                     drawDummy(w, app.gui.st.colpresets.darkButton, h)
                     return
@@ -355,16 +457,19 @@ if OD_PrereqsOK({
                         ((app.settings.current.minSendVol - app.settings.current.scaleLevel) / (app.settings.current.minSendVol - (app.settings.current.scaleLevel * app.settings.current.scaleFactor)))
                 end
                 app.gui:pushStyles(app.gui.st.vars.vol)
-                if targetTrack then app.gui:pushColors(app.gui.st.col.targetFader) end
+                if targetTrack then app.gui:pushColors(app.gui.st.col.targetFader) end -- this is important for the meter
+                drawMeter(w, h)
+                app.gui:pushColors(app.gui.st.col.transparentFader)
+
                 local rv, v2 = ImGui.VSliderDouble(ctx, '##v', w,
                     h,
                     scaledV,
                     app.settings.current.minSendVol,
                     app.settings.current.maxSendVol * app.settings.current.scaleFactor,
                     '')
-                app.gui:popStyles(app.gui.st.vars.vol)
+                app.gui:popColors(app.gui.st.col.transparentFader)
                 if targetTrack then app.gui:popColors(app.gui.st.col.targetFader) end
-
+                app.gui:popStyles(app.gui.st.vars.vol)
                 app:setHoveredHint('main',
                     (s.name .. ' - %s volume. Drag or scroll to change, %s-scroll to fine-tune.'):format(
                         (s.type == SEND_TYPE.RECV) and (targetTrack and 'Source track' or 'Receive') or
@@ -1847,6 +1952,11 @@ if OD_PrereqsOK({
                     app.settings.current.sendTypeColor[type],
                     { default = app.settings.default.sendTypeColor[type] })
             end
+            app.settings.current.metersColor = app.gui:setting('colorpicker',
+                    T.SETTINGS.METERS_COLOR.LABEL,
+                    T.SETTINGS.METERS_COLOR.HINT,
+                    app.settings.current.metersColor,
+                    { default = app.settings.default.metersColor })
             app.drawHint('settings')
             app:drawMsg()
             if app.temp.captureCounter > 3 and OD_IsGlobalKeyDown(OD_KEYCODES.ESCAPE) then
