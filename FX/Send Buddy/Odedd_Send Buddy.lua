@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.3
+-- @version 1.3.1
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Meters!
+--   Meters take into account mute state
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -351,7 +351,7 @@ if OD_PrereqsOK({
                     end
                     ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), x, y, x + w, y + h, col, app.gui.st.vars.main[ImGui.StyleVar_FrameRounding][1])
 
-                    if app.settings.current.showMeters then
+                    if app.settings.current.showMeters and not s.mute then
                         if app.temp.lastSamples == nil then app.temp.lastSamples = {} end
                         if app.temp.lastSamples[s.order] == nil then app.temp.lastSamples[s.order] = {} end
 
