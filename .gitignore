@@ -23,7 +23,9 @@ Rendering/Stem Manager/*
 !Rendering/Stem Manager/lib
 !Rendering/Stem Manager/lib/*
 
+
 Resources/Fonts/*.glyphs
 
 FX/Scout/internal
 FX/Scout/Odedd_Scout -*.lua 
+!FX/Scout/Odedd_Scout - Start in sleep mode.lua

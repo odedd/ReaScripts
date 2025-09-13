@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.1.3
+-- @version 1.1.4
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -16,8 +16,9 @@
 -- @provides
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
+--   Odedd_Scout - Start in sleep mode.lua
 -- @changelog
---   Reset to default filter fix when alt+clicking filter/tag
+--   New action to start Scout in sleep mode
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
