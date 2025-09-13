@@ -77,17 +77,17 @@ DB = {
     syncUIVol = function(self, vol) -- if the volume is automated, the volume in the track is updated
         if not self:_isTrackValid() then return end
         -- if self.app.settings.current.volType == VOL_TYPE.UI then
-            for _, send in ipairs(self.sends) do
-                send:_refreshVolPanAndMute()
-                if send.type ~= SEND_TYPE.HW then
-                    if r.ValidatePtr(send.destTrack.object, 'MediaTrack*') then
-                        send.destTrack:_refreshVolPanAndMute()
-                    end
-                    if r.ValidatePtr(send.srcTrack.object, 'MediaTrack*') then
-                        send.srcTrack:_refreshVolPanAndMute()
-                    end
+        for _, send in ipairs(self.sends) do
+            send:_refreshVolPanAndMute()
+            if send.type ~= SEND_TYPE.HW then
+                if r.ValidatePtr(send.destTrack.object, 'MediaTrack*') then
+                    send.destTrack:_refreshVolPanAndMute()
+                end
+                if r.ValidatePtr(send.srcTrack.object, 'MediaTrack*') then
+                    send.srcTrack:_refreshVolPanAndMute()
                 end
             end
+        end
         -- end
     end,
     sync = function(self, refresh, returnToMixer)
@@ -183,8 +183,16 @@ DB = {
                                 volume = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_VOL')
                                 pan = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, 'D_PAN')
                                 mute = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, 'B_MUTE') == 1.0
+                            else
+                                if self.type == SEND_TYPE.RECV then
+                                    _, volume, pan = reaper.GetTrackReceiveUIVolPan(self.track.object, self.index) -- this SHOULD be index rather than UIIndex, since this is a receive specific function
+                                    _, mute = reaper.GetTrackReceiveUIMute(self.track.object, self.index)
+                                else
+                                    _, volume, pan = reaper.GetTrackSendUIVolPan(self.track.object, self.UIIndex)
+                                    _, mute = reaper.GetTrackSendUIMute(self.track.object, self.UIIndex)
+                                end
                             end
-                            local oldAutoMode = self.autoMode
+                            local oldAutoMode = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_AUTOMODE')
                             if self.autoMode ~= AUTO_MODE.READ then
                                 reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_AUTOMODE',
                                     AUTO_MODE.READ)
@@ -203,15 +211,9 @@ DB = {
                             self.actualVol = actualVolume
                             self.actualPan = actualPan
                             self.actualMute = actualMute
-                            if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
-                                self.vol = volume
-                                self.pan = pan
-                                self.mute = mute
-                            else
-                                self.vol = actualVolume
-                                self.pan = actualPan
-                                self.mute = actualMute
-                            end
+                            self.vol = volume
+                            self.pan = pan
+                            self.mute = mute
                         end,
                         delete = function(self)
                             self.db:beginUndoBlock()
@@ -907,8 +909,11 @@ DB.getTracks = function(self)
                     volume = reaper.GetMediaTrackInfo_Value(self.object, 'D_VOL')
                     pan = reaper.GetMediaTrackInfo_Value(self.object, 'D_PAN')
                     mute = reaper.GetMediaTrackInfo_Value(self.object, 'B_MUTE') == 1.0
+                else
+                    _, volume, pan = reaper.GetTrackUIVolPan(self.object)
+                    _, mute = reaper.GetTrackUIMute(self.object)
                 end
-                local oldAutoMode = self.autoMode
+                local oldAutoMode = reaper.GetMediaTrackInfo_Value(self.object, 'I_AUTOMODE')
                 if self.autoMode ~= AUTO_MODE.READ then
                     reaper.SetMediaTrackInfo_Value(self.object, 'I_AUTOMODE', AUTO_MODE.READ)
                 end
@@ -921,15 +926,9 @@ DB.getTracks = function(self)
                 self.actualVol = actualVolume
                 self.actualPan = actualPan
                 self.actualMute = actualMute
-                if self.db.app.settings.current.volType == VOL_TYPE.TRIM then
-                    self.vol = volume
-                    self.pan = pan
-                    self.mute = mute
-                else
-                    self.vol = actualVolume
-                    self.pan = actualPan
-                    self.mute = actualMute
-                end
+                self.vol = volume
+                self.pan = pan
+                self.mute = mute
             end,
             _refreshColor = function(self)
                 local color = ImGui.ColorConvertNative(reaper.GetTrackColor(track)) * 0x100 | 0xff

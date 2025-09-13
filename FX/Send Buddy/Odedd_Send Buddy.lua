@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.3.4
+-- @version 1.3.5
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Metering better reflect levels, panning and mute state when automating, regardless of fader mode
+--   fixed: Match fader and pan to track/send automation mode
 
 ---------------------------------------
 -- SETUP ------------------------------
