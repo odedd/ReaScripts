@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="7d14d73a2faf76e635b0c0289b3898a65beadeb4">
+<index version="1" name="Odedd ReaScripts" commit="4a729d2ad7554f496a5f620095ab6fc9b735c312">
   <category name="FX/Scout">
     <reapack name="Odedd_Scout.lua" type="script" desc="Scout">
       <metadata>
@@ -359,6 +359,16 @@ Fixed ReaImGui id warning]]></changelog>
         <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/cd81fc0167647951644a839c252451153dc04dcd/FX/Scout/Resources/Fonts/Cousine-Regular.ttf</source>
         <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/cd81fc0167647951644a839c252451153dc04dcd/FX/Scout/Resources/Fonts/Icons-Regular.otf</source>
         <source file="scout54.dat">https://github.com/odedd/ReaScripts/raw/cd81fc0167647951644a839c252451153dc04dcd/FX/Scout/scout54.dat</source>
+      </version>
+      <version name="1.1.4" author="Oded Davidov" time="2025-09-13T08:49:17Z">
+        <changelog><![CDATA[New action to start Scout in sleep mode]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/4a729d2ad7554f496a5f620095ab6fc9b735c312/FX/Scout/Odedd_Scout.lua</source>
+        <source file="Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/4a729d2ad7554f496a5f620095ab6fc9b735c312/FX/Scout/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="Resources/Fonts/Cousine-Bold.ttf">https://github.com/odedd/ReaScripts/raw/4a729d2ad7554f496a5f620095ab6fc9b735c312/FX/Scout/Resources/Fonts/Cousine-Bold.ttf</source>
+        <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/4a729d2ad7554f496a5f620095ab6fc9b735c312/FX/Scout/Resources/Fonts/Cousine-Regular.ttf</source>
+        <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/4a729d2ad7554f496a5f620095ab6fc9b735c312/FX/Scout/Resources/Fonts/Icons-Regular.otf</source>
+        <source file="scout54.dat">https://github.com/odedd/ReaScripts/raw/4a729d2ad7554f496a5f620095ab6fc9b735c312/FX/Scout/scout54.dat</source>
+        <source file="Odedd_Scout - Start in sleep mode.lua">https://github.com/odedd/ReaScripts/raw/4a729d2ad7554f496a5f620095ab6fc9b735c312/FX/Scout/Odedd_Scout%20-%20Start%20in%20sleep%20mode.lua</source>
       </version>
     </reapack>
   </category>
