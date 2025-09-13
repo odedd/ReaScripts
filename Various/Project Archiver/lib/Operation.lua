@@ -623,6 +623,11 @@ function MinimizeAndApplyMedia()
                 length = r.GetMediaItemInfo_Value(item, "D_LENGTH"),
                 playrate = r.GetMediaItemInfo_Value(item, "D_PLAYRATE")
             }
+            if settings.minimize then                                 -- no need to do it if not minimizing (wasteful)
+                r.SetMediaItemInfo_Value(item, "C_AUTOSTRETCH", 0)
+                r.SetMediaItemInfo_Value(item, "C_BEATATTACHMODE", 0) -- ]]
+            end
+
             table.insert(items, iteminfo)
         end
 
