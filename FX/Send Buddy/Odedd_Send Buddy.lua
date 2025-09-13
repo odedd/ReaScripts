@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.3.3
+-- @version 1.3.4
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Mute button follows automation
+--   Metering better reflect levels, panning and mute state when automating, regardless of fader mode
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -351,7 +351,7 @@ if OD_PrereqsOK({
                     end
                     ImGui.DrawList_AddRectFilled(ImGui.GetWindowDrawList(ctx), x, y, x + w, y + h, col, app.gui.st.vars.main[ImGui.StyleVar_FrameRounding][1])
 
-                    if app.settings.current.showMeters and not s.mute then
+                    if app.settings.current.showMeters and not s.actualMute then
                         if app.temp.lastSamples == nil then app.temp.lastSamples = {} end
                         if app.temp.lastSamples[s.order] == nil then app.temp.lastSamples[s.order] = {} end
 
@@ -387,10 +387,10 @@ if OD_PrereqsOK({
                         local prefaderSetting = tonumber(select(2, r.get_config_var_string('nometers'))) & 1024 ~= 0
                         local meteredTrack = (targetTrack) and s.destTrack or (s.type == SEND_TYPE.HW and s.track or s.srcTrack)
 
-                        local trackVolMultiplier = prefaderSetting and ((s.mode == 0) and meteredTrack.vol or 1.0) or ((s.mode == 0) and 1.0 or (meteredTrack.vol > 1e-49 and (1.0 / meteredTrack.vol) or 0.0))
+                        local trackVolMultiplier = prefaderSetting and ((s.mode == 0) and meteredTrack.actualVol or 1.0) or ((s.mode == 0) and 1.0 or (meteredTrack.actualVol > 1e-49 and (1.0 / meteredTrack.actualVol) or 0.0))
                         local meterValues = {}
                         local maxMeterValue = 0
-                        if not prefaderSetting and not targetTrack and s.mode ~= 0 and s.srcTrack.vol < 1e-49 then -- if post-fader and source track is muted, meter is 0
+                        if not prefaderSetting and not targetTrack and s.mode ~= 0 and s.srcTrack.actualVol < 1e-49 then -- if post-fader and source track is muted, meter is 0
                             for j = 1, channelSpan do
                                 meterValues[j] = 0
                             end
@@ -401,15 +401,15 @@ if OD_PrereqsOK({
                                 if (not targetTrack) or (prefaderSetting) then
                                     if (targetTrack and prefaderSetting) then
                                         if i == 1 then
-                                            panningInfluence = (1.0 - meteredTrack.pan)
+                                            panningInfluence = (1.0 - meteredTrack.actualPan)
                                         elseif i == 2 then
-                                            panningInfluence = (1.0 + meteredTrack.pan)
+                                            panningInfluence = (1.0 + meteredTrack.actualPan)
                                         end
                                     else
                                         if i % 2 == 1 then
-                                            panningInfluence = (1.0 - s.pan)
+                                            panningInfluence = (1.0 - s.actualPan)
                                         elseif i % 2 == 0 then
-                                            panningInfluence = (1.0 + s.pan)
+                                            panningInfluence = (1.0 + s.actualPan)
                                         end
                                     end
                                     channelSample = channelSample * panningInfluence
@@ -429,7 +429,7 @@ if OD_PrereqsOK({
                                 for j = 1, #samples do
                                     sum = sum + samples[j]
                                 end
-                                meterValues[i] = math.sqrt(sum / #samples) * s.vol
+                                meterValues[i] = math.sqrt(sum / #samples) * s.actualVol
                                 maxMeterValue = math.max(maxMeterValue, meterValues[i])
                             end
                         end
