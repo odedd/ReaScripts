@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.1.4
+-- @version 1.1.5
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -16,7 +16,7 @@
 -- @provides
 --   [nomain] Resources/Fonts/**
 --   [nomain] scout54.dat
---   Odedd_Scout - Start in sleep mode.lua
+--   [main] Odedd_Scout - Start in sleep mode.lua
 -- @changelog
 --   New action to start Scout in sleep mode
 
