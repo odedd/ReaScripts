@@ -60,8 +60,8 @@ T.SETTINGS = {
         },
     },
     VOL_TYPE = {
-        LABEL = 'Volume and pan type',
-        HINT = 'Volume/Pan type. "Match MCP/TCP faders" allows writing automation.',
+        LABEL = 'Volume/pan/mute type',
+        HINT = 'Volume, pan and mute type. "Match MCP/TCP faders" allows writing automation.',
     },
     SEND_TYPE_COLOR = {
         LABEL = '%s group',

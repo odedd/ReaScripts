@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.3.2
+-- @version 1.3.3
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,8 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Double click send/receive name to rename track
---   Fixed metering with hardware outputs
+--   Mute button follows automation
 
 ---------------------------------------
 -- SETUP ------------------------------
