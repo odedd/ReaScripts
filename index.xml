@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="a46f8cd477637cae99d4df18105623fa7ffd9ad4">
+<index version="1" name="Odedd ReaScripts" commit="5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7">
   <category name="FX/Scout">
     <reapack name="Odedd_Scout.lua" type="script" desc="Scout">
       <metadata>
@@ -4171,6 +4171,54 @@ Fixed a bug while checking for backup destination folder contents]]></changelog>
         <source file="lib/Settings.lua">https://github.com/odedd/ReaScripts/raw/702565af277d0003b297d29e11c62bc2f86cb983/Various/Project%20Archiver/lib/Settings.lua</source>
         <source file="lib/Texts.lua">https://github.com/odedd/ReaScripts/raw/702565af277d0003b297d29e11c62bc2f86cb983/Various/Project%20Archiver/lib/Texts.lua</source>
         <source file="lib/Todos.lua">https://github.com/odedd/ReaScripts/raw/702565af277d0003b297d29e11c62bc2f86cb983/Various/Project%20Archiver/lib/Todos.lua</source>
+      </version>
+      <version name="0.8.6" author="Oded Davidov" time="2025-09-14T14:50:22Z">
+        <changelog><![CDATA[Bug fixes
+Minimizes files to minimal Channel Mode usage (eg. files that only use left channel in take stereo mode will get rid of right channel)]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Various/Project%20Archiver/Odedd_Project%20Archiver.lua</source>
+        <source file="Resources/Common/AppHelpers.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/AppHelpers.lua</source>
+        <source file="Resources/Common/Common.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Common.lua</source>
+        <source file="Resources/Common/Helpers.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers.lua</source>
+        <source file="Resources/Common/Init.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Init.lua</source>
+        <source file="Resources/Common/ReaperHelpers.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/ReaperHelpers.lua</source>
+        <source file="Resources/Common/Helpers/Bitwise.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Bitwise.lua</source>
+        <source file="Resources/Common/Helpers/Colors.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Colors.lua</source>
+        <source file="Resources/Common/Helpers/Coroutines.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Coroutines.lua</source>
+        <source file="Resources/Common/Helpers/Csv.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Csv.lua</source>
+        <source file="Resources/Common/Helpers/Decibels.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Decibels.lua</source>
+        <source file="Resources/Common/Helpers/Files.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Files.lua</source>
+        <source file="Resources/Common/Helpers/ImGuiHelper.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/ImGuiHelper.lua</source>
+        <source file="Resources/Common/Helpers/Keyboard.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Keyboard.lua</source>
+        <source file="Resources/Common/Helpers/Links.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Links.lua</source>
+        <source file="Resources/Common/Helpers/Log.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Log.lua</source>
+        <source file="Resources/Common/Helpers/Math.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Math.lua</source>
+        <source file="Resources/Common/Helpers/Screen.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Screen.lua</source>
+        <source file="Resources/Common/Helpers/Strings.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Strings.lua</source>
+        <source file="Resources/Common/Helpers/Tables.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Tables.lua</source>
+        <source file="Resources/Common/Helpers/Versions.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Versions.lua</source>
+        <source file="Resources/Common/Helpers/App/App.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/App/App.lua</source>
+        <source file="Resources/Common/Helpers/App/Gui.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/App/Gui.lua</source>
+        <source file="Resources/Common/Helpers/App/Icons.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/App/Icons.lua</source>
+        <source file="Resources/Common/Helpers/App/License.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/App/License.lua</source>
+        <source file="Resources/Common/Helpers/App/Settings.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/App/Settings.lua</source>
+        <source file="Resources/Common/Helpers/Reaper/Actions.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Reaper/Actions.lua</source>
+        <source file="Resources/Common/Helpers/Reaper/Envelopes.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Reaper/Envelopes.lua</source>
+        <source file="Resources/Common/Helpers/Reaper/Project.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Reaper/Project.lua</source>
+        <source file="Resources/Common/Helpers/Reaper/Regions.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Reaper/Regions.lua</source>
+        <source file="Resources/Common/Helpers/Reaper/Scripts.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Reaper/Scripts.lua</source>
+        <source file="Resources/Common/Helpers/Reaper/Tracks.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Common/Helpers/Reaper/Tracks.lua</source>
+        <source file="Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="Resources/Fonts/Cousine-Bold.ttf">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Fonts/Cousine-Bold.ttf</source>
+        <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Fonts/Cousine-Regular.ttf</source>
+        <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Fonts/Icons-Regular.otf</source>
+        <source file="Resources/Icons/caution.png">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Icons/caution.png</source>
+        <source file="Resources/Icons/error.png">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Resources/Icons/error.png</source>
+        <source file="lib/Constants.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Various/Project%20Archiver/lib/Constants.lua</source>
+        <source file="lib/Gui.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Various/Project%20Archiver/lib/Gui.lua</source>
+        <source file="lib/Operation.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Various/Project%20Archiver/lib/Operation.lua</source>
+        <source file="lib/Settings.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Various/Project%20Archiver/lib/Settings.lua</source>
+        <source file="lib/Texts.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Various/Project%20Archiver/lib/Texts.lua</source>
+        <source file="lib/Todos.lua">https://github.com/odedd/ReaScripts/raw/5c8cb6b6765fc4f1ebdceff18da7d694b6098bb7/Various/Project%20Archiver/lib/Todos.lua</source>
       </version>
     </reapack>
   </category>
