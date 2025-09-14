@@ -259,6 +259,7 @@ function GetMediaFiles()
                         newItemLength = 0,   -- Placeholder for the new item's length
                         newItem = nil,
                         newTake = nil,
+                        chanMode = r.GetMediaItemTakeInfo_Value(take, "I_CHANMODE"),
                         playrate = r.GetMediaItemTakeInfo_Value(take, "D_PLAYRATE"),
                         item = mediaItem, -- Reference to the original media item
                         take = take,      -- Reference to the original media take
@@ -591,6 +592,7 @@ function MinimizeAndApplyMedia()
             r.SetMediaItemTake_Source(oc.newTake, oc.src) -- r.GetMediaItemTake_Source(oc.take))
             -- r.SetMediaItemTakeInfo_Value(oc.newTake, "D_STARTOFFS", math.max(0, oc.startTime + oc.section_offset - oc.startpadding))
             r.SetMediaItemTakeInfo_Value(oc.newTake, "D_STARTOFFS", oc.startTime - oc.startpadding)
+            r.SetMediaItemTakeInfo_Value(oc.newTake, "I_CHANMODE", oc.chanMode)
 
             -- if longer than media (loop) then wraparound end portion to the start
             if oc.endTime > oc.srclen then
