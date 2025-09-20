@@ -3,6 +3,7 @@
 function OD_ToggleShowEnvelope(env, show, val)
     val = val or 1
     local oldVal, envelopeExists
+    
     local ret, chunk = reaper.GetEnvelopeStateChunk(env, '', false)
     if chunk then
         local nchunk
