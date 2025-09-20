@@ -78,13 +78,15 @@ DB = {
         if not self:_isTrackValid() then return end
         -- if self.app.settings.current.volType == VOL_TYPE.UI then
         for _, send in ipairs(self.sends) do
-            send:_refreshVolPanAndMute()
-            if send.type ~= SEND_TYPE.HW then
-                if r.ValidatePtr(send.destTrack.object, 'MediaTrack*') then
-                    send.destTrack:_refreshVolPanAndMute()
-                end
-                if r.ValidatePtr(send.srcTrack.object, 'MediaTrack*') then
-                    send.srcTrack:_refreshVolPanAndMute()
+            if self.app.settings.current.volType == VOL_TYPE.UI or send.hasEnvelopes then
+                send:_refreshVolPanAndMute()
+                if send.type ~= SEND_TYPE.HW then
+                    if r.ValidatePtr(send.destTrack.object, 'MediaTrack*') then
+                        send.destTrack:_refreshVolPanAndMute()
+                    end
+                    if r.ValidatePtr(send.srcTrack.object, 'MediaTrack*') then
+                        send.srcTrack:_refreshVolPanAndMute()
+                    end
                 end
             end
         end
@@ -148,6 +150,12 @@ DB = {
                     local midiRouting = reaper.GetTrackSendInfo_Value(self.track.object, type, i,
                         'I_MIDIFLAGS')
 
+                    local volEnv = reaper.GetTrackSendInfo_Value(self.track.object, type, i, "P_ENV:<VOLENV")
+                    local panEnv = reaper.GetTrackSendInfo_Value(self.track.object, type, i, "P_ENV:<PANENV")
+                    local muteEnv = reaper.GetTrackSendInfo_Value(self.track.object, type, i, "P_ENV:<MUTEENV")
+                    local hasEnvelopes = (select(2, reaper.GetEnvelopeStateChunk(volEnv, '', false)):find('VIS 1')) or
+                        (select(2, reaper.GetEnvelopeStateChunk(panEnv, '', false)):find('VIS 1')) or
+                        (select(2, reaper.GetEnvelopeStateChunk(muteEnv, '', false)):find('VIS 1'))
                     local send = {
                         type = type,
                         order = overallOrder,
@@ -156,6 +164,7 @@ DB = {
                         name = sendName,
                         db = self,
                         track = self.track,
+                        hasEnvelopes = hasEnvelopes,
                         mute = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'B_MUTE') == 1.0,
                         -- vol = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'D_VOL'),
                         -- pan = reaper.GetTrackSendInfo_Value(self.track.object, type, i, 'D_PAN'),
@@ -192,8 +201,9 @@ DB = {
                                     _, mute = reaper.GetTrackSendUIMute(self.track.object, self.UIIndex)
                                 end
                             end
-                            local oldAutoMode = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_AUTOMODE')
+                            local oldAutoMode
                             if self.autoMode ~= AUTO_MODE.READ then
+                                oldAutoMode = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_AUTOMODE')
                                 reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_AUTOMODE',
                                     AUTO_MODE.READ)
                             end
@@ -913,8 +923,9 @@ DB.getTracks = function(self)
                     _, volume, pan = reaper.GetTrackUIVolPan(self.object)
                     _, mute = reaper.GetTrackUIMute(self.object)
                 end
-                local oldAutoMode = reaper.GetMediaTrackInfo_Value(self.object, 'I_AUTOMODE')
+                local oldAutoMode
                 if self.autoMode ~= AUTO_MODE.READ then
+                    oldAutoMode = reaper.GetMediaTrackInfo_Value(self.object, 'I_AUTOMODE')
                     reaper.SetMediaTrackInfo_Value(self.object, 'I_AUTOMODE', AUTO_MODE.READ)
                 end
                 _, actualVolume, actualPan = reaper.GetTrackUIVolPan(self.object)
