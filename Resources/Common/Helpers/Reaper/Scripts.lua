@@ -26,7 +26,5 @@ function OD_GetScriptDetails(script_name)
             cmd_path = r.GetResourcePath() .. "/Scripts/" .. cmd_path
         end
         return cmd_id, cmd_name, cmd_path
-    else
-        r.ShowConsoleMsg('not found')
     end
 end
