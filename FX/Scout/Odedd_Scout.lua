@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.1.12
+-- @version 1.1.13
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -18,8 +18,7 @@
 --   [nomain] scout54.dat
 --   [main] Odedd_Scout - Start in sleep mode.lua
 -- @changelog
---   New setting: Click tag to filter
---   New setting: Clear filters on tag click
+--   Result highlighting in QuickTag window and in "Move to..." context menu
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
 if DATA == nil then
