@@ -1,6 +1,6 @@
 -- @description Stereo Buddy
 -- @author Oded Davidov
--- @version 1.0.0
+-- @version 1.0.1
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/stereo-buddy?utm_source=stereo-buddy&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -14,7 +14,7 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] stereobuddy54.dat
 -- @changelog
---   Initial release
+--   Fix - correctly pan track for 100%R signals
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'stereobuddy54'
