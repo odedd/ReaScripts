@@ -620,6 +620,20 @@ copy of the Program in return for a fee.
 
                      END OF TERMS AND CONDITIONS
 
+                        MIXED LICENSING NOTICE
+
+This repository contains code under different licenses:
+
+- Most files are licensed under the GNU General Public License v3 (GPL-3.0) 
+  unless otherwise specified
+- Some files contain proprietary code and are licensed under separate terms
+- Files with proprietary licensing are clearly marked and include their own 
+  PROPRIETARY-LICENSE.txt files
+- See accompanying license files for specific terms
+
+For questions about licensing of specific components, please refer to the 
+individual license files or contact the repository maintainer.
+
             How to Apply These Terms to Your New Programs
 
   If you develop a new program, and you want it to be of the greatest
