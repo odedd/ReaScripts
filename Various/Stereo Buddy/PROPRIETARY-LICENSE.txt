@@ -1,0 +1,25 @@
+PROPRIETARY CODE LICENSE NOTICE
+=====================================
+
+The following files in this package contain proprietary code that is NOT subject 
+to the repository's GPL license:
+
+stereobuddy54.dat
+
+These files contain proprietary code that is NOT subject to the repository's 
+GPL license. This software is proprietary and confidential.
+
+Copyright 2025 Oded Davidov. All rights reserved.
+
+RESTRICTIONS:
+- No copying, distribution, or modification without express written permission
+- No reverse engineering or decompilation
+- Licensed for authorized use only
+- Unauthorized use may result in legal action
+
+For licensing inquiries, contact: odedd@random.tools
+
+This license applies only to the files specifically listed above. All other 
+files in this package remain subject to the repository's standard GPL license.
+
+For all other files not listed above, the standard repository license applies.
