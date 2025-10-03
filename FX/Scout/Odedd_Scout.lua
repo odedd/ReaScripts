@@ -18,7 +18,7 @@
 --   [nomain] scout54.dat
 --   [main] Odedd_Scout - Start in sleep mode.lua
 -- @changelog
---   Added license information in bytecode file
+--   Grace period of 7 days more if online license verification server cannot be reached
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
 if DATA == nil then
