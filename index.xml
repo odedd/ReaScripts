@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Odedd ReaScripts" commit="8c6725f8c939ccca288f78dc5d9abb56fcae891b">
+<index version="1" name="Odedd ReaScripts" commit="7acd7f709d95b2ae32744c9641a37dbd8bd02a73">
   <category name="FX/Scout">
     <reapack name="Odedd_Scout.lua" type="script" desc="Scout">
       <metadata>
@@ -4493,6 +4493,15 @@ Minimizes files to minimal Channel Mode usage (eg. files that only use left chan
         <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/8c6725f8c939ccca288f78dc5d9abb56fcae891b/Various/Stereo%20Buddy/Resources/Fonts/Cousine-Regular.ttf</source>
         <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/8c6725f8c939ccca288f78dc5d9abb56fcae891b/Various/Stereo%20Buddy/Resources/Fonts/Icons-Regular.otf</source>
         <source file="stereobuddy54.dat">https://github.com/odedd/ReaScripts/raw/8c6725f8c939ccca288f78dc5d9abb56fcae891b/Various/Stereo%20Buddy/stereobuddy54.dat</source>
+      </version>
+      <version name="1.0.5" author="Oded Davidov" time="2025-10-03T10:51:02Z">
+        <changelog><![CDATA[Grace period of 7 days more if online license verification server cannot be reached]]></changelog>
+        <source main="main">https://github.com/odedd/ReaScripts/raw/7acd7f709d95b2ae32744c9641a37dbd8bd02a73/Various/Stereo%20Buddy/Odedd_Stereo%20Buddy.lua</source>
+        <source file="Resources/Fonts/Cousine-90deg.otf">https://github.com/odedd/ReaScripts/raw/7acd7f709d95b2ae32744c9641a37dbd8bd02a73/Various/Stereo%20Buddy/Resources/Fonts/Cousine-90deg.otf</source>
+        <source file="Resources/Fonts/Cousine-Bold.ttf">https://github.com/odedd/ReaScripts/raw/7acd7f709d95b2ae32744c9641a37dbd8bd02a73/Various/Stereo%20Buddy/Resources/Fonts/Cousine-Bold.ttf</source>
+        <source file="Resources/Fonts/Cousine-Regular.ttf">https://github.com/odedd/ReaScripts/raw/7acd7f709d95b2ae32744c9641a37dbd8bd02a73/Various/Stereo%20Buddy/Resources/Fonts/Cousine-Regular.ttf</source>
+        <source file="Resources/Fonts/Icons-Regular.otf">https://github.com/odedd/ReaScripts/raw/7acd7f709d95b2ae32744c9641a37dbd8bd02a73/Various/Stereo%20Buddy/Resources/Fonts/Icons-Regular.otf</source>
+        <source file="stereobuddy54.dat">https://github.com/odedd/ReaScripts/raw/7acd7f709d95b2ae32744c9641a37dbd8bd02a73/Various/Stereo%20Buddy/stereobuddy54.dat</source>
       </version>
     </reapack>
   </category>
