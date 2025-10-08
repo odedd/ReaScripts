@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.3.7
+-- @version 1.3.8
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,7 +22,8 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Fixed "not found" on startup
+--   Fixed some UI alignment when multiple pages of sends exist
+--   Added horizontal scroll bar when needed
 
 ---------------------------------------
 -- SETUP ------------------------------
@@ -742,12 +743,15 @@ if OD_PrereqsOK({
             local drawMIDIRouteButtons = function(w)
                 if s.type == SEND_TYPE.HW then
                     ImGui.BeginGroup(ctx)
+                    local x = ImGui.GetCursorPos(ctx)
                     drawDummy(w, app.gui.st.col.buttons.route, nil,'midiRouteBtn1')
+                    ImGui.SetCursorPosX(ctx, x)
                     drawDummy(w, app.gui.st.col.buttons.route, nil,'midiRouteBtn2')
                     ImGui.EndGroup(ctx)
                 else
                     app.gui:pushColors(app.gui.st.col.buttons.route)
                     ImGui.BeginGroup(ctx)
+                    local x = ImGui.GetCursorPos(ctx)
                     local label
                     if s.midiSrcChn == 0 and s.midiSrcBus == 0 then
                         label = 'all'
@@ -765,6 +769,7 @@ if OD_PrereqsOK({
                         ImGui.OpenPopup(ctx, '##srcMidiChanMenu' .. s.order)
                     end
                     app:setHoveredHint('main', s.name .. ' - Source MIDI channel')
+                    ImGui.SetCursorPosX(ctx, x)
                     if s.midiSrcBus == 255 then
                         label = ''
                         ImGui.BeginDisabled(ctx)
@@ -859,6 +864,7 @@ if OD_PrereqsOK({
             local drawRouteButtons = function(w)
                 app.gui:pushColors(app.gui.st.col.buttons.route)
                 ImGui.BeginGroup(ctx)
+                local x = ImGui.GetCursorPos(ctx)
                 if ImGui.Button(ctx, SRC_CHANNELS[s.srcChan].label .. '##srcChan' .. s.order, w, app.gui.TEXT_BASE_HEIGHT_SMALL) then
                     ImGui.OpenPopup(ctx, '##srcChanMenu' .. s.order)
                 end
@@ -872,6 +878,7 @@ if OD_PrereqsOK({
                         (s.destChan + 1 .. '/' .. (s.destChan + SRC_CHANNELS[s.srcChan].numChannels)) or
                         s.destChan + 1 - 1024
                 end
+                ImGui.SetCursorPosX(ctx, x)
                 if s.srcChan == -1 then
                     ImGui.BeginDisabled(ctx)
                 end
@@ -2267,7 +2274,7 @@ if OD_PrereqsOK({
 
             app.drawTopBar()
 
-            if ImGui.BeginChild(ctx, '##body', 0.0, -app.gui.st.sizes.hintHeight) then
+            if ImGui.BeginChild(ctx, '##body', 0.0, -app.gui.st.sizes.hintHeight, nil, ImGui.WindowFlags_HorizontalScrollbar) then
                 if app.page == APP_PAGE.MIXER then
                     app.drawMixer()
                     if app.isShortcutPressed('closeScript') and not ImGui.IsPopupOpen(ctx, '', ImGui.PopupFlags_AnyPopup) and not app.temp.ignoreEscapeKey then open = false end
