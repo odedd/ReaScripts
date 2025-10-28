@@ -1,6 +1,6 @@
 -- @description Project Archiver
 -- @author Oded Davidov
--- @version 0.8.6
+-- @version 0.8.7
 -- @donation https://paypal.me/odedda
 -- @link Forum Thread https://forum.cockos.com/showthread.php?t=280150
 -- @license GNU GPL v3
@@ -14,7 +14,7 @@
 --   [nomain] lib/**
 -- @changelog
 --   Bug fixes
---   Minimizes files to minimal Channel Mode usage (eg. files that only use left channel in take stereo mode will get rid of right channel)
+--   Fixed bug that causes some operations to fail
 
 ---------------------------------------
 -- SETUP ------------------------------
