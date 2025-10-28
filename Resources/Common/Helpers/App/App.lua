@@ -46,7 +46,7 @@ function OD_Gui_App:setHint(window, text, color, ctx, level)
             window = {}
         }
         if color then
-            r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), Gui.st.col[color])
+            r.ImGui_PushStyleColor(ctx, r.ImGui_Col_Text(), self.gui.st.col[color])
         end
         r.ImGui_SetTooltip(ctx, text)
         if color then
