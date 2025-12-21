@@ -1,6 +1,6 @@
 -- @description Send Buddy
 -- @author Oded Davidov
--- @version 1.3.8
+-- @version 1.3.9
 -- @donation https://paypal.me/odedda
 -- @license GNU GPL v3
 -- @about
@@ -22,8 +22,7 @@
 --   [nomain] ../../Resources/Icons/* > Resources/Icons/
 --   [nomain] lib/**
 -- @changelog
---   Fixed some UI alignment when multiple pages of sends exist
---   Added horizontal scroll bar when needed
+--   Better performance when meters are off
 
 ---------------------------------------
 -- SETUP ------------------------------
