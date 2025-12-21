@@ -223,24 +223,24 @@ DB = {
                                 actualPan = uiPan
                                 actualMute = uiMute
 
-                                -- Override volume with envelope value if envelope exists
+                                -- Override volume with envelope value if envelope exists AND has automation points
                                 local volEnv = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, "P_ENV:<VOLENV")
-                                if volEnv and reaper.ValidatePtr(volEnv, "TrackEnvelope*") then
+                                if volEnv and reaper.ValidatePtr(volEnv, "TrackEnvelope*") and reaper.CountEnvelopePoints(volEnv) > 0 then
                                     local _, rawValue = reaper.Envelope_Evaluate(volEnv, pos, sampleRate, 512)
                                     local scalingMode = reaper.GetEnvelopeScalingMode(volEnv)
                                     actualVolume = reaper.ScaleFromEnvelopeMode(scalingMode, rawValue)
                                 end
 
-                                -- Override pan with envelope value if envelope exists
+                                -- Override pan with envelope value if envelope exists AND has automation points
                                 local panEnv = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, "P_ENV:<PANENV")
-                                if panEnv and reaper.ValidatePtr(panEnv, "TrackEnvelope*") then
+                                if panEnv and reaper.ValidatePtr(panEnv, "TrackEnvelope*") and reaper.CountEnvelopePoints(panEnv) > 0 then
                                     local _, rawValue = reaper.Envelope_Evaluate(panEnv, pos, sampleRate, 512)
                                     actualPan = -rawValue -- negate: envelope convention is opposite
                                 end
 
-                                -- Override mute with envelope value if envelope exists
+                                -- Override mute with envelope value if envelope exists AND has automation points
                                 local muteEnv = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, "P_ENV:<MUTEENV")
-                                if muteEnv and reaper.ValidatePtr(muteEnv, "TrackEnvelope*") then
+                                if muteEnv and reaper.ValidatePtr(muteEnv, "TrackEnvelope*") and reaper.CountEnvelopePoints(muteEnv) > 0 then
                                     local _, rawValue = reaper.Envelope_Evaluate(muteEnv, pos, sampleRate, 512)
                                     actualMute = rawValue < 0.5  -- envelope 1.0 = unmuted, 0.0 = muted
                                 end
@@ -953,37 +953,9 @@ DB.getTracks = function(self)
                 end
                 -- Only calculate actual values if meters are enabled (actual* values are only used for meters)
                 if self.db.app.settings.current.showMeters then
-                    -- Start with UI values (these always work)
+                    -- GetTrackUIVolPan already returns automation-aware values for tracks
                     _, actualVolume, actualPan = reaper.GetTrackUIVolPan(self.object)
                     _, actualMute = reaper.GetTrackUIMute(self.object)
-
-                    -- Evaluate track envelopes for automation
-                    local pos = (reaper.GetPlayState() & 1 == 1) and reaper.GetPlayPosition() or reaper.GetCursorPosition()
-                    local _, sampleRate = reaper.GetAudioDeviceInfo("SRATE")
-                    sampleRate = tonumber(sampleRate) or 44100
-
-                    -- Override volume with envelope value if envelope exists
-                    local volEnv = reaper.GetTrackEnvelopeByName(self.object, "Volume")
-                    if volEnv and reaper.ValidatePtr(volEnv, "TrackEnvelope*") then
-                        local _, rawValue = reaper.Envelope_Evaluate(volEnv, pos, sampleRate, 512)
-                        local scalingMode = reaper.GetEnvelopeScalingMode(volEnv)
-                        actualVolume = reaper.ScaleFromEnvelopeMode(scalingMode, rawValue)
-                    end
-
-                    -- Override pan with envelope value if envelope exists
-                    local panEnv = reaper.GetTrackEnvelopeByName(self.object, "Pan")
-                    if panEnv and reaper.ValidatePtr(panEnv, "TrackEnvelope*") then
-                        local _, rawValue = reaper.Envelope_Evaluate(panEnv, pos, sampleRate, 512)
-                        actualPan = -rawValue -- negate: envelope convention is opposite
-                    end
-
-                    -- Override mute with envelope value if envelope exists
-                    local muteEnv = reaper.GetTrackEnvelopeByName(self.object, "Mute")
-                    if muteEnv and reaper.ValidatePtr(muteEnv, "TrackEnvelope*") then
-                        local _, rawValue = reaper.Envelope_Evaluate(muteEnv, pos, sampleRate, 512)
-                        actualMute = rawValue < 0.5  -- envelope 1.0 = unmuted, 0.0 = muted
-                    end
-
                     self.actualVol = actualVolume
                     self.actualPan = actualPan
                     self.actualMute = actualMute
