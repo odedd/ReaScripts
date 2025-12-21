@@ -201,25 +201,50 @@ DB = {
                                     _, mute = reaper.GetTrackSendUIMute(self.track.object, self.UIIndex)
                                 end
                             end
-                            -- Only switch automation mode to READ if meters are enabled (actual* values are only used for meters)
+                            -- Only calculate actual values if meters are enabled (actual* values are only used for meters)
                             if self.db.app.settings.current.showMeters then
-                                local oldAutoMode
-                                if self.autoMode ~= AUTO_MODE.READ then
-                                    oldAutoMode = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_AUTOMODE')
-                                    reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_AUTOMODE',
-                                        AUTO_MODE.READ)
-                                end
+                                -- Get UI values (what works)
+                                local uiVol, uiPan, uiMute
                                 if self.type == SEND_TYPE.RECV then
-                                    _, actualVolume, actualPan = reaper.GetTrackReceiveUIVolPan(self.track.object, self.index) -- this SHOULD be index rather than UIIndex, since this is a receive specific function
-                                    _, actualMute = reaper.GetTrackReceiveUIMute(self.track.object, self.index)
+                                    _, uiVol, uiPan = reaper.GetTrackReceiveUIVolPan(self.track.object, self.index)
+                                    _, uiMute = reaper.GetTrackReceiveUIMute(self.track.object, self.index)
                                 else
-                                    _, actualVolume, actualPan = reaper.GetTrackSendUIVolPan(self.track.object, self.UIIndex)
-                                    _, actualMute = reaper.GetTrackSendUIMute(self.track.object, self.UIIndex)
+                                    _, uiVol, uiPan = reaper.GetTrackSendUIVolPan(self.track.object, self.UIIndex)
+                                    _, uiMute = reaper.GetTrackSendUIMute(self.track.object, self.UIIndex)
                                 end
-                                if self.autoMode ~= AUTO_MODE.READ then
-                                    reaper.SetTrackSendInfo_Value(self.track.object, self.type, self.index, 'I_AUTOMODE',
-                                        oldAutoMode)
+
+                                -- Try envelope evaluation
+                                local pos = (reaper.GetPlayState() & 1 == 1) and reaper.GetPlayPosition() or reaper.GetCursorPosition()
+                                local _, sampleRate = reaper.GetAudioDeviceInfo("SRATE")
+                                sampleRate = tonumber(sampleRate) or 44100
+
+                                -- Start with UI values (these always work)
+                                actualVolume = uiVol
+                                actualPan = uiPan
+                                actualMute = uiMute
+
+                                -- Override volume with envelope value if envelope exists
+                                local volEnv = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, "P_ENV:<VOLENV")
+                                if volEnv and reaper.ValidatePtr(volEnv, "TrackEnvelope*") then
+                                    local _, rawValue = reaper.Envelope_Evaluate(volEnv, pos, sampleRate, 512)
+                                    local scalingMode = reaper.GetEnvelopeScalingMode(volEnv)
+                                    actualVolume = reaper.ScaleFromEnvelopeMode(scalingMode, rawValue)
                                 end
+
+                                -- Override pan with envelope value if envelope exists
+                                local panEnv = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, "P_ENV:<PANENV")
+                                if panEnv and reaper.ValidatePtr(panEnv, "TrackEnvelope*") then
+                                    local _, rawValue = reaper.Envelope_Evaluate(panEnv, pos, sampleRate, 512)
+                                    actualPan = -rawValue -- negate: envelope convention is opposite
+                                end
+
+                                -- Override mute with envelope value if envelope exists
+                                local muteEnv = reaper.GetTrackSendInfo_Value(self.track.object, self.type, self.index, "P_ENV:<MUTEENV")
+                                if muteEnv and reaper.ValidatePtr(muteEnv, "TrackEnvelope*") then
+                                    local _, rawValue = reaper.Envelope_Evaluate(muteEnv, pos, sampleRate, 512)
+                                    actualMute = rawValue < 0.5  -- envelope 1.0 = unmuted, 0.0 = muted
+                                end
+
                                 self.actualVol = actualVolume
                                 self.actualPan = actualPan
                                 self.actualMute = actualMute
@@ -926,19 +951,39 @@ DB.getTracks = function(self)
                     _, volume, pan = reaper.GetTrackUIVolPan(self.object)
                     _, mute = reaper.GetTrackUIMute(self.object)
                 end
-                -- Only switch automation mode to READ if meters are enabled (actual* values are only used for meters)
+                -- Only calculate actual values if meters are enabled (actual* values are only used for meters)
                 if self.db.app.settings.current.showMeters then
-                    local oldAutoMode
-                    if self.autoMode ~= AUTO_MODE.READ then
-                        oldAutoMode = reaper.GetMediaTrackInfo_Value(self.object, 'I_AUTOMODE')
-                        reaper.SetMediaTrackInfo_Value(self.object, 'I_AUTOMODE', AUTO_MODE.READ)
-                    end
+                    -- Start with UI values (these always work)
                     _, actualVolume, actualPan = reaper.GetTrackUIVolPan(self.object)
                     _, actualMute = reaper.GetTrackUIMute(self.object)
 
-                    if self.autoMode ~= AUTO_MODE.READ then
-                        reaper.SetMediaTrackInfo_Value(self.object, 'I_AUTOMODE', oldAutoMode)
+                    -- Evaluate track envelopes for automation
+                    local pos = (reaper.GetPlayState() & 1 == 1) and reaper.GetPlayPosition() or reaper.GetCursorPosition()
+                    local _, sampleRate = reaper.GetAudioDeviceInfo("SRATE")
+                    sampleRate = tonumber(sampleRate) or 44100
+
+                    -- Override volume with envelope value if envelope exists
+                    local volEnv = reaper.GetTrackEnvelopeByName(self.object, "Volume")
+                    if volEnv and reaper.ValidatePtr(volEnv, "TrackEnvelope*") then
+                        local _, rawValue = reaper.Envelope_Evaluate(volEnv, pos, sampleRate, 512)
+                        local scalingMode = reaper.GetEnvelopeScalingMode(volEnv)
+                        actualVolume = reaper.ScaleFromEnvelopeMode(scalingMode, rawValue)
                     end
+
+                    -- Override pan with envelope value if envelope exists
+                    local panEnv = reaper.GetTrackEnvelopeByName(self.object, "Pan")
+                    if panEnv and reaper.ValidatePtr(panEnv, "TrackEnvelope*") then
+                        local _, rawValue = reaper.Envelope_Evaluate(panEnv, pos, sampleRate, 512)
+                        actualPan = -rawValue -- negate: envelope convention is opposite
+                    end
+
+                    -- Override mute with envelope value if envelope exists
+                    local muteEnv = reaper.GetTrackEnvelopeByName(self.object, "Mute")
+                    if muteEnv and reaper.ValidatePtr(muteEnv, "TrackEnvelope*") then
+                        local _, rawValue = reaper.Envelope_Evaluate(muteEnv, pos, sampleRate, 512)
+                        actualMute = rawValue < 0.5  -- envelope 1.0 = unmuted, 0.0 = muted
+                    end
+
                     self.actualVol = actualVolume
                     self.actualPan = actualPan
                     self.actualMute = actualMute
