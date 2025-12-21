@@ -1,6 +1,6 @@
 -- @description Stereo Buddy
 -- @author Oded Davidov
--- @version 1.0.5
+-- @version 1.0.6
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/stereo-buddy?utm_source=stereo-buddy&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -14,7 +14,7 @@
 --   [nomain] Resources/Fonts/**
 --   [nomain] stereobuddy54.dat
 -- @changelog
---   Grace period of 7 days more if online license verification server cannot be reached
+--   More reliable activation server + window activation fix
 
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'stereobuddy54'
