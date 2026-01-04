@@ -1,6 +1,6 @@
 -- @description Scout
 -- @author Oded Davidov
--- @version 1.1.21
+-- @version 1.2
 -- @donation https://paypal.me/odedda
 -- @link Product Page https://www.random.tools/l/scout-plus?utm_source=scout&utm_medium=script&utm_campaign=reapack
 -- @license GNU GPL v3
@@ -18,7 +18,15 @@
 --   [nomain] scout54.dat
 --   [main] Odedd_Scout - Start in sleep mode.lua
 -- @changelog
---   Fixed registration on windows
+--   Added "include parent tags" to settings
+--   Added high saturation row to color selector
+--   Allow scrolling when dragging tags near the edge of the tag list
+--   Hover to show overflowing information when result text is clipped
+--   Visual changes:
+--   - Slightly dimmer group names in search results
+--   - No script name in title bar
+--   Allow expanding/collapsing all tags in the tag list
+
 r = reaper
 DATA = _VERSION == 'Lua 5.4' and 'scout54'
 if DATA == nil then

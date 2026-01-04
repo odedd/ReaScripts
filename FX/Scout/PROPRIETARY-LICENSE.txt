@@ -9,7 +9,7 @@ scout54.dat
 These files contain proprietary code that is NOT subject to the repository's 
 GPL license. This software is proprietary and confidential.
 
-Copyright 2025 Oded Davidov. All rights reserved.
+Copyright 2026 Oded Davidov. All rights reserved.
 
 RESTRICTIONS:
 - No copying, distribution, or modification without express written permission
